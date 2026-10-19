@@ -136,17 +136,28 @@ defmodule DemoWeb.E2E.MarkersLive do
             popover="auto"
             data-columns-list
           >
-            <label :for={{name, label} <- @columns} id={"kit-column-#{name}-entry"}>
+            <div :for={{name, label} <- @columns}>
+              <label id={"kit-column-#{name}-entry"}>
+                <input
+                  type="checkbox"
+                  id={"kit-column-#{name}"}
+                  checked
+                  data-head={"kit-head-#{name}"}
+                  data-say-hidden={"#{label} hidden"}
+                  data-say-shown={"#{label} shown"}
+                />
+                <span>{label}</span>
+              </label>
               <input
-                type="checkbox"
-                id={"kit-column-#{name}"}
-                checked
-                data-head={"kit-head-#{name}"}
-                data-say-hidden={"#{label} hidden"}
-                data-say-shown={"#{label} shown"}
+                id={"kit-column-#{name}-width"}
+                type="number"
+                min="48"
+                max="1000"
+                aria-label={"Width of #{label}"}
+                data-width={"kit-head-#{name}"}
               />
-              <span>{label}</span>
-            </label>
+            </div>
+            <button id="kit-reset-widths" type="button" data-reset-widths>Reset widths</button>
           </div>
           <span id="kit-columns-status" role="status" phx-update="ignore"></span>
         </div>
@@ -195,15 +206,7 @@ defmodule DemoWeb.E2E.MarkersLive do
                   aria-colindex={index + 2}
                   aria-label={label}
                 >
-                  {label}<span
-                    id={"kit-resize-#{name}"}
-                    role="separator"
-                    aria-orientation="vertical"
-                    aria-label={"Resize #{label}"}
-                    aria-valuemin="48"
-                    aria-valuemax="1000"
-                    data-resize
-                  ></span>
+                  {label}<span id={"kit-resize-#{name}"} aria-hidden="true" data-resize></span>
                 </span>
               </div>
               <div id="kit-filter-row" role="row" aria-rowindex="2">

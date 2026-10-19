@@ -746,8 +746,11 @@ msgstr "%{column} behalten"
 msgid "Will be cleared."
 msgstr "Wird geleert."
 
-msgid "Resize %{column}"
-msgstr "Breite von %{column} ändern"
+msgid "Width of %{column}"
+msgstr "Breite von %{column}"
+
+msgid "Reset widths"
+msgstr "Breiten zurücksetzen"
 
 msgid "Skip table %{name}"
 msgstr "Tabelle %{name} überspringen"

@@ -499,7 +499,7 @@ defmodule DemoWeb.TablePage do
   def line_buttons(html, id \\ "task", key, relationship) do
     html
     |> query(
-      "[id='#{Ids.line_heading(Ids.row(id, key), relationship)}'] button:not([data-columns-button])"
+      "[id='#{Ids.line_heading(Ids.row(id, key), relationship)}'] button:not([data-columns-button],[data-reset-widths])"
     )
     |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
   end

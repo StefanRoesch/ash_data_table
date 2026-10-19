@@ -96,7 +96,9 @@ defmodule DemoWeb.Tables.LabelActionsTest do
 
       assert html
              |> LazyHTML.from_fragment()
-             |> LazyHTML.query("#label-header button:not([data-columns-button])")
+             |> LazyHTML.query(
+               "#label-header button:not([data-columns-button],[data-reset-widths])"
+             )
              |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim())) ==
                ["New label", "Count unused", "Recolour", "Remove unused", "Merge", "Import"]
 

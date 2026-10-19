@@ -20,90 +20,156 @@
 </span>
 </button>
 <div aria-label="Columns" class="dropdown menu max-h-[60vh] flex-nowrap overflow-y-auto rounded-box bg-base-100 p-2 text-base-content shadow-sm forced-colors:border [position-area:bottom_span-right] [position-try-fallbacks:flip-inline,flip-block] supports-[position-area:bottom]:inset-auto supports-[position-area:bottom]:m-0 supports-[position-area:bottom]:mt-0.5" data-columns-list="" id="task-columns" popover="auto" role="group" style="position-anchor: --ash-data-table-columns-task">
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-status-entry">
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-status-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-head-status" data-say-hidden="State hidden" data-say-shown="State shown" id="task-column-status" type="checkbox"/>
 <span>State</span>
 </label>
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-priority-entry">
+<input aria-label="Width of State" class="input input-xs w-20" data-width="task-head-status" id="task-column-status-width" max="1000" min="48" type="number"/>
+</div>
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-priority-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-head-priority" data-say-hidden="Priority hidden" data-say-shown="Priority shown" id="task-column-priority" type="checkbox"/>
 <span>Priority</span>
 </label>
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-progress-entry">
+<input aria-label="Width of Priority" class="input input-xs w-20" data-width="task-head-priority" id="task-column-priority-width" max="1000" min="48" type="number"/>
+</div>
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-progress-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-head-progress" data-say-hidden="Progress hidden" data-say-shown="Progress shown" id="task-column-progress" type="checkbox"/>
 <span>Progress</span>
 </label>
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-estimate_hours-entry">
+<input aria-label="Width of Progress" class="input input-xs w-20" data-width="task-head-progress" id="task-column-progress-width" max="1000" min="48" type="number"/>
+</div>
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-estimate_hours-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-head-estimate_hours" data-say-hidden="Estimate hours hidden" data-say-shown="Estimate hours shown" id="task-column-estimate_hours" type="checkbox"/>
 <span>Estimate hours</span>
 </label>
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-billable?-entry">
+<input aria-label="Width of Estimate hours" class="input input-xs w-20" data-width="task-head-estimate_hours" id="task-column-estimate_hours-width" max="1000" min="48" type="number"/>
+</div>
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-billable?-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-head-billable?" data-say-hidden="Billable? hidden" data-say-shown="Billable? shown" id="task-column-billable?" type="checkbox"/>
 <span>Billable?</span>
 </label>
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-due_on-entry">
+<input aria-label="Width of Billable?" class="input input-xs w-20" data-width="task-head-billable?" id="task-column-billable?-width" max="1000" min="48" type="number"/>
+</div>
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-due_on-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-head-due_on" data-say-hidden="Due on hidden" data-say-shown="Due on shown" id="task-column-due_on" type="checkbox"/>
 <span>Due on</span>
 </label>
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-completed_at-entry">
+<input aria-label="Width of Due on" class="input input-xs w-20" data-width="task-head-due_on" id="task-column-due_on-width" max="1000" min="48" type="number"/>
+</div>
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-completed_at-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-head-completed_at" data-say-hidden="Completed at hidden" data-say-shown="Completed at shown" id="task-column-completed_at" type="checkbox"/>
 <span>Completed at</span>
 </label>
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-overdue?-entry">
+<input aria-label="Width of Completed at" class="input input-xs w-20" data-width="task-head-completed_at" id="task-column-completed_at-width" max="1000" min="48" type="number"/>
+</div>
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-overdue?-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-head-overdue?" data-say-hidden="Overdue? hidden" data-say-shown="Overdue? shown" id="task-column-overdue?" type="checkbox"/>
 <span>Overdue?</span>
 </label>
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-comment_count-entry">
+<input aria-label="Width of Overdue?" class="input input-xs w-20" data-width="task-head-overdue?" id="task-column-overdue?-width" max="1000" min="48" type="number"/>
+</div>
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-comment_count-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-head-comment_count" data-say-hidden="Comments hidden" data-say-shown="Comments shown" id="task-column-comment_count" type="checkbox"/>
 <span>Comments</span>
 </label>
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-headline-entry">
+<input aria-label="Width of Comments" class="input input-xs w-20" data-width="task-head-comment_count" id="task-column-comment_count-width" max="1000" min="48" type="number"/>
+</div>
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-headline-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-head-headline" data-say-hidden="Headline hidden" data-say-shown="Headline shown" id="task-column-headline" type="checkbox"/>
 <span>Headline</span>
 </label>
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-due_within?-entry">
+<input aria-label="Width of Headline" class="input input-xs w-20" data-width="task-head-headline" id="task-column-headline-width" max="1000" min="48" type="number"/>
+</div>
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-due_within?-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-head-due_within?" data-say-hidden="Due within 7 days hidden" data-say-shown="Due within 7 days shown" id="task-column-due_within?" type="checkbox"/>
 <span>Due within 7 days</span>
 </label>
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-due_within-entry">
+<input aria-label="Width of Due within 7 days" class="input input-xs w-20" data-width="task-head-due_within?" id="task-column-due_within?-width" max="1000" min="48" type="number"/>
+</div>
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-due_within-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-head-due_within" data-say-hidden="Due within hidden" data-say-shown="Due within shown" id="task-column-due_within" type="checkbox"/>
 <span>Due within</span>
 </label>
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-external_ref-entry">
+<input aria-label="Width of Due within" class="input input-xs w-20" data-width="task-head-due_within" id="task-column-due_within-width" max="1000" min="48" type="number"/>
+</div>
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-external_ref-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-head-external_ref" data-say-hidden="External ref hidden" data-say-shown="External ref shown" id="task-column-external_ref" type="checkbox"/>
 <span>External ref</span>
 </label>
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-description-entry">
+<input aria-label="Width of External ref" class="input input-xs w-20" data-width="task-head-external_ref" id="task-column-external_ref-width" max="1000" min="48" type="number"/>
+</div>
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-description-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-head-description" data-say-hidden="Description hidden" data-say-shown="Description shown" id="task-column-description" type="checkbox"/>
 <span>Description</span>
 </label>
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-tags-entry">
+<input aria-label="Width of Description" class="input input-xs w-20" data-width="task-head-description" id="task-column-description-width" max="1000" min="48" type="number"/>
+</div>
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-tags-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-head-tags" data-say-hidden="Tags hidden" data-say-shown="Tags shown" id="task-column-tags" type="checkbox"/>
 <span>Tags</span>
 </label>
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-checks-entry">
+<input aria-label="Width of Tags" class="input input-xs w-20" data-width="task-head-tags" id="task-column-tags-width" max="1000" min="48" type="number"/>
+</div>
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-checks-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-head-checks" data-say-hidden="Checks hidden" data-say-shown="Checks shown" id="task-column-checks" type="checkbox"/>
 <span>Checks</span>
 </label>
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-recurrence-entry">
+<input aria-label="Width of Checks" class="input input-xs w-20" data-width="task-head-checks" id="task-column-checks-width" max="1000" min="48" type="number"/>
+</div>
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-recurrence-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-head-recurrence" data-say-hidden="Repeats hidden" data-say-shown="Repeats shown" id="task-column-recurrence" type="checkbox"/>
 <span>Repeats</span>
 </label>
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-inserted_at-entry">
+<input aria-label="Width of Repeats" class="input input-xs w-20" data-width="task-head-recurrence" id="task-column-recurrence-width" max="1000" min="48" type="number"/>
+</div>
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-inserted_at-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-head-inserted_at" data-say-hidden="Inserted at hidden" data-say-shown="Inserted at shown" id="task-column-inserted_at" type="checkbox"/>
 <span>Inserted at</span>
 </label>
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-project-entry">
+<input aria-label="Width of Inserted at" class="input input-xs w-20" data-width="task-head-inserted_at" id="task-column-inserted_at-width" max="1000" min="48" type="number"/>
+</div>
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-project-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-head-project" data-say-hidden="Project hidden" data-say-shown="Project shown" id="task-column-project" type="checkbox"/>
 <span>Project</span>
 </label>
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-assignee-entry">
+<input aria-label="Width of Project" class="input input-xs w-20" data-width="task-head-project" id="task-column-project-width" max="1000" min="48" type="number"/>
+</div>
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-assignee-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-head-assignee" data-say-hidden="Assignee hidden" data-say-shown="Assignee shown" id="task-column-assignee" type="checkbox"/>
 <span>Assignee</span>
 </label>
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-reporter-entry">
+<input aria-label="Width of Assignee" class="input input-xs w-20" data-width="task-head-assignee" id="task-column-assignee-width" max="1000" min="48" type="number"/>
+</div>
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-reporter-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-head-reporter" data-say-hidden="Reported by hidden" data-say-shown="Reported by shown" id="task-column-reporter" type="checkbox"/>
 <span>Reported by</span>
 </label>
+<input aria-label="Width of Reported by" class="input input-xs w-20" data-width="task-head-reporter" id="task-column-reporter-width" max="1000" min="48" type="number"/>
+</div>
+<button class="btn btn-ghost btn-xs mt-1 self-start" data-reset-widths="" id="task-reset-widths" type="button">
+      Reset widths
+    </button>
 </div>
 <p class="sr-only" id="task-columns-status" phx-update="ignore" role="status">
 </p>
@@ -197,56 +263,56 @@
 <button class="cursor-pointer select-none rounded-sm font-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current" id="task-sort-title" phx-click="sort" phx-value-column="title" type="button">Title<span aria-hidden="true">
 </span>
 </button>
-<span aria-label="Resize Title" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-title" role="separator">
+<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-title">
 </span>
 </th>
 <th aria-colindex="4" aria-label="State" aria-sort="none" class="relative whitespace-nowrap" data-sort="" id="task-head-status" role="columnheader" scope="col">
 <button class="cursor-pointer select-none rounded-sm font-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current" id="task-sort-status" phx-click="sort" phx-value-column="status" type="button">State<span aria-hidden="true">
 </span>
 </button>
-<span aria-label="Resize State" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-status" role="separator">
+<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-status">
 </span>
 </th>
 <th aria-colindex="5" aria-label="Priority" aria-sort="none" class="relative whitespace-nowrap" data-sort="" id="task-head-priority" role="columnheader" scope="col">
 <button class="cursor-pointer select-none rounded-sm font-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current" id="task-sort-priority" phx-click="sort" phx-value-column="priority" type="button">Priority<span aria-hidden="true">
 </span>
 </button>
-<span aria-label="Resize Priority" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-priority" role="separator">
+<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-priority">
 </span>
 </th>
 <th aria-colindex="6" aria-label="Progress" aria-sort="none" class="relative whitespace-nowrap" data-sort="" id="task-head-progress" role="columnheader" scope="col">
 <button class="cursor-pointer select-none rounded-sm font-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current" id="task-sort-progress" phx-click="sort" phx-value-column="progress" type="button">Progress<span aria-hidden="true">
 </span>
 </button>
-<span aria-label="Resize Progress" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-progress" role="separator">
+<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-progress">
 </span>
 </th>
 <th aria-colindex="7" aria-label="Estimate hours" aria-sort="none" class="relative whitespace-nowrap" data-sort="" id="task-head-estimate_hours" role="columnheader" scope="col">
 <button class="cursor-pointer select-none rounded-sm font-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current" id="task-sort-estimate_hours" phx-click="sort" phx-value-column="estimate_hours" type="button">Estimate hours<span aria-hidden="true">
 </span>
 </button>
-<span aria-label="Resize Estimate hours" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-estimate_hours" role="separator">
+<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-estimate_hours">
 </span>
 </th>
 <th aria-colindex="8" aria-label="Billable?" aria-sort="none" class="relative whitespace-nowrap" data-sort="" id="task-head-billable?" role="columnheader" scope="col">
 <button class="cursor-pointer select-none rounded-sm font-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current" id="task-sort-billable?" phx-click="sort" phx-value-column="billable?" type="button">Billable?<span aria-hidden="true">
 </span>
 </button>
-<span aria-label="Resize Billable?" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-billable?" role="separator">
+<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-billable?">
 </span>
 </th>
 <th aria-colindex="9" aria-label="Due on" aria-sort="none" class="relative whitespace-nowrap" data-sort="" id="task-head-due_on" role="columnheader" scope="col">
 <button class="cursor-pointer select-none rounded-sm font-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current" id="task-sort-due_on" phx-click="sort" phx-value-column="due_on" type="button">Due on<span aria-hidden="true">
 </span>
 </button>
-<span aria-label="Resize Due on" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-due_on" role="separator">
+<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-due_on">
 </span>
 </th>
 <th aria-colindex="10" aria-label="Completed at" aria-sort="none" class="relative whitespace-nowrap" data-sort="" id="task-head-completed_at" role="columnheader" scope="col">
 <button class="cursor-pointer select-none rounded-sm font-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current" id="task-sort-completed_at" phx-click="sort" phx-value-column="completed_at" type="button">Completed at<span aria-hidden="true">
 </span>
 </button>
-<span aria-label="Resize Completed at" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-completed_at" role="separator">
+<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-completed_at">
 </span>
 </th>
 <th aria-colindex="11" aria-label="Overdue?" aria-sort="none" class="relative whitespace-nowrap" data-sort="" id="task-head-overdue?" role="columnheader" scope="col">
@@ -259,7 +325,7 @@
 <path d="M8 11V7a4 4 0 0 1 8 0v4">
 </path>
 </svg>
-<span aria-label="Resize Overdue?" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-overdue?" role="separator">
+<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-overdue?">
 </span>
 </th>
 <th aria-colindex="12" aria-label="Comments" aria-sort="none" class="relative whitespace-nowrap" data-number="" data-sort="" id="task-head-comment_count" role="columnheader" scope="col">
@@ -272,7 +338,7 @@
 <path d="M8 11V7a4 4 0 0 1 8 0v4">
 </path>
 </svg>
-<span aria-label="Resize Comments" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-comment_count" role="separator">
+<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-comment_count">
 </span>
 </th>
 <th aria-colindex="13" aria-label="Headline" class="relative whitespace-nowrap" id="task-head-headline" role="columnheader" scope="col">Headline<svg aria-label="read-only" class="ms-1 inline-block size-3 align-[-1px] opacity-60" fill="none" role="img" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" stroke="currentColor" viewBox="0 0 24 24">
@@ -281,7 +347,7 @@
 <path d="M8 11V7a4 4 0 0 1 8 0v4">
 </path>
 </svg>
-<span aria-label="Resize Headline" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-headline" role="separator">
+<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-headline">
 </span>
 </th>
 <th aria-colindex="14" aria-label="Due within 7 days" aria-sort="none" class="relative whitespace-nowrap" data-sort="" id="task-head-due_within?" role="columnheader" scope="col">
@@ -294,7 +360,7 @@
 <path d="M8 11V7a4 4 0 0 1 8 0v4">
 </path>
 </svg>
-<span aria-label="Resize Due within 7 days" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-due_within?" role="separator">
+<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-due_within?">
 </span>
 </th>
 <th aria-colindex="15" aria-label="Due within" aria-sort="none" class="relative whitespace-nowrap" data-sort="" id="task-head-due_within" role="columnheader" scope="col">
@@ -307,7 +373,7 @@
 <path d="M8 11V7a4 4 0 0 1 8 0v4">
 </path>
 </svg>
-<span aria-label="Resize Due within" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-due_within" role="separator">
+<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-due_within">
 </span>
 </th>
 <th aria-colindex="16" aria-label="External ref" aria-sort="none" class="relative whitespace-nowrap" data-sort="" id="task-head-external_ref" role="columnheader" scope="col">
@@ -320,19 +386,19 @@
 <path d="M8 11V7a4 4 0 0 1 8 0v4">
 </path>
 </svg>
-<span aria-label="Resize External ref" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-external_ref" role="separator">
+<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-external_ref">
 </span>
 </th>
-<th aria-colindex="17" aria-label="Description" class="relative whitespace-nowrap" id="task-head-description" role="columnheader" scope="col">Description<span aria-label="Resize Description" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-description" role="separator">
+<th aria-colindex="17" aria-label="Description" class="relative whitespace-nowrap" id="task-head-description" role="columnheader" scope="col">Description<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-description">
 </span>
 </th>
-<th aria-colindex="18" aria-label="Tags" class="relative whitespace-nowrap" id="task-head-tags" role="columnheader" scope="col">Tags<span aria-label="Resize Tags" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-tags" role="separator">
+<th aria-colindex="18" aria-label="Tags" class="relative whitespace-nowrap" id="task-head-tags" role="columnheader" scope="col">Tags<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-tags">
 </span>
 </th>
-<th aria-colindex="19" aria-label="Checks" class="relative whitespace-nowrap" id="task-head-checks" role="columnheader" scope="col">Checks<span aria-label="Resize Checks" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-checks" role="separator">
+<th aria-colindex="19" aria-label="Checks" class="relative whitespace-nowrap" id="task-head-checks" role="columnheader" scope="col">Checks<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-checks">
 </span>
 </th>
-<th aria-colindex="20" aria-label="Repeats" class="relative whitespace-nowrap" id="task-head-recurrence" role="columnheader" scope="col">Repeats<span aria-label="Resize Repeats" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-recurrence" role="separator">
+<th aria-colindex="20" aria-label="Repeats" class="relative whitespace-nowrap" id="task-head-recurrence" role="columnheader" scope="col">Repeats<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-recurrence">
 </span>
 </th>
 <th aria-colindex="21" aria-label="Inserted at" aria-sort="none" class="relative whitespace-nowrap" data-sort="" id="task-head-inserted_at" role="columnheader" scope="col">
@@ -345,13 +411,13 @@
 <path d="M8 11V7a4 4 0 0 1 8 0v4">
 </path>
 </svg>
-<span aria-label="Resize Inserted at" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-inserted_at" role="separator">
+<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-inserted_at">
 </span>
 </th>
-<th aria-colindex="22" aria-label="Project" class="relative whitespace-nowrap" id="task-head-project" role="columnheader" scope="col">Project<span aria-label="Resize Project" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-project" role="separator">
+<th aria-colindex="22" aria-label="Project" class="relative whitespace-nowrap" id="task-head-project" role="columnheader" scope="col">Project<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-project">
 </span>
 </th>
-<th aria-colindex="23" aria-label="Assignee" class="relative whitespace-nowrap" id="task-head-assignee" role="columnheader" scope="col">Assignee<span aria-label="Resize Assignee" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-assignee" role="separator">
+<th aria-colindex="23" aria-label="Assignee" class="relative whitespace-nowrap" id="task-head-assignee" role="columnheader" scope="col">Assignee<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-assignee">
 </span>
 </th>
 <th aria-colindex="24" aria-label="Reported by" class="relative whitespace-nowrap" id="task-head-reporter" role="columnheader" scope="col">Reported by<svg aria-label="read-only" class="ms-1 inline-block size-3 align-[-1px] opacity-60" fill="none" role="img" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" stroke="currentColor" viewBox="0 0 24 24">
@@ -360,7 +426,7 @@
 <path d="M8 11V7a4 4 0 0 1 8 0v4">
 </path>
 </svg>
-<span aria-label="Resize Reported by" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-reporter" role="separator">
+<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="task-resize-reporter">
 </span>
 </th>
 <th aria-colindex="25" class="whitespace-nowrap" id="task-actions-head" role="columnheader" scope="col">

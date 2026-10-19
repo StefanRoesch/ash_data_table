@@ -18,14 +18,23 @@
 </span>
 </button>
 <div aria-label="Columns" class="dropdown menu max-h-[60vh] flex-nowrap overflow-y-auto rounded-box bg-base-100 p-2 text-base-content shadow-sm forced-colors:border [position-area:bottom_span-right] [position-try-fallbacks:flip-inline,flip-block] supports-[position-area:bottom]:inset-auto supports-[position-area:bottom]:m-0 supports-[position-area:bottom]:mt-0.5" data-columns-list="" id="card-columns" popover="auto" role="group" style="position-anchor: --ash-data-table-columns-card">
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="card-column-assignee-entry">
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="card-column-assignee-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="card-head-assignee" data-say-hidden="Assignee hidden" data-say-shown="Assignee shown" id="card-column-assignee" type="checkbox"/>
 <span>Assignee</span>
 </label>
-<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="card-column-code-entry">
+<input aria-label="Width of Assignee" class="input input-xs w-20" data-width="card-head-assignee" id="card-column-assignee-width" max="1000" min="48" type="number"/>
+</div>
+<div class="flex items-center gap-2">
+<label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="card-column-code-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="card-head-code" data-say-hidden="Code hidden" data-say-shown="Code shown" id="card-column-code" type="checkbox"/>
 <span>Code</span>
 </label>
+<input aria-label="Width of Code" class="input input-xs w-20" data-width="card-head-code" id="card-column-code-width" max="1000" min="48" type="number"/>
+</div>
+<button class="btn btn-ghost btn-xs mt-1 self-start" data-reset-widths="" id="card-reset-widths" type="button">
+      Reset widths
+    </button>
 </div>
 <p class="sr-only" id="card-columns-status" phx-update="ignore" role="status">
 </p>
@@ -85,7 +94,7 @@
 <button class="cursor-pointer select-none rounded-sm font-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current" id="card-sort-title" phx-click="sort" phx-value-column="title" type="button">Title<span aria-hidden="true">
 </span>
 </button>
-<span aria-label="Resize Title" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="card-resize-title" role="separator">
+<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="card-resize-title">
 </span>
 </th>
 <th aria-colindex="4" aria-label="Assignee" aria-sort="none" class="relative whitespace-nowrap" data-sort="" id="card-head-assignee" role="columnheader" scope="col">
@@ -98,7 +107,7 @@
 <path d="M8 11V7a4 4 0 0 1 8 0v4">
 </path>
 </svg>
-<span aria-label="Resize Assignee" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="card-resize-assignee" role="separator">
+<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="card-resize-assignee">
 </span>
 </th>
 <th aria-colindex="5" aria-label="Code" class="relative whitespace-nowrap" id="card-head-code" role="columnheader" scope="col">Code<svg aria-label="read-only" class="ms-1 inline-block size-3 align-[-1px] opacity-60" fill="none" role="img" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" stroke="currentColor" viewBox="0 0 24 24">
@@ -107,7 +116,7 @@
 <path d="M8 11V7a4 4 0 0 1 8 0v4">
 </path>
 </svg>
-<span aria-label="Resize Code" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="card-resize-code" role="separator">
+<span aria-hidden="true" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&amp;:is(:hover,[data-dragging])]:after:absolute [&amp;:is(:hover,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,[data-dragging])]:after:end-0 [&amp;:is(:hover,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,[data-dragging])]:after:border-base-content [&amp;:is(:hover,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="card-resize-code">
 </span>
 </th>
 <th aria-colindex="6" class="whitespace-nowrap" id="card-actions-head" role="columnheader" scope="col">

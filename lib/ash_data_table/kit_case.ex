@@ -616,6 +616,12 @@ defmodule AshDataTable.KitCase do
           "[id='kit-columns'] input[data-head][data-say-hidden][data-say-shown]",
           "a box of the Columns list, with what is read out"
         ) ++
+        need(
+          page,
+          "[id='kit-columns'] input[type=number][data-width^='kit-head-'][min][max][aria-label]",
+          "a column's width field (`Attrs.width_field/3`), named"
+        ) ++
+        need(page, "[id='kit-columns'] button[data-reset-widths]", "Reset widths") ++
         need(page, "[id='kit-columns-control']", "its control") ++
         need(page, "[id='kit-columns-status']", "what it says") ++
         need(page, "[id='kit-columns-text']", "its text") ++
@@ -648,8 +654,8 @@ defmodule AshDataTable.KitCase do
         ) ++
           need(
             page,
-            "[id='#{Ids.header_cell("kit", field)}'] [id='kit-resize-#{field}'][data-resize]",
-            "its handle"
+            "[id='#{Ids.header_cell("kit", field)}'] [id='kit-resize-#{field}'][data-resize][aria-hidden=true]:not([role],[tabindex])",
+            "its handle, for the pointer alone"
           ) ++
           need(
             page,

@@ -94,7 +94,7 @@ defmodule DemoWeb.Tables.ColumnHidingTest do
          %{conn: conn} do
       {:ok, _view, html} = live(conn, "/tasks")
       data = &List.first(attribute(html, "#task-columns-button", "data-#{&1}"))
-      boxes = length(attribute(html, "#task-columns input", "id"))
+      boxes = length(attribute(html, "#task-columns input[type=checkbox]", "id"))
 
       assert data.("text") == "Columns"
       assert data.("text-with") == "Columns ({details})"
@@ -129,8 +129,8 @@ defmodule DemoWeb.Tables.ColumnHidingTest do
       assert attribute(html, "#task-columns [role^=menu]", "id") == []
 
       # every box is in its label, which is its name
-      assert attribute(html, "#task-columns > label > input[type=checkbox]", "id") ==
-               attribute(html, "#task-columns input", "id")
+      assert attribute(html, "#task-columns > div > label > input[type=checkbox]", "id") ==
+               attribute(html, "#task-columns input[type=checkbox]", "id")
 
       assert entry(html, "task", "status") == "State"
       assert entry(html, "task", "billable?") == "Billable?"
@@ -162,7 +162,7 @@ defmodule DemoWeb.Tables.ColumnHidingTest do
         assert attribute(html, "##{id}", "id") == [id]
       end
 
-      assert length(attribute(html, "#task-columns input", "id")) ==
+      assert length(attribute(html, "#task-columns input[type=checkbox]", "id")) ==
                length(columns(html, "task")) - 1
     end
 

@@ -208,7 +208,7 @@ defmodule DemoWeb.DivKit do
       {@attrs}
       class="relative table-cell px-2 py-1 text-start whitespace-nowrap"
       phx-no-format
-    ><button :if={@button} {@button} class="font-semibold">{@column.label}</button><%= if !@button do %>{@column.label}<% end %><Kit.part part={:resizer} kit={@kit} id={@resizer} column={@column} texts={Words.texts(:resizer, %{column: @column})} messages={Words.messages(:resizer, %{column: @column})} /></div>
+    ><button :if={@button} {@button} class="font-semibold">{@column.label}</button><%= if !@button do %>{@column.label}<% end %><Kit.part part={:resizer} kit={@kit} id={@resizer} column={@column} /></div>
     """
   end
 

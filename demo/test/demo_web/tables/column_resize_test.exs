@@ -1,9 +1,11 @@
 defmodule DemoWeb.Tables.ColumnResizeTest do
   @moduledoc """
   What the server renders for a person to change a column's width with: a
-  handle at the end of every column's header. The widths themselves are the
-  browser's alone (`demo/e2e/resizing.spec.ts`): the server renders the
-  handle and never hears of a width.
+  handle at the end of every column's header, for the pointer, and a width
+  field per column in the list of "Columns" with "Reset widths", for the
+  keyboard. The widths themselves are the browser's alone
+  (`demo/e2e/resizing.spec.ts`): the server renders the handle and the
+  fields and never hears of a width.
   """
   use DemoWeb.ConnCase, async: true
 
@@ -18,26 +20,26 @@ defmodule DemoWeb.Tables.ColumnResizeTest do
   defp handle(html, id, field) do
     selector = "[id='#{id}-head-#{field}'] > [id='#{id}-resize-#{field}']"
 
-    for name <-
-          ~w(role aria-orientation aria-label aria-valuemin aria-valuemax aria-valuenow tabindex data-resize),
+    for name <- ~w(role aria-hidden aria-label tabindex data-resize),
         value <- attribute(html, selector, name),
         into: %{},
         do: {name, value}
   end
 
-  test "every column's header ends in a handle, named with the column, that says how narrow and how wide the column can be",
-       %{conn: conn} do
+  defp width_field(html, id, field) do
+    selector = "[id='#{id}-columns'] [id='#{id}-column-#{field}-width']"
+
+    for name <- ~w(type min max aria-label data-width value tabindex),
+        value <- attribute(html, selector, name),
+        into: %{},
+        do: {name, value}
+  end
+
+  test "every column's header ends in a handle, for the pointer alone", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/tasks")
 
-    assert handle(html, "task", "title") == %{
-             "role" => "separator",
-             "aria-orientation" => "vertical",
-             "aria-label" => "Resize Title",
-             "aria-valuemin" => "48",
-             "aria-valuemax" => "1000",
-             # no `aria-valuenow`: the width is the browser's to say; no Tab stop
-             "data-resize" => ""
-           }
+    # no role, no name, no Tab stop: the keyboard has the width fields
+    assert handle(html, "task", "title") == %{"aria-hidden" => "true", "data-resize" => ""}
 
     fields =
       html
@@ -77,10 +79,7 @@ defmodule DemoWeb.Tables.ColumnResizeTest do
     assert attribute(html, "#task-head-title", "data-sort") == [""]
     assert attribute(html, "#task-head-tags", "data-sort") == []
 
-    assert handle(html, "task", "tags") == %{
-             handle(html, "task", "title")
-             | "aria-label" => "Resize Tags"
-           }
+    assert handle(html, "task", "tags") == handle(html, "task", "title")
   end
 
   test "it is still there after the header was rendered again", %{conn: conn} do
@@ -90,7 +89,7 @@ defmodule DemoWeb.Tables.ColumnResizeTest do
     html = render_async(view, 10_000)
 
     assert attribute(html, "#task-head-title", "aria-sort") == ["ascending"]
-    assert handle(html, "task", "title")["aria-label"] == "Resize Title"
+    assert handle(html, "task", "title")["data-resize"] == ""
   end
 
   test "a nested table's columns have their handles, under ids of their own", %{
@@ -104,13 +103,37 @@ defmodule DemoWeb.Tables.ColumnResizeTest do
     html = toggle(view, task.id, "comments")
     id = nested("task", task.id, "comments")
 
-    assert handle(html, id, "body")["aria-label"] == "Resize Body"
-    assert handle(html, "task", "title")["aria-label"] == "Resize Title"
+    assert handle(html, id, "body")["data-resize"] == ""
+    assert width_field(html, id, "body")["data-width"] == "#{id}-head-body"
+  end
+
+  test "the list of Columns has a width field beside each box, named with the column, from 48 to 1000 pixels",
+       %{conn: conn} do
+    {:ok, _view, html} = live(conn, "/tasks")
+
+    # no value: the width is the browser's to say, and the hook fills it in
+    assert width_field(html, "task", "status") == %{
+             "type" => "number",
+             "min" => "48",
+             "max" => "1000",
+             "aria-label" => "Width of State",
+             "data-width" => "task-head-status"
+           }
+
+    boxes = attribute(html, "#task-columns input[type=checkbox]", "data-head")
+    assert attribute(html, "#task-columns input[type=number]", "data-width") == boxes
+
+    assert attribute(html, "#task-columns > button[data-reset-widths]", "id") == [
+             "task-reset-widths"
+           ]
+
+    assert text(html, "#task-reset-widths") == "Reset widths"
   end
 
   test "in German", %{conn: conn} do
     {:ok, _view, html} = conn |> in_locale("de") |> live("/tasks")
 
-    assert handle(html, "task", "title")["aria-label"] == "Breite von Titel ändern"
+    assert width_field(html, "task", "status")["aria-label"] == "Breite von Status"
+    assert text(html, "#task-reset-widths") == "Breiten zurücksetzen"
   end
 end

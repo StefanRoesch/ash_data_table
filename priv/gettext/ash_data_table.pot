@@ -430,10 +430,6 @@ msgid "Will be cleared."
 msgstr ""
 
 #, elixir-autogen, elixir-format
-msgid "Resize %{column}"
-msgstr ""
-
-#, elixir-autogen, elixir-format
 msgid "%{column} hidden"
 msgstr ""
 
@@ -583,4 +579,12 @@ msgstr ""
 
 #, elixir-autogen, elixir-format
 msgid "Skip table %{name}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Reset widths"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Width of %{column}"
 msgstr ""

@@ -408,13 +408,16 @@ defmodule AshDataTable.Attrs do
   #     `-value`, which opens the side panel with a box per value),
   #     `ID-row-KEY` for a row's `<tbody>` and `ID-row-KEY-c-FIELD` for a cell;
   #   * the header cell of a column ends in the handle that changes the
-  #     column's width, `ID-resize-FIELD` (`resizer/1`). The widths are the
-  #     hook's and the server never hears of them;
+  #     column's width when it is dragged, `ID-resize-FIELD` (`resizer/1`,
+  #     for the pointer alone). The widths are the hook's and the server
+  #     never hears of them;
   #   * above the grid, `ID-columns-button` opens the list `ID-columns`, which
   #     has a box per column that a person can hide, `ID-column-FIELD`, in
-  #     its label `ID-column-FIELD-entry` (`columns/1`). Which columns are
-  #     hidden is the hook's, and the server never hears of it: a hidden
-  #     column is rendered as any other;
+  #     its label `ID-column-FIELD-entry` (`columns/1`), and beside it the
+  #     column's width field `ID-column-FIELD-width` (`width_field/3`), and
+  #     after them "Reset widths" (`reset_widths/1`). Which columns are
+  #     hidden and how wide they are is the hook's, and the server never
+  #     hears of it: a hidden column is rendered as any other;
   #   * `aria-colindex` is computed through `colindex/2`, which counts the
   #     leading columns in when the table has them: the boxes that select a
   #     row, then the expanders; the actions column goes after the last
@@ -1110,16 +1113,11 @@ defmodule AshDataTable.Attrs do
 
   @doc """
   The narrowest a column can be made, in pixels: narrower than this it is
-  its padding and little else. The handle at the end of a column's header,
-  with which a person makes it wider or narrower, says so
-  (`aria-valuemin`).
+  its padding and little else. Its width field says so (`min`).
   """
   def least_width, do: 48
 
-  @doc """
-  The widest a column can be made, in pixels (`aria-valuemax` of its
-  handle): a separator says where it stands between two ends.
-  """
+  @doc "The widest a column can be made, in pixels (`max` of its width field)."
   def most_width, do: 1000
 
   @doc """
@@ -1458,6 +1456,30 @@ defmodule AshDataTable.Attrs do
       "data-keeps-one" => keeps_one?
     }
   end
+
+  @doc """
+  What varies of the width field of a column in the list of "Columns":
+  its id, its name `label` (the `columns` part's `texts.width_of`, "Width
+  of Title") and `data-width`, the id of the column's header. The part
+  writes the rest: `type="number"`, `min` `least_width/0` and `max`
+  `most_width/0`, as text (a field drawn once per column sends its
+  constant attributes once). The hook writes its value: the server never
+  hears of widths.
+  """
+  def width_field(id, column, label) do
+    %{
+      "id" => "#{id}-column-#{column.name}-width",
+      "aria-label" => label,
+      "data-width" => Ids.header_cell(id, column.name)
+    }
+  end
+
+  @doc """
+  "Reset widths" in the list of "Columns": every column as wide again as
+  the browser lays it out.
+  """
+  def reset_widths(id),
+    do: %{"id" => "#{id}-reset-widths", "type" => "button", "data-reset-widths" => true}
 
   @doc """
   The line above the grid with what is selected, named by the

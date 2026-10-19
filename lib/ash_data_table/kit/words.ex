@@ -101,7 +101,6 @@ defmodule AshDataTable.Kit.Words do
     :grid,
     :row,
     :header_cell,
-    :resizer,
     :editor,
     :list,
     :panel,
@@ -213,6 +212,8 @@ defmodule AshDataTable.Kit.Words do
       columns_sorted: Enum.map(counts, &t(:columns_sorted, count: &1)),
       column_hidden: Enum.map(columns, &t(:column_hidden, column: &1.label)),
       column_shown: Enum.map(columns, &t(:column_shown, column: &1.label)),
+      width_of: Enum.map(columns, &t(:column_width, column: &1.label)),
+      reset_widths: t(:reset_widths),
       flags: Enum.map(columns, &flag(state, &1))
     ]
   end
@@ -276,9 +277,6 @@ defmodule AshDataTable.Kit.Words do
   # where the table offers editing at all: nil for none
   defp words(:header_cell, %{column: column, editing?: editing?}),
     do: [read_only: (editing? and not column.editable? and t(:read_only)) || nil]
-
-  defp words(:resizer, %{column: column}),
-    do: [resize_column: t(:resize_column, column: column.label)]
 
   defp words(:editor, %{column: column}),
     do: [clear: t(:clear), clear_value: t(:clear_value, column: column.label)]

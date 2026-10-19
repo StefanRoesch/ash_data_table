@@ -92,7 +92,7 @@ defmodule DemoWeb.Tables.NestedCreateTest do
 
       assert attribute(
                html,
-               "[id='task-row-#{task.id}-l-comments-c'] [id='task-row-#{task.id}-l-comments-h'] button:not([data-columns-button])",
+               "[id='task-row-#{task.id}-l-comments-c'] [id='task-row-#{task.id}-l-comments-h'] button:not([data-columns-button],[data-reset-widths])",
                "id"
              ) == ["task-row-#{task.id}-t-comments-create"]
 

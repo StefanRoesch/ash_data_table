@@ -235,7 +235,9 @@ defmodule AshDataTable.Kit do
       `ID-columns-text`, what it is called, and `ID-columns-count`, how many
       columns are hidden or nothing; `ID-columns`, `data-columns-list`, a
       box per column with `data-head`, `data-say-hidden`, `data-say-shown`,
-      `data-filtered`, `data-sorted`; `data-keeps-one`): `id`, `columns`,
+      `data-filtered`, `data-sorted`, and its width field
+      (`Attrs.width_field/3`, `data-width`); "Reset widths"
+      (`Attrs.reset_widths/1`); `data-keeps-one`): `id`, `columns`,
       `keeps_one?`, `state`, `nested?`, `class`.
     * `status` - the live region `ID-status` and a run's result
       (`ID-result`): `id`, `announcement`, `announcements`, `result`.
@@ -310,8 +312,8 @@ defmodule AshDataTable.Kit do
       `button` holds the label (the header's Tab stop); draws the
       `resizer`, and after the label a lock where its `texts` give
       `read_only` (its accessible name).
-    * `resizer` - a column's handle (`role="separator"`, `data-resize`, no
-      Tab stop): `id`, `column`.
+    * `resizer` - a column's handle, for the pointer alone (`data-resize`,
+      `aria-hidden`, no Tab stop): `id`, `column`.
     * `filter_cell` - `id`, `column`, `colindex`, `filter`, `form`, `table`,
       `applied?`, `rejected?`, `target`: `role="cell"`, `aria-colindex`,
       `data-filter` where the column filters; draws the column's `filter`.
@@ -440,8 +442,9 @@ defmodule AshDataTable.Kit do
       "Columns of Comments"), `columns_with` (that name, with `{details}`
       where the hook puts the parts it takes), `columns_hidden`, `columns_filtered`,
       `columns_sorted` (each a list: the text for 1, 2, … up to the number
-      of `columns`), `column_hidden`, `column_shown` and `flags` (one per
-      column; a flag nil for none);
+      of `columns`), `column_hidden`, `column_shown`, `width_of` (the name
+      of its width field) and `flags` (one per column; a flag nil for
+      none), `reset_widths`;
     * `status` - `announcement`, `summary` and `failures` of a run's result;
     * `grid` - `skip_table` (the skip link, with the table's name),
       `select_page`, `select_row`, `related_records`, `actions`,
@@ -455,7 +458,6 @@ defmodule AshDataTable.Kit do
     * `header_cell` - `read_only`: the name of the lock after the heading
       of a column no row may be edited in, where the table offers editing
       at all (nil for none: no lock);
-    * `resizer` - `resize_column`;
     * `editor` - `clear`, `clear_value`;
     * `list` - `add_value`, `value_label`, `remove_label` (with `{n}`), and
       per value `value_position`, `remove_value`;

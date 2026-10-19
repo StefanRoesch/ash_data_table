@@ -260,10 +260,11 @@ defmodule AshDataTable.Messages do
     keep: {[], dgettext_noop("ash_data_table", "Keep")},
     keep_value: {[:column], dgettext_noop("ash_data_table", "Keep %{column}")},
     will_be_cleared: {[], dgettext_noop("ash_data_table", "Will be cleared.")},
-    # What the handle at the end of a column's header is called, with the
-    # column: a person drags it, or moves it with the arrow keys, to make the
-    # column wider or narrower.
-    resize_column: {[:column], dgettext_noop("ash_data_table", "Resize %{column}")},
+    # Column widths from the keyboard, in the list of "Columns": what a
+    # column's width field is called, with the column (a number in pixels),
+    # and the button that makes every column as wide again as it was.
+    column_width: {[:column], dgettext_noop("ash_data_table", "Width of %{column}")},
+    reset_widths: {[], dgettext_noop("ash_data_table", "Reset widths")},
     # Hiding columns. "Columns" is the button above the grid and the name of
     # its list. With columns hidden the button says how many, and how many of
     # those the rows are filtered and sorted by: "Columns (2 hidden, 1

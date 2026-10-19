@@ -79,8 +79,10 @@ defmodule DemoWeb.Tables.ActionsElsewhereTest do
                ["comment-create", "comment-related-clear"]
 
       assert text(html, "#comment-create") == "New comment"
-      # the line of the page's name has none: "Columns" only
-      assert attribute(html, "#comment-header button", "id") == ["comment-columns-button"]
+      # the line of the page's name has none: "Columns" only, with "Reset
+      # widths" in its list
+      assert attribute(html, "#comment-header button", "id") ==
+               ["comment-columns-button", "comment-reset-widths"]
     end
 
     test "creates under the record it is limited to, which is no field of the panel",

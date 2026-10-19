@@ -21,31 +21,24 @@ defmodule AshDataTable.Parts.Grid do
   alias AshDataTable.Present
 
   # The handle at the end of a column's header, with which a person makes
-  # the column wider or narrower: dragged. A separator, as ARIA has it for
-  # the bar between two panes, and what it says of itself is the column's
-  # width in pixels; `aria-valuenow` is the hook's, which alone knows how
-  # wide a column is. No Tab stop. It is not seen until it is pointed at or
-  # dragged: then a line at the column's edge.
+  # the column wider or narrower: dragged with the pointer, for the pointer
+  # alone (`aria-hidden`, no Tab stop): the keyboard has the width fields in
+  # the list of "Columns" (`columns/1`). It is not seen until it is pointed
+  # at or dragged: then a line at the column's edge.
   #
   # Nothing of this reaches the server: the widths are the hook's, kept in a
   # style sheet of its own, and are gone with the page (see "the widths of
-  # the columns" in the hook). The header says its name itself
-  # (`aria-label`), so that the handle's name is no part of it.
+  # the columns" in the hook).
   attr :id, :string, required: true
   attr :column, :map, required: true
-  attr :texts, :map, required: true
 
   def resizer(assigns) do
     ~H"""
     <span
       id={@id}
-      role="separator"
-      aria-orientation="vertical"
-      aria-label={@texts.resize_column}
-      aria-valuemin={Attrs.least_width()}
-      aria-valuemax={Attrs.most_width()}
+      aria-hidden="true"
       data-resize
-      class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&:is(:hover,:focus,[data-dragging])]:after:absolute [&:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&:is(:hover,:focus,[data-dragging])]:after:end-0 [&:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&:is(:hover,:focus,[data-dragging])]:after:border-base-content [&:is(:hover,:focus,[data-dragging])]:after:content-['']"
+      class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none [&:is(:hover,[data-dragging])]:after:absolute [&:is(:hover,[data-dragging])]:after:inset-y-0 [&:is(:hover,[data-dragging])]:after:end-0 [&:is(:hover,[data-dragging])]:after:border-e-2 [&:is(:hover,[data-dragging])]:after:border-base-content [&:is(:hover,[data-dragging])]:after:content-['']"
     ></span>
     """
   end
@@ -64,7 +57,11 @@ defmodule AshDataTable.Parts.Grid do
   # the list is open and where it stands alone; a box they tick again, which
   # the hook sees and puts right before anything is drawn.
   #
-  # It is a disclosure, not a menu: a button and a group of labelled boxes.
+  # It is a disclosure, not a menu: a button and a group of labelled boxes,
+  # each with the width field of its column beside it (`Attrs.width_field/3`,
+  # a number in pixels the hook fills in as the list opens and sets the
+  # column's width from), and "Reset widths" after them: the keyboard's way
+  # to the widths, which the handle gives the pointer.
   # The list is the browser's own popover (`popover="auto"`), which the
   # button opens and closes (`popovertarget`): it stands in the top layer,
   # so that nothing around the table cuts it off (not the grid that
@@ -148,30 +145,50 @@ defmodule AshDataTable.Parts.Grid do
         style={"position-anchor: #{anchor(@id)}"}
         class="dropdown menu max-h-[60vh] flex-nowrap overflow-y-auto rounded-box bg-base-100 p-2 text-base-content shadow-sm forced-colors:border [position-area:bottom_span-right] [position-try-fallbacks:flip-inline,flip-block] supports-[position-area:bottom]:inset-auto supports-[position-area:bottom]:m-0 supports-[position-area:bottom]:mt-0.5"
       >
-        <label
+        <div
           :for={
-            {column, flag, hidden, shown} <-
-              Enum.zip([@columns, @texts.flags, @texts.column_hidden, @texts.column_shown])
+            {column, flag, hidden, shown, width_of} <-
+              Enum.zip([
+                @columns,
+                @texts.flags,
+                @texts.column_hidden,
+                @texts.column_shown,
+                @texts.width_of
+              ])
           }
-          id={"#{@id}-column-#{column.name}-entry"}
-          class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap"
+          class="flex items-center gap-2"
         >
+          <label
+            id={"#{@id}-column-#{column.name}-entry"}
+            class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap"
+          >
+            <input
+              type="checkbox"
+              id={"#{@id}-column-#{column.name}"}
+              checked
+              data-head={Ids.header_cell(@id, column.name)}
+              data-say-hidden={hidden}
+              data-say-shown={shown}
+              data-filtered={is_map_key(@state.filters, column.name)}
+              data-sorted={Attrs.aria_sort(@state.sort, column) != "none"}
+              class={["peer checkbox checkbox-xs", Parts.Editors.box_edge()]}
+            />
+            <span>{column.label}</span>
+            <span :if={flag} data-flag class="peer-checked:hidden">
+              ({flag})
+            </span>
+          </label>
           <input
-            type="checkbox"
-            id={"#{@id}-column-#{column.name}"}
-            checked
-            data-head={Ids.header_cell(@id, column.name)}
-            data-say-hidden={hidden}
-            data-say-shown={shown}
-            data-filtered={is_map_key(@state.filters, column.name)}
-            data-sorted={Attrs.aria_sort(@state.sort, column) != "none"}
-            class={["peer checkbox checkbox-xs", Parts.Editors.box_edge()]}
+            type="number"
+            min="48"
+            max="1000"
+            {Attrs.width_field(@id, column, width_of)}
+            class="input input-xs w-20"
           />
-          <span>{column.label}</span>
-          <span :if={flag} data-flag class="peer-checked:hidden">
-            ({flag})
-          </span>
-        </label>
+        </div>
+        <button {Attrs.reset_widths(@id)} class="btn btn-ghost btn-xs mt-1 self-start">
+          {@texts.reset_widths}
+        </button>
       </div>
       <%!-- What the hook says when a column is hidden or shown again. A live
       region of its own: the one above the grid is rendered by the server,
@@ -351,7 +368,7 @@ defmodule AshDataTable.Parts.Grid do
       {@attrs}
       class="relative whitespace-nowrap"
       phx-no-format
-    ><button :if={@button} {@button} class="cursor-pointer select-none rounded-sm font-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current">{@column.label}<span aria-hidden="true">{sort_mark(@sort, @column)}</span></button><%= if !@button do %>{@column.label}<% end %><svg :if={@texts.read_only} role="img" aria-label={@texts.read_only} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ms-1 inline-block size-3 align-[-1px] opacity-60"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><Kit.part part={:resizer} kit={@kit} id={@resizer} column={@column} texts={Words.texts(:resizer, %{column: @column})} messages={Words.messages(:resizer, %{column: @column})} /></th>
+    ><button :if={@button} {@button} class="cursor-pointer select-none rounded-sm font-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current">{@column.label}<span aria-hidden="true">{sort_mark(@sort, @column)}</span></button><%= if !@button do %>{@column.label}<% end %><svg :if={@texts.read_only} role="img" aria-label={@texts.read_only} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ms-1 inline-block size-3 align-[-1px] opacity-60"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><Kit.part part={:resizer} kit={@kit} id={@resizer} column={@column} /></th>
     """
   end
 
