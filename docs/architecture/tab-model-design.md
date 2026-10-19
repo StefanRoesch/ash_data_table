@@ -111,6 +111,7 @@ The rows are replaced when a person sorts, filters or changes page, and a row wh
 - After a destroy: the same stop of the row after, else before (as today).
 - After a create: the first stop of the new row (as today, `ash_data_table:focus`, which names an element that is a stop).
 - After "Clear filters": the first control of the filter row. After one filter's own clear button: that filter's value.
+- Read again: the table's first stop.
 - When a live update takes away the row being edited: the row stays until the edit ends (as today), then the rule above.
 
 ### 2.10 Is this an established pattern?
@@ -255,7 +256,8 @@ Guides: `keyboard-and-accessibility.md` is rewritten (69 passages about arrows, 
 
 ## 9. Performance
 
-- **DOM size:** the same, plus per table two small elements (the skip link and its target) and a `<button>` in each sortable header. Per row a little less: read-only cells lose their `tabindex="-1"`, an editable cell's `tabindex="0"` is as long as it was, and `aria-readonly`/`aria-invalid` go. Measured with `demo/perf/baseline.mjs` on `/tasks` (bytes per action within 2 %, times within 20 %). K1 with the edit description of question 2's first decision (`aria-describedby="ID-editable"` on each editable cell) cost **+9.0 %** on a page change; the same markup without it **+1.1 %**, so the description was dropped (question 2, decided again). Measured again after the drop (2026-10-19, `93e0bee` before K1 against `c0dcd2f`, `PERF_WIRE=1`, 15 repetitions, old, new, new, old back to back; load 17 falling to 3), bytes per action: page change 156,341 → 158,126 (+1.1 %), cell save +0.8 %, cell save with a nested table open +0.6 %, open a nested table +0.5 %, expand −1.0 %, cell save in a nested table −5.0 %, the panels and selecting a row unchanged; **open the picker +2.4 %** (30,002 → 30,726; its two-frame case 37,648 → 38,721, +2.9 %), over the budget: the picker's table is drawn whole each time it opens, with its new skip link, skip target and a sort button per sortable header. Put to the owner.
+- **DOM size:** the same, plus per table two small elements (the skip link and its target) and a `<button>` in each sortable header. Per row a little less: read-only cells lose their `tabindex="-1"`, an editable cell's `tabindex="0"` is as long as it was, and `aria-readonly`/`aria-invalid` go. Measured with `demo/perf/baseline.mjs` on `/tasks` (bytes per action within 2 %, times within 20 %). K1 with the edit description of question 2's first decision (`aria-describedby="ID-editable"` on each editable cell) cost **+9.0 %** on a page change; the same markup without it **+1.1 %**, so the description was dropped (question 2, decided again). Measured again after the drop (2026-10-19, `93e0bee` before K1 against `c0dcd2f`, `PERF_WIRE=1`, 15 repetitions, old, new, new, old back to back; load 17 falling to 3), bytes per action: page change 156,341 → 158,126 (+1.1 %), cell save +0.8 %, cell save with a nested table open +0.6 %, open a nested table +0.5 %, expand −1.0 %, cell save in a nested table −5.0 %, the panels and selecting a row unchanged; **open the picker +2.4 %** (30,002 → 30,726; its two-frame case 37,648 → 38,721, +2.9 %), over the budget: the picker's table is drawn whole each time it opens, with its new skip link, skip target and a sort button per sortable header. Put to the owner, who accepted it (question 15). One cause is the row header: the label column's `th` is drawn by a loop of its own between the loops of the cells before and after it, which sends two comprehensions more per row and the cell's template three times (the same markup without that split: page change +0.2 %, the picker's two-frame case +1.8 %).
+- **The cell's body drawn once** (K1's drift check, 2026-10-19: one private function component for what the `td` and the label column's `th` hold, in place of the template written in each of the three loops). Measured 2026-10-19 against `93e0bee` (`PERF_WIRE=1`, 15 repetitions; load 2.5 falling to 1.3; the old version gave the same bytes as in the measurement above, to the byte, in both of its runs), bytes per action: one loop with the `td` and the `th` under `:if` and the body a component: page change **+11.3 %** (174,025), cell save +8.3 %, open the picker +5.2 % (39,619); the three loops kept, the body a component: page change **+5.1 %** (164,315), cell save +3.7 %, open the picker +4.1 % (31,191; two frames 39,186). A function component is one level more in the diff of every cell of every row (about 15 bytes a cell), more than the statics it saves. Not built: the three loops with the body written out stay (page change +1.1 %, the picker +2.4 %).
 - **Work in the browser:** less. No `tabindex` writes on every focus move, no MutationObserver records for `tabindex` and `aria-selected`, no tree walk after each patch. Tab is the browser's own: it costs nothing per key, also with 25 × 25 cells and a nested table of the same size open.
 - **Tests:** a test that presses Tab hundreds of times is slow. Specs focus an element directly and press Tab only for the part of the walk they check.
 
@@ -305,9 +307,9 @@ Greenfield rule: no compatibility code, no dead code, no comment that describes 
 - [ ] `grid/selecting.js` `paint`: the `aria-selected` writes on rows.
 - [ ] `grid/actions.js` `refocus`, `pagination.js` `toGrid`: `[tabindex="0"]` lookups and `cellBack`, replaced by the focus repair of 2.9.
 - [ ] The `aria-invalid` writes and reads on cells (`marked`, `discard`, `fail`), replaced by `data-failed`.
-- [ ] `markers.js`: `TABLE = "[role=grid]"`, `GRIDCELL = "[role=gridcell]"` become `[role=table]`, `CELL`; the name `GRIDCELL` goes.
 - [ ] `owned.js`: the entries `tabindex`, `aria-selected`, `aria-invalid`, `aria-readonly`, `aria-valuenow`; the comment's `tabindex="-1"` example of "once".
 - [ ] `types.d.ts`: whatever typed the removed state (`pos`, `col`, the tree).
+- [ ] Found by K1's drift check (2026-10-19): `grid/shared.js` `KEPT` (what a patch does not bring to a cell being edited) lists `aria-readonly` and `aria-invalid` and lacks `data-failed` and `tabindex`; `picker.js` `enter` reads `aria-selected` to find the current row, which breaks once the hook stops writing it: the picker's current row gets its own state; `grid/whole_text.js` `cutIn` reads `aria-invalid` (`data-failed` instead).
 
 **The server side (K1)**
 
@@ -319,6 +321,8 @@ Greenfield rule: no compatibility code, no dead code, no comment that describes 
 - [ ] The edit description of question 2's first decision, built in K1 and dropped on 2026-10-19 (question 2): `Ids.editable/1`, `ids.js`'s `editable` and its `/e2e/ids` sample, `Attrs.editable/1`, the `editable` text (`Messages`, `Kit.Words`, the `.pot` and the German `.po`), the hidden element in `grid.ex` and `DivKit`, the cell's `aria-describedby` to it in `Item`, `KitCase`'s check of it (now: editable cells are stops, read-only cells are not).
 - [ ] `Kit`, `Kit.Default`, `KitCase`, the demo's `DivKit`: every `grid`/`gridcell` role and the asserts on them; contract 2 → 3 with no clause for 2.
 - [ ] `Ids`/`ids.js`: nothing goes (new ones come); the resizer's id stays for the pointer.
+- [ ] `markers.js`: `TABLE = "[role=grid]"`, `GRIDCELL = "[role=gridcell]"` become `[role=table]`, `CELL` (with `ROWHEADER`, and `DATACELL`/`ANYCELL` in `grid/shared.js`); the name `GRIDCELL` goes. (Listed under K2 at first; K1 did it with the markup, 2026-10-19.)
+- [ ] `demo/test/support/table_page.ex` and the demo test files: `gridcell`, `tabindex`, `aria-selected`, `aria-readonly`; the 17 snapshots made again. (Listed under K3 at first; K1 did it with the markup, 2026-10-19.)
 
 **Tests (K3)**
 
@@ -326,7 +330,7 @@ Greenfield rule: no compatibility code, no dead code, no comment that describes 
 - [ ] In the other 40 spec files: every test of arrow navigation, F2, the one tab stop, Escape out of a nested grid, Shift+Arrow selection, keyboard resizing on the handle: rewritten to Tab and Enter, or deleted where the behaviour is gone.
 - [ ] `support/table.ts`: `tabStop`, the `[role=gridcell]` locators, the comment "cell with tabindex -1, and the hook makes one of them the tab stop".
 - [ ] `support/a11y.ts`: the `scrollable-region-focusable` exception and `ofNestedGrid`.
-- [ ] `demo/test/support/table_page.ex` and the 38 demo test files: `gridcell`, `tabindex`, `aria-selected`, `aria-readonly`; `test/owned_test.exs` follows `owned.js`; the 17 snapshots made again.
+- [ ] `test/owned_test.exs` follows `owned.js` (with K2's `owned.js`). The demo test files and the snapshots moved to K1.
 
 **Documentation (K4)**
 
@@ -351,12 +355,12 @@ grep -rnE '"(Arrow(Up|Down|Left|Right)|Home|End|PageUp|PageDown|F2)"' assets/js
 
 # 3. tabindex: only "0" on an editable cell, "-1" on the scroll area and the skip target
 grep -rnE 'tabindex|tabIndex' lib assets/js demo/lib
-# allowed: Attrs (the stop rule, the scroll area, the skip target), the parts that spread them, the whole-text button (`tabIndex = -1`, no stop on purpose), panel.js FOCUSABLE
+# allowed: Attrs (the stop rule, the scroll area, the skip target, the scrollbar at the bottom edge `tabindex="-1"`), item.ex (the stop rule: `tabindex="0"` on an editable cell), the parts that spread them, the whole-text button (`tabIndex = -1`, no stop on purpose), panel.js FOCUSABLE, KitCase and Kit (the checks of the stop rule and the contract that states it)
 
 # 4. ARIA that a table cell or row does not take
 grep -rnE 'aria-readonly|aria-selected' lib assets/js demo/lib demo/test demo/e2e
 grep -rnE 'aria-invalid' assets/js lib/ash_data_table/item.ex lib/ash_data_table/parts/grid.ex
-# allowed: aria-invalid on panel fields, filter inputs and argument inputs (form controls), not on a cell; aria-selected: none
+# allowed: aria-invalid on panel fields, filter inputs and argument inputs (form controls), not on a cell; aria-selected and aria-readonly: none but the checks of their absence in KitCase, Kit (the contract) and the demo tests
 
 # 5. Arrow keys pressed in the browser suite
 grep -rnE 'press\("(Shift\+)?Arrow|press\("(Control\+)?(Home|End|PageUp|PageDown)"|press\("F2"' demo/e2e/*.spec.ts
@@ -390,3 +394,6 @@ The owner took every recommendation ("as recommended") but question 14, which he
 12. **Shift+Arrow range selection.** It goes with the arrows. **Decided: not replaced**: Space on each box, the page's box, and "Select all … that match"; Shift+click stays for the pointer.
 13. **Escape in a filter's input.** Today it gives up what was typed and goes back to the cell. **Decided:** it gives up what was typed and focus stays in the input.
 14. **Read-only cells as Tab stops.** The sources lean against focusable non-interactive cells (section 2.10): the APG's table pattern puts only widgets in the Tab order, and the A11y Project calls `tabindex="0"` on non-interactive elements a myth that does not help. a) every cell a stop, as first planned; b) only controls and editable cells are stops, read-only cells are read with the screen reader's table keys and seen by eye. **Decided: b**, changed from the first plan. The owner, after an explanation: "readonly cells not focusable". The expert's "every element" is read as "every interactive element"; in top and nested tables alike.
+15. **The picker's bytes (K1).** Opening the picker cost +2.4 % (two frames +2.9 %) after the description went, over the budget of 2 % (section 9). **Accepted by the owner (2026-10-19)**, unless drawing a cell's body once brought it under 2 %. It did not (section 9: +4.1 % that way), so K1's markup stays and the +2.4 % is accepted.
+
+Process note (K1, 2026-10-19): #46 (the focus rings) was closed with K1's commits, before K1's drift check had run; a stage's issues are closed after its drift check.

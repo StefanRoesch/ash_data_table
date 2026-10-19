@@ -172,8 +172,11 @@ defmodule AshDataTable.Kit do
       them on a table's cells): a failed cell says `data-failed` and is
       described by its message, a selected row by its box.
 
-  The only `tabindex="-1"` are the grid's scroll area (`Attrs.grid/6`) and
-  the skip link's target (`Attrs.skip_target/1`), which take no Tab.
+  The only `tabindex="-1"` are the grid's scroll area (`Attrs.grid/6`),
+  the skip link's target (`Attrs.skip_target/1`), the scrollbar at the
+  bottom edge of the window (`Attrs.scrollbar/1`, for the pointer alone)
+  and the button the hook puts into a cell to show its whole text, which
+  take no Tab.
 
   A part of one's own is called with `apply/3` (`part/1`): the defaults of
   its `attr`s are not applied. It is given every assign named below, and

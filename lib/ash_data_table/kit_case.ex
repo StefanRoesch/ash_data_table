@@ -1134,7 +1134,30 @@ defmodule AshDataTable.KitCase do
           "[id='kit-picker'] [id^='kit-pick-'][id$='-grid'][data-ash-data-table]",
           "its table"
         ) ++
+        picker_skip(page) ++
         asked_in(page, "kit-picker", presentation, :picker)
+
+  # The picker's table has its own skip link and target, as every table.
+  defp picker_skip(page) do
+    grids = LazyHTML.query(page, "[id='kit-picker'] [id^='kit-pick-'][id$='-grid'][data-table]")
+
+    case LazyHTML.attribute(grids, "data-table") do
+      [id] ->
+        need(
+          page,
+          "[id='kit-picker'] a[id='#{Ids.skip(id)}'][href='##{Ids.skip_target(id)}']",
+          "the picker's table's own skip link"
+        ) ++
+          need(
+            page,
+            "[id='kit-picker'] [id='#{Ids.skip_target(id)}'][tabindex='-1']",
+            "where it jumps to"
+          ) ++ skip_order(page, id)
+
+      _none ->
+        []
+    end
+  end
 
   # The question once more inside what opens over the page, where it is
   # asked in the page: hidden, with the ids of its place, and left alone by

@@ -11,9 +11,8 @@
 // focus goes back to the cell, or to the button of the panel, that
 // opened it.
 import {error as errorId} from "./ids.js"
-import {cellsOf} from "./grid/shared.js"
+import {ANYCELL, cellsOf, DATACELL} from "./grid/shared.js"
 import {ARGUMENTS, CANCEL, GRID, NONE, OF, TAKE} from "./markers.js"
-import {ANYCELL, DATACELL} from "./grid/shared.js"
 import {opened} from "./panel.js"
 
 export default {

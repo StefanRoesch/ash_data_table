@@ -25,8 +25,8 @@ const tabStops = (page: Page) =>
 async function opened(page: Page): Promise<void> {
   await page.goto("/e2e/markers")
   await expect(page.locator('[id="kit-grid"]')).toBeAttached()
-  // the hook has made its tab stop
-  await expect.poll(() => tabStops(page)).toEqual(["kit-row-a-c-name"])
+  // connected: the join's patch, which mounts the hooks, is in the page
+  await expect(page.locator(".phx-connected").first()).toBeAttached()
 }
 
 test.describe("a grid drawn with other elements than a table's", () => {

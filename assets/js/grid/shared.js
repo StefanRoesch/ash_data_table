@@ -30,13 +30,12 @@ export const AROUND = (node, what) => {
   return found && found.matches(what) ? found : null
 }
 
-// The grid's structure, by its markers alone: whatever elements a kit
-// draws it with, a grid
-// (`role=grid`) holds rows, each record's in a row group of its own,
-// and a row holds cells, a column's header or a grid cell. A cell
-// says where it stands among the columns (`aria-colindex`, from 1).
+// The table's structure, by its markers alone: whatever elements a kit
+// draws it with, a table (`role=table`) holds rows, each record's in a
+// row group of its own, and a row holds cells: a column's header, a cell,
+// or the label column's row header. A cell says where it stands among
+// the columns (`aria-colindex`, from 1).
 
-// a cell of a row: a column's header or a grid cell
 // a cell of the rows (the label column's is the row's header), and any
 // cell, a column's header among them
 export const DATACELL = `${CELL},${ROWHEADER}`

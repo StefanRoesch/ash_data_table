@@ -849,10 +849,11 @@ defmodule AshDataTable.Attrs do
   # in, after it). A table without a summary has no such row, and a table of
   # its own then has no `<tfoot>` at all.
   #
-  # The row is a row of the grid like any other: a `cell` under every
+  # The row is a row of the table like any other: a `cell` under every
   # column, with the column's `aria-colindex`, so that a number stands under
-  # its column, is hidden and resized with it by the hook's rules, and is
-  # reached with the arrow keys. The cell under a column is
+  # its column and is hidden and resized with it by the hook's rules. Its
+  # cells are no Tab stops: a screen reader reads them with its table keys.
+  # The cell under a column is
   # `ID-summary-FIELD`; under the leading and the actions columns the cells
   # `ID-summaries-select`, `ID-summaries-expander` and `ID-summaries-actions`
   # are empty, as is the cell of a column without a summary. A cell with a
@@ -861,8 +862,7 @@ defmodule AshDataTable.Attrs do
   # (`[data-summary-value]`), or a dash that is read out as "Not available"
   # (`[data-summary-unavailable]`). The row is the
   # last of all rows: `aria-rowcount` counts it, and its `aria-rowindex` is
-  # that count. Arrow Down from the last record reaches it; Page Down and
-  # Ctrl+End end at the last record.
+  # that count.
   #
   # The numbers are over every record the table matches, not over the page
   # (`AshDataTable.Query.summaries/4`, which also says what is never shown: a

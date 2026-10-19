@@ -32,8 +32,8 @@ async function opened(page: Page, query = ""): Promise<string> {
   await page.goto(`/e2e/kit${query}`)
   await expect(page.locator('[id="kit-table"][data-kit="div"]')).toBeAttached()
   await expect(page.locator('[id^="kit-row-"][role=rowgroup]').filter({ hasText: "Anchor" })).toHaveCount(1)
-  // the hook has made its tab stop
-  await expect(page.locator('[id="kit-table"] [tabindex="0"]')).toHaveCount(1)
+  // connected: the join's patch, which mounts the hooks, is in the page
+  await expect(page.locator(".phx-connected").first()).toBeAttached()
   return key(page, "Anchor")
 }
 
