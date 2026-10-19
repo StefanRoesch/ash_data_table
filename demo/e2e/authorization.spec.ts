@@ -103,7 +103,7 @@ for (const actor of ACTOR_KEYS) {
 test.describe("the member, whose rights depend on the record", () => {
   test.use({ actor: "member" })
 
-  test("the smaller grid is whole: the boxes, the expanders, 21 columns and the actions, numbered 1 to 24, walked without a gap", async ({
+  test("the smaller table is whole: the boxes, the expanders, 21 columns and the actions, numbered 1 to 24; Tab walks a row's stops in that order", async ({
     tasks,
     pushed,
   }) => {
@@ -120,25 +120,26 @@ test.describe("the member, whose rights depend on the record", () => {
         )
     const oneToTwentyFour = Array.from({ length: 24 }, (_, index) => [index + 1, index + 1])
 
-    expect(await numbering(`[id="task-row-${first}"] td`)).toEqual(oneToTwentyFour)
+    expect(await numbering(`[id="task-row-${first}"] [role=row] > :is(td, th)`)).toEqual(oneToTwentyFour)
     expect(await numbering("#task-head-row th")).toEqual(oneToTwentyFour)
     expect(await numbering("#task-filter-row td")).toEqual(oneToTwentyFour)
 
-    await tasks.cell(first, "title").focus()
+    const stops = await tasks.rowStops(first)
+    // the box, the expander, then the editable cells left to right, then the actions
+    expect(stops.slice(0, 2)).toEqual([`task-row-${first}-s>input`, `task-row-${first}-e>button`])
+    const order = (id: string) =>
+      tasks.page.locator(`[id="${id.split(">")[0]}"]`).evaluate((node) => {
+        const cell = node.closest("[aria-colindex]")
+        return Number(cell?.getAttribute("aria-colindex"))
+      })
+    const places: number[] = []
+    for (const stop of stops) places.push(await order(stop))
+    expect(places, "left to right").toEqual([...places].sort((a, b) => a - b))
+    expect(stops.at(-1)).toMatch(new RegExp(`^task-row-${first}-a-`))
+    await tasks.box(first).focus()
     await pushed.clear()
-    const walked = [await tasks.focused()]
-    for (let step = 0; step < 25; step++) {
-      await tasks.press("ArrowRight")
-      const focused = await tasks.focused()
-      if (focused === walked.at(-1)) break
-      walked.push(focused)
-    }
+    expect(await tasks.walk(stops.length - 1)).toEqual(stops.slice(1))
     const columns = await tasks.columns()
-    // every column, and after the last the cell of the row's actions
-    expect(walked).toEqual([
-      ...columns.map((column) => `task-row-${first}-c-${column}`),
-      `task-row-${first}-a`,
-    ])
     // where the admin has `external_ref` between these two
     expect(columns.slice(10)).toEqual([
       "headline",
@@ -154,15 +155,10 @@ test.describe("the member, whose rights depend on the record", () => {
       "reporter",
     ])
 
-    await tasks.press("Home", "End", "ArrowUp", "ArrowUp", "ArrowUp")
-    await expect(tasks.actionsHeader).toBeFocused()
-    await tasks.press("ArrowLeft")
-    await expect(tasks.header("reporter")).toBeFocused()
     expect(await pushed.all()).toEqual([])
-    expect(await tasks.tabStops()).toHaveLength(1)
   })
 
-  test("a field hidden on some records keeps its column: the hidden cells say so and cannot be edited", async ({
+  test("a field hidden on some records keeps its column: the hidden cells say so, are no stops and cannot be edited", async ({
     tasks,
     pushed,
   }) => {
@@ -172,18 +168,16 @@ test.describe("the member, whose rights depend on the record", () => {
     const hidden = tasks.cell(SEED.task.first, "estimate_hours")
 
     await expect(own).toHaveText("11.25 h")
-    await expect(own).not.toHaveAttribute("aria-readonly")
+    await expect(own).toHaveAttribute("tabindex", "0")
 
     await expect(hidden, "read out, and nothing to see").toHaveText("Not available")
     await expect(hidden.locator(".sr-only")).toHaveText("Not available")
-    await expect(hidden).toHaveAttribute("aria-readonly", "true")
+    await expect(hidden).not.toHaveAttribute("tabindex")
 
-    await hidden.focus()
     await pushed.clear()
-    await tasks.press("Enter", "F2", "7", "x")
     await hidden.dblclick()
     await expect(tasks.openEditors).toHaveCount(0)
-    await expect(hidden).toBeFocused()
+    await expect(hidden).not.toBeFocused()
     expect(await pushed.all()).toEqual([])
   })
 
@@ -219,7 +213,7 @@ test.describe("the member, whose rights depend on the record", () => {
       await tasks.retype("Changed by the member")
       await tasks.saves(title, () => tasks.press("Enter"))
       await expect(title).toHaveText("Changed by the member")
-      await expect(title).not.toHaveAttribute("aria-invalid")
+      await expect(title).not.toHaveAttribute("data-failed")
 
       await estimate.focus()
       await tasks.press("Enter")
@@ -238,7 +232,7 @@ test.describe("the member, whose rights depend on the record", () => {
       tasks,
     }) => {
       const title = tasks.cell(SEED.task.first, "title")
-      await expect(title).not.toHaveAttribute("aria-readonly")
+      await expect(title, "a Tab stop, as an editable cell is").toHaveAttribute("tabindex", "0")
 
       await title.focus()
       await tasks.press("Enter")
@@ -246,7 +240,7 @@ test.describe("the member, whose rights depend on the record", () => {
       await tasks.retype("Not mine to change")
       await tasks.saves(title, () => tasks.press("Enter"))
 
-      await expect(title).toHaveAttribute("aria-invalid", "true")
+      await expect(title).toHaveAttribute("data-failed")
       await expect(title).toContainText("Not mine to change")
       await expect(tasks.failure(title)).toHaveText("You are not allowed to change this.")
       await expect(tasks.failure(title)).toBeVisible()
@@ -258,7 +252,7 @@ test.describe("the member, whose rights depend on the record", () => {
 
       await tasks.press("Escape")
       await expect(title).toHaveText("Rename the onboarding email")
-      await expect(title).not.toHaveAttribute("aria-invalid")
+      await expect(title).not.toHaveAttribute("data-failed")
 
       await page.reload()
       await tasks.ready()
@@ -270,12 +264,12 @@ test.describe("the member, whose rights depend on the record", () => {
 test.describe("the viewer, who may change nothing", () => {
   test.use({ actor: "viewer" })
 
-  test("the table offers no editing: nothing is marked read-only, and there are no editors in the page", async ({
+  test("the table offers no editing: no cell is a Tab stop, and there are no editors in the page", async ({
     tasks,
   }) => {
     await tasks.open()
 
-    await expect(tasks.grid.locator("[aria-readonly]")).toHaveCount(0)
+    await expect(tasks.grid.locator(":is([role=cell],[role=rowheader])[tabindex]")).toHaveCount(0)
     await expect(tasks.root.locator("template")).toHaveCount(0)
     await expect(tasks.root.locator("[role=dialog]")).toHaveCount(0)
     await expect(tasks.grid.locator("[data-value]")).toHaveCount(0)
@@ -288,12 +282,7 @@ test.describe("the viewer, who may change nothing", () => {
 
     for (const column of EDITABLE) {
       const cell = tasks.cell(first, column)
-      await cell.focus()
-      for (const key of ["Enter", "F2", "x", "5"]) {
-        await tasks.press(key)
-        await expect(tasks.openEditors, `${key} on ${column}`).toHaveCount(0)
-        await expect(cell, `${key} on ${column}`).toBeFocused()
-      }
+      await expect(cell, `${column} is no Tab stop`).not.toHaveAttribute("tabindex")
       await cell.dblclick()
       await expect(tasks.openEditors, `a double click on ${column}`).toHaveCount(0)
     }
@@ -301,15 +290,17 @@ test.describe("the viewer, who may change nothing", () => {
     expect(await pushed.all(), "and the server was asked nothing").toEqual([])
   })
 
-  test("reading works as for anyone: moving, sorting, filtering", async ({ page, tasks }) => {
+  test("reading works as for anyone: Tab, sorting, filtering", async ({ page, tasks }) => {
     await tasks.open()
     const first = await tasks.rowKey(1)
 
-    await tasks.cell(first, "title").focus()
-    await tasks.press("ArrowRight")
-    await expect(tasks.cell(first, "status")).toBeFocused()
+    // a row's stops are its controls (the expander, a cut-off text's "Show
+    // all"): no cell is one, nothing in it is editable
+    const stops = await tasks.rowStops(first)
+    expect(stops[0]).toBe(`task-row-${first}-e>button`)
+    expect(stops.filter((stop) => !stop.includes(">")), "no cell is a stop").toEqual([])
 
-    await tasks.reads(() => tasks.header("title").click())
+    await tasks.sortBy("title")
     await expect(tasks.header("title")).toHaveAttribute("aria-sort", "ascending")
     await tasks.reads(() => tasks.filterValue("billable?").selectOption("yes"))
     expect(params(page)).toEqual({ "task[sort]": "title", "task[f][billable?]": "yes" })

@@ -57,7 +57,7 @@ test.describe("editing states", () => {
       await tasks.press("Enter")
       await tasks.retype("ab")
       await tasks.saves(title, () => tasks.press("Enter"))
-      await expect(title).toHaveAttribute("aria-invalid", "true")
+      await expect(title).toHaveAttribute("data-failed")
       await page.mouse.move(5, 5)
     })
 
@@ -69,11 +69,11 @@ test.describe("editing states", () => {
     })
 
     test("without focus: its message still showing in the cell", async ({ page, tasks }) => {
-      await tasks.press("ArrowDown")
+      await tasks.press("Tab")
       const title = tasks.cell(SECOND, "title")
       await expect(title).not.toBeFocused()
       await expect(tasks.failure(title)).toBeVisible()
-      await expect(title).toHaveAttribute("aria-invalid", "true")
+      await expect(title).toHaveAttribute("data-failed")
       await expectNoAxeViolations(page)
     })
 
@@ -166,9 +166,10 @@ test.describe("the components of a column", () => {
     const progress = tasks.cell(key, "progress")
 
     await progress.focus()
+    // Enter opens the slider; Left Arrow is the slider's own key
     await tasks.press("Enter", "ArrowLeft")
     await tasks.saves(progress, () => tasks.press("Enter"))
-    await expect(progress).toHaveAttribute("aria-invalid", "true")
+    await expect(progress).toHaveAttribute("data-failed")
     await page.mouse.move(5, 5)
     await expect(tasks.failure(progress)).toBeVisible()
     await expectNoAxeViolations(page)

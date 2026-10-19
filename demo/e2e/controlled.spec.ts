@@ -36,7 +36,8 @@ test.describe("what the page draws of the questions and the picker", () => {
   async function opened(page: Page): Promise<string> {
     await page.goto("/e2e/controlled/kit")
     await expect(page.locator('[id^="kit-row-"][role=rowgroup]').filter({ hasText: "Anchor" })).toHaveCount(1)
-    await expect(page.locator('[id="kit-table"] [tabindex="0"]')).toHaveCount(1)
+    // connected: the join's patch, which mounts the hooks, is in the page
+    await expect(page.locator(".phx-connected").first()).toBeAttached()
     const group = page.locator('[id^="kit-row-"][role=rowgroup]').filter({ hasText: "Anchor" }).first()
     return ((await group.getAttribute("id")) ?? "").replace(/^kit-row-/, "")
   }

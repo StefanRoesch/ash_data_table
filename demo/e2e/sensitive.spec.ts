@@ -8,7 +8,8 @@ import { Table } from "./support/table"
 // A sensitive column in a browser: "Budget" at /projects. Its cells show a
 // mask, the same for every budget, and a button; the budget itself is not in
 // the page, and not in what the server sends, until somebody asks for the
-// one cell. It is hidden again when focus leaves the cell. Its editor hides
+// one cell. It is hidden again when focus leaves the cell. Its "Show" is a
+// Tab stop of its own, also where the cell is editable. Its editor hides
 // what is typed. A member may see a project's budget; a viewer has no such
 // column.
 
@@ -94,8 +95,8 @@ test.describe("a sensitive cell at rest", () => {
       await expect(value).toHaveAttribute("aria-live", "polite")
       await expect(button).toHaveText("Show")
       await expect(button).toHaveAccessibleName("Show Budget")
-      // no tab stop of its own: the grid has one
-      await expect(button).toHaveAttribute("tabindex", "-1")
+      // a Tab stop of its own, as any button
+      await expect(button).not.toHaveAttribute("tabindex")
     }
 
     const empty = projects.cell(MOBILE, "budget")
@@ -121,6 +122,7 @@ test.describe("a sensitive cell at rest", () => {
 
     await expect(projects.header("budget")).not.toHaveAttribute("aria-sort")
     await expect(projects.filterCell("budget").locator("input, select, button")).toHaveCount(0)
+    await expect(projects.sortButton("budget")).toHaveCount(0)
     await pushed.clear()
     await projects.header("budget").click()
     expect(await pushed.all()).toEqual([])
@@ -158,8 +160,8 @@ test.describe("showing a value", () => {
     await expect(mask).toBeHidden()
     await expect(button).toHaveText("Hide")
     await expect(button).toHaveAccessibleName("Hide Budget")
-    // the value is shown for as long as the cell has the focus
-    await expect(cell).toBeFocused()
+    // the value is shown for as long as focus is in the cell: on its button
+    await expect(button).toBeFocused()
     expect(await rowHeight(projects, PORTAL.id)).toBe(height)
 
     // one event, with the row and the column, and one answer with the value
@@ -190,14 +192,20 @@ test.describe("showing a value", () => {
 
     await button.click()
     await expect(value).toHaveText(PORTAL.budget)
-    await projects.press("ArrowRight")
-    await expect(projects.cell(PORTAL.id, "client")).toBeFocused()
+    // Tab from the button, past what else the cell holds (a cut-off text's
+    // "Show all"), leaves the cell
+    const after = await cell.evaluate((node) => {
+      const stops = Array.from(node.querySelectorAll<HTMLElement>("button, input, textarea, select"))
+      return stops.length - stops.indexOf(document.activeElement as HTMLElement)
+    })
+    await projects.walk(after)
+    expect(await cell.evaluate((node) => node.contains(document.activeElement))).toBe(false)
     await expect(value).toHaveText("")
     await expect(mask).toBeVisible()
     await expectNoBudgetIn(await markup(projects))
   })
 
-  test("Shift+Enter on the cell shows it and hides it; Escape hides it; Tab out of the grid hides it", async ({
+  test("Shift+Enter on the cell shows it and hides it; Escape hides it; Tab out of the cell hides it", async ({
     page,
     pushed,
   }) => {
@@ -227,6 +235,11 @@ test.describe("showing a value", () => {
 
     await projects.press("Shift+Enter")
     await expect(value).toHaveText(WAREHOUSE.budget)
+    // Tab to the cell's own "Show", which is in the cell: shown still
+    await projects.press("Tab")
+    await expect(parts(cell).button).toBeFocused()
+    await expect(value).toHaveText(WAREHOUSE.budget)
+    // and on, out of the cell
     await projects.press("Tab")
     await expect(value).toHaveText("")
     await expect(mask).toBeVisible()
@@ -258,7 +271,7 @@ test.describe("showing a value", () => {
     await expect(value).toHaveText(PORTAL.budget)
 
     // sorted by a script, as nothing a person does leaves focus in the cell
-    await projects.reads(() => projects.header("name").evaluate((header: HTMLElement) => header.click()))
+    await projects.reads(() => projects.sortButton("name").evaluate((button: HTMLElement) => button.click()))
 
     await expect(projects.header("name")).toHaveAttribute("aria-sort", "ascending")
     await expect(value).toHaveText("")
@@ -380,7 +393,7 @@ test.describe("editing a sensitive cell", () => {
     received.clear()
     await projects.saves(cell, () => projects.press("Enter"))
 
-    await expect(cell).toHaveAttribute("aria-invalid", "true")
+    await expect(cell).toHaveAttribute("data-failed")
     await expect(projects.failure(cell)).toHaveText("is invalid")
     await expect(parts(cell).mask).toHaveText(MASK)
     await expect(projects.status).toHaveText(/Budget was not saved: is invalid/)
@@ -392,7 +405,7 @@ test.describe("editing a sensitive cell", () => {
     await projects.press("Enter")
     await expect(projects.editor(cell)).toHaveValue("")
     await projects.press("Escape", "Escape")
-    await expect(cell).not.toHaveAttribute("aria-invalid")
+    await expect(cell).not.toHaveAttribute("data-failed")
     await expect(cell).toBeFocused()
   })
 })
@@ -467,7 +480,7 @@ test.describe("emptying a sensitive cell", () => {
     await expect(parts(cell).value).toHaveText(PORTAL.budget)
   })
 
-  test("Tab from \"Clear\" leaves the grid and saves what was typed, as leaving the input does", async ({
+  test("Tab from \"Clear\" saves what was typed, as leaving the input does, and goes on out of the cell", async ({
     page,
     pushed,
   }) => {
@@ -482,7 +495,8 @@ test.describe("emptying a sensitive cell", () => {
 
     await projects.saves(cell, () => projects.press("Tab"))
 
-    expect(await projects.hasFocus()).toBe(false)
+    expect(await projects.hasFocus(), "on a stop of the table").toBe(true)
+    expect(await cell.evaluate((node) => node.contains(document.activeElement))).toBe(false)
     expect(await pushed.count("save")).toBe(1)
     expect(await pushed.count("clear")).toBe(0)
     await expect(projects.openEditors).toHaveCount(0)
@@ -520,7 +534,7 @@ test.describe("emptying a sensitive cell", () => {
       await expect(cell).toBeFocused()
       await expect(cell).toHaveText("")
       await expect(cell.getByRole("button")).toHaveCount(0)
-      await expect(cell).not.toHaveAttribute("aria-invalid")
+      await expect(cell).not.toHaveAttribute("data-failed")
       expect(received.holding(PORTAL.budget), "the budget it had is not sent").toEqual([])
       expect(received.holding("999")).toEqual([])
 
@@ -755,7 +769,7 @@ for (const theme of ["light", "dark"] as const) {
 
       await page.keyboard.type("77x88x99")
       await projects.saves(cell, () => projects.press("Enter"))
-      await expect(cell).toHaveAttribute("aria-invalid", "true")
+      await expect(cell).toHaveAttribute("data-failed")
       await expectNoAxeViolations(page)
     })
 
