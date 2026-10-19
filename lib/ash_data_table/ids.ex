@@ -94,6 +94,35 @@ defmodule AshDataTable.Ids do
   @spec header_cell(String.t(), atom | String.t()) :: String.t()
   def header_cell(id, name), do: "#{id}-head-#{name}"
 
+  @doc """
+  The button in the header of column `name` that sorts by it, the header's
+  one Tab stop: `ID-sort-NAME`.
+  """
+  @spec sort(String.t(), atom | String.t()) :: String.t()
+  def sort(id, name), do: "#{id}-sort-#{name}"
+
+  @doc """
+  The link at the start of a table that jumps past it ("Skip table …"):
+  `ID-skip`.
+  """
+  @spec skip(String.t()) :: String.t()
+  def skip(id), do: "#{id}-skip"
+
+  @doc """
+  Where that link jumps to, after the table's pagination: an empty element
+  that takes the focus, `ID-end`.
+  """
+  @spec skip_target(String.t()) :: String.t()
+  def skip_target(id), do: "#{id}-end"
+
+  @doc """
+  The text, out of sight, that describes every editable cell of a table
+  ("Editable: press Enter"), which their `aria-describedby` names:
+  `ID-editable`.
+  """
+  @spec editable(String.t()) :: String.t()
+  def editable(id), do: "#{id}-editable"
+
   @doc "The filter row, the header's second: `ID-filter-row`."
   @spec filter_row(String.t()) :: String.t()
   def filter_row(id), do: "#{id}-filter-row"
