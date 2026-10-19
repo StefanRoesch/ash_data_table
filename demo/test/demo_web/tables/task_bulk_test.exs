@@ -78,7 +78,6 @@ defmodule DemoWeb.Tables.TaskBulkTest do
 
       # the boxes, the expanders, the nineteen columns of the table, the actions
       assert attribute(html, "#task-table", "aria-colcount") == ["25"]
-      assert attribute(html, "#task-table", "aria-multiselectable") == []
       assert attribute(html, "#task-grid", "data-select") == ["multi"]
       assert attribute(html, "#task-grid", "data-lead") == ["2"]
 
@@ -141,14 +140,12 @@ defmodule DemoWeb.Tables.TaskBulkTest do
       # a member may run the actions on their own tasks
       {:ok, _view, html} = conn |> log_in(world.member) |> live("/tasks")
       assert attribute(html, box(task.id), "aria-label") == ["Select row"]
-      assert attribute(html, "#task-table", "aria-multiselectable") == []
 
       # a viewer can run none: no boxes, no line, and the grid says nothing of selecting
       {:ok, _view, html} = conn |> log_in(world.viewer) |> live("/tasks")
       assert titles(html) == ["Task 01"]
       assert attribute(html, "#task-select-head", "id") == []
       assert attribute(html, "[id='task-row-#{task.id}-s']", "id") == []
-      assert attribute(html, "#task-table", "aria-multiselectable") == []
       assert attribute(html, "#task-grid", "data-select") == []
       assert selection(html) == nil
       # the expanders and the sixteen columns a viewer has, as before

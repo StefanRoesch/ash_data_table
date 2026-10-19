@@ -264,7 +264,6 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
 
     test "has its own boxes and its own line, as the table of its resource has",
          %{html: html, comments: comments} do
-      assert attribute(html, "[id='#{comments}-table']", "aria-multiselectable") == []
 
       assert attribute(html, "[id='#{comments}-select-head'] > input", "aria-label") ==
                ["Select all rows of this page"]

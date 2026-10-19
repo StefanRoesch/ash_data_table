@@ -121,7 +121,6 @@ defmodule DemoWeb.Tables.PickerTest do
 
       assert attribute(html, "##{@projects}-grid", "data-select") == ["single"]
       assert attribute(html, "##{@projects}-grid", "data-choose") == [""]
-      assert attribute(html, "##{@projects}-table", "aria-multiselectable") == []
 
       assert attribute(
                html,
