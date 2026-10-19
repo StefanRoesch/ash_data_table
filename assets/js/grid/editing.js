@@ -94,6 +94,7 @@ export default {
     input.value = current
     const ed = {cell, root, input, type, saved, old, confirm: template.dataset.confirm, commit: template.dataset.commit, lastKey: null}
     this.editing = ed
+    this.edited(cell.id)
     cell.tabIndex = -1
     input.addEventListener("blur", () => this.onEditorBlur(ed))
     let handled = true

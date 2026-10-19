@@ -20,13 +20,16 @@ export default {
     this.hasFocus = false
     // the control that had focus last
     this.last = null
-    this.el.addEventListener("focusin", e => { this.hasFocus = true; this.last = e.target.id })
+    // every listener of the hook goes with it (`destroyed`)
+    this.ending = new AbortController()
+    const until = {signal: this.ending.signal}
+    this.el.addEventListener("focusin", e => { this.hasFocus = true; this.last = e.target.id }, until)
     // noted a moment later: a control that is taken out of the page
     // loses the focus as one that is left does, and `destroyed` has
     // to know that it had it
     this.el.addEventListener("focusout", () => {
       setTimeout(() => { this.hasFocus = this.el.contains(document.activeElement) })
-    })
+    }, until)
   },
 
   // A patch that takes away what stands above the pagination ("No
@@ -54,6 +57,7 @@ export default {
   // After the patch, once the grid has its tab stop again, and only
   // while focus is still nowhere.
   destroyed() {
+    this.ending.abort()
     if (!this.hasFocus) return
     setTimeout(() => { if (document.activeElement === document.body) this.toGrid() })
   },

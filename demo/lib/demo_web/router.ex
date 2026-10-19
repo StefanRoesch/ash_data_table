@@ -316,7 +316,8 @@ defmodule DemoWeb.Router do
   # draws a panel of its table itself; a grid of `div`s that carries the
   # table's markers and the grid's hook; one whose saves wait
   # until the test lets them go; a table drawn with the demo's kit of
-  # `div`s; and /tasks with what opens in the page.
+  # `div`s; the ids of `AshDataTable.Ids`, for `assets/js/ids.js`; and
+  # /tasks with what opens in the page.
   if Application.compile_env(:demo, :e2e_routes, false) do
     # what the page of a test sent its LiveViews, by the page's session
     # (`DemoWeb.E2E.Recorder`)
@@ -353,6 +354,7 @@ defmodule DemoWeb.Router do
         live "/markers", MarkersLive
         live "/held", HeldLive
         live "/kit", KitLive
+        live "/ids", IdsLive
       end
     end
 

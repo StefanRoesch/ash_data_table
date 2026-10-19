@@ -18,6 +18,12 @@ defmodule DemoWeb.E2E.MarkersLive do
   The header of each grid is a row group too, as a kit may draw it: the
   hook must not take it for a record.
 
+  `?mount=1` draws the grid without its `phx-hook`: the demo's hook
+  `MountedGrid` (`assets/js/mounted_grid.js`) mounts the grid's hook by
+  hand through the package's public entries (`mountGrid`,
+  `liveViewTransport`), as a kit that draws in the browser does
+  (`e2e/contract.spec.ts`).
+
   `?missing=colindex` draws one cell without its place (`aria-colindex`),
   for the development check of the hook. `?asks=1` has the column
   "Name" ask before a save, in the question dialog (`kit-dialog`), which
@@ -56,6 +62,7 @@ defmodule DemoWeb.E2E.MarkersLive do
        missing: params["missing"],
        asks: params["asks"] == "1",
        panel: params["panel"] == "1",
+       mount: params["mount"] == "1",
        open: true
      )}
   end
@@ -143,9 +150,10 @@ defmodule DemoWeb.E2E.MarkersLive do
           <span id="kit-columns-status" role="status" phx-update="ignore"></span>
         </div>
         <div id="kit-sender" phx-hook="AshDataTable.Sender" data-sender data-table="kit" hidden></div>
+        <div :if={@mount} id="kit-mount" phx-hook="MountedGrid" data-grid="kit-grid" hidden></div>
         <div
           id="kit-grid"
-          phx-hook="AshDataTable.Grid"
+          phx-hook={if @mount, do: nil, else: "AshDataTable.Grid"}
           data-ash-data-table
           data-table="kit"
           data-lead="1"

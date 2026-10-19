@@ -13,6 +13,12 @@
 // Each hook is one object; the grid's is put together from one module
 // per section (grid/index.js). They talk to the server through one
 // transport object (transport/live_view.js).
+//
+// For a kit that draws in the browser (a React kit), public as well:
+// `mountGrid`, `mountPanel`, `mountPicker`, `mountPagination` and
+// `liveViewTransport` (mount.js), the attributes the hooks own (`OWNED`,
+// `CHILDREN`, owned.js) and the DOM ids of `AshDataTable.Ids` (`ids`,
+// ids.js).
 
 import grid from "./grid/index.js"
 import pagination from "./pagination.js"
@@ -26,6 +32,10 @@ export const Pagination = hook(pagination, "pagination")
 export const Panel = hook(panel, "dialog")
 export const Picker = hook(picker, "dialog")
 export const Sender = hook(sender, "sender")
+
+export {liveViewTransport, mountGrid, mountPagination, mountPanel, mountPicker} from "./mount.js"
+export {CHILDREN, OWNED} from "./owned.js"
+export * as ids from "./ids.js"
 
 export const hooks = {
   "AshDataTable.Grid": Grid,

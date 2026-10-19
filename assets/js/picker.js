@@ -17,6 +17,9 @@ import {opened} from "./panel.js"
 export default {
   mounted() {
     const dialog = this.el
+    // every listener of the hook goes with it (`destroyed`)
+    this.ending = new AbortController()
+    const until = {signal: this.ending.signal}
     const grid = document.querySelector(`${GRID}[${OF}="${CSS.escape(dialog.getAttribute(OF))}"]`)
     // the hook of the table the picker belongs to: its dialog asks
     // a column's question
@@ -25,16 +28,16 @@ export default {
     this.opener = active && active !== document.body ? active : null
     this.openerId = this.opener && this.opener.id
     this.busy = false
-    opened(dialog, () => this.cancel())
+    opened(dialog, () => this.cancel(), until)
     dialog.addEventListener("click", e => {
       if (!e.target.closest) return
       if (e.target.closest(CANCEL)) this.cancel()
       else if (e.target.closest(NONE)) this.choose(true)
       // the server knows what is selected, and takes nothing where nothing is
       else if (e.target.closest(TAKE)) this.choose(false)
-    })
+    }, until)
     // after the table's hook has told the server of the row it selected
-    dialog.addEventListener("ash_data_table:choose", () => this.choose(false))
+    dialog.addEventListener("ash_data_table:choose", () => this.choose(false), until)
     // once the table's own hook is there
     setTimeout(() => this.enter())
   },
@@ -104,6 +107,7 @@ export default {
   // Once the patch is done, and only while focus is nowhere, as the
   // action panel does.
   destroyed() {
+    this.ending.abort()
     // a question it asked in it is answered as Cancel
     if (this.grid) this.grid.goneWith(this.el)
     const failed = this.failed

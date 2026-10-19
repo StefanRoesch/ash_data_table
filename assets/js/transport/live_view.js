@@ -14,9 +14,10 @@
 //     enableDebug()`, a hook's documented `this.liveSocket`): then the
 //     hooks check the markers they rely on (`check.js`).
 //
-// This module is internal: the names of the events and their payloads
-// are the table's own (S6), and a second transport, for another UI
-// technology, will say what of this is to be a seam.
+// The names of the events and their payloads are `AshDataTable.Attrs`'
+// "Events" (S6). The transport is public through mount.js
+// (`liveViewTransport`), for a kit that mounts the hooks itself; `hook`
+// below is how the LiveView hooks of index.js get theirs.
 
 import {check} from "../check.js"
 import {GRID, OF, SENDER} from "../markers.js"
@@ -35,7 +36,9 @@ const senderOf = el => {
 // The name an event of a table goes by, as the table's markup names its own.
 const named = (el, event) => `ash_data_table:${tableOf(el)}:${event}`
 
-// The transport of one LiveView hook.
+// The transport of one LiveView hook, or of what has its functions
+// (`el`, `pushEventTo`, `handleEvent`, `removeHandleEvent`, `liveSocket`,
+// each bound to its hook).
 export function liveView(hook) {
   const heard = new Map()
 

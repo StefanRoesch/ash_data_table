@@ -1,0 +1,109 @@
+import path from "node:path"
+import type { Page } from "@playwright/test"
+import { expect, test } from "./support/fixtures"
+
+// The public contract of the package's browser side, for a kit that draws
+// in the browser (the React kit's note, C5 and C7):
+//
+//   * `assets/js/ids.js` makes every id `AshDataTable.Ids` makes, function
+//     by function: /e2e/ids renders a sample of each, with what the server
+//     made of it;
+//   * `mountGrid` and `liveViewTransport` mount the grid's hook by hand on
+//     a grid that has no `phx-hook` (/e2e/markers?mount=1, the demo's hook
+//     `MountedGrid`): the keys, an edit and its save work, `onEdit` hears
+//     the edit begin and end, and the hook mounted again on the same
+//     element after `destroy()` (React's StrictMode) acts once per key.
+
+type Ids = Record<string, (...args: unknown[]) => string>
+
+const library = path.resolve(import.meta.dirname, "../../assets/js/ids.js")
+const camel = (name: string) => name.replace(/_(\w)/g, (_all, letter: string) => letter.toUpperCase())
+
+test("ids.js makes every id AshDataTable.Ids makes, and has no function it lacks", async ({ page }) => {
+  const ids: Ids = await import(library)
+  await page.goto("/e2e/ids")
+
+  const samples: { function: string; args: unknown[]; id: string }[] = JSON.parse(
+    (await page.locator("#ids").textContent()) ?? "[]",
+  )
+  const functions: string[] = JSON.parse((await page.locator("#functions").textContent()) ?? "[]")
+
+  expect(samples.length).toBeGreaterThan(0)
+  for (const sample of samples) {
+    const made = ids[camel(sample.function)]
+    expect(made, `ids.js has no ${camel(sample.function)}`).toBeDefined()
+    expect(made(...sample.args), `${sample.function}(${JSON.stringify(sample.args)})`).toBe(sample.id)
+  }
+
+  // every function of `Ids` has a sample, and ids.js has no other
+  const sampled = new Set(samples.map((sample) => sample.function))
+  expect(functions.filter((name) => !sampled.has(name))).toEqual([])
+  // (the module as Node gives it: its exports, besides what the interop adds)
+  const exported = Object.keys(ids).filter((name) => name !== "default" && typeof ids[name] === "function")
+  expect(exported.sort()).toEqual([...sampled].map(camel).sort())
+})
+
+test.describe("the grid's hook mounted by hand", () => {
+  const cell = (page: Page, key: string, column: string) => page.locator(`[id="kit-row-${key}-c-${column}"]`)
+  const edits = (page: Page) => page.evaluate(() => (window as unknown as { kitMount: { edits: unknown[] } }).kitMount.edits)
+  const call = (page: Page, what: "remount" | "destroy" | "update") =>
+    page.evaluate((what) => (window as unknown as { kitMount: Record<string, () => void> }).kitMount[what](), what)
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/e2e/markers?mount=1")
+    await expect(page.locator('[id="kit-grid"]')).not.toHaveAttribute("phx-hook")
+    // the hook mounted by hand has made its tab stop
+    await expect(cell(page, "a", "name")).toHaveAttribute("tabindex", "0")
+  })
+
+  test("moves with the keys, edits and saves, and tells onEdit", async ({ page }) => {
+    await cell(page, "a", "name").focus()
+    await page.keyboard.press("ArrowRight")
+    await expect(cell(page, "a", "size")).toBeFocused()
+    await page.keyboard.press("ArrowLeft")
+
+    await page.keyboard.press("Enter")
+    const editor = cell(page, "a", "name").locator("textarea")
+    await expect(editor).toBeFocused()
+    expect(await edits(page)).toEqual(["kit-row-a-c-name"])
+
+    await page.keyboard.press("Escape")
+    await expect(cell(page, "a", "name")).toBeFocused()
+    expect(await edits(page)).toEqual(["kit-row-a-c-name", null])
+
+    // a save goes out through the transport (the sender), and its row comes back
+    await page.keyboard.press("Enter")
+    await editor.fill("Anvil")
+    await page.keyboard.press("Enter")
+    await expect(cell(page, "a", "name")).toHaveText("Anvil")
+    await expect(cell(page, "a", "name")).not.toHaveAttribute("aria-busy")
+    expect(await edits(page)).toEqual(["kit-row-a-c-name", null, "kit-row-a-c-name", null])
+    await call(page, "update")
+  })
+
+  test("mounted again after destroy, it acts once per key; destroyed, not at all", async ({ page }) => {
+    // as React's StrictMode does: mount, destroy (twice does nothing more), mount
+    await call(page, "remount")
+    await call(page, "remount")
+
+    await cell(page, "a", "name").focus()
+    await page.keyboard.press("ArrowRight")
+    // one cell on, not two or three: one hook hears the key
+    await expect(cell(page, "a", "size")).toBeFocused()
+    await page.keyboard.press("ArrowDown")
+    await expect(page.locator('[id="kit-row-a-l-parts-c"]')).toBeFocused()
+
+    await page.keyboard.press("ArrowUp")
+    await page.keyboard.press("ArrowLeft")
+    await page.keyboard.press("Enter")
+    await expect(cell(page, "a", "name").locator("textarea")).toBeFocused()
+    await page.keyboard.press("Escape")
+    // each edit told once
+    expect(await edits(page)).toEqual(["kit-row-a-c-name", null])
+
+    await call(page, "destroy")
+    await cell(page, "a", "name").focus()
+    await page.keyboard.press("ArrowRight")
+    await expect(cell(page, "a", "name")).toBeFocused()
+  })
+})

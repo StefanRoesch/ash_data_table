@@ -91,26 +91,30 @@ export const FOCUSABLE = ":is(input:not([type=hidden]),select,textarea,button,a[
 // it is in a modal dialog, unless what has the focus took it.
 //
 // `own` keeps to the events of `el` itself, where something else that
-// opens is drawn inside it.
-export function opened(el, cancel, own = handle => handle) {
+// opens is drawn inside it. `until` is the hook's: its listeners go with it.
+export function opened(el, cancel, until, own = handle => handle) {
   if (el.dataset.presentation === "inline") {
     el.addEventListener("keydown", own(e => {
       if (e.key !== "Escape" || e.defaultPrevented) return
       e.preventDefault()
       cancel()
-    }))
+    }), until)
     const first = Array.from(el.querySelectorAll(FOCUSABLE)).find(control => control.getClientRects().length > 0)
     if (first) first.focus()
   } else {
-    if (el.showModal) el.showModal()
+    // (open already where the hook is mounted on it again)
+    if (el.showModal && !el.open) el.showModal()
     // Escape: the dialog stays until the server has taken it away
-    el.addEventListener("cancel", e => { e.preventDefault(); cancel() })
+    el.addEventListener("cancel", e => { e.preventDefault(); cancel() }, until)
   }
 }
 
 export default {
   mounted() {
     const dialog = this.el
+    // every listener of the hook goes with it (`destroyed`)
+    this.ending = new AbortController()
+    const until = {signal: this.ending.signal}
     const grid = document.querySelector(`${GRID}[${OF}="${CSS.escape(dialog.getAttribute(OF))}"]`)
     this.grid = grid && grid._ashDataTable
     // the control that opened the panel has the focus still
@@ -122,12 +126,12 @@ export default {
     // modal panel, an inline picker): what happens in it is the
     // picker's, not the panel's.
     const own = handle => e => { if (e.target.closest && e.target.closest(OPENED) === dialog) handle(e) }
-    opened(dialog, () => this.cancel(), own)
+    opened(dialog, () => this.cancel(), until, own)
     // Focus is on the first control of the panel. Where that is the
     // button that takes a group away, it goes on to the group's first
     // field: Enter there is not to remove what the person came to edit.
     if (document.activeElement && document.activeElement.matches(REMOVE_GROUP)) this.into(dialog.id)
-    dialog.addEventListener("click", own(e => { if (e.target.closest(CANCEL)) this.cancel() }))
+    dialog.addEventListener("click", own(e => { if (e.target.closest(CANCEL)) this.cancel() }), until)
     // What the editor of a column's component shows of its control's
     // value besides the control (the number beside a slider) follows
     // the control here, as it does in a cell, without waiting for
@@ -136,7 +140,7 @@ export default {
       const field = e.target.closest && e.target.closest(FIELD)
       if (!field || !e.target.matches(CONTROL)) return
       for (const shown of field.querySelectorAll(VALUE_TEXT)) shown.textContent = e.target.value
-    }))
+    }), until)
     // The field of an array that is given value by value: its rows
     // are added and taken away here. The server is told as it is of
     // anything typed into a field, by the entry the field sends before
@@ -153,14 +157,14 @@ export default {
       else if (e.target.closest(REMOVE)) removeValue(list, e.target.closest(ITEM))
       else return
       changed(list)
-    }))
+    }), until)
     // a box of such a field: what it holds is sent by the input beside it
     dialog.addEventListener("change", own(e => {
       const item = e.target.closest && e.target.closest(`${LIST} ${ITEM}`)
       if (!item || e.target.type !== "checkbox") return
       hold(item)
       changed(item.closest(LIST))
-    }))
+    }), until)
     // The buttons of a field made of groups (an embedded resource, a
     // map, an array of either), of one that holds several related
     // records, and of a sensitive one that can be emptied, send their
@@ -205,7 +209,7 @@ export default {
         this.confirmed = true
         e.target.requestSubmit(submitter)
       })
-    }), true)
+    }), {capture: true, signal: this.ending.signal})
   },
 
   cancel() { this.transport.push("panel_cancel", {}) },
@@ -256,6 +260,7 @@ export default {
   // which takes focus back to its tab stop when the panel goes: the
   // cell the opener is in. That is nowhere yet, too.
   destroyed() {
+    this.ending.abort()
     // a question it asked in it is answered as Cancel
     if (this.grid) this.grid.goneWith(this.el)
     setTimeout(() => {

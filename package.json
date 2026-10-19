@@ -1,11 +1,14 @@
 {
   "name": "ash_data_table",
   "version": "0.1.0",
-  "description": "The browser hooks of ash_data_table, for custom builds and other UI technologies. A LiveView host needs none of this: the table's colocated hooks bring them.",
+  "description": "The browser hooks of ash_data_table, for custom builds and kits that draw in the browser (mountGrid and its kin, the ids, the attributes the hooks own). A LiveView host needs none of this: the table's colocated hooks bring them.",
   "license": "MIT",
   "main": "./assets/js/index.js",
   "exports": {
-    ".": "./assets/js/index.js"
+    ".": "./assets/js/index.js",
+    "./ids": "./assets/js/ids.js",
+    "./owned": "./assets/js/owned.js",
+    "./mount": "./assets/js/mount.js"
   },
   "scripts": {
     "check": "tsc -p assets"

@@ -220,7 +220,7 @@ export default {
   // where the person has put it.
   finish(ed, save, refocus) {
     if (this.editing !== ed || ed.asking) return
-    if (!ed.cell.isConnected) { this.editing = null; return }
+    if (!ed.cell.isConnected) { this.editing = null; this.edited(null); return }
     if (save && ed.input.value !== ed.old && ed.confirm) {
       ed.asking = true
       this.ask(ed.confirm).then(confirmed => {
@@ -248,6 +248,7 @@ export default {
     this.editing = null
     // (the owner-kept exception of `startEdit` in editing.js)
     cell.removeAttribute("phx-update")
+    this.edited(null)
   },
 
   // The editor of a cell is gone. Where its row was to go

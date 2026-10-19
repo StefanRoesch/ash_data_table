@@ -104,6 +104,11 @@ const core = {
   mounted() {
     // the table's id, which every id in it starts with
     this.id = this.el.getAttribute(OF)
+    // Every listener this hook adds to its element, the document and the
+    // window goes with it (`destroyed`), so that the hook can be mounted on
+    // the same element again (`mountGrid`, under React's StrictMode).
+    this.ending = new AbortController()
+    const until = {signal: this.ending.signal}
     // for the hooks of the grids around this one and in it
     this.el._ashDataTable = this
     // the cell arrow keys start from: the first data cell of the first
@@ -151,7 +156,7 @@ const core = {
     // the ids of its parts).
     this.scope = document
     this.onLine = e => this.onLineClick(e)
-    this.scope.addEventListener("click", this.onLine)
+    this.scope.addEventListener("click", this.onLine, until)
     // the button of the line the focus was in last, for when the
     // server takes the buttons away with the selection (`paint`)
     this.lineFocus = null
@@ -159,20 +164,20 @@ const core = {
       const line = this.line()
       if (line && line.contains(e.target)) this.lineFocus = e.target
     }
-    this.scope.addEventListener("focusin", this.onLineFocus)
+    this.scope.addEventListener("focusin", this.onLineFocus, until)
     // so is the argument line: Enter in one of its inputs applies
     // what the line holds now, as it does in a filter. A form of
     // several inputs without a button is not sent by Enter itself.
     this.onArgument = e => this.onArgumentKeydown(e)
-    this.scope.addEventListener("keydown", this.onArgument)
+    this.scope.addEventListener("keydown", this.onArgument, until)
     // The counter of a text follows what is typed, wherever in the
     // table the text is: in a cell, in the argument line, in the
     // action panel. Nothing is sent for it.
     this.onTyped = e => this.onCount(e)
-    this.scope.addEventListener("input", this.onTyped)
+    this.scope.addEventListener("input", this.onTyped, until)
     // and so is "Columns", with its list
     this.onColumns = e => this.onColumnsEvent(e)
-    for (const type of ["change", "focusout"]) this.scope.addEventListener(type, this.onColumns)
+    for (const type of ["change", "focusout"]) this.scope.addEventListener(type, this.onColumns, until)
     // A patch of the argument line brings its counters as the
     // server counted them, from what it had heard by then, which
     // need not be all that has been typed since: they are counted
@@ -230,20 +235,20 @@ const core = {
     })
     // what happens in a grid nested in this one is that grid's
     const own = handle => e => { if (this.owns(e.target)) handle(e) }
-    this.el.addEventListener("keydown", own(e => this.onKeydown(e)))
-    this.el.addEventListener("focusin", own(e => this.onFocusin(e)))
-    this.el.addEventListener("focusout", own(e => this.onFocusout(e)))
-    this.el.addEventListener("click", own(e => this.onClick(e)))
-    this.el.addEventListener("mousedown", own(e => this.onMousedown(e)))
-    this.el.addEventListener("dblclick", own(e => this.onDblclick(e)))
-    this.el.addEventListener("pointerdown", own(e => this.onResizeStart(e)))
-    this.el.addEventListener("mouseover", e => this.onPointer(this.cellOf(e.target)))
-    this.el.addEventListener("mouseleave", () => this.onPointer(null))
+    this.el.addEventListener("keydown", own(e => this.onKeydown(e)), until)
+    this.el.addEventListener("focusin", own(e => this.onFocusin(e)), until)
+    this.el.addEventListener("focusout", own(e => this.onFocusout(e)), until)
+    this.el.addEventListener("click", own(e => this.onClick(e)), until)
+    this.el.addEventListener("mousedown", own(e => this.onMousedown(e)), until)
+    this.el.addEventListener("dblclick", own(e => this.onDblclick(e)), until)
+    this.el.addEventListener("pointerdown", own(e => this.onResizeStart(e)), until)
+    this.el.addEventListener("mouseover", e => this.onPointer(this.cellOf(e.target)), until)
+    this.el.addEventListener("mouseleave", () => this.onPointer(null), until)
     // The window scrolls, or is another size: the scrollbar at its
     // bottom edge follows (`PLACE`). Nothing else is placed by hand.
     this.onScroll = () => PLACE()
-    window.addEventListener("scroll", this.onScroll, true)
-    window.addEventListener("resize", this.onScroll)
+    window.addEventListener("scroll", this.onScroll, {capture: true, signal: this.ending.signal})
+    window.addEventListener("resize", this.onScroll, until)
     // The grid scrolls sideways: its scrollbar at the bottom edge
     // of the window follows, and the other way round; and what
     // stays in view has an edge while something is under it.
@@ -254,8 +259,8 @@ const core = {
     this.bar = this.part("scrollbar")
     this.onSideways = () => this.sideways()
     this.onBar = () => this.fromBar()
-    this.el.addEventListener("scroll", this.onSideways, {passive: true})
-    if (this.bar) this.bar.addEventListener("scroll", this.onBar, {passive: true})
+    this.el.addEventListener("scroll", this.onSideways, {passive: true, signal: this.ending.signal})
+    if (this.bar) this.bar.addEventListener("scroll", this.onBar, {passive: true, signal: this.ending.signal})
     // how wide the grid is, and the table in it, is watched: for
     // what a nested table is told, and for the scrollbar
     this.measured = new ResizeObserver(() => this.measure())
@@ -303,13 +308,18 @@ const core = {
     this.observer && this.observer.disconnect()
     this.counted && this.counted.disconnect()
     this.listed && this.listed.disconnect()
-    for (const type of ["change", "focusout"]) this.scope.removeEventListener(type, this.onColumns)
-    this.scope.removeEventListener("input", this.onTyped)
-    window.removeEventListener("scroll", this.onScroll, true)
-    window.removeEventListener("resize", this.onScroll)
-    this.scope.removeEventListener("click", this.onLine)
-    this.scope.removeEventListener("focusin", this.onLineFocus)
-    this.scope.removeEventListener("keydown", this.onArgument)
+    this.measured && this.measured.disconnect()
+    this.ending.abort()
+    if (this.el._ashDataTable === this) delete this.el._ashDataTable
+  },
+
+  // Says which cell is being edited, by its id, or that none is (null), to
+  // whoever mounted the hook and asked (`mountGrid`'s `onEdit`): a kit that
+  // draws in the browser keeps the cell's content as it is meanwhile, as
+  // LiveView leaves an edited cell alone (`editing.js`).
+  edited(cellId) {
+    const onEdit = this.options && this.options.onEdit
+    if (onEdit) onEdit(cellId)
   },
 }
 

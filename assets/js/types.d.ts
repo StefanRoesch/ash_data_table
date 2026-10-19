@@ -25,3 +25,36 @@ interface HTMLElement {
   // of a <template>
   content?: DocumentFragment
 }
+
+// The public entries for a kit that draws in the browser (mount.js).
+declare namespace AshDataTable {
+  interface Transport {
+    push(event: string, payload: object): Promise<any>
+    on(event: string, handler: (payload: any) => void): any
+    off(event: string): void
+    debug(): boolean
+  }
+
+  interface Mounted {
+    update(): void
+    destroy(): void
+  }
+
+  interface Options {
+    onEdit?: (cellId: string | null) => void
+  }
+
+  interface HookFunctions {
+    el: HTMLElement
+    pushEventTo(selectorOrTarget: string | HTMLElement, event: string, payload: object): Promise<any>
+    handleEvent(event: string, handler: (payload: any) => void): any
+    removeHandleEvent(ref: any): void
+    liveSocket?: {isDebugEnabled(): boolean}
+  }
+
+  interface Owned {
+    attribute: string
+    on: string
+    kit: "never" | "once" | "given"
+  }
+}
