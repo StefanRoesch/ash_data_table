@@ -1077,6 +1077,27 @@ export class Table {
     )
   }
 
+  /** The Tab stops of a row, left to right, named as `tabStops()` names them: its box, expander, editable cells, buttons. */
+  async rowStops(key: string): Promise<string[]> {
+    return this.rowLine(key).evaluate((row) =>
+      Array.from(row.querySelectorAll<HTMLElement>("*"))
+        .filter(
+          (element) =>
+            element.tabIndex >= 0 && !(element as HTMLButtonElement).disabled && element.getClientRects().length > 0,
+        )
+        .map((element) => element.id || `${element.closest("[id]")?.id}>${element.tagName.toLowerCase()}`),
+    )
+  }
+
+  /** What has focus, named as `tabStops()` names a stop; `BODY` where nothing has. */
+  async focusedStop(): Promise<string> {
+    return this.page.evaluate(() => {
+      const active = document.activeElement as HTMLElement | null
+      if (!active || active === document.body) return "BODY"
+      return active.id || `${active.closest("[id]")?.id}>${active.tagName.toLowerCase()}`
+    })
+  }
+
   /**
    * Presses Tab (Shift+Tab with `back`) `count` times from where focus is,
    * and gives what has focus after each press, as `tabStops()` names it.
