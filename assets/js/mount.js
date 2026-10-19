@@ -11,18 +11,25 @@
 //
 //     const transport = liveViewTransport({el, pushEventTo, handleEvent, removeHandleEvent, liveSocket})
 //     const grid = mountGrid(el, transport, {onEdit: cellId => setEdited(cellId)})
-//     // after each commit of the framework: grid.update()
+//     // before each commit of the framework: grid.beforeUpdate()
+//     // after it: grid.updated()
 //     // when the element goes: grid.destroy()
 //
-// mountGrid(el, transport, options) -> {update(), destroy()}
+// mountGrid(el, transport, options) -> {beforeUpdate(), updated(), destroy()}
 //   `el` the grid's element (`Attrs.grid/6`), `transport` (below),
 //   `options.onEdit(cellId | null)`: told the id of the cell the person
 //   starts to edit, and null when the edit ends. While a cell is edited
 //   the hook holds its content (the editor); the kit keeps the cell's
 //   children as they are meanwhile, and draws them from the fresh item
 //   once the edit has ended (a HEEx kit has LiveView's `beforeUpdate` for
-//   it). `update()` after each commit that may have changed the grid;
-//   `destroy()` when the element goes. Both do nothing after `destroy()`,
+//   it). `beforeUpdate()` before each commit that may change the
+//   element, while the DOM is still as it was (React: in the render that
+//   leads to it, or `getSnapshotBeforeUpdate`), and `updated()` after it
+//   (React: a layout effect), as LiveView calls a hook's `beforeUpdate`
+//   and `updated`: what a hook keeps aside of the DOM before it changes
+//   (the pagination: the control that has focus, which a commit that
+//   takes its button out drops) it can only take before. `destroy()` when
+//   the element goes. All three do nothing after `destroy()`,
 //   and a second `mountGrid` on the same element after it works (React's
 //   StrictMode mounts twice).
 // mountPanel, mountPicker, mountPagination: the same, on the element of
@@ -93,12 +100,15 @@ function mount(behaviour, part, el, transport, options = {}) {
   let live = true
 
   return {
-    update() {
+    beforeUpdate() {
       if (!live) return
-      // what a hook keeps aside before LiveView patches its element (the
-      // pagination's focus) it takes now; the grid's `beforeUpdate` needs
-      // LiveView's element, and leaves it to `onEdit`
+      // what a hook keeps aside before its element changes (the
+      // pagination's focus); the grid's `beforeUpdate` needs LiveView's
+      // element to come (`toEl`), has none here and leaves it to `onEdit`
       if (hook.beforeUpdate) hook.beforeUpdate()
+    },
+    updated() {
+      if (!live) return
       if (hook.updated) hook.updated()
       check(hook, part)
     },

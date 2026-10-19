@@ -22,7 +22,8 @@ defmodule DemoWeb.E2E.MarkersLive do
   `MountedGrid` (`assets/js/mounted_grid.js`) mounts the grid's hook by
   hand through the package's public entries (`mountGrid`,
   `liveViewTransport`), as a kit that draws in the browser does
-  (`e2e/contract.spec.ts`).
+  (`e2e/contract.spec.ts`), and the hook of a pagination beside it
+  (`mountPagination`).
 
   `?missing=colindex` draws one cell without its place (`aria-colindex`),
   for the development check of the hook. `?asks=1` has the column
@@ -150,7 +151,15 @@ defmodule DemoWeb.E2E.MarkersLive do
           <span id="kit-columns-status" role="status" phx-update="ignore"></span>
         </div>
         <div id="kit-sender" phx-hook="AshDataTable.Sender" data-sender data-table="kit" hidden></div>
-        <div :if={@mount} id="kit-mount" phx-hook="MountedGrid" data-grid="kit-grid" hidden></div>
+        <div
+          :if={@mount}
+          id="kit-mount"
+          phx-hook="MountedGrid"
+          data-grid="kit-grid"
+          data-pagination="kit-pagination"
+          hidden
+        >
+        </div>
         <div
           id="kit-grid"
           phx-hook={if @mount, do: nil, else: "AshDataTable.Grid"}
@@ -352,6 +361,18 @@ defmodule DemoWeb.E2E.MarkersLive do
             <textarea rows="1" aria-label="Name"></textarea>
           </template>
         </div>
+        <%!-- with `?mount=1`, a pagination whose hook is mounted by hand
+        too; its buttons are the test's to change, as a kit's commit does --%>
+        <nav
+          :if={@mount}
+          id="kit-pagination"
+          data-table="kit"
+          aria-label="Pages"
+          phx-update="ignore"
+        >
+          <button type="button" id="kit-page-1" aria-current="page">1</button>
+          <button type="button" id="kit-page-2">2</button>
+        </nav>
         <%!-- an action panel in the page whose action asks before it
         runs; with `?missing=grid` it names a table whose grid is not on
         the page, so there is nobody to ask --%>

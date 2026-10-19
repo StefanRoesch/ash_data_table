@@ -46,7 +46,7 @@ test("ids.js makes every id AshDataTable.Ids makes, and has no function it lacks
 test.describe("the grid's hook mounted by hand", () => {
   const cell = (page: Page, key: string, column: string) => page.locator(`[id="kit-row-${key}-c-${column}"]`)
   const edits = (page: Page) => page.evaluate(() => (window as unknown as { kitMount: { edits: unknown[] } }).kitMount.edits)
-  const call = (page: Page, what: "remount" | "destroy" | "update") =>
+  const call = (page: Page, what: "remount" | "destroy" | "beforeUpdate" | "updated") =>
     page.evaluate((what) => (window as unknown as { kitMount: Record<string, () => void> }).kitMount[what](), what)
 
   test.beforeEach(async ({ page }) => {
@@ -78,7 +78,34 @@ test.describe("the grid's hook mounted by hand", () => {
     await expect(cell(page, "a", "name")).toHaveText("Anvil")
     await expect(cell(page, "a", "name")).not.toHaveAttribute("aria-busy")
     expect(await edits(page)).toEqual(["kit-row-a-c-name", null, "kit-row-a-c-name", null])
-    await call(page, "update")
+    await call(page, "beforeUpdate")
+    await call(page, "updated")
+  })
+
+  test("the pagination keeps the focused control aside before a commit, and gives focus back after", async ({ page }) => {
+    // a commit of the kit that takes the focused button out and puts a new
+    // one in its place: the browser drops the focus; the kit says it has
+    // committed a moment later (a passive effect), once the focus is gone
+    const commit = (page: Page, before: boolean) =>
+      page.evaluate(async (before) => {
+        const { pagination } = (window as unknown as { kitMount: { pagination: { beforeUpdate(): void; updated(): void } } }).kitMount
+        if (before) pagination.beforeUpdate()
+        const button = document.getElementById("kit-page-2")!
+        button.replaceWith(button.cloneNode(true))
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        pagination.updated()
+      }, before)
+    const button = page.locator('[id="kit-page-2"]')
+
+    // told only after the commit, it has nothing to give back
+    await button.focus()
+    await commit(page, false)
+    await expect(button).not.toBeFocused()
+
+    // told before it, as the contract asks
+    await button.focus()
+    await commit(page, true)
+    await expect(button).toBeFocused()
   })
 
   test("mounted again after destroy, it acts once per key; destroyed, not at all", async ({ page }) => {

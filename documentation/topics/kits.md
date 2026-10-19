@@ -348,8 +348,9 @@ write through the server's checks. What such a kit relies on is public:
 - **The hooks.** Inside an island LiveView mounts no hook, so the kit mounts
   them itself with the package's JS entries, `mountGrid`, `mountPanel`,
   `mountPicker` and `mountPagination`, given a transport that
-  `liveViewTransport` makes of LiveView's hook functions. `update()` after
-  each render, `destroy()` when the element goes; mounted again after
+  `liveViewTransport` makes of LiveView's hook functions. `beforeUpdate()`
+  before each commit that may change the element and `updated()` after it
+  (as LiveView calls a hook's), `destroy()` when the element goes; mounted again after
   `destroy()` it works (React's StrictMode). `onEdit` tells the kit which
   cell is being edited: it keeps that cell's content as it is until the
   edit ends. The comment at the top of `assets/js/mount.js` is the contract.

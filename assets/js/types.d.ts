@@ -36,7 +36,10 @@ declare namespace AshDataTable {
   }
 
   interface Mounted {
-    update(): void
+    /** Before each commit that may change the element, while its DOM is as it was. */
+    beforeUpdate(): void
+    /** After that commit. */
+    updated(): void
     destroy(): void
   }
 
