@@ -23,7 +23,8 @@ defmodule AshDataTable.Parts.Related do
   # so the name follows the row when it is edited, and the server keeps
   # nothing for it.
   #
-  # The detail draws a line per relationship (the kit's `line/1`).
+  # The detail draws a line per relationship (the kit's `line/1`), from the
+  # detail's item (`AshDataTable.Item`): its `lines`, in the model's order.
   attr :id, :string, required: true
   attr :row, :map, required: true
   attr :model, :map, required: true
@@ -34,25 +35,20 @@ defmodule AshDataTable.Parts.Related do
   def detail(assigns) do
     ~H"""
     <Kit.part
-      :for={relationship <- @model.relationships}
+      :for={{relationship, line} <- Enum.zip(@model.relationships, @row.lines)}
       part={:line}
       kit={@kit}
       id={Ids.row(@id, @row.key)}
       relationship={relationship}
-      open?={relationship.name in @row.lines}
-      count={line_count(@row, relationship)}
+      open?={line.open}
+      count={line.count}
       colspan={@colspan}
       table={Ids.nested_table(Ids.row(@id, @row.key), relationship.name)}
       myself={@myself}
-      texts={Words.texts(:line, %{count: line_count(@row, relationship)})}
-      messages={Words.messages(:line, %{count: line_count(@row, relationship)})}
+      texts={Words.texts(:line, %{count: line.count})}
+      messages={Words.messages(:line, %{count: line.count})}
     />
     """
-  end
-
-  # How many records the open nested table of a line has, once it is known.
-  defp line_count(row, relationship) do
-    if relationship.name in row.lines, do: Map.get(row.counts, relationship.name)
   end
 
   # One relationship's line under an expanded row, and under it, while it

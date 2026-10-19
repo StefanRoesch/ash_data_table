@@ -269,16 +269,17 @@ defmodule AshDataTable.Event do
 
   # What a field is, as the page draws it: its name, label, type, the
   # control it has (`editor`), whether it is required, the choices of an
-  # enum; of a value made of fields its `fields`, of a union its `kinds`,
+  # enum (each `%{value:, label:}`); of a value made of fields its `fields`, of a union its `kinds`,
   # each described the same way.
   defp described(input) do
     own = %{
       name: input.name,
       label: input.label,
-      type: input.cell_type,
+      type: plain_type(input.cell_type),
       editor: input.editor,
       required?: Map.get(input, :required?, false),
-      values: input.values
+      values:
+        input.values && for({value, label} <- input.values, do: %{value: value, label: label})
     }
 
     case input.editor do
@@ -292,6 +293,10 @@ defmodule AshDataTable.Event do
         own
     end
   end
+
+  # A cell type as plain data: an array's is `%{array: item}`.
+  defp plain_type({:array, item}), do: %{array: plain_type(item)}
+  defp plain_type(type), do: type
 
   # What a field of the panel holds that the picker is open for: the keys,
   # as the field writes them.

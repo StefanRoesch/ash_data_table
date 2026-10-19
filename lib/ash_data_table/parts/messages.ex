@@ -7,7 +7,6 @@ defmodule AshDataTable.Parts.Messages do
   use Phoenix.Component
 
   alias AshDataTable.Attrs
-  alias AshDataTable.Parts
   alias Phoenix.LiveView.JS
 
   # Whether anything of the table asks a question before it runs: a column,
@@ -38,7 +37,7 @@ defmodule AshDataTable.Parts.Messages do
         tabindex={@nested? && "-1"}
         class="btn btn-sm"
         phx-click={
-          JS.push(Parts.Common.event(@id, "read_again"), target: @myself)
+          JS.push(Attrs.event(@id, "read_again"), target: @myself)
           |> JS.focus(to: "##{@id}-table [tabindex='0']")
         }
       >

@@ -51,8 +51,8 @@ defmodule AshDataTable.Parts.Panel do
       <form
         id={"#{@id}-panel-form"}
         method={@panel.method}
-        phx-change={Parts.Common.event(@id, "panel_validate")}
-        phx-submit={Parts.Common.event(@id, "panel_submit")}
+        phx-change={Attrs.event(@id, "panel_validate")}
+        phx-submit={Attrs.event(@id, "panel_submit")}
         phx-target={@target}
         novalidate
       >
@@ -252,7 +252,7 @@ defmodule AshDataTable.Parts.Panel do
           id={Ids.choose(@id)}
           class="btn btn-sm"
           aria-describedby={@called && "#{@id}-chosen"}
-          phx-click={Parts.Common.event(@inside.table, "pick_input")}
+          phx-click={Attrs.event(@inside.table, "pick_input")}
           phx-value-input={@input.name}
           phx-target={@target}
         >
@@ -300,7 +300,7 @@ defmodule AshDataTable.Parts.Panel do
           type="button"
           id={Ids.choose(@id)}
           class="btn btn-sm self-start"
-          phx-click={Parts.Common.event(@inside.table, "pick_input")}
+          phx-click={Attrs.event(@inside.table, "pick_input")}
           phx-value-input={@input.name}
           phx-target={@target}
         >

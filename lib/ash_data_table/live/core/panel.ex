@@ -743,14 +743,14 @@ defmodule AshDataTable.Live.Core.Panel do
             stream_insert(
               socket,
               Core.table(socket).entry.stream,
-              Reading.detail(id, key, nil, nil),
+              Reading.detail(socket, key, nil),
               at: 0
             ),
           else: socket
       end)
       |> stream_insert(
         Core.table(socket).entry.stream,
-        Present.row(model, record, %{
+        Reading.item(socket, record, %{
           id: id,
           key: key,
           rowindex: first,

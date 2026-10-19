@@ -196,7 +196,7 @@ defmodule AshDataTable.Parts.Selection do
         tabindex={@nested? && "-1"}
         class="btn btn-ghost btn-sm ms-auto"
         phx-click={
-          JS.push(Parts.Common.event(@id, "clear_filters"), target: @myself)
+          JS.push(Attrs.event(@id, "clear_filters"), target: @myself)
           |> JS.focus(to: "##{@id}-table [tabindex='0']")
         }
       >

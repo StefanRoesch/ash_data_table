@@ -54,7 +54,7 @@ defmodule AshDataTable.ArchitectureTest do
   @lib "lib/ash_data_table"
 
   # the files of the words, by name (3w)
-  @words ~w(text.ex format.ex gettext.ex messages.ex)
+  @words ~w(text.ex format.ex gettext.ex messages.ex item.ex)
   # the files of the wiring, by name (4): the live component of the tag
   # hands the socket to the live core, and `AshDataTable.attached/1` draws
   @wiring ~w(router.ex not_found_error.ex live/page.ex live/embedded.ex live/drawing.ex)

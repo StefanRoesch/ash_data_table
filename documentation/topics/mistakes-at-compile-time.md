@@ -837,7 +837,7 @@ router did not mount, and another resource, table or id under a name
 already attached. The router line's `:kit` and `:presentation` are checked
 this way when its page is opened.
 
-**A kit** is checked twice. `use AshDataTable.Kit, contract: 1` is checked
+**A kit** is checked twice. `use AshDataTable.Kit, contract: 2` is checked
 when the kit compiles: another contract number, a public function of one
 argument that is no part of a kit, and a `class` or `presentation` of
 another arity are a `CompileError`. And a kit is checked again where it is
@@ -848,7 +848,7 @@ nor `:inline`, is an `ArgumentError`:
 
 <!-- sketch -->
 ```text
-** (ArgumentError) AshDataTable.attach/4 was given `kit: MyAppWeb.Table`, which is no kit: a kit is a module that says `use AshDataTable.Kit, contract: 1` (see AshDataTable.Kit)
+** (ArgumentError) AshDataTable.attach/4 was given `kit: MyAppWeb.Table`, which is no kit: a kit is a module that says `use AshDataTable.Kit, contract: 2` (see AshDataTable.Kit)
 ```
 
 See [Kits](kits.md).

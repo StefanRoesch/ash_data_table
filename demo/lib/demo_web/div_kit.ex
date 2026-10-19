@@ -11,7 +11,7 @@ defmodule DemoWeb.DivKit do
   the columns line up; what is not a grid part is the default kit's. What
   it says is what each part is given (`texts`), in the person's language.
   """
-  use AshDataTable.Kit, contract: 1
+  use AshDataTable.Kit, contract: 2
 
   alias AshDataTable.Attrs
   alias AshDataTable.Ids
@@ -118,7 +118,7 @@ defmodule DemoWeb.DivKit do
           :for={{dom_id, row} <- @rows}
           id={dom_id}
           role="rowgroup"
-          {Attrs.rowgroup(row, @selecting)}
+          {row.attrs}
           class="table-row-group"
           phx-no-format
         ><Kit.part
@@ -242,7 +242,7 @@ defmodule DemoWeb.DivKit do
     ~H"""
     <div id={"#{@dom_id}-r"} role="row" aria-rowindex={@row.rowindex} class="table-row" phx-no-format><div
       :if={@selecting}
-      id={"#{@dom_id}-s"}
+      id={Ids.selector(@dom_id)}
       role="gridcell"
       aria-colindex="1"
       tabindex="-1"
@@ -256,13 +256,13 @@ defmodule DemoWeb.DivKit do
       tabindex="-1"
       data-expander
       class="table-cell px-2 py-1"
-    ><button type="button" tabindex="-1" aria-expanded={to_string(@row.open?)} aria-label={@texts.related_records}></button></div><div
+    ><button type="button" tabindex="-1" aria-expanded={to_string(@row.open)} aria-label={@texts.related_records}></button></div><div
       :for={{column, index} <- Enum.with_index(@columns)}
       id={Ids.cell(@dom_id, column.name)}
       role="gridcell"
       aria-colindex={@lead + index + 1}
       tabindex="-1"
-      {Attrs.cell(Ids.cell(@dom_id, column.name), column, @editing?, @row, @time_zone)}
+      {Attrs.cell(column, @row.cells[column.name])}
       class="table-cell px-2 py-1"
     ><Kit.cell kit={@kit} id={Ids.cell(@dom_id, column.name)} column={column} cell={@row.cells[column.name]} time_zone={@time_zone} /></div><Kit.part
       :if={@acting?}
@@ -304,25 +304,25 @@ defmodule DemoWeb.DivKit do
       data-action={action.name}
       {Attrs.action(action, @asks?)}
       class="btn btn-xs me-1"
-    >{action.label}</button><Kit.part :if={@row.action_failure} part={:failure} kit={@kit} id={"#{@id}-error"} message={Words.message(:failure, %{message: @row.action_failure})} text={Words.text(:failure, %{message: @row.action_failure})} /></div>
+    >{action.label}</button><Kit.part :if={@row.failure} part={:failure} kit={@kit} id={Ids.error(@id)} message={@row.failure.message} text={@row.failure.text} /></div>
     """
   end
 
   def detail(assigns) do
     ~H"""
     <Kit.part
-      :for={relationship <- @model.relationships}
+      :for={{relationship, line} <- Enum.zip(@model.relationships, @row.lines)}
       part={:line}
       kit={@kit}
       id={Ids.row(@id, @row.key)}
       relationship={relationship}
-      open?={relationship.name in @row.lines}
-      count={@row.counts[relationship.name]}
+      open?={line.open}
+      count={line.count}
       colspan={@colspan}
       table={Ids.nested_table(Ids.row(@id, @row.key), relationship.name)}
       myself={@myself}
-      texts={Words.texts(:line, %{count: @row.counts[relationship.name]})}
-      messages={Words.messages(:line, %{count: @row.counts[relationship.name]})}
+      texts={Words.texts(:line, %{count: line.count})}
+      messages={Words.messages(:line, %{count: line.count})}
     />
     """
   end

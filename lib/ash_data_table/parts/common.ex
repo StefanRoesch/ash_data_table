@@ -64,13 +64,6 @@ defmodule AshDataTable.Parts.Common do
 
   def summary_rowindex(_page), do: nil
 
-  @doc """
-  The name of the event `name` of the table `id`, as the browser sends it
-  (target.md Q4): `ash_data_table:ID:NAME`. The live core takes only the
-  events of its own table.
-  """
-  def event(id, name), do: "ash_data_table:" <> id <> ":" <> name
-
   # The message of a cell whose save failed, or of a row whose action
   # failed: in the cell, under what it shows, and the row as high as it
   # needs; in the text colour, as the error colour is too faint for small

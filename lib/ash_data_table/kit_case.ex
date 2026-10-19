@@ -110,7 +110,7 @@ defmodule AshDataTable.KitCase do
 
       defmodule Probe do
         @moduledoc false
-        use AshDataTable.Kit, contract: 1
+        use AshDataTable.Kit, contract: 2
 
         unquote_splicing(probed)
 
@@ -183,7 +183,20 @@ defmodule AshDataTable.KitCase do
     Enum.zip_with(messages, texts, &shape!(part, name, &1, &2))
   end
 
-  defp shape!(part, name, {key, values} = message, text) when is_atom(key) and is_map(values) do
+  defp shape!(part, name, %{key: :ash, values: values} = message, text) do
+    if not (is_map(values) and Enum.sort(Map.keys(values)) == [:message, :vars] and
+              is_binary(values.message) and is_map(values.vars)) do
+      raise ArgumentError,
+            "the part #{inspect(part)} is given an action's message `#{name}` " <>
+              "#{inspect(message, limit: 5)}, which is not `%{key: :ash, values: " <>
+              "%{message: String.t(), vars: map}}`"
+    end
+
+    text!(part, name, text)
+  end
+
+  defp shape!(part, name, %{key: key, values: values} = message, text)
+       when is_atom(key) and is_map(values) and map_size(message) == 2 do
     case AshDataTable.Messages.all() do
       %{^key => %{values: names}} ->
         if Enum.sort(Map.keys(values)) != Enum.sort(names) do
@@ -207,16 +220,6 @@ defmodule AshDataTable.KitCase do
     text!(part, name, text)
   end
 
-  defp shape!(part, name, {message, vars}, text) when is_binary(message) and is_list(vars) do
-    if not Keyword.keyword?(vars) do
-      raise ArgumentError,
-            "the part #{inspect(part)} is given an action's message `#{name}` whose " <>
-              "variables are no keyword list: #{inspect(vars, limit: 5)}"
-    end
-
-    text!(part, name, text)
-  end
-
   defp shape!(part, name, other, _text) do
     raise ArgumentError,
           "the part #{inspect(part)} is given `#{name}` as #{inspect(other, limit: 5)}, " <>
@@ -224,8 +227,10 @@ defmodule AshDataTable.KitCase do
   end
 
   # a message inside another: a value of it, or one of those it joins
-  defp inner_message?({key, values}) when is_atom(key) and is_map(values), do: true
-  defp inner_message?({message, vars}) when is_binary(message) and is_list(vars), do: true
+  defp inner_message?(%{key: key, values: values} = message)
+       when is_atom(key) and is_map(values) and map_size(message) == 2,
+       do: true
+
   defp inner_message?(_value), do: false
 
   defp text!(_part, _name, text) when is_nil(text) or is_binary(text), do: :ok

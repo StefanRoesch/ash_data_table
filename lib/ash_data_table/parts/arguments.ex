@@ -188,7 +188,7 @@ defmodule AshDataTable.Parts.Arguments do
               id={"#{@id}-#{at}-remove"}
               aria-label={Enum.at(@texts.remove_value, at)}
               class="btn btn-ghost btn-xs"
-              phx-click={Parts.Common.event(@table, "argument_remove")}
+              phx-click={Attrs.event(@table, "argument_remove")}
               phx-value-argument={@named}
               phx-value-at={at}
               phx-target={@target}
@@ -201,7 +201,7 @@ defmodule AshDataTable.Parts.Arguments do
             type="button"
             id={Ids.argument_value(@id, :add)}
             class="btn btn-sm"
-            phx-click={Parts.Common.event(@table, "argument_add")}
+            phx-click={Attrs.event(@table, "argument_add")}
             phx-value-argument={@named}
             phx-target={@target}
           >

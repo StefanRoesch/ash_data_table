@@ -13,6 +13,10 @@ defmodule AshDataTable.Ids do
   `id` is the table's id. A row is named by `key`, the key in its DOM id
   (`AshDataTable.Kit`'s parts are given it as a row's `key`). `row` is a
   row's DOM id, `row(id, key)`, which a part is given as `dom_id`.
+
+  `assets/js/ids.js` makes the same ids in the browser, function by
+  function (`row`, `cell`, `actionsCell`, …), for a kit that draws there;
+  a browser test compares the two.
   """
 
   @doc "A record's row group: `ID-row-KEY`, the DOM id of a row of the stream."
@@ -26,6 +30,10 @@ defmodule AshDataTable.Ids do
   @doc "The actions cell of a row, focus's place where a row has no column: `ROW-a`."
   @spec actions_cell(String.t()) :: String.t()
   def actions_cell(row), do: "#{row}-a"
+
+  @doc "The cell of a row's selection box: `ROW-s`."
+  @spec selector(String.t()) :: String.t()
+  def selector(row), do: "#{row}-s"
 
   @doc "The expander cell of a row: `ROW-e`."
   @spec expander(String.t()) :: String.t()
@@ -64,6 +72,44 @@ defmodule AshDataTable.Ids do
   @doc "The id of the table nested under a row's line of relationship `name`: `ROW-t-NAME`."
   @spec nested_table(String.t(), atom | String.t()) :: String.t()
   def nested_table(row, name), do: "#{row}-t-#{name}"
+
+  @doc """
+  The element of the message of a cell or a row's actions cell whose save
+  or action failed, which the cell's `aria-describedby` names: `ELEMENT-error`.
+  """
+  @spec error(String.t()) :: String.t()
+  def error(element), do: "#{element}-error"
+
+  @doc "The header of the grid, a row group with its two rows: `ID-head`."
+  @spec head(String.t()) :: String.t()
+  def head(id), do: "#{id}-head"
+
+  @doc "The row of the column headers: `ID-head-row`."
+  @spec head_row(String.t()) :: String.t()
+  def head_row(id), do: "#{id}-head-row"
+
+  @doc "The header of column `name`: `ID-head-NAME`."
+  @spec header_cell(String.t(), atom | String.t()) :: String.t()
+  def header_cell(id, name), do: "#{id}-head-#{name}"
+
+  @doc "The filter row, the header's second: `ID-filter-row`."
+  @spec filter_row(String.t()) :: String.t()
+  def filter_row(id), do: "#{id}-filter-row"
+
+  @doc "The form of the filter row, which its controls name (`form=`): `ID-filters`."
+  @spec filters(String.t()) :: String.t()
+  def filters(id), do: "#{id}-filters"
+
+  @doc """
+  The `<template>` of the editor of column `name`, which the grid's hook
+  copies into a cell to edit it: `ID-editor-NAME`.
+  """
+  @spec editor(String.t(), atom | String.t()) :: String.t()
+  def editor(id, name), do: "#{id}-editor-#{name}"
+
+  @doc "The table's question: `ID-dialog`."
+  @spec dialog(String.t()) :: String.t()
+  def dialog(id), do: "#{id}-dialog"
 
   @doc """
   A field of the action panel, by the way to it: its name, and inside a

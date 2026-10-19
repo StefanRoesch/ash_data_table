@@ -161,7 +161,7 @@ defmodule AshDataTable.Parts.Filter do
         tabindex="-1"
         aria-label={@texts.clear_filter}
         class="btn btn-ghost btn-xs"
-        phx-click={Parts.Common.event(@table, "clear_filter")}
+        phx-click={Attrs.event(@table, "clear_filter")}
         phx-value-column={@column.name}
         phx-target={@target}
       >

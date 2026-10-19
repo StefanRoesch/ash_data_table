@@ -3,15 +3,16 @@ defmodule DemoWeb.Support.MarkedKit do
   A kit for the tests of the kit's part `cell/1`: it draws what the
   default kit draws, inside an element that
   says what the part was given: the cell's state, and whether it was given
-  a value.
+  a value or its text.
   """
-  use AshDataTable.Kit, contract: 1
+  use AshDataTable.Kit, contract: 2
 
   def cell(assigns) do
     ~H"""
-    <span data-kit-cell={@state} data-given={if is_nil(@value), do: "none", else: "value"}>{super(
-      assigns
-    )}</span>
+    <span
+      data-kit-cell={@state}
+      data-given={if is_nil(@value) and is_nil(@text), do: "none", else: "value"}
+    >{super(assigns)}</span>
     """
   end
 end

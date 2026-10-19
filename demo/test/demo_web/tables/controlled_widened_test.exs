@@ -370,8 +370,14 @@ defmodule DemoWeb.Tables.ControlledWidenedTest do
                action: nil,
                column: :tier,
                question: nil,
-               fields: [%{name: :tier, editor: :choices, value: [], values: [_ | _]}]
-             } = request(view)
+               fields: [%{name: :tier, editor: :choices, value: [], values: [_ | _] = values}]
+             } = request = request(view)
+
+      # the choices as maps, and the whole request plain data, as JSON
+      assert Enum.all?(values, &match?(%{value: _, label: label} when is_binary(label), &1))
+
+      assert %{"fields" => [%{"values" => [%{"value" => _, "label" => _} | _]}]} =
+               request |> Jason.encode!() |> Jason.decode!()
 
       answer(view, &AshDataTable.submit_request(&1, :table, ref, %{"tier" => ["", "low"]}))
       assert request(view) == nil

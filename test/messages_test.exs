@@ -10,7 +10,7 @@ defmodule AshDataTable.MessagesTest do
   alias AshDataTable.Messages
   alias AshDataTable.Text
 
-  @made [:label, :join, :words]
+  @made [:label, :join, :words, :ash]
 
   test "every key has a text, and its values are the names the list gives" do
     for {key, %{values: names, msgid: msgid, msgid_plural: plural}} <- Messages.all(),
@@ -43,7 +43,7 @@ defmodule AshDataTable.MessagesTest do
     end
   end
 
-  test "the three made keys have no text of their own" do
+  test "the four made keys have no text of their own" do
     for key <- @made do
       assert %{msgid: nil, msgid_plural: nil} = Messages.all()[key]
       assert_raise ArgumentError, fn -> Text.t(key) end
@@ -68,21 +68,43 @@ defmodule AshDataTable.MessagesTest do
     assert Enum.reject(used, &Messages.key?/1) == []
   end
 
-  test "a message is given as its key and values, an action's as Ash gives it" do
+  test "a message is a map of its key and values, an action's under the key :ash" do
     assert Messages.of({:text, :bulk_question, count: 1, action: "Delete"}) ==
-             {:bulk_question, %{count: 1, action: "Delete"}}
+             %{key: :bulk_question, values: %{count: 1, action: "Delete"}}
 
     assert Messages.of({:text, :not_saved, column: "Title", message: {:ash, "is required", %{}}}) ==
-             {:not_saved, %{column: "Title", message: {"is required", []}}}
+             %{
+               key: :not_saved,
+               values: %{
+                 column: "Title",
+                 message: %{key: :ash, values: %{message: "is required", vars: %{}}}
+               }
+             }
 
     assert Messages.of({:ash, "must be at most %{max}", [max: 3]}) ==
-             {"must be at most %{max}", [max: 3]}
+             %{key: :ash, values: %{message: "must be at most %{max}", vars: %{max: 3}}}
 
-    assert Messages.of({:label, "Assignee"}) == {:label, %{text: "Assignee"}}
-    assert Messages.of("Paint") == {:words, %{text: "Paint"}}
+    assert Messages.of({:label, "Assignee"}) == %{key: :label, values: %{text: "Assignee"}}
+    assert Messages.of("Paint") == %{key: :words, values: %{text: "Paint"}}
 
     assert Messages.of({:once, ", ", [{:text, :yes, []}, {:text, :yes, []}]}) ==
-             {:join, %{separator: ", ", messages: [{:yes, %{}}]}}
+             %{key: :join, values: %{separator: ", ", messages: [%{key: :yes, values: %{}}]}}
+  end
+
+  test "a message is plain data: it encodes to JSON as it is" do
+    message =
+      Messages.of(
+        {:join, "; ",
+         [{:text, :not_saved, column: "Title", message: {:ash, "is %{what}", what: "taken"}}, "x"]}
+      )
+
+    assert %{"key" => "join", "values" => %{"messages" => [first, _]}} =
+             message |> Jason.encode!() |> Jason.decode!()
+
+    assert first["values"]["message"] == %{
+             "key" => "ash",
+             "values" => %{"message" => "is %{what}", "vars" => %{"what" => "taken"}}
+           }
   end
 
   test "each text once: a message and the words it says are one, given and said" do
@@ -91,7 +113,13 @@ defmodule AshDataTable.MessagesTest do
     assert Text.say(once) == "Yes, No"
 
     assert Messages.of(once) ==
-             {:join, %{separator: ", ", messages: [{:yes, %{}}, {:no, %{}}]}}
+             %{
+               key: :join,
+               values: %{
+                 separator: ", ",
+                 messages: [%{key: :yes, values: %{}}, %{key: :no, values: %{}}]
+               }
+             }
   end
 
   defp fill(text, bindings),

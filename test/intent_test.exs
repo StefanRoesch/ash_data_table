@@ -167,4 +167,55 @@ defmodule AshDataTable.IntentTest do
     assert parse("pick_input", %{"input" => :owner}) == :malformed
     assert parse("no_such_event", %{}) == :malformed
   end
+
+  # The events `Intent.parse/2` has a clause for, read from its source: a
+  # name in a head, or in a guard's list.
+  defp parsed_names do
+    source = File.read!("lib/ash_data_table/intent.ex")
+
+    heads =
+      for [_, name] <- Regex.scan(~r/def parse\("([a-z_]+)"/, source), do: name
+
+    guarded =
+      for [_, list] <- Regex.scan(~r/when event in \[([^\]]+)\]/, source),
+          [_, name] <- Regex.scan(~r/"([a-z_]+)"/, list),
+          do: name
+
+    Enum.uniq(heads ++ guarded)
+  end
+
+  test "the events of `Attrs`' moduledoc are the events the table parses, and each example parses" do
+    events = AshDataTable.Attrs.events()
+    names = Enum.map(events, & &1.name)
+
+    assert Enum.sort(names) == Enum.sort(parsed_names())
+    assert length(names) == length(Enum.uniq(names))
+
+    for event <- events do
+      assert {:ok, _intent} = parse(event.name, event.example), "#{event.name} does not parse"
+      assert event.by in [:bundle, :kit, :hook]
+      assert event.by == :bundle == is_binary(event[:bundle]), "#{event.name}: its bundle"
+    end
+
+    {:docs_v1, _, _, _, %{"en" => doc}, _, _} = Code.fetch_docs(AshDataTable.Attrs)
+    [_before, listed] = String.split(doc, "## Events", parts: 2)
+    for name <- names, do: assert(listed =~ "| `#{name}` |", "#{name} is not in the moduledoc")
+  end
+
+  test "a bundle named as sending an event sends it" do
+    for %{by: :bundle, bundle: bundle, name: name} <- AshDataTable.Attrs.events() do
+      [function, arity] = String.split(bundle, "/")
+
+      assert function_exported?(
+               AshDataTable.Attrs,
+               String.to_atom(function),
+               String.to_integer(arity)
+             ),
+             "#{name}: no `Attrs.#{bundle}`"
+
+      source = File.read!("lib/ash_data_table/attrs.ex")
+      assert source =~ ~s|event(|, "#{name}"
+      assert source =~ ~s|"#{name}")|, "#{name}: `Attrs` names it nowhere"
+    end
+  end
 end

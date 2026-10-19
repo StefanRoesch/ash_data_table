@@ -293,7 +293,7 @@ defmodule AshDataTable.Messages do
   ]
 
   # what is no text of the table's own, but put together of others
-  @made [label: [:text], join: [:separator, :messages], words: [:text]]
+  @made [label: [:text], join: [:separator, :messages], words: [:text], ash: [:message, :vars]]
 
   @all Map.new(
          for(
@@ -318,25 +318,33 @@ defmodule AshDataTable.Messages do
   or Vue kit, an API client) finds every key here, as a Gettext msgid with
   its bindings.
 
-  A message is `{key, values}`, `values` a map of the names below; a value
-  may be a message itself. Each key's English text is its msgid in the
+  A message is a map, `%{key: key, values: values}`: `key` a key of the
+  list below, `values` a map of the names it lists; a value may be a
+  message itself. It holds plain data only (atoms, strings, numbers, maps
+  and lists), so a kit hands it on as JSON as it is. Each key's English text is its msgid in the
   Gettext domain `ash_data_table`, as the template
   `priv/gettext/ash_data_table.pot` of the package holds it; a key with a
   form per number has a plural msgid too, and `count` among its values.
   `all/0` gives them as data.
 
-  Three keys are no text of the table's own:
+  Four keys are no text of the table's own:
 
     * `:label` (`text`) - the resource's own wording (a question of a
       column, the name of a relationship), translated as a column label is,
       in the `ash_data_table` domain;
     * `:join` (`separator`, `messages`) - several messages, each said, with
       the separator between them;
-    * `:words` (`text`) - words already (a label of the model).
+    * `:words` (`text`) - words already (a label of the model);
+    * `:ash` (`message`, `vars`) - what an action says (an Ash error), as
+      Ash and AshPhoenix give it: `message` a string with `%{name}` places,
+      `vars` a map of its variables, which a host's `translate_error/1`
+      takes as `{message, Map.to_list(vars)}`.
 
-  What an action says (an Ash error) is passed on as Ash and AshPhoenix
-  give it, `{message, vars}`: a string and a keyword list, which a host's
-  `translate_error/1` takes.
+  For example:
+
+      %{key: :records, values: %{count: 2}}
+      %{key: :not_saved, values: %{column: "Title",
+        message: %{key: :ash, values: %{message: "is required", vars: %{}}}}}
 
   The keys, their values and their English text:
 
@@ -351,7 +359,7 @@ defmodule AshDataTable.Messages do
 
   @typedoc """
   What the list says of a key: the names of its `values`, its English text
-  (`msgid`, nil for the three made keys) and, for a key with a form per
+  (`msgid`, nil for the four made keys) and, for a key with a form per
   number, the English plural (`msgid_plural`, else nil).
   """
   @type definition :: %{
@@ -361,10 +369,10 @@ defmodule AshDataTable.Messages do
         }
 
   @typedoc """
-  A message: a key and its values, or an action's message and its
-  variables as Ash gives them.
+  A message: a key of the list and its values (an action's message is the
+  key `:ash`).
   """
-  @type t :: {key, %{optional(atom) => term}} | {String.t(), keyword}
+  @type t :: %{key: key, values: %{optional(atom) => term}}
 
   @doc "Every key, with what the list says of it."
   @spec all() :: %{key => definition}
@@ -380,21 +388,27 @@ defmodule AshDataTable.Messages do
   def of(nil), do: nil
 
   def of({:text, key, bindings}),
-    do: {key, Map.new(bindings, fn {name, value} -> {name, value(value)} end)}
+    do: %{key: key, values: Map.new(bindings, fn {name, value} -> {name, value(value)} end)}
 
-  def of({:ash, message, vars}), do: {message, ash_vars(vars)}
-  def of({:label, text}), do: {:label, %{text: text}}
+  def of({:ash, message, vars}),
+    do: %{key: :ash, values: %{message: message, vars: ash_vars(vars)}}
+
+  def of({:label, text}), do: %{key: :label, values: %{text: text}}
 
   def of({:join, separator, messages}),
-    do: {:join, %{separator: separator, messages: Enum.map(messages, &of/1)}}
+    do: %{key: :join, values: %{separator: separator, messages: Enum.map(messages, &of/1)}}
 
   # each text once, as `AshDataTable.Text.say/1` says it
   def of({:once, separator, messages}),
-    do:
-      {:join,
-       %{separator: separator, messages: messages |> AshDataTable.Text.once() |> Enum.map(&of/1)}}
+    do: %{
+      key: :join,
+      values: %{
+        separator: separator,
+        messages: messages |> AshDataTable.Text.once() |> Enum.map(&of/1)
+      }
+    }
 
-  def of(text) when is_binary(text), do: {:words, %{text: text}}
+  def of(text) when is_binary(text), do: %{key: :words, values: %{text: text}}
 
   defp value({:text, key, bindings} = message) when is_atom(key) and is_list(bindings),
     do: of(message)
@@ -408,7 +422,7 @@ defmodule AshDataTable.Messages do
 
   defp value(value), do: value
 
-  defp ash_vars(vars) when is_map(vars), do: Map.to_list(vars)
-  defp ash_vars(vars) when is_list(vars), do: vars
-  defp ash_vars(_none), do: []
+  defp ash_vars(vars) when is_map(vars), do: vars
+  defp ash_vars(vars) when is_list(vars), do: Map.new(vars)
+  defp ash_vars(_none), do: %{}
 end

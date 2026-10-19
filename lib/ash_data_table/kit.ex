@@ -42,7 +42,7 @@ defmodule AshDataTable.Kit do
   ## A kit of one's own
 
       defmodule MyAppWeb.TableKit do
-        use AshDataTable.Kit, contract: 1
+        use AshDataTable.Kit, contract: 2
 
         # restyle a part drawn once per table
         def class(:panel, _state), do: "my-panel"
@@ -65,7 +65,7 @@ defmodule AshDataTable.Kit do
         def look(option), do: super(option)
       end
 
-  `use AshDataTable.Kit, contract: 1` makes every part `Kit.Default`'s; a
+  `use AshDataTable.Kit, contract: 2` makes every part `Kit.Default`'s; a
   kit defines the parts it draws itself, and calls `super/1` for what
   `Kit.Default` draws. It is checked as it compiles: a contract other
   than this version's, a public function of one argument that is no
@@ -126,9 +126,10 @@ defmodule AshDataTable.Kit do
 
   Each part is given `kit` and the assigns named below; a part draws the
   parts named in it through the kit. Values are what the table makes of
-  its rows, panel and picker (`Present.Row`, `Present.Panel`, …) and of its
-  model (`Model.Column`, `Model.Action`, …), never a record: their fields
-  are listed in "Kit contract 1" below. `myself` and `target`
+  its rows (the items of its stream, `AshDataTable.Item`), its panel and
+  picker (`Present.Panel`, …) and its model (`Model.Column`,
+  `Model.Action`, …), never a record: their fields are listed in "Kit
+  contract 2" below. `myself` and `target`
   are the `phx-target` of the part's events (nil for an attached table);
   `id` is the table's id, or the element's where it says so.
 
@@ -139,9 +140,13 @@ defmodule AshDataTable.Kit do
   `dom_id`), a line's (`Ids.line_cell/2`, `Ids.line_button/2`,
   `Ids.nested_row/2`, `Ids.nested_cell/2`, `Ids.nested_table/2`, of
   `Ids.row/2`), a field's (`Ids.field/2`, `Ids.clear/1`, `Ids.choose/1`,
-  `Ids.unpick/2`) and an argument's (`Ids.argument/2`,
-  `Ids.argument_value/2`). The other ids below are the table's id and a
-  suffix.
+  `Ids.unpick/2`), an argument's (`Ids.argument/2`,
+  `Ids.argument_value/2`), and the grid's that the hooks find by id: the
+  header (`Ids.head/1`, `Ids.head_row/1`, `Ids.header_cell/2`), the filter
+  row and its form (`Ids.filter_row/1`, `Ids.filters/1`), a row's selection
+  box (`Ids.selector/1`), an editor's template (`Ids.editor/2`), a failed
+  cell's message (`Ids.error/1`) and the question (`Ids.dialog/1`). The other
+  ids below are the table's id and a suffix.
 
   A part of one's own is called with `apply/3` (`part/1`): the defaults of
   its `attr`s are not applied. It is given every assign named below, and
@@ -211,7 +216,14 @@ defmodule AshDataTable.Kit do
       `rows` (with `Attrs.rowgroup/2`'s bundle), the `footer`, a
       `<template>` per editable column (`Attrs.editor_template/3`:
       `ID-editor-FIELD`, `data-editor`, `data-commit`, and `data-confirm`
-      where the table asks, `asks?`) and the failure template `ID-failure`:
+      where the table asks, `asks?`) and the failure template `ID-failure`.
+      `rows` is the table's stream as `@streams[name]` gives it: the kit
+      hands it on as it is (to `:for`, to a client component as a prop),
+      and draws an item (`AshDataTable.Item`) per row group, spreading its
+      `attrs`. The sender (`Attrs.sender/1`) is drawn as markup of the
+      LiveView's, outside any element whose content a client framework
+      owns (a React island): LiveView mounts its hook, the grid's events
+      are pushed through it, and LiveView locks it, never the grid. Given:
       `id`, `model`, `rows`, `page`, `state`, `filters`, `pages?`, `label`,
       `labelledby`, `label_column`, `lead`, `selecting`, `choose`,
       `open`, `asks?`, `acting?`, `editing?`, `expandable?`,
@@ -271,28 +283,30 @@ defmodule AshDataTable.Kit do
       that apply as hidden inputs `filter[FIELD][in][]` of the filter
       row's form): `id`, `column`, `filter`, `form`,
       `table`, `applied?`, `rejected?`, `target`.
-    * `row` - a record's row: `id`, `dom_id`, `row` (`Present.Row`),
-      `columns`, `lead`, `selecting`, `expandable?`, `editing?`, `acting?`,
-      `actions`, `asks?`, `open`, `time_zone`: `role="row"`,
-      `aria-rowindex`; its cells `role="gridcell"`, `aria-colindex`,
-      `tabindex="-1"`, the box's `data-selector`, the expander's
-      `data-expander` (`Ids.expander/1`, a button with `aria-expanded`),
-      and per column (`Ids.cell/2`) the
-      bundle `Attrs.cell/5` (`data-value`, `data-saved`, `data-lines`, …);
+    * `row` - a record's row: `id`, `dom_id`, `row` (its item,
+      `AshDataTable.Item`), `columns`, `lead`, `selecting`, `expandable?`,
+      `editing?`, `acting?`, `actions`, `asks?`, `open`, `time_zone`:
+      `role="row"`, `aria-rowindex`; its cells `role="gridcell"`,
+      `aria-colindex`, `tabindex="-1"`, the box's `data-selector`
+      (`Ids.selector/1`), the expander's `data-expander` (`Ids.expander/1`,
+      a button with `aria-expanded`), and per column (`Ids.cell/2`) the
+      bundle `Attrs.cell/2` (`data-value`, `data-saved`, `data-lines`, …);
       what a cell holds is `cell/1`'s; the `actions_cell`.
     * `actions_cell` - `data-actions`, a button per action with
-      `data-action` (and `data-question`, `data-destructive`): `id`, `row`,
-      `colindex`, `actions`, `asks?`, `open`.
-    * `cell` - what a cell holds: `state` (`:value`, `:empty`, `:masked`,
-      `:forbidden`), `value` and `text` only in the state `:value`, `column`,
-      `failure` (what was typed and the message, after a save failed: the
-      kit draws `failure` with the id `ID-…-error`), `id`, `time_zone`. A
-      masked cell is given no value: it draws `data-mask`, `data-masked`,
-      `data-secret` and the button `data-reveal` (`data-show`,
-      `data-hide`, `data-show-label`, `data-hide-label`).
+      `data-action` (and `data-question`, `data-destructive`): `id`, `row`
+      (the item), `colindex`, `actions`, `asks?`, `open`.
+    * `cell` - what a cell holds, of the item's cell: `state` (`:value`,
+      `:empty`, `:masked`, `:forbidden`), `text` (in the state `:value`, the
+      finished text), `value` (where the item has one), `column`, `failure`
+      (after a save failed: `typed`, `text` and `message`; the kit draws
+      `failure` with the id `Ids.error/1` of the cell's), `id`,
+      `time_zone`. A masked cell is given no value: it draws `data-mask`,
+      `data-masked`, `data-secret` and the button `data-reveal`
+      (`data-show`, `data-hide`, `data-show-label`, `data-hide-label`).
     * `detail` - the lines under an expanded row (`data-detail`,
-      `data-row`): `id`, `row`, `model`, `colspan`, `myself`; a
-      `line` each.
+      `data-row`, in the item's `attrs`): `id`, `row` (the detail's item,
+      whose `lines` are in the model's order), `model`, `colspan`,
+      `myself`; a `line` each.
     * `line` - a relationship's line (`data-line`, its cell
       `Ids.line_cell/2` and its button `Ids.line_button/2`, which names the
       nested grid) and, while it is open, the row `Ids.nested_row/2` whose
@@ -302,7 +316,8 @@ defmodule AshDataTable.Kit do
       table's `heading` is moved into: `id` (the row's DOM id),
       `relationship`, `open?`, `count` (how many records the open nested
       table has, once it has read and where it is known; else nil),
-      `colspan`, `table` (the nested table's id), `myself`.
+      `colspan`, `table` (the nested table's id), `myself`. See "The places
+      a nested table is moved into" below.
     * `footer` - `ID-foot`, with the row of the summaries (`ID-summaries`,
       `data-summaries`, a `summary_cell` per column), and in a nested table
       its pages (`data-pager`) and the `full_view`: `id`, `model`, `page`,
@@ -345,9 +360,9 @@ defmodule AshDataTable.Kit do
     * `texts` - by name, the finished strings in the person's language
       (the locale of the LiveView's process);
     * `messages` - the same names, each the message it was made of:
-      `{key, values}`, the key and its values as `AshDataTable.Messages`
-      lists them, or an action's own message as Ash gives it, `{message,
-      vars}`. A name may hold a list, and nil where the part shows nothing
+      `%{key: key, values: values}`, the key and its values as
+      `AshDataTable.Messages` lists them (an action's own message is the key
+      `:ash`). A name may hold a list, and nil where the part shows nothing
       there;
     * `text` and `message` alone in a part of one text (`message`,
       `failure`);
@@ -416,14 +431,33 @@ defmodule AshDataTable.Kit do
   The names of the model's columns, values, actions, relationships and
   arguments, and the table's label, are words in the model already.
 
-  ## Kit contract 1: the values a part is given
+  ## The places a nested table is moved into
 
-  The structs below are what the parts are given (`row`, `panel`,
-  `picker`, `model`, `column`, `state`, `page`, …). Their fields, as listed
-  here, are the kit contract of version 1: a field is not renamed, taken
-  away or given another meaning without the contract's number going up.
-  The modules themselves, and their functions, are the table's own and
-  undocumented: a kit reads the fields, and calls none of them.
+  A nested table, and its heading line, are drawn by the table on the page
+  and moved by LiveView (`Phoenix.Component.portal/1`) into a place a part
+  draws: the cell `Ids.nested_cell/2` and the element `Ids.line_heading/2`.
+  The place must be in the page when the patch that opens the nested table
+  arrives: LiveView moves the table in that same patch, and fails where it
+  finds no place. A kit drawn in HEEx draws it in that patch, as the
+  `line` part does while the line is open. A kit that draws in the browser
+  after LiveView's patch (a React kit) draws the place of every line of an
+  expanded row ahead of time, hidden while the line is closed, and never
+  draws it again as another element (a stable key, its id): the nested
+  table in it would be lost. The same holds for every place something is
+  opened into.
+
+  ## Kit contract 2: the values a part is given
+
+  The items of the stream (`rows` of `grid`, `row` of `row`, `detail` and
+  `actions_cell`) are `AshDataTable.Item`'s maps, documented there. The
+  structs below are what the other parts are given (`panel`, `picker`,
+  `model`, `column`, `state`, `page`, …). Their fields, as listed here, and
+  the item's keys are the kit contract of version 2: a field is not
+  renamed, taken away or given another meaning without the contract's
+  number going up. The modules themselves, and their functions, are the
+  table's own and undocumented: a kit reads the fields, and calls none of
+  them. A message a part is given is a map, `%{key: key, values: values}`
+  (`AshDataTable.Messages`).
 
   Besides these, a part is given plain values: `bulk` and `offered`
   (`AshDataTable.Model.Action`s), `lines` (by an argument's key, the values
@@ -434,38 +468,6 @@ defmodule AshDataTable.Kit do
   `announcement`/`announcements` (messages), `related` (`via` and `key` of
   the record a table is limited to), `full_view` (a path) and `running`
   (an `AshDataTable.Model.Action`, or nil).
-
-  ### `AshDataTable.Present.Row`
-
-  A record's row, as the stream holds it (`rows` of `grid`, `row` of `row`
-  and `detail`):
-
-    * `key` - the key in the row's DOM id, by which its events name it
-    * `dom_id` - the row's DOM id (`AshDataTable.Ids.row/2`)
-    * `rowindex` - its `aria-rowindex`, counted from 1 with the header's rows
-    * `names` - what the hook names the row by where `key` does not (a
-      primary key that is no DOM id), else nil
-    * `open?` - whether the row is expanded
-    * `current?` - in a picker's table, whether it is the record chosen now
-    * `action_failure` - the message of a row action that failed, or nil
-    * `cells` - by column name, a `AshDataTable.Present.Cell` each
-
-  The stream holds besides, under an expanded row, its detail: a map with
-  `detail?: true`, `dom_id` (`AshDataTable.Ids.detail/1`), `key`, `pk`,
-  `lines` (the names of the open relationships, nil while the row is not
-  expanded) and `counts` (by the name of an open relationship, how many
-  records its nested table has, where that is known; the `count` of its
-  `line`).
-
-  ### `AshDataTable.Present.Cell`
-
-    * `state` - `:value`, `:empty`, `:masked` (a sensitive value that is
-      there) or `:forbidden` (a field hidden from the person on this record)
-    * `value` - the value, in the state `:value` only (a reference cell's
-      label, a map cell's value with its sensitive fields masked)
-    * `editable?` - whether the person can edit this cell of this row
-    * `failure` - after a save failed: `typed` (`""` for a sensitive cell)
-      and `message`; else nil
 
   ### `AshDataTable.Present.Panel`
 
@@ -664,13 +666,20 @@ defmodule AshDataTable.Kit do
   existing part cannot follow, or a bundle goes away, the contract's
   number goes up, and a kit of the old number fails to compile with a
   message that names what changed.
+
+  Contract 2 (from contract 1): the grid's rows are the items of
+  `AshDataTable.Item`, plain maps whose cells hold their finished text, in
+  place of `Present.Row` and `Present.Cell` (`row`, `cell`, `detail`,
+  `actions_cell`); a message is a map `%{key:, values:}`, not a tuple;
+  `Attrs.cell/2` in place of `Attrs.cell/5`, and an item's `attrs` in place
+  of `Attrs.rowgroup/2`.
   """
 
   use Phoenix.Component
 
   alias AshDataTable.Kit.Words
 
-  @contract 1
+  @contract 2
 
   @parts [
     :root,
@@ -862,6 +871,8 @@ defmodule AshDataTable.Kit do
   value the person may not see, nor the value of a sensitive cell.
 
       <AshDataTable.Kit.cell kit={@kit} id={cell_id} column={column} cell={@row.cells[column.name]} time_zone={@time_zone} />
+
+  `cell` is a cell of the row's item (`AshDataTable.Item`).
   """
   attr :kit, :atom, required: true
   attr :id, :string, required: true
@@ -876,7 +887,7 @@ defmodule AshDataTable.Kit do
       module={@column.component.module}
       function={:cell}
       value={@cell.value}
-      text={Words.text(:cell, %{column: @column, cell: @cell, time_zone: @time_zone})}
+      text={@cell.text}
       column={@column.component.column}
     /><.part
       :if={!component?(@column, @cell)}
@@ -886,7 +897,7 @@ defmodule AshDataTable.Kit do
       column={@column}
       state={@cell.state}
       value={@cell.value}
-      text={Words.text(:cell, %{column: @column, cell: @cell, time_zone: @time_zone})}
+      text={@cell.text}
       failure={@cell.failure}
       time_zone={@time_zone}
       texts={Words.texts(:cell, %{column: @column, cell: @cell})}
@@ -1030,7 +1041,13 @@ defmodule AshDataTable.Kit do
     end
   end
 
-  # What changed since the contract a kit names: nothing before the first.
+  # What changed since the contract a kit names.
+  defp changed(1),
+    do:
+      ". Contract 2 draws the grid's rows from the items of AshDataTable.Item " <>
+        "(maps whose cells hold their text) in place of Present.Row, and gives " <>
+        "every message as a map %{key:, values:} (see \"Contract versions\" in AshDataTable.Kit)"
+
   defp changed(_contract), do: "."
 
   # A kit as it compiled (`@after_compile`): every public function of one

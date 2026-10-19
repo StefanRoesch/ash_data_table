@@ -722,8 +722,11 @@ defmodule AshDataTable do
       page);
     * `key` - the primary key of the row it is about, nil for none;
     * `question` - the question to ask before it runs, or nil;
-    * `messages` - what its texts are made of, by name, as
-      `AshDataTable.Messages` lists them.
+    * `messages` - what its texts are made of, by name, each a message
+      `%{key: key, values: values}` as `AshDataTable.Messages` lists them.
+
+  A request holds plain data only (maps, lists, strings, numbers, atoms):
+  a page hands it on to a client as JSON as it is.
 
   Besides, by kind:
 
@@ -734,10 +737,11 @@ defmodule AshDataTable do
       for several values, which filters by what is sent and runs nothing),
       `column` (of a cell's panel and a filter's, else nil), `title`,
       `errors` (what is said that is about none of its
-      fields) and `fields`, each with `name`, `label`, `type`, `editor`
+      fields) and `fields`, each with `name`, `label`, `type` (its cell
+      type, an array's `%{array: item}`), `editor`
       (its control), `required?`, `value` (what it holds as its form sends
       it; nil for a sensitive field), `values` (the choices of an enum,
-      else nil), `errors`, `messages` and `chosen` (the records a field
+      each `%{value: value, label: label}`, else nil), `errors`, `messages` and `chosen` (the records a field
       holds that are chosen, each with `key` and `label`); of a value made
       of fields its `fields`, of a union its `kinds`, each described the
       same way; of a file field `upload`, its upload among the LiveView's;
@@ -797,7 +801,11 @@ defmodule AshDataTable do
               | label: said.(field.label),
                 errors: Enum.map(field.errors, said),
                 values:
-                  field.values && for({value, label} <- field.values, do: {value, said.(label)})
+                  field.values &&
+                    for(
+                      %{label: label} = choice <- field.values,
+                      do: %{choice | label: said.(label)}
+                    )
             }
             |> Map.put(:messages, %{errors: Enum.map(field.errors, message)})
             |> chosen_in_words()

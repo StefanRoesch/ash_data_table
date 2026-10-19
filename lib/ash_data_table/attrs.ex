@@ -1,4 +1,292 @@
 defmodule AshDataTable.Attrs do
+  # The events a table takes from the browser (target.md S6), each with
+  # what sends it, its payload, its answer and an example payload: the
+  # "Events" section of the moduledoc is made of this list, and
+  # `test/intent_test.exs` checks that `AshDataTable.Intent` parses each
+  # example and knows no other event.
+  #
+  # `by`: `:bundle`, sent by an element that spreads a bundle of this
+  # module (named in `bundle`); `:kit`, sent by markup a part draws with
+  # the name itself (`event/2`), or by a kit in the browser with
+  # `pushEventTo` through its transport; `:hook`, sent by the table's hooks
+  # alone, which a kit never sends.
+  @events [
+    %{
+      name: "sort",
+      by: :bundle,
+      bundle: "column_header/5",
+      payload: "`{column}`",
+      reply: "none",
+      example: %{"column" => "title"}
+    },
+    %{
+      name: "filter",
+      by: :bundle,
+      bundle: "filters/2",
+      payload: "the form `ID-filters` (`filter`)",
+      reply: "none",
+      example: %{"filter" => %{}}
+    },
+    %{
+      name: "clear_filter",
+      by: :kit,
+      payload: "`{column}`",
+      reply: "none",
+      example: %{"column" => "title"}
+    },
+    %{name: "clear_filters", by: :kit, payload: "`{}`", reply: "none", example: %{}},
+    %{
+      name: "filter_values",
+      by: :bundle,
+      bundle: "filter_values/4",
+      payload: "`{column, operator}`",
+      reply: "none (opens the side panel)",
+      example: %{"column" => "tier", "operator" => "any_of"}
+    },
+    %{
+      name: "page",
+      by: :kit,
+      payload: "`{to}`: a page number, `previous` or `next`",
+      reply: "none",
+      example: %{"to" => "2"}
+    },
+    %{
+      name: "page_size",
+      by: :kit,
+      payload: "`{size}`",
+      reply: "none",
+      example: %{"size" => "50"}
+    },
+    %{
+      name: "arguments",
+      by: :bundle,
+      bundle: "arguments/2",
+      payload: "the form `ID-arguments` (`arguments`)",
+      reply: "none",
+      example: %{"arguments" => %{}}
+    },
+    %{
+      name: "argument_add",
+      by: :kit,
+      payload: "`{argument}`",
+      reply: "none",
+      example: %{"argument" => "tags"}
+    },
+    %{
+      name: "argument_remove",
+      by: :kit,
+      payload: "`{argument, at}`",
+      reply: "none",
+      example: %{"argument" => "tags", "at" => "0"}
+    },
+    %{
+      name: "expand",
+      by: :hook,
+      payload: "`{row}`",
+      reply: "`{open}`, whether the row is expanded now",
+      example: %{"row" => "1"}
+    },
+    %{
+      name: "toggle",
+      by: :hook,
+      payload: "`{row, relationship}`",
+      reply: "none",
+      example: %{"row" => "1", "relationship" => "comments"}
+    },
+    %{
+      name: "save",
+      by: :hook,
+      payload: "`{row, column, value}`",
+      reply:
+        "`{ok: true}`, `{ok: false}`, `{ok: false, error}` where the record is gone, or `{held: true, ref}` (controlled mode)",
+      example: %{"row" => "1", "column" => "title", "value" => "Milk"}
+    },
+    %{
+      name: "clear",
+      by: :hook,
+      payload: "`{row, column}`",
+      reply: "as `save`",
+      example: %{"row" => "1", "column" => "pin"}
+    },
+    %{
+      name: "discard",
+      by: :hook,
+      payload: "`{row, column}`",
+      reply: "none",
+      example: %{"row" => "1", "column" => "title"}
+    },
+    %{name: "dismiss", by: :hook, payload: "`{row}`", reply: "none", example: %{"row" => "1"}},
+    %{
+      name: "reveal",
+      by: :hook,
+      payload: "`{row, column}`",
+      reply:
+        "`{ok: true, value}` (the only answer with a sensitive value), `{ok: false}` or `{ok: false, error}`",
+      example: %{"row" => "1", "column" => "pin"}
+    },
+    %{
+      name: "edit",
+      by: :hook,
+      payload: "`{row, column}`",
+      reply: "`{ok: true}`, `{ok: false}` or `{ok: false, error}` (opens the side panel)",
+      example: %{"row" => "1", "column" => "tags"}
+    },
+    %{
+      name: "pick",
+      by: :hook,
+      payload: "`{row, column}`",
+      reply: "as `edit` (opens the picker)",
+      example: %{"row" => "1", "column" => "owner"}
+    },
+    %{
+      name: "act",
+      by: :hook,
+      payload: "`{row, action}`",
+      reply:
+        "`{ok: true}`, `{ok: true, removed: true}`, `{ok: true, panel: true}`, `{ok: false}` or `{ok: false, error}`",
+      example: %{"row" => "1", "action" => "archive"}
+    },
+    %{name: "open", by: :hook, payload: "`{row}`", reply: "none", example: %{"row" => "1"}},
+    %{
+      name: "create",
+      by: :bundle,
+      bundle: "create/2",
+      payload: "`{}`",
+      reply: "none (opens the panel)",
+      example: %{}
+    },
+    %{
+      name: "table_act",
+      by: :bundle,
+      bundle: "table_action/3",
+      payload: "`{action}`",
+      reply: "none (opens the panel, runs, or asks with `ash_data_table:ask`)",
+      example: %{"action" => "import"}
+    },
+    %{
+      name: "table_run",
+      by: :hook,
+      payload: "`{action}`",
+      reply: "none",
+      example: %{"action" => "import"}
+    },
+    %{
+      name: "select",
+      by: :hook,
+      payload: "`{rows}` (each `[key, named]`) or `{all: true}`, on every change",
+      reply: "none",
+      example: %{"rows" => []}
+    },
+    %{
+      name: "bulk",
+      by: :hook,
+      payload: "`{action}`, on what is selected",
+      reply:
+        "`{panel: true}`, `{ask, selection}` (the question and a token of the selection) or `{ok: false}`",
+      example: %{"action" => "destroy"}
+    },
+    %{
+      name: "bulk_run",
+      by: :hook,
+      payload: "`{action, selection}`, with that token",
+      reply: "none",
+      example: %{"action" => "destroy", "selection" => "token"}
+    },
+    %{name: "bulk_seen", by: :hook, payload: "`{}`", reply: "none", example: %{}},
+    %{
+      name: "panel_validate",
+      by: :kit,
+      payload: "the form `ID-panel-form` (`panel`)",
+      reply: "none",
+      example: %{"panel" => %{}}
+    },
+    %{
+      name: "panel_submit",
+      by: :kit,
+      payload: "the form `ID-panel-form` (`panel`)",
+      reply: "none",
+      example: %{"panel" => %{}}
+    },
+    %{
+      name: "panel_add",
+      by: :bundle,
+      bundle: "add_group/3",
+      payload: "`{path}`",
+      reply: "none (focus: `ash_data_table:focus`)",
+      example: %{"path" => ["stops"]}
+    },
+    %{
+      name: "panel_remove",
+      by: :bundle,
+      bundle: "remove_group/3",
+      payload: "`{path}`",
+      reply: "none (focus: `ash_data_table:focus`)",
+      example: %{"path" => ["stops", "0"]}
+    },
+    %{
+      name: "panel_unpick",
+      by: :bundle,
+      bundle: "unpick/4",
+      payload: "`{input, key}`",
+      reply: "none (focus: `ash_data_table:focus`)",
+      example: %{"input" => "helpers", "key" => "1"}
+    },
+    %{
+      name: "panel_clear",
+      by: :bundle,
+      bundle: "clear_field/3",
+      payload: "`{input}`",
+      reply: "none (focus: `ash_data_table:focus`)",
+      example: %{"input" => "pin"}
+    },
+    %{name: "panel_cancel", by: :hook, payload: "`{}`", reply: "none", example: %{}},
+    %{
+      name: "pick_input",
+      by: :kit,
+      payload: "`{input}`",
+      reply: "none (opens the picker)",
+      example: %{"input" => "owner"}
+    },
+    %{
+      name: "picked",
+      by: :hook,
+      payload:
+        "`{confirmed, arguments}` or `{none: true}`: the record is the row the picker's table holds as selected",
+      reply:
+        "`{ok: true}`, `{ok: false}`, `{ok: false, error}`, `{ask}` (the column's question, then sent again with `confirmed: true`) or `{held: true, ref}`",
+      example: %{"confirmed" => false, "arguments" => nil}
+    },
+    %{name: "picker_cancel", by: :hook, payload: "`{}`", reply: "none", example: %{}},
+    %{
+      name: "left",
+      by: :hook,
+      payload: "`{row}`, the answer to `ash_data_table:leaving`",
+      reply: "none",
+      example: %{"row" => "1"}
+    },
+    %{name: "read_again", by: :kit, payload: "`{}`", reply: "none", example: %{}}
+  ]
+
+  # What the server tells the hooks (`push_event`), each with `table`.
+  @pushes [
+    {"ash_data_table:focus", "{table, cell}",
+     "the id to focus: in the grid, the argument line or the panel"},
+    {"ash_data_table:ask", "{table, action, question}",
+     "a table action asks first; answered with `table_run`"},
+    {"ash_data_table:select", "{table, all, rows}",
+     "what is selected, where the server decided it (each row `[key, named]`)"},
+    {"ash_data_table:leaving", "{table, row}",
+     "a row whose record a live update found gone; answered with `left`"},
+    {"ash_data_table:answered", "{table, ref, cell, saved, error}",
+     "controlled mode: the host's answer to a save, clear or choice that waited (`{held: true, ref}`)"}
+  ]
+
+  @by %{
+    bundle: "a bundle",
+    kit: "a kit may send it",
+    hook: "the hooks"
+  }
+
   @moduledoc """
   The attribute bundles of a table's elements: the contract between the
   markup a kit draws (`AshDataTable.Kit`) and the table's hooks in the
@@ -18,6 +306,46 @@ defmodule AshDataTable.Attrs do
 
   `markers/0` names every marker; the hooks name the same list
   (`assets/js/markers.js`).
+
+  ## Attributes as props
+
+  A kit that draws in the browser (a React kit) is given the bundles too,
+  and turns them into its props with `props/1` on the server: an attribute
+  that is `true` becomes `""`, one that is `false` or nil is left out, every
+  other value becomes text (`Phoenix.HTML`'s rule for HEEx). The names stay
+  as in HTML; the kit renames those its framework wants otherwise
+  (`class` → `className`, `tabindex` → `tabIndex`, `colspan` → `colSpan`,
+  `rowspan` → `rowSpan`, `for` → `htmlFor`, `readonly` → `readOnly`,
+  `maxlength` → `maxLength`) and keeps `aria-*`, `data-*`, `phx-*`, `role`
+  and `id` as they are. A bundle's `phx-hook` is never rendered by a kit in
+  the browser: the hook is mounted with `mountGrid` and its kin
+  (`assets/js/mount.js`). The `attrs` of an item of the stream
+  (`AshDataTable.Item`) are of the same form, with `true` kept.
+
+  ## Events
+
+  Every event goes to the table it is of, named `ash_data_table:ID:NAME`
+  (`event/2`): `ID` the table's id, `NAME` one below. A payload of another
+  shape is answered as one that names nothing the table has. A key of a
+  row is the key in its DOM id; a column, action, relationship or input is
+  named as text: each is a claim the table checks.
+
+  A kit sends an event through a bundle wherever one exists (the element
+  spreads it: `phx-click`, a form's `phx-change` and `phx-submit`). An
+  event that no bundle sends, marked "a kit may send it", a part sends
+  itself: in HEEx with `phx-click={AshDataTable.Attrs.event(@id, "page")}`
+  and its values, in the browser with the transport's `push(name, payload)`
+  (`assets/js/mount.js`), which names it with the table. The events of
+  the hooks are the hooks' alone: a kit never sends them.
+
+  | Event | Sent by | Payload | Answer |
+  | --- | --- | --- | --- |
+  #{Enum.map_join(@events, "\n", fn event -> "| `#{event.name}` | #{@by[event.by]}#{if event[:bundle], do: " (`#{event.bundle}`)", else: ""} | #{event.payload} | #{event.reply} |" end)}
+
+  The server tells the hooks with `push_event`, each with `table`, the id
+  of the table it is for. For reading only: a kit hears none of them.
+
+  #{Enum.map_join(@pushes, "\n", fn {name, payload, what} -> "  * `#{name}` `#{payload}` - #{what}" end)}
   """
 
   # The attribute bundles (target.md S5): one function per element of the
@@ -175,87 +503,15 @@ defmodule AshDataTable.Attrs do
   #
   # ## Events
   #
-  # Every event goes to the table it is of: the element it is sent from
-  # says so (`phx-target`), and its name too: `ash_data_table:ID:event`,
-  # where `ID` is the table's id and `event` one of the names below
-  # (target.md Q4). The hooks send theirs with `pushEventTo` on their own
-  # element, named so by their transport (`assets/js/transport/`), which
-  # takes the id from the element's; the others are sent by the markup
-  # (`AshDataTable.Parts.Common.event/2`). An event named for another table,
-  # or not named so, is answered as one of another shape. A key of a row is
-  # the key in the row's DOM id; a column, action, relationship or input is
-  # named as text. The answer, where there is one, goes to the hook alone.
-  # Each event is parsed once, as it arrives (`AshDataTable.Intent`): a
-  # payload of another shape than the one listed here is answered as one
-  # that names nothing the table has (`{ok: false}`, `{open: false}`, `{}`,
-  # or no answer).
-  #
-  # From the grid's hook, on `ID-grid`:
-  #
-  #   * `expand` `{row}`: answers `{open}`, whether the row is expanded now;
-  #   * `toggle` `{row, relationship}`: no answer;
-  #   * `save` `{row, column, value}` and
-  #     `clear` `{row, column}`: `{ok: true}`, `{ok: false}`, or
-  #     `{ok: false, error}` where the record is gone;
-  #   * `discard` `{row, column}`, `dismiss` `{row}`, `left` `{row}`: no
-  #     answer;
-  #   * `reveal` `{row, column}`: `{ok: true, value}`, `{ok: false}` or
-  #     `{ok: false, error}`;
-  #   * `act` `{row, action}`: `{ok: true}`, `{ok: true, removed: true}`,
-  #     `{ok: true, panel: true}`, `{ok: false}` or `{ok: false, error}`;
-  #   * `pick` and `edit` `{row, column}`: `{ok: true}`, `{ok: false}` or
-  #     `{ok: false, error}`;
-  #   * `select` `{rows}` or `{all: true}`, on every change of what is
-  #     selected: no answer;
-  #   * `bulk` `{action}`, on what is selected: `{panel: true}`, `{ask,
-  #     selection}` (the question to ask first, and a token of the
-  #     selection it names) or `{ok: false}`; `bulk_run` `{action,
-  #     selection}`, once the person has confirmed, with that token: no
-  #     answer; where the selection is no longer the one the token names,
-  #     nothing runs and the result says so;
-  #   * `bulk_seen` `{}`, `table_run` `{action}`: no answer.
-  #
-  # From the panel's hook, on `ID-panel`: `panel_cancel` `{}`, no answer.
-  # From its buttons (`phx-click`): `panel_add` and `panel_remove` `{path}`,
-  # `panel_unpick` `{input, key}` and `panel_clear` `{input}`, no answer:
-  # the server says where focus goes (`ash_data_table:focus`).
-  #
-  # From the picker's hook, on `ID-picker`: `picked` `{confirmed, arguments}`
-  # (`none: true` for "None"): the record chosen is the row selected in the
-  # picker's table, as the server holds it (`select`), the selected rows
-  # where several are chosen; `arguments` what the argument line of its
-  # table holds, as a query string, or nil. Answered `{ok: true}`,
-  # `{ok: false}`, `{ok: false, error}` or `{ask}` (the column's question,
-  # after which it is sent again with `confirmed: true`); `picker_cancel`
-  # `{}`, no answer.
-  # The pagination's hook sends nothing.
-  #
-  # From the markup: `sort` `{column}` (a header's button), `filter` (the
-  # form `ID-filters`), `clear_filter` `{column}`, `clear_filters`,
-  # `arguments` (the form `ID-arguments`), `argument_add` `{argument}`,
-  # `argument_remove` `{argument, at}`, `page` `{to}` (a number, `previous`
-  # or `next`), `page_size` `{size}`, `create`, `table_act` `{action}`,
-  # `pick_input` `{input}`, `panel_validate` and `panel_submit` (the form
-  # `ID-panel-form`), `read_again`.
-  #
-  # The server tells a grid's hook with `push_event`, each with `table`,
-  # the id of the table it is for (every hook of the page hears it, and
-  # only that table's acts): `ash_data_table:focus` `{table, cell}` (the id to
-  # focus: in the grid, the argument line or the panel, whose hook hears it too), `ash_data_table:ask` `{table, action, question}` (answered with
-  # `table_run`), `ash_data_table:select` `{table, all, rows}` (what is
-  # selected, where the server decided it: each row `[key, named]`, as the
-  # hook keeps it), `ash_data_table:leaving` `{table, row}` (answered with
-  # `left`), `ash_data_table:answered` `{table, ref, cell, saved, error}`
-  # (a save, a clear or a reference cell's choice that waited for the
-  # host's answer to its column's question, in controlled mode: the hook
-  # had the reply `{held: true, ref}` to `save`, `clear` or `picked`, and
-  # keeps the cell busy by that `ref`, across patches of its row; not
-  # saved, it puts the cell back where no patch came, or marks it with
-  # `error`; an `answered` of a `ref` it holds no more touches nothing).
-  # A grid's hook tells whoever listens with DOM
-  # events on its grid, `ash_data_table:selection` and, where it is told to
-  # choose, `ash_data_table:choose`, each with what `selected()` gives:
-  # `{table, mode, all, rows}`.
+  # The events, their payloads and answers, and the server's pushes are
+  # the moduledoc's "Events" (made of `@events` and `@pushes` above). The
+  # hooks send theirs with `pushEventTo`, through the sender where a grid's
+  # (`assets/js/transport/live_view.js`), named with the id on their
+  # element; the others are sent by the markup (`event/2`). Each event is
+  # parsed once, as it arrives (`AshDataTable.Intent`). A grid's hook tells
+  # whoever listens with DOM events on its grid, `ash_data_table:selection`
+  # and, where it is told to choose, `ash_data_table:choose`, each with what
+  # `selected()` gives: `{table, mode, all, rows}`.
   #
   # ## The argument line
   #
@@ -605,10 +861,10 @@ defmodule AshDataTable.Attrs do
   # what they showed and are `aria-busy`. An answer that fails puts the dash
   # into every cell and is logged; the rows are not touched.
 
+  alias AshDataTable.Ids
   alias AshDataTable.Model.Limits
   alias AshDataTable.Parts.Common
   alias AshDataTable.Present
-  alias AshDataTable.Typed
   alias Phoenix.LiveView.JS
 
   @markers ~w(
@@ -629,6 +885,34 @@ defmodule AshDataTable.Attrs do
 
   @doc "Every marker the hooks find an element by, as `assets/js/markers.js` names them."
   def markers, do: @markers
+
+  @doc """
+  The events a table takes from the browser, as "Events" above lists them:
+  `name`, `by` (`:bundle`, `:kit` or `:hook`), `bundle` (the function whose
+  bundle sends it, for `:bundle`), `payload`, `reply` and an `example`
+  payload.
+  """
+  @spec events() :: [map]
+  def events, do: @events
+
+  @doc """
+  A bundle as a kit in the browser takes it (see "Attributes as props"):
+  `true` as `""`, `false` and nil left out, every other value as text.
+  """
+  @spec props(map) :: %{String.t() => String.t()}
+  def props(bundle) do
+    for {name, value} <- bundle, value not in [nil, false], into: %{} do
+      {to_string(name), if(value == true, do: "", else: to_string(value))}
+    end
+  end
+
+  @doc """
+  The name of the event `name` of the table `id`, as the browser sends it
+  (see "Events" above): `ash_data_table:ID:NAME`. The table takes only the
+  events of its own id.
+  """
+  @spec event(String.t(), String.t()) :: String.t()
+  def event(id, name), do: "ash_data_table:" <> id <> ":" <> name
 
   # ---- the grid ------------------------------------------------------------
 
@@ -783,7 +1067,7 @@ defmodule AshDataTable.Attrs do
       "data-label" => label?,
       "data-number" => number?(column),
       "data-sort" => sortable?,
-      "phx-click" => sortable? && Common.event(id, "sort"),
+      "phx-click" => sortable? && event(id, "sort"),
       "phx-value-column" => sortable? && column.name,
       "phx-target" => sortable? && myself
     }
@@ -809,44 +1093,29 @@ defmodule AshDataTable.Attrs do
   def most_width, do: 1000
 
   @doc """
-  An item of the stream: a record's row group, or the detail under it (a
-  map that says `detail?`). The hooks take a `role=rowgroup` of the grid
-  for a record's unless it is the header (`ID-head`), the footer
-  (`ID-foot`) or a detail. `data-detail` and `data-row` on a detail,
-  which is hidden while it holds no line; `data-key` what the server is
-  told of a record that is selected, where rows can be; `data-current` on
-  the record that is chosen now, in a table to choose from.
+  Whether an item of the stream (`AshDataTable.Item`) is the detail under a
+  record's row, not the row: nil, not false, where it is not.
 
-  The rows of the records hold what varies only: their id, `role` and
+  An item spreads its own varying attributes on its row group
+  (`<tbody {item.attrs}>`): on a detail `data-detail` and `data-row`, and
+  `hidden` while it holds no line; on a record's `data-key`, what the
+  server is told of a record that is selected, where rows can be, and
+  `data-current` on the record that is chosen now, in a table to choose
+  from. The hooks take a `role=rowgroup` of the grid for a record's unless
+  it is the header (`ID-head`), the footer (`ID-foot`) or a detail. The
+  rows of the records hold what varies only: their id, `role` and
   `tabindex`, the same on every row, are written by the part, as every
   byte of a row is sent again whenever the row is (with them in the
-  bundle "Page change" sent 11 % more).
-  So do the row of a record, its cells and its actions cell below.
+  bundle "Page change" sent 11 % more). So do the row of a record, its
+  cells and its actions cell below.
   """
-  def rowgroup(row, selecting) do
-    detail? = detail?(row)
-
-    %{
-      "hidden" => detail? && is_nil(row.lines),
-      "data-detail" => detail?,
-      "data-row" => detail? && row.key,
-      "data-key" => selecting && !detail? && row.names && held(row.names),
-      "data-current" => current?(row)
-    }
-  end
-
-  # Nil, not false, where it is not: an attribute that is nil is left out,
-  # as one that is false.
-  @doc "Whether an item of the stream is a record's detail, not its row."
-  def detail?(%{detail?: true}), do: true
-  def detail?(_row), do: nil
-
-  defp current?(%{current?: current?}), do: current?
-  defp current?(_detail), do: nil
+  def detail?(%{detail: true}), do: true
+  def detail?(_item), do: nil
 
   @doc """
-  The cell of a record under a column. What it says about editing, for
-  people and for the hook:
+  The cell of a record under a column: the attributes its column gives it
+  and those of the cell of the item (`AshDataTable.Item`, its `attrs`). What
+  it says about editing, for people and for the hook:
 
     * `aria-readonly` on a cell that cannot be edited, when the table
       offers editing at all;
@@ -859,22 +1128,21 @@ defmodule AshDataTable.Attrs do
 
   A cell of a sensitive column says that its editor holds nothing
   (`data-value=""`), and nothing else: what was typed into it is never
-  sent back. `data-lines` where the column shows more than one line.
-  `data-number` where the column shows a number as text (not through a
-  component), so that a kit can set it at the end of the cell.
+  sent back. Of its column: `data-lines` where the column shows more than
+  one line, `data-number` where the column shows a number as text (not
+  through a component), so that a kit can set it at the end of the cell.
 
-  `row` is a `Present.Row`: each cell says whether it can be
-  edited and what failed in it (`Present.Cell`).
-
-  `id` is the cell's id; the part writes it with the cell's place and
-  role, as above.
+  The part writes the cell's id (`AshDataTable.Ids.cell/2`) with its place
+  and role, as above.
   """
-  def cell(id, column, editing?, row, zone) do
-    Map.new([
-      {"data-lines", column.max_lines > 1 && column.max_lines},
-      {"data-number", number?(column)}
-      | editing(editing?, id, column, row, zone)
-    ])
+  def cell(column, cell) do
+    Map.merge(
+      %{
+        "data-lines" => column.max_lines > 1 && column.max_lines,
+        "data-number" => number?(column)
+      },
+      cell.attrs
+    )
   end
 
   # A column whose cells show a number as text: nil, not false, where not.
@@ -883,66 +1151,9 @@ defmodule AshDataTable.Attrs do
 
   defp number?(_column), do: nil
 
-  defp editing(false, _id, _column, _row, _zone), do: []
-
-  defp editing(true, id, column, row, zone) do
-    cell = row.cells[column.name]
-
-    case {cell.editable?, cell.failure} do
-      {false, _failure} ->
-        [{"aria-readonly", "true"}]
-
-      # a reference cell has no editor that holds a value: it is edited in
-      # the picker, which opens on the record the row has
-      {true, %{}} when column.kind == :reference ->
-        [{"aria-invalid", "true"}, {"aria-describedby", "#{id}-error"}]
-
-      {true, nil} when column.kind == :reference ->
-        []
-
-      # The editor of a sensitive cell starts empty, and holds nothing of
-      # the record: neither does the cell.
-      {true, %{}} when column.sensitive? ->
-        [
-          {"aria-invalid", "true"},
-          {"aria-describedby", "#{id}-error"},
-          {"data-value", ""},
-          {"data-saved", ""}
-        ]
-
-      {true, nil} when column.sensitive? ->
-        [{"data-value", ""}]
-
-      {true, %{typed: typed}} ->
-        [
-          {"aria-invalid", "true"},
-          {"aria-describedby", "#{id}-error"},
-          {"data-value", typed},
-          {"data-saved", held(Typed.of(column, cell.value, zone))}
-        ]
-
-      {true, nil} ->
-        if own_value?(column),
-          do: [{"data-value", held(Typed.of(column, cell.value, zone))}],
-          else: []
-    end
-  end
-
   @doc "What an attribute holds of a list (as JSON) or a text (as it is)."
   def held(texts) when is_list(texts), do: Phoenix.json_library().encode!(texts)
   def held(text), do: text
-
-  # Whether what a column's editor holds is something else than the text its
-  # cells show: a choice, which shows its label; a boolean; and a column
-  # whose component shows the value in a way of its own. A column edited in
-  # the side panel has no editor in the cell: nothing is held for one.
-  defp own_value?(%{cell_type: cell_type}) when cell_type in [:boolean, :enum], do: true
-
-  defp own_value?(%{editor: editor}) when editor in [:choices, :list, :group, :groups, :union],
-    do: false
-
-  defp own_value?(%{component: %{cell?: true}}), do: true
-  defp own_value?(_column), do: false
 
   @doc """
   The actions cell of a record. What it says about an action that failed:
@@ -951,8 +1162,8 @@ defmodule AshDataTable.Attrs do
   """
   def actions(id, row) do
     %{
-      "aria-invalid" => row.action_failure && "true",
-      "aria-describedby" => row.action_failure && "#{id}-error"
+      "aria-invalid" => row.failure && "true",
+      "aria-describedby" => row.failure && Ids.error(id)
     }
   end
 
@@ -1106,7 +1317,7 @@ defmodule AshDataTable.Attrs do
   table's create action.
   """
   def create(id, target) do
-    %{"id" => "#{id}-create", "phx-click" => Common.event(id, "create"), "phx-target" => target}
+    %{"id" => "#{id}-create", "phx-click" => event(id, "create"), "phx-target" => target}
   end
 
   @doc """
@@ -1116,7 +1327,7 @@ defmodule AshDataTable.Attrs do
     %{
       "id" => "#{id}-do-#{action.name}",
       "data-table-action" => action.name,
-      "phx-click" => Common.event(id, "table_act"),
+      "phx-click" => event(id, "table_act"),
       "phx-value-action" => action.name,
       "phx-target" => target
     }
@@ -1130,8 +1341,8 @@ defmodule AshDataTable.Attrs do
   def arguments(id, target) do
     %{
       "id" => "#{id}-arguments",
-      "phx-change" => Common.event(id, "arguments"),
-      "phx-submit" => Common.event(id, "arguments"),
+      "phx-change" => event(id, "arguments"),
+      "phx-submit" => event(id, "arguments"),
       "phx-target" => target,
       "novalidate" => true,
       "data-arguments" => true
@@ -1146,7 +1357,7 @@ defmodule AshDataTable.Attrs do
   """
   def filter_values(table, column, operator, target) do
     %{
-      "phx-click" => Common.event(table, "filter_values"),
+      "phx-click" => event(table, "filter_values"),
       "phx-value-column" => column.name,
       "phx-value-operator" => operator,
       "phx-target" => target
@@ -1159,8 +1370,8 @@ defmodule AshDataTable.Attrs do
   def filters(id, target) do
     %{
       "id" => "#{id}-filters",
-      "phx-change" => Common.event(id, "filter"),
-      "phx-submit" => Common.event(id, "filter"),
+      "phx-change" => event(id, "filter"),
+      "phx-submit" => event(id, "filter"),
       "phx-target" => target
     }
   end
@@ -1380,7 +1591,7 @@ defmodule AshDataTable.Attrs do
   """
   def unpick(table, name, key, target) do
     %{
-      "phx-click" => Common.event(table, "panel_unpick"),
+      "phx-click" => event(table, "panel_unpick"),
       "phx-value-input" => name,
       "phx-value-key" => key,
       "phx-target" => target
@@ -1394,7 +1605,7 @@ defmodule AshDataTable.Attrs do
   """
   def clear_field(table, name, target) do
     %{
-      "phx-click" => Common.event(table, "panel_clear"),
+      "phx-click" => event(table, "panel_clear"),
       "phx-value-input" => name,
       "phx-target" => target
     }
@@ -1408,8 +1619,7 @@ defmodule AshDataTable.Attrs do
   """
   def add_group(table, path, target),
     do: %{
-      "phx-click" =>
-        JS.push(Common.event(table, "panel_add"), value: %{path: path}, target: target)
+      "phx-click" => JS.push(event(table, "panel_add"), value: %{path: path}, target: target)
     }
 
   @doc """
@@ -1419,8 +1629,7 @@ defmodule AshDataTable.Attrs do
   """
   def remove_group(table, path, target) do
     %{
-      "phx-click" =>
-        JS.push(Common.event(table, "panel_remove"), value: %{path: path}, target: target),
+      "phx-click" => JS.push(event(table, "panel_remove"), value: %{path: path}, target: target),
       "data-remove-group" => true
     }
   end

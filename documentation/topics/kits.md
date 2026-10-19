@@ -20,7 +20,7 @@ the questions, panels and pickers in your own page, see
 <!-- sketch -->
 ```elixir
 defmodule MyAppWeb.TableKit do
-  use AshDataTable.Kit, contract: 1
+  use AshDataTable.Kit, contract: 2
 
   # restyle a part drawn once per table
   def class(:panel, _state), do: "my-panel"
@@ -32,7 +32,7 @@ defmodule MyAppWeb.TableKit do
 end
 ```
 
-`use AshDataTable.Kit, contract: 1` makes every part the default kit's. A kit
+`use AshDataTable.Kit, contract: 2` makes every part the default kit's. A kit
 defines the parts it draws itself, and calls `super` for what the default kit
 draws. It is checked as it compiles: another contract number than this
 version's, a public function of one argument that is no part (a typo such as
@@ -183,7 +183,7 @@ everything in the page
 
 <!-- source: demo/lib/demo_web/div_kit.ex -->
 ```elixir
-use AshDataTable.Kit, contract: 1
+use AshDataTable.Kit, contract: 2
 
 alias AshDataTable.Attrs
 alias AshDataTable.Ids

@@ -13,6 +13,7 @@ defmodule AshDataTable.Live.Core.Reading do
   alias AshDataTable.Event
   alias AshDataTable.Format
   alias AshDataTable.Ids
+  alias AshDataTable.Item
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Notify
   alias AshDataTable.Live.Core.Panel
@@ -315,7 +316,7 @@ defmodule AshDataTable.Live.Core.Reading do
         current? = current?(Core.table(socket).entry.choose, model, row.record)
 
         [
-          Present.row(model, row.record, %{
+          item(socket, row.record, %{
             id: id,
             key: row.key,
             rowindex: row.rowindex,
@@ -324,7 +325,7 @@ defmodule AshDataTable.Live.Core.Reading do
           })
         ] ++
           if(Core.table(socket).entry.expandable?,
-            do: [detail(id, row.key, nil, nil)],
+            do: [detail(socket, row.key, nil)],
             else: []
           )
       end)
@@ -454,20 +455,25 @@ defmodule AshDataTable.Live.Core.Reading do
   def names(%{primary_key: fields}, key, _row_key),
     do: Enum.map(fields, &(key |> Map.get(&1) |> to_string()))
 
-  # The detail of a row as the stream holds it: what is under an expanded
-  # row. `lines` are the names of its open lines, nil while the row is not
-  # expanded; `pk` is the row's primary key, which its nested tables are
-  # given; `counts` how many records its open nested tables have, by name,
-  # where that is known. No record is needed for it.
-  def detail(id, key, pk, lines, counts \\ %{}) do
-    %{
-      dom_id: Ids.detail(Ids.row(id, key)),
-      detail?: true,
-      key: key,
-      pk: pk,
-      lines: lines,
-      counts: counts
-    }
+  # The item of a record's row (`AshDataTable.Item`): the record scrubbed
+  # (`Present.row/3`), each cell with its text, as the person reads it now.
+  def item(socket, record, attributes) do
+    %{caller: caller, entry: entry} = Core.table(socket)
+
+    Item.row(entry.model, Present.row(entry.model, record, attributes), %{
+      time_zone: caller.time_zone,
+      editing?: entry.editing?,
+      selecting: entry.selecting
+    })
+  end
+
+  # The detail of a row as the stream holds it (`AshDataTable.Item`): what
+  # is under an expanded row. `lines` are the names of its open lines, nil
+  # while the row is not expanded; the counts of its open nested tables are
+  # the entry's, where they are known. No record is needed for it.
+  def detail(socket, key, lines) do
+    %{id: id, model: model, counts: counts} = Core.table(socket).entry
+    Item.detail(model, id, key, lines, Map.get(counts, key, %{}))
   end
 
   # Puts a row of the page into the stream again, in its place: with the
@@ -485,7 +491,7 @@ defmodule AshDataTable.Live.Core.Reading do
     |> due(:force)
     |> stream_insert(
       Core.table(socket).entry.stream,
-      Present.row(model, record, %{
+      item(socket, record, %{
         id: id,
         key: key,
         rowindex: rows[key].rowindex,
@@ -502,12 +508,10 @@ defmodule AshDataTable.Live.Core.Reading do
   # reads nothing for it; one that is no longer rendered is gone, with its
   # state.
   def put_detail(socket, key) do
-    %{id: id, rows: rows, open: open, counts: counts} = Core.table(socket).entry
-
     stream_insert(
       socket,
       Core.table(socket).entry.stream,
-      detail(id, key, rows[key].pk, open[key], Map.get(counts, key, %{}))
+      detail(socket, key, Core.table(socket).entry.open[key])
     )
   end
 

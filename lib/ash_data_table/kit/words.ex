@@ -54,9 +54,8 @@ defmodule AshDataTable.Kit.Words do
   @doc """
   The one text of a part: of `:message` and `:failure` their `message`
   (`%{message: …}`), said; of `:summary_cell` the value of its `summary`
-  as the default kit shows it (`%{column: …, summary: …, time_zone: …}`);
-  of `:cell` the value of its `cell` (a `Present.Cell`) as the default kit
-  shows it (`%{column: …, cell: …, time_zone: …}`). Nil for none.
+  as the default kit shows it (`%{column: …, summary: …, time_zone: …}`).
+  Nil for none. A cell's text is in its item (`AshDataTable.Item`).
   """
   @spec text(atom, map) :: String.t() | nil
   def text(part, %{message: message}) when part in [:message, :failure],
@@ -66,11 +65,6 @@ defmodule AshDataTable.Kit.Words do
     do: Format.summary(column, value, zone)
 
   def text(:summary_cell, _values), do: nil
-
-  def text(:cell, %{column: column, cell: %{state: :value, value: value}, time_zone: zone}),
-    do: Format.format(column, value, zone)
-
-  def text(:cell, _values), do: nil
 
   @doc "The one message of `:message` and `:failure`: their `message` as `messages/2` gives it."
   @spec message(atom, map) :: Messages.t() | nil

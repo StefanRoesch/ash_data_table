@@ -400,7 +400,7 @@ defmodule AshDataTable.Parts.Grid do
   # column and the actions cell (the kit's `actions_cell/1`). Written without whitespace on purpose: every byte of a
   # row is sent again whenever the row is, and a cell's text must not be
   # padded. The constant attributes of the row and its cells are written
-  # here; what varies is `AshDataTable.Attrs.cell/5`'s. What a cell
+  # here; what varies is the item's (`AshDataTable.Attrs.cell/2`). What a cell
   # holds is the column's component's, else the kit's `cell/1`'s
   # (`component?/2`).
   attr :dom_id, :string, required: true
@@ -428,7 +428,7 @@ defmodule AshDataTable.Parts.Grid do
       phx-no-format
     ><td
       :if={@selecting}
-      id={"#{@dom_id}-s"}
+      id={Ids.selector(@dom_id)}
       role="gridcell"
       aria-colindex="1"
       tabindex="-1"
@@ -440,19 +440,19 @@ defmodule AshDataTable.Parts.Grid do
       aria-colindex={@lead}
       tabindex="-1"
       data-expander
-    ><button type="button" tabindex="-1" aria-expanded={to_string(@row.open?)} aria-label={@texts.related_records}></button></td><td
+    ><button type="button" tabindex="-1" aria-expanded={to_string(@row.open)} aria-label={@texts.related_records}></button></td><td
       :for={{column, colindex, cell} <- cells(@columns, @lead, @row)}
       id={Ids.cell(@dom_id, column.name)}
       role="gridcell"
       aria-colindex={colindex}
       tabindex="-1"
-      {Attrs.cell(Ids.cell(@dom_id, column.name), column, @editing?, @row, @time_zone)}
+      {Attrs.cell(column, cell)}
     ><Common.dynamic_component
       :if={component?(column, cell)}
       module={column.component.module}
       function={:cell}
       value={cell.value}
-      text={Words.text(:cell, %{column: column, cell: cell, time_zone: @time_zone})}
+      text={cell.text}
       column={column.component.column}
     /><Kit.part
       :if={!component?(column, cell)}
@@ -462,7 +462,7 @@ defmodule AshDataTable.Parts.Grid do
       column={column}
       state={cell.state}
       value={cell.value}
-      text={Words.text(:cell, %{column: column, cell: cell, time_zone: @time_zone})}
+      text={cell.text}
       failure={cell.failure}
       time_zone={@time_zone}
       texts={Words.texts(:cell, %{column: column, cell: cell})}
@@ -483,7 +483,7 @@ defmodule AshDataTable.Parts.Grid do
   end
 
   # The cells of a record's row: each column, where it stands, and what
-  # `AshDataTable.Present.Row` says of the cell.
+  # the row's item (`AshDataTable.Item`) says of the cell.
   defp cells(columns, lead, row) do
     for {column, index} <- Enum.with_index(columns),
         do: {column, Common.colindex(index, lead), row.cells[column.name]}
@@ -523,9 +523,9 @@ defmodule AshDataTable.Parts.Grid do
     {shown(@column, @state, nil, nil, @texts)}<Kit.part
       part={:failure}
       kit={@kit}
-      id={"#{@id}-error"}
-      message={Words.message(:failure, @failure)}
-      text={Words.text(:failure, @failure)}
+      id={Ids.error(@id)}
+      message={@failure.message}
+      text={@failure.text}
     />
     """
   end
@@ -535,9 +535,9 @@ defmodule AshDataTable.Parts.Grid do
     {@failure.typed |> typed(@column, @texts) |> paragraph(@column)}<Kit.part
       part={:failure}
       kit={@kit}
-      id={"#{@id}-error"}
-      message={Words.message(:failure, @failure)}
-      text={Words.text(:failure, @failure)}
+      id={Ids.error(@id)}
+      message={@failure.message}
+      text={@failure.text}
     />
     """
   end
@@ -579,7 +579,7 @@ defmodule AshDataTable.Parts.Grid do
       data-action={action.name}
       {Attrs.action(action, @asks?)}
       class="btn btn-xs -my-1 me-1"
-    >{action.label}</button><Kit.part :if={@row.action_failure} part={:failure} kit={@kit} id={"#{@id}-error"} message={Words.message(:failure, %{message: @row.action_failure})} text={Words.text(:failure, %{message: @row.action_failure})} /></td>
+    >{action.label}</button><Kit.part :if={@row.failure} part={:failure} kit={@kit} id={Ids.error(@id)} message={@row.failure.message} text={@row.failure.text} /></td>
     """
   end
 
@@ -599,12 +599,12 @@ defmodule AshDataTable.Parts.Grid do
   # What was typed into an editor, as its cell shows it (`texts.typed`): a
   # yes or no with its mark, as a boolean's cell shows it.
   defp typed(typed, %{editor: :boolean} = column, texts) when typed in ["true", "false"],
-    do: value(column, typed == "true", texts.typed, texts)
+    do: value(column, typed == "true", texts.typed)
 
   defp typed(_typed, _column, texts), do: texts.typed
 
-  # What a cell shows, by what it holds (`AshDataTable.Present.Cell`), in
-  # the words it is given (`text`, `texts`).
+  # What a cell shows, by what it holds (a cell of `AshDataTable.Item`),
+  # in the words it is given (`text`, `texts`).
   #
   # A field the actor may not see on this row looks empty and is announced.
   defp shown(_column, :forbidden, _value, _text, texts) do
@@ -648,29 +648,13 @@ defmodule AshDataTable.Parts.Grid do
      ]}
   end
 
-  defp shown(column, :value, value, text, texts),
-    do: column |> value(value, text, texts) |> paragraph(column)
+  defp shown(column, :value, value, text, _texts),
+    do: column |> value(value, text) |> paragraph(column)
 
-  # A value as a cell of its column shows it, `text` the words of it. The
-  # kind of a union is no sensitive field: what it holds is shown as a cell
-  # of its own type shows it, in the same words.
-  defp value(_column, %Ash.ForbiddenField{}, _text, texts),
-    do: shown(nil, :forbidden, nil, nil, texts)
-
-  defp value(_column, nil, _text, _texts), do: ""
-  defp value(_column, %Ash.NotLoaded{}, _text, _texts), do: ""
-
-  # A union shows the value it holds, as a cell of its kind's type shows
-  # it: a yes or no among its kinds is the check indicator a boolean has.
-  defp value(%{cell_type: :union, members: [_ | _] = members}, %Ash.Union{} = union, text, texts) do
-    case Enum.find(members, &(&1.name == union.type)) do
-      nil -> text
-      kind -> value(kind, union.value, text, texts)
-    end
-  end
-
-  # A boolean is a check indicator with its accessible text beside it.
-  defp value(%{cell_type: :boolean}, value, text, _texts) when is_boolean(value) do
+  # A value as a cell of its column shows it, `text` the words of it (a
+  # union's are those of the kind it holds, the item says). A yes or no is
+  # a check indicator with its accessible text beside it.
+  defp value(_column, value, text) when is_boolean(value) do
     assigns = %{mark: if(value, do: "✓", else: "–"), text: text}
 
     ~H"""
@@ -679,7 +663,7 @@ defmodule AshDataTable.Parts.Grid do
   end
 
   # everything else is plain text
-  defp value(_column, _value, text, _texts), do: text || ""
+  defp value(_column, _value, text), do: text || ""
 
   defp escape(text), do: text |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 
@@ -825,7 +809,7 @@ defmodule AshDataTable.Parts.Grid do
           :for={{dom_id, row} <- @rows}
           id={dom_id}
           role="rowgroup"
-          {Attrs.rowgroup(row, @selecting)}
+          {row.attrs}
           phx-no-format
         ><Kit.part
               :if={Attrs.detail?(row) && row.lines}
