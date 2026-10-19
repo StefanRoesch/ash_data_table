@@ -2,7 +2,7 @@ import { expectNoAxeViolations } from "./support/a11y"
 import { deleteTask, SEED } from "./support/data"
 import { expect, test } from "./support/fixtures"
 import { switchLocale } from "./support/locale"
-import { Table } from "./support/table"
+import { Table, BADGE } from "./support/table"
 
 // axe-core on the states of editing, on the components of a column, and on
 // what a person may not see or do (see a11y-tables.spec.ts).
@@ -115,7 +115,7 @@ test.describe("the components of a column", () => {
         page,
         tasks,
       }) => {
-        await expect(tasks.cell(SECOND, "status").locator(".badge")).toHaveCount(1)
+        await expect(tasks.cell(SECOND, "status").locator(BADGE)).toHaveCount(1)
         await expect(tasks.cell(SECOND, "progress").locator("progress")).toHaveCount(1)
         await expectNoAxeViolations(page)
 

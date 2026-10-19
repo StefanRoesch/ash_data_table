@@ -57,10 +57,15 @@ config :demo, e2e_routes: true
 # allowed into its test's transaction (`DemoWeb.E2E.Sandbox`),
 # and what the page of a browser test sent its LiveViews, heard on the server
 # (`e2e/server/recorder.ex`, read by `Sent` in `e2e/support/fixtures.ts`).
-config :demo, e2e_children: [DemoWeb.E2E.Sandbox, DemoWeb.E2E.Recorder]
+config :demo, e2e_children: [DemoWeb.E2E.Sandbox, DemoWeb.E2E.Recorder, DemoWeb.E2E.KitChoice]
 
 # A warning or an error in the server's output is worth seeing; the rest is noise.
 config :logger, level: :warning
 
 # As in dev and test: the checks that find a duplicate id or a bad stream.
 config :phoenix_live_view, enable_expensive_runtime_checks: true
+
+# Every table whose kit is not named where it is placed is drawn with the kit
+# the page asks for (`DemoWeb.E2E.ChosenKit`): the default kit, or the React
+# kit for the Playwright project `react`.
+config :ash_data_table, kit: DemoWeb.E2E.ChosenKit

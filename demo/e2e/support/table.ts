@@ -13,6 +13,13 @@ import { expect, type Locator, type Page, type Response } from "@playwright/test
  * with one exception that is about the whole tree on purpose: `stops()`,
  * the stops in page order, which a nested table is part of.
  */
+/**
+ * The badge a column's `Badge` component draws in a cell: the one element
+ * the cell holds (daisyUI's `.badge` in the default kit, shadcn's in the
+ * React kit).
+ */
+export const BADGE = ":scope > span:only-child"
+
 export class Table {
   constructor(
     readonly page: Page,
@@ -140,11 +147,14 @@ export class Table {
    * browser tests reach into the hook to send an event.
    */
   async forge(event: string, payload: Record<string, unknown>): Promise<void> {
-    await this.hookRoot.evaluate(
-      // named with the table, as the hooks' transport names it
-      (grid: any, [event, payload]) =>
-        grid._ashDataTable.pushEventTo(grid, `ash_data_table:${grid._ashDataTable.id}:${event}`, payload),
-      [event, payload] as const,
+    await this.page.evaluate(
+      // through the table's sender, named with the table, as the hooks'
+      // transport sends it
+      ([id, event, payload]) => {
+        const sender: any = document.querySelector(`[data-sender][data-table="${CSS.escape(id)}"]`)
+        return sender._ashDataTableSender.pushEventTo(sender, `ash_data_table:${id}:${event}`, payload)
+      },
+      [this.id, event, payload] as const,
     )
   }
 
@@ -599,9 +609,14 @@ export class Table {
     )
   }
 
-  /** The templates the hook copies a column's editor from: one per column the person can edit. */
+  /**
+   * The templates the hook copies a column's editor from: one per column the
+   * person can edit, found by their ids (`Ids.editor/2`), as the hook finds
+   * them: the default kit draws them in the grid, the React kit beside its
+   * island.
+   */
   get editorTemplates(): Locator {
-    return this.hookRoot.locator(`:scope > template[id^="${this.id}-editor-"]`)
+    return this.page.locator(`template[id^="${this.id}-editor-"]`)
   }
 
   /** The dialog that asks a column's `confirm` question. */
@@ -1190,7 +1205,10 @@ export async function ownedSheets(page: Page): Promise<{ sheets: number; grids: 
 export async function answered(page: Page): Promise<void> {
   await page.evaluate(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
-    const grid: any = document.querySelector("[phx-hook='AshDataTable.Grid']")
-    if (grid?._ashDataTable) await grid._ashDataTable.pushEventTo(grid, "ash_data_table:e2e-barrier:save", {})
+    // through a grid's sender, the LiveView hook every kit draws beside a
+    // grid (a React kit's grid has none of LiveView's)
+    const sender: any = document.querySelector("[data-sender]")
+    const hook = sender?._ashDataTableSender
+    if (hook) await hook.pushEventTo(sender, "ash_data_table:e2e-barrier:save", {})
   })
 }

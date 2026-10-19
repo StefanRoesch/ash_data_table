@@ -3,6 +3,7 @@ import { contrast, contrastOf, painted, type Pseudo, type RGB } from "./support/
 import { SEED } from "./support/data"
 import { expect, test } from "./support/fixtures"
 import type { Table } from "./support/table"
+import { BADGE } from "./support/table"
 
 // What axe-core does not judge (the a11y-*.spec.ts files): whether a state can be seen.
 // Each test here brings a table into a state, reads the colours the browser
@@ -498,7 +499,7 @@ for (const theme of ["light", "dark"] as const) {
     test.describe("the components of a column", () => {
       test("a badge: its text is text, and its edge is seen", async ({ tasks }) => {
         for (const column of ["status", "priority"]) {
-          const badge = tasks.cell(FIRST, column).locator(".badge")
+          const badge = tasks.cell(FIRST, column).locator(BADGE)
           await expect(badge).toHaveCount(1)
           expect(await contrastOf(badge, "text"), `the text of the ${column} badge`).toBeGreaterThanOrEqual(
             TEXT,
@@ -647,7 +648,7 @@ test.describe("in forced colours", () => {
   test("a badge, a progress bar and a slider are still drawn", async ({ page, tasks }) => {
     const key = await taskUnderWay(tasks)
 
-    const badge = tasks.cell(key, "status").locator(".badge")
+    const badge = tasks.cell(key, "status").locator(BADGE)
     expect(await style(badge, ["border-top-style", "border-top-width"])).toEqual({
       "border-top-style": "solid",
       "border-top-width": "1px",

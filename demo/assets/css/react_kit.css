@@ -65,8 +65,7 @@
   border-bottom: 1px solid var(--sh-border);
 }
 .ash-react-grid-table > thead > tr > th {
-  font-weight: 500;
-  color: var(--sh-muted-foreground);
+  font-weight: 600;
   white-space: nowrap;
 }
 .ash-react-grid-table > thead > tr:last-child > :is(td, th) {
@@ -178,8 +177,19 @@
 }
 
 /* which cells can be edited: with the pointer an editable cell shows a thin
-   edge inside it and a text cursor */
-.ash-react-grid-table > tbody > tr > :is(td, th)[tabindex="0"] { cursor: text; }
+   edge inside it, a text cursor and a small pencil at its end (not a failed
+   cell, whose end holds its mark) */
+.ash-react-grid-table > tbody > tr > :is(td, th)[tabindex="0"] { position: relative; cursor: text; }
+.ash-react-grid-table > tbody > tr > :is(td, th)[tabindex="0"]:not([data-failed]):is(:hover, :focus)::after {
+  position: absolute;
+  inset-inline-end: 0.375rem;
+  top: 50%;
+  translate: 0 -50%;
+  font-size: 0.75rem;
+  line-height: 1;
+  color: color-mix(in oklab, var(--sh-foreground) 60%, transparent);
+  content: "✎" / "";
+}
 .ash-react-grid-table > tbody > tr > :is(td, th)[tabindex="0"]:hover {
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--sh-foreground) 30%, transparent);
 }
@@ -220,10 +230,15 @@
   content: "";
   border-block: 0.3em solid transparent;
   border-inline-start: 0.45em solid currentColor;
-  transition: transform 150ms;
+  transition: rotate 150ms;
   forced-color-adjust: none;
 }
-.ash-react-grid-table > tbody > tr > :is([data-expander], [data-line]) button[aria-expanded="true"]::before { transform: rotate(90deg); }
+.ash-react-grid-table > tbody > tr > :is([data-expander], [data-line]) button[aria-expanded="true"]::before { rotate: 90deg; }
+/* forced colours would fill the two transparent sides of the triangle */
+@media (forced-colors: active) {
+  .ash-react-grid-table > tbody > tr > :is([data-expander], [data-line]) button[aria-expanded]::before { border-inline-start-color: CanvasText; }
+  .ash-react-table [aria-current="page"] { text-decoration: underline; }
+}
 .ash-react-grid-table > tbody > tr > [data-line] button[aria-expanded] { padding-inline-start: 0.25rem; }
 .ash-react-grid-table > tbody > tr > [data-line] button[aria-expanded]::before { margin-inline-end: 0.5rem; }
 .ash-react-grid-table > tbody > tr > [data-selector] { width: 0; }
@@ -324,4 +339,21 @@
 
 .ash-react-link { text-decoration: underline; text-underline-offset: 2px; }
 
-.ash-react-progress { accent-color: currentColor; height: 0.5rem; }
+/* a bar: its filled part in the text colour, its track a faint tint of it */
+.ash-react-progress {
+  appearance: none;
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  border: 0;
+  background: color-mix(in oklab, var(--sh-foreground) 15%, transparent);
+  forced-color-adjust: none;
+}
+.ash-react-progress::-webkit-progress-bar { background: color-mix(in oklab, var(--sh-foreground) 15%, transparent); }
+.ash-react-progress::-webkit-progress-value { background: var(--sh-foreground); }
+.ash-react-progress::-moz-progress-bar { background: var(--sh-foreground); }
+@media (forced-colors: active) {
+  .ash-react-progress { background: Canvas; border: 1px solid CanvasText; }
+  .ash-react-progress::-webkit-progress-bar { background: Canvas; }
+  .ash-react-progress::-webkit-progress-value { background: CanvasText; }
+}

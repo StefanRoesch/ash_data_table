@@ -14,6 +14,9 @@ defmodule DemoWeb.Router do
     plug DemoWeb.Actor
     # Puts the language switcher's locale into the process.
     plug DemoWeb.Locale
+
+    # In the browser tests, the kit the page asks for (`DemoWeb.E2E.ChosenKit`).
+    if Application.compile_env(:demo, :e2e_routes, false), do: plug(DemoWeb.E2E.KitChoice)
   end
 
   # The tests that run three ways (`DemoWeb.ModeCase`): on a host of their
@@ -364,6 +367,7 @@ defmodule DemoWeb.Router do
         live "/held", HeldLive
         live "/kit", KitLive
         live "/ids", IdsLive
+        live "/react/tag", ReactTagLive
       end
     end
 

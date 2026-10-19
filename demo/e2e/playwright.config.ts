@@ -18,6 +18,19 @@ import { workerCount } from "./support/server"
 //                                     and those that import a changed file
 //   npm run test:server -- editing    against a running `./server.sh`, one
 //                                     test at a time, with nothing started
+// The specs of the grid, which the project `react` runs against the React kit.
+const REACT = new RegExp(
+  "(^|/)(" +
+    [
+      "a11y-editing", "a11y-nesting", "a11y-tables", "attached", "authorization", "components",
+      "contrast", "counter", "dashboard", "editing", "filtering", "footer", "full_view", "hiding",
+      "live_updates", "locale", "long_text", "named_tables", "nesting", "page_size", "pagination",
+      "portals", "relationships", "resizing", "scrolling", "selection", "sensitive", "sorting",
+      "tab_order", "tables", "task_labels", "validation", "zones",
+    ].join("|") +
+    ")\\.spec\\.ts$",
+)
+
 export default defineConfig({
   testDir: ".",
   testMatch: /\.spec\.ts$/,
@@ -55,6 +68,24 @@ export default defineConfig({
         // clicks, so that a click on a
         // cell needs no scrolling
         viewport: { width: 1600, height: 900 },
+      },
+    },
+    // The grid specs once more against the demo's React kit
+    // (`DemoWeb.ReactKit`, stage 8, R2): every table a page does not give a
+    // kit of its own is drawn with it, as the page asks by request
+    // (`x-demo-kit`, `DemoWeb.E2E.ChosenKit`). The panel, the picker and the
+    // question are the default kit's until R3, so their specs are not here.
+    // A test that checks what only the HEEx kit draws says `@heex` in its
+    // title and is left out.
+    {
+      name: "react",
+      dependencies: ["setup"],
+      testMatch: REACT,
+      grepInvert: /@heex/,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1600, height: 900 },
+        extraHTTPHeaders: { "x-demo-kit": "react" },
       },
     },
   ],

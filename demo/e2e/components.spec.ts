@@ -1,7 +1,7 @@
 import type { Locator, Page } from "@playwright/test"
 import { expect, test } from "./support/fixtures"
 import { SEED } from "./support/data"
-import { Table } from "./support/table"
+import { Table, BADGE } from "./support/table"
 
 // Custom components on /tasks, as the admin: "Progress" is shown as a bar
 // and edited with a slider (the shipped `Progress` and `Slider`, put
@@ -309,7 +309,7 @@ test.describe("a column that asks before it saves, edited with the slider", () =
   test.beforeEach(async ({ tasks }) => {
     // The demo asks about "State" only. The question is the column's, on
     // its editor's template: put there, it is asked as if the block had it.
-    await tasks.hookRoot
+    await tasks.page
       .locator('template[id="task-editor-progress"]')
       .evaluate((template, question) => template.setAttribute("data-confirm", question), QUESTION)
   })
@@ -522,8 +522,8 @@ test.describe("around the components", () => {
     const nested = await projects.openLine(SEED.project.mobileApp, "tasks")
     const key = await nested.rowKey(1)
 
-    await expect(nested.cell(key, "status").locator(".badge")).toHaveCount(1)
-    await expect(nested.cell(key, "priority").locator(".badge")).toHaveCount(1)
+    await expect(nested.cell(key, "status").locator(BADGE)).toHaveCount(1)
+    await expect(nested.cell(key, "priority").locator(BADGE)).toHaveCount(1)
     const progress = nested.cell(key, "progress")
     await expect(progress.locator("progress")).toHaveCount(1)
 

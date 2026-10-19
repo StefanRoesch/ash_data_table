@@ -13,8 +13,13 @@
 //     `getSnapshotBeforeUpdate` before it changes the DOM of a commit, and
 //     its `componentDidUpdate` after the commit, the effects of the
 //     components in it first;
-//   * `reactKitHooks` is live_react's island hook (`getHooks`), whose
-//     `destroyed` LiveView calls when the island's element goes. live_react
+//   * `reactKitHooks` is live_react's island hook (`getHooks`), which
+//     draws what LiveView gave the island at once, in the hook's `mounted`
+//     and `updated` (`flushSync`, React's public way to commit now): as a
+//     patch of LiveView's draws a HEEx kit's markup, one patch after the
+//     other, so that the island shows each of them (a table that is busy,
+//     then its rows), never only the last of several that came in a row.
+//     LiveView calls its `destroyed` when the island's element goes. live_react
 //     unmounts the island's React root only on the next
 //     `phx:page-loading-stop` (its own timing): until then nothing would
 //     destroy the table's hooks in it, which hear the document. So the
@@ -22,6 +27,7 @@
 //     island's hook, at once (`gone`); React's unmount later finds them
 //     destroyed already.
 import * as React from "react"
+import {flushSync} from "react-dom"
 import {getHooks} from "live_react"
 import {liveViewTransport} from "ash_data_table"
 
@@ -55,6 +61,12 @@ export function reactKitHooks(components: Record<string, React.ComponentType<any
   return {
     ReactHook: {
       ...ReactHook,
+      mounted(this: any) {
+        flushSync(() => ReactHook.mounted.call(this))
+      },
+      updated(this: any) {
+        flushSync(() => ReactHook.updated.call(this))
+      },
       destroyed(this: {el: HTMLElement}) {
         gone(this.el)
         ReactHook.destroyed.call(this)

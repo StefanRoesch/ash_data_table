@@ -26,6 +26,18 @@ type ColumnsProps = {
   }
 }
 
+// A box drawn ticked, once, as the element comes: after that whether it is
+// ticked is the hook's. Not React's `defaultChecked`: React puts that back
+// on the box after every change of it, over the hook's (and the person's).
+const drawn = new WeakSet<HTMLInputElement>()
+const ticked = (box: HTMLInputElement | null) => {
+  if (box && !drawn.has(box)) {
+    drawn.add(box)
+    box.defaultChecked = true
+    box.checked = true
+  }
+}
+
 // the name of the button the list is placed under, the table's own
 const anchor = (id: string) => `--ash-data-table-columns-${id.replace(/[^A-Za-z0-9_-]/g, "_")}`
 
@@ -62,8 +74,8 @@ function Columns({columns}: ColumnsProps) {
         {columns.entries.map(entry => (
           <div key={entry.id} className="flex items-center gap-2">
             <label id={`${entry.id}-entry`} className="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
-              <input type="checkbox" id={entry.id} defaultChecked {...attrs(entry.box)} className={box("peer")} />
-              <span>{entry.label}</span>
+              <input type="checkbox" id={entry.id} ref={ticked} {...attrs(entry.box)} className={box("peer")} />
+              <span>{entry.label}</span>{" "}
               {entry.flag && <span data-flag="" className="peer-checked:hidden">({entry.flag})</span>}
             </label>
             <input type="number" min={columns.least} max={columns.most} {...attrs(entry.width)} className={input("w-20")} />

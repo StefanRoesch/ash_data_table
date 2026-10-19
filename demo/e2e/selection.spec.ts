@@ -875,8 +875,12 @@ test.describe("a nested table", () => {
     await page.keyboard.press("Shift+Tab")
     expect(await tasks.focused()).toBe(`${comments.id}-bulk-destroy`)
     // which, as the only action, stands on the line, and in the error colour
-    await expect(comments.bulk("destroy")).toHaveClass(/btn-outline/)
-    await expect(comments.bulk("destroy")).toHaveClass(/btn-error/)
+    // (the default kit's classes; the React kit draws it with shadcn's)
+    await expect(comments.bulk("destroy")).toHaveAttribute("data-destructive", "")
+    if (test.info().project.name !== "react") {
+      await expect(comments.bulk("destroy")).toHaveClass(/btn-outline/)
+      await expect(comments.bulk("destroy")).toHaveClass(/btn-error/)
+    }
     await expect(comments.bulkMore).toHaveCount(0)
   })
 

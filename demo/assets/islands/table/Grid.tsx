@@ -11,15 +11,18 @@
 //   * the boxes are drawn without `checked`, the filters' and the width
 //     fields' controls uncontrolled;
 //   * a row's `aria-rowindex` is drawn once, as the row first comes;
-//   * a cell the hook edits is drawn as it was while the hook holds it
-//     (`onEdit`), and a cell whose item changed is drawn anew, as another
-//     element (its `key`), not changed in place: React never touches the
-//     children of a cell the hook put an editor or a text into;
+//   * a cell the hook holds is drawn as it was, while it holds it: while
+//     it edits it (`onEdit`) and while its save or action is on its way
+//     (`aria-busy`, which the hook writes and takes away): the hook puts
+//     an editor or what was typed into it meanwhile, and gives the cell its
+//     own content back before it takes `aria-busy` away (`restore`). Then
+//     the cell is drawn from its item again, in place;
 //   * the places a nested table and its heading line are moved into
 //     (`Ids.nested_cell/2`, `Ids.line_heading/2`) are drawn for every line
 //     of every row ahead of time, hidden while the line is closed, and
 //     never drawn again as another element (the kit's note, C8).
 import * as React from "react"
+import {flushSync} from "react-dom"
 import {ids, mountGrid} from "ash_data_table"
 import {Link} from "live_react"
 
@@ -32,8 +35,10 @@ import {Failure} from "./cells"
 import {Filter, type FilterProps} from "./Filter"
 import {Pagination, type PaginationProps} from "./Pagination"
 
-// the cell being edited, by its id (`onEdit`), for the cells to keep as they are
-export const Edited = React.createContext<string | null>(null)
+// the cells the hook holds, by id: the one it edits (`onEdit`) and those
+// whose save or action is on its way (`aria-busy`), for them to be drawn
+// as they are
+export const Held = React.createContext<ReadonlySet<string>>(new Set())
 
 type HeadColumn = {
   id: string
@@ -152,17 +157,55 @@ export function AshGrid(props: GridProps) {
 function Grid(props: GridProps) {
   const {rows, texts, grid, table, head, filters, columns, row, footer} = props
   const [edited, setEdited] = React.useState<string | null>(null)
+  const [busy, setBusy] = React.useState<ReadonlySet<string>>(() => new Set())
   const ref = React.useRef<HTMLDivElement>(null)
-  const options = React.useMemo(() => ({onEdit: (cellId: string | null) => setEdited(cellId)}), [])
+  // The hook says which cell it edits as it opens the editor: the cell is
+  // drawn as it is at once, before anything else comes. It says that the
+  // edit ended before it gives the cell back (what the cell held, or what
+  // was typed while its save is on its way, `aria-busy`): that is heard
+  // once it has, at the end of what the hook does now (a microtask).
+  const options = React.useMemo(
+    () => ({
+      onEdit: (cellId: string | null) =>
+        cellId === null ? queueMicrotask(() => flushSync(() => setEdited(null))) : flushSync(() => setEdited(cellId)),
+    }),
+    [],
+  )
   const mounted = useMounted(ref, mountGrid, props, options)
+  // the cells whose save or action is on its way: the hook marks them
+  // `aria-busy` (none of the island's), and gives them back as they were
+  // before it takes it away; the island holds them meanwhile, from the
+  // moment the hook marked them (a microtask later, before anything else)
+  React.useLayoutEffect(() => {
+    const el = ref.current!
+    let before: ReadonlySet<string> = new Set()
+    const observer = new MutationObserver(() => {
+      const now = new Set<string>()
+      for (const cell of el.querySelectorAll<HTMLElement>("td[aria-busy][id], th[aria-busy][id]")) now.add(cell.id)
+      if (same(before, now)) return
+      before = now
+      flushSync(() => setBusy(now))
+    })
+    observer.observe(el, {subtree: true, attributes: true, attributeFilter: ["aria-busy"]})
+    return () => observer.disconnect()
+  }, [])
+  const held = React.useMemo(() => (edited ? new Set([...busy, edited]) : busy), [busy, edited])
   const HeaderCell = usePart("HeaderCell")
   const Row = usePart("Row")
   const Detail = usePart("Detail")
   const FooterPart = usePart("Footer")
   const id = row.id
+  // whether a row is expanded, by its key: what the server last said of its
+  // detail (lines while it is open), which it sends again whenever the row
+  // opens or closes; the row's own item is not sent again for it
+  const expanded = React.useMemo(() => {
+    const open = new Set<string>()
+    for (const item of rows) if ("detail" in item && item.detail && item.lines) open.add(item.key)
+    return open
+  }, [rows])
 
   return (
-    <Edited.Provider value={edited}>
+    <Held.Provider value={held}>
       <a id={ids.skip(id)} href={"#" + ids.skipTarget(id)} className="ash-react-skip">
         {texts.skip_table}
       </a>
@@ -207,7 +250,7 @@ function Grid(props: GridProps) {
                 </tbody>
               ) : (
                 <tbody key={item.__dom_id} id={item.__dom_id} role="rowgroup" {...attrs(item.attrs)}>
-                  <Row item={item as RowItem} row={row} columns={columns} texts={texts} />
+                  <Row item={item as RowItem} open={expanded.has(item.key)} row={row} columns={columns} texts={texts} />
                 </tbody>
               ),
             )}
@@ -218,7 +261,7 @@ function Grid(props: GridProps) {
       <div id={`${id}-scrollbar`} aria-hidden="true" tabIndex={-1} hidden data-scrollbar="" className="ash-react-scrollbar">
         <div className="h-px"></div>
       </div>
-    </Edited.Provider>
+    </Held.Provider>
   )
 }
 
@@ -258,7 +301,7 @@ function useOnce<T>(value: T): T {
 
 // The part `Row`: the box that selects the row, its expander, a cell per
 // column (the label column's the row's header) and its actions.
-export function Row({item, row, columns, texts}: {item: RowItem; row: RowProps; columns: Column[]; texts: GridTexts}) {
+export function Row({item, open, row, columns, texts}: {item: RowItem; open: boolean; row: RowProps; columns: Column[]; texts: GridTexts}) {
   const rowindex = useOnce(item.rowindex)
   const DataCell = usePart("DataCell")
   const ActionsCell = usePart("ActionsCell")
@@ -277,7 +320,7 @@ export function Row({item, row, columns, texts}: {item: RowItem; row: RowProps; 
       )}
       {row.expandable && (
         <td id={ids.expander(dom)} role="cell" aria-colindex={row.lead} data-expander="">
-          <button type="button" aria-expanded={item.open ? "true" : "false"} aria-label={texts.related_records}></button>
+          <button type="button" aria-expanded={open ? "true" : "false"} aria-label={texts.related_records}></button>
         </td>
       )}
       {columns.map((column, index) => (
@@ -296,23 +339,52 @@ export function Row({item, row, columns, texts}: {item: RowItem; row: RowProps; 
   )
 }
 
-// The cell of a record under a column. While the hook edits it, it is
-// drawn as it was; else, where its item changed, it is drawn as another
-// element (`key`): React never changes what the hook may have put into
-// it (an editor, a text while its save is on its way).
+// Drawn from `item` but while the hook holds the element of `id`: then as
+// it was drawn last before.
+function useHeld<T>(id: string, item: T, el?: React.RefObject<HTMLElement | null>): T {
+  // busy as it is drawn: the hook may have marked it a moment ago
+  const holding = React.useContext(Held).has(id) || !!(el && el.current && el.current.hasAttribute("aria-busy"))
+  const kept = React.useRef(item)
+  if (!holding) kept.current = item
+  return kept.current
+}
+
+// A number that goes up whenever the server sent `item` again (another
+// object: live_react replaces the item of a row it is sent, and keeps those
+// it is not): what the cell holds is drawn anew then (its `key`), and the
+// button the hook put into it to show its whole text goes (`data-whole`,
+// which the hook puts in again where the new text is cut off), as LiveView
+// draws a row it is sent: nothing the hook put into it stays (a value that
+// was shown, a whole text that was offered). The cell itself stays, with
+// its focus. Not while the hook holds it.
+// After a cell was drawn anew, the hook's button of its whole text goes.
+function useDrawnAnew(ref: React.RefObject<HTMLElement | null>, sent: number) {
+  React.useLayoutEffect(() => {
+    if (sent === 0 || !ref.current) return
+    for (const button of ref.current.querySelectorAll(":scope > [data-whole]")) button.remove()
+  }, [sent])
+}
+
+function useSent(item: object): number {
+  const last = React.useRef({item, sent: 0})
+  if (last.current.item !== item) last.current = {item, sent: last.current.sent + 1}
+  return last.current.sent
+}
+
+// The cell of a record under a column, the label column's the row's
+// header; as it was while the hook holds it.
 export function DataCell({id, column, cell, colindex, header, texts}: {id: string; column: Column; cell: ItemCell; colindex: number; header: boolean; texts: GridTexts}) {
-  const edited = React.useContext(Edited) === id
-  const held = React.useRef(cell)
-  if (!edited) held.current = cell
-  const shown = held.current
-  const key = React.useMemo(() => JSON.stringify(shown), [shown])
+  const ref = React.useRef<HTMLTableCellElement>(null)
+  const shown = useHeld(id, cell, ref)
+  const sent = useSent(shown)
+  useDrawnAnew(ref, sent)
   const CellPart = usePart("Cell")
   const components = usePart("components")
   const Tag = header ? "th" : "td"
 
   return (
     <Tag
-      key={key}
+      ref={ref}
       id={id}
       role={header ? "rowheader" : "cell"}
       scope={header ? "row" : undefined}
@@ -320,20 +392,22 @@ export function DataCell({id, column, cell, colindex, header, texts}: {id: strin
       {...merged(column.attrs, shown.attrs)}
       className={header ? "text-start font-normal" : undefined}
     >
-      <CellPart id={id} column={column} cell={shown} texts={texts} components={components} />
+      <CellPart key={sent} id={id} column={column} cell={shown} texts={texts} components={components} />
     </Tag>
   )
 }
 
 // The part `ActionsCell`: "Open" where the page offers it, a button per row
-// action, and the message of an action that failed. Drawn anew where the
-// failure changed, as a cell is.
+// action, and the message of an action that failed; as it was while the
+// hook holds it.
 export function ActionsCell({id, item, row}: {id: string; item: RowItem; row: RowProps}) {
-  const failure = item.failure
-  const key = failure ? JSON.stringify(failure) : "ok"
+  const ref = React.useRef<HTMLTableCellElement>(null)
+  const held = useHeld(id, item, ref)
+  const failure = held.failure
+  const sent = useSent(held)
   return (
     <td
-      key={key}
+      ref={ref}
       id={id}
       role="cell"
       aria-colindex={row.actions_colindex}
@@ -341,6 +415,7 @@ export function ActionsCell({id, item, row}: {id: string; item: RowItem; row: Ro
       data-failed={failure ? "" : undefined}
       aria-describedby={failure ? ids.error(id) : undefined}
     >
+      <React.Fragment key={sent}>
       {row.open && (
         <button type="button" id={`${id}-open`} data-open="" className={button("outline", "xs", "-my-1 me-1")}>
           {row.open}
@@ -352,22 +427,24 @@ export function ActionsCell({id, item, row}: {id: string; item: RowItem; row: Ro
         </button>
       ))}
       {failure && <Failure id={ids.error(id)} text={failure.text} />}
+      </React.Fragment>
     </td>
   )
 }
 
 // ---- the lines under an expanded row --------------------------------------------
 
-// The part `Detail`: a line per relationship, and under each the row whose
-// cell a nested table is moved into; drawn for every row, the places too,
-// hidden while the row or the line is closed (C8).
+// The part `Detail`: under an expanded row a line per relationship, and
+// under each the row whose cell a nested table is moved into, drawn with
+// the line, hidden while the line is closed (C8).
 export function Detail({item, row}: {item: DetailItem; row: RowProps}) {
   const Line = usePart("Line")
   const owner = ids.row(row.id, item.key)
+  if (!item.lines) return null
   return (
     <>
       {row.relationships.map((relationship, index) => (
-        <Line key={relationship.name} owner={owner} relationship={relationship} line={item.lines ? item.lines[index] : null} row={row} />
+        <Line key={relationship.name} owner={owner} relationship={relationship} line={item.lines![index]} row={row} />
       ))}
     </>
   )
@@ -385,7 +462,7 @@ export function Line({owner, relationship, line, row}: {owner: string; relations
             <button type="button" id={ids.lineButton(owner, relationship.name)} aria-expanded={open ? "true" : "false"} className="text-sm font-semibold">
               {relationship.label}
             </button>
-            {open && line && line.text && <span className="-ms-1 text-sm text-muted-foreground">{line.text}</span>}
+            {open && line && line.text && <span className="-ms-1 text-sm text-foreground/75">{line.text}</span>}
             <div id={ids.lineHeading(owner, relationship.name)} hidden={!open} className="min-w-0 grow basis-auto"></div>
           </div>
         </td>
@@ -463,3 +540,5 @@ export function SummaryCell({cell}: {cell: SummaryCell}) {
     </td>
   )
 }
+
+const same = (a: ReadonlySet<string>, b: ReadonlySet<string>) => a.size === b.size && [...a].every(id => b.has(id))
