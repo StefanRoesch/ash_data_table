@@ -17,13 +17,15 @@
 
 // ---- the structure, by ARIA role
 
-// the grid, its row groups (a record and the detail under it each have
+// the table, its row groups (a record and the detail under it each have
 // one; the header `ID-head` and the footer `ID-foot` may be row groups
-// too, and are no record's, as a detail is none), its rows, and its cells
-export const TABLE = "[role=grid]"
+// too, and are no record's, as a detail is none), its rows, its cells
+// (the label column's is the row's header), and its column headers
+export const TABLE = "[role=table]"
 export const ROWGROUP = "[role=rowgroup]"
 export const ROW = "[role=row]"
-export const GRIDCELL = "[role=gridcell]"
+export const CELL = "[role=cell]"
+export const ROWHEADER = "[role=rowheader]"
 export const HEADER = "[role=columnheader]"
 // what opens over the page: the action panel, the picker, the question
 export const DIALOG = "[role=dialog]"
@@ -65,6 +67,8 @@ export const DETAIL = "[data-detail]"
 export const CURRENT = "[data-current]"
 // the footer row of the summaries
 export const SUMMARIES = "[data-summaries]"
+// a cell whose save, or a row whose action, failed
+export const FAILED = "[data-failed]"
 
 // ---- in a cell
 

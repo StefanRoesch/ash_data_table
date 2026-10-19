@@ -60,7 +60,11 @@ defmodule DemoWeb.Tables.NestedTableTest do
       # a viewer has nothing to select a row for
       {:ok, _view, html} = conn |> log_in(world.viewer) |> live("/tasks")
 
-      assert attribute(html, "[id='task-row-#{task.id}-r'] > [role=gridcell]:first-child", "id") ==
+      assert attribute(
+               html,
+               "[id='task-row-#{task.id}-r'] > :is([role=cell],[role=rowheader]):first-child",
+               "id"
+             ) ==
                ["task-row-#{task.id}-e"]
 
       assert text(html, "#task-head-row > [role=columnheader]:first-child") == "Related records"
@@ -69,7 +73,11 @@ defmodule DemoWeb.Tables.NestedTableTest do
 
       {:ok, _view, html} = conn |> log_in(world.admin) |> live("/tasks")
 
-      assert attribute(html, "[id='task-row-#{task.id}-r'] > [role=gridcell]", "id")
+      assert attribute(
+               html,
+               "[id='task-row-#{task.id}-r'] > :is([role=cell],[role=rowheader])",
+               "id"
+             )
              |> Enum.take(3) ==
                ["task-row-#{task.id}-s", "task-row-#{task.id}-e", "task-row-#{task.id}-c-title"]
 
@@ -151,13 +159,13 @@ defmodule DemoWeb.Tables.NestedTableTest do
       # every line is closed: no nested table yet
       assert attribute(
                html,
-               "[id='task-row-#{task.id}-x'] [role=gridcell][data-line] > div > button",
+               "[id='task-row-#{task.id}-x'] :is([role=cell],[role=rowheader])[data-line] > div > button",
                "aria-expanded"
              )
              |> Enum.uniq() == ["false"]
 
-      assert attribute(html, "#task-table[role=grid]", "role") != []
-      assert attribute(html, "[id='task-row-#{task.id}-x'] [role=grid]", "id") == []
+      assert attribute(html, "#task-table[role=table]", "role") != []
+      assert attribute(html, "[id='task-row-#{task.id}-x'] [role=table]", "id") == []
     end
 
     test "answers the hook with whether the row is now expanded", %{conn: conn, task: task} do
@@ -271,7 +279,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       html = toggle(view, task.id, "comments")
       id = nested(task.id, "comments")
 
-      assert attribute(html, "[id='#{id}-table']", "role") == ["grid"]
+      assert attribute(html, "[id='#{id}-table']", "role") == ["table"]
 
       assert attribute(html, "[id='#{id}-table']", "aria-labelledby") ==
                ["task-row-#{task.id}-l-comments-b task-row-#{task.id}-c-title"]
@@ -282,7 +290,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
 
       # the boxes, the expanders, 19 columns and the actions
       assert attribute(html, "[id='task-row-#{task.id}-n-comments-c']", "colspan") == ["25"]
-      assert attribute(html, "[id='task-row-#{task.id}-n-comments-c']", "role") == ["gridcell"]
+      assert attribute(html, "[id='task-row-#{task.id}-n-comments-c']", "role") == ["cell"]
     end
 
     test "says that it is loading until its first rows are there", %{conn: conn, task: task} do
@@ -491,7 +499,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       toggle(view, task.id, "comments")
       id = nested(task.id, "comments")
 
-      click(view, "[id='#{id}-head-body']")
+      click(view, "[id='#{id}-sort-body']")
       html = render_async(view)
 
       assert column(html, id, "body") == ["Apple", "Banana", "Cherry"]
@@ -501,7 +509,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert column(html, "task", "title") == ["Write the report", "Another task"]
       assert attribute(html, "#task-head-title", "aria-sort") == ["none"]
 
-      click(view, "[id='#{id}-head-body']")
+      click(view, "[id='#{id}-sort-body']")
       html = render_async(view)
 
       assert column(html, id, "body") == ["Cherry", "Banana", "Apple"]
@@ -519,7 +527,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
 
       assert column(html, id, "body") == ["Banana"]
       assert text(html, "[id='#{id}-status']") == "1 result"
-      assert attribute(html, "[id='#{id}-clear-filters']", "tabindex") == ["-1"]
+      assert attribute(html, "[id='#{id}-clear-filters']", "tabindex") == []
       refute_patched()
       assert column(html, "task", "title") == ["Write the report", "Another task"]
       assert attribute(html, "#task-clear-filters", "id") == []
@@ -550,14 +558,14 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert text(html, "[id='#{id}-range']") == "45 records"
       assert attribute(html, "[id='#{id}-previous']", "disabled") == [""]
       assert attribute(html, "[id='#{id}-next']", "disabled") == []
-      # the controls are in the grid, and no tab stops
+      # the controls are in the grid, each a Tab stop
       assert attribute(
                html,
                "[id='#{id}-foot'] [id='#{id}-pager'] [id='#{id}-pagination']",
                "role"
              ) == ["group"]
 
-      assert attribute(html, "[id='#{id}-pagination'] button", "tabindex") == ["-1", "-1"]
+      assert attribute(html, "[id='#{id}-pagination'] button", "tabindex") == []
 
       click(view, "[id='#{id}-next']")
       html = render_async(view)
@@ -747,7 +755,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
 
       assert editors(html, id) == ["body"]
       assert column(html, id, "body") == ["Second", "First"]
-      assert attribute(html, cell(id, comments.first.id, "body"), "aria-readonly") == []
+      assert attribute(html, cell(id, comments.first.id, "body"), "tabindex") == ["0"]
 
       html = save(view, id, comments.first.id, "body", "First, reworded")
 
@@ -840,9 +848,11 @@ defmodule DemoWeb.Tables.NestedTableTest do
         {_view, html, id} = open_line(conn, task, relationship)
         assert editors(html, id) == [], relationship
 
-        assert attribute(html, "[id='#{id}-table'] [role=gridcell]", "role") != []
+        assert attribute(html, "[id='#{id}-table'] :is([role=cell],[role=rowheader])", "role") !=
+                 []
 
-        assert attribute(html, "[id='#{id}-table'] [role=gridcell]", "aria-readonly") == [],
+        assert attribute(html, "[id='#{id}-table'] :is([role=cell],[role=rowheader])", "tabindex") ==
+                 [],
                relationship
       end
     end
@@ -875,7 +885,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       expand(view, task.id)
       toggle(view, task.id, "comments")
 
-      view |> element("#task-head-title") |> render_click()
+      view |> element("#task-sort-title") |> render_click()
       html = render_async(view)
 
       assert lines(html, task.id) == []
@@ -1077,8 +1087,8 @@ defmodule DemoWeb.Tables.NestedTableTest do
       refute html =~ "EXT-1"
       # the estimate of the member's own task, and "Not available" for the other
       assert column(html, id, "estimate_hours") == ["8 h", "Not available"]
-      assert attribute(html, cell(id, other.id, "estimate_hours"), "aria-readonly") == ["true"]
-      assert attribute(html, cell(id, own.id, "estimate_hours"), "aria-readonly") == []
+      assert attribute(html, cell(id, other.id, "estimate_hours"), "tabindex") == []
+      assert attribute(html, cell(id, own.id, "estimate_hours"), "tabindex") == ["0"]
       refute html =~ ">5<"
     end
 
@@ -1209,8 +1219,10 @@ defmodule DemoWeb.Tables.NestedTableTest do
 
       html = expand(view, Ecto.UUID.generate())
       assert_reply view, %{open: false}
-      assert attribute(html, "#task-table [role=gridcell]", "role") != []
-      assert attribute(html, "#task-table [role=gridcell][data-line]", "id") == []
+      assert attribute(html, "#task-table :is([role=cell],[role=rowheader])", "role") != []
+
+      assert attribute(html, "#task-table :is([role=cell],[role=rowheader])[data-line]", "id") ==
+               []
 
       # nor without a row at all
       forge(view, "task", "expand", %{})
@@ -1236,8 +1248,8 @@ defmodule DemoWeb.Tables.NestedTableTest do
         html =
           forge(view, "task", "toggle", %{"row" => task.id, "relationship" => name})
 
-        assert attribute(html, "#task-table[role=grid]", "role") != []
-        assert attribute(html, "[id='task-row-#{task.id}-x'] [role=grid]", "id") == []
+        assert attribute(html, "#task-table[role=table]", "role") != []
+        assert attribute(html, "[id='task-row-#{task.id}-x'] [role=table]", "id") == []
       end
 
       # the page is alive, and a line it does offer opens
@@ -1363,7 +1375,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
         Ecto.UUID.dump!(task.id)
       ])
 
-      click(view, "[id='#{id}-head-body']")
+      click(view, "[id='#{id}-sort-body']")
       html = render_async(view)
 
       assert text(html, "[id='#{id}-error']") == "This record is no longer available."

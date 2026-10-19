@@ -67,7 +67,6 @@ defmodule AshDataTable.Parts.Pagination do
         type="button"
         id={"#{@id}-previous"}
         class="join-item btn btn-sm"
-        tabindex={@nested? && "-1"}
         disabled={is_nil(@page.previous)}
         phx-click={Attrs.event(@id, "page")}
         phx-value-to="previous"
@@ -92,7 +91,6 @@ defmodule AshDataTable.Parts.Pagination do
             "join-item btn btn-sm forced-colors:aria-[current=page]:underline",
             number == @state.page && "btn-active"
           ]}
-          tabindex={@nested? && "-1"}
           aria-label={label}
           aria-current={number == @state.page && "page"}
           phx-click={Attrs.event(@id, "page")}
@@ -106,7 +104,6 @@ defmodule AshDataTable.Parts.Pagination do
         type="button"
         id={"#{@id}-next"}
         class="join-item btn btn-sm"
-        tabindex={@nested? && "-1"}
         disabled={is_nil(@page.next)}
         phx-click={Attrs.event(@id, "page")}
         phx-value-to="next"
@@ -129,7 +126,6 @@ defmodule AshDataTable.Parts.Pagination do
       <select
         id={"#{@id}-page-size"}
         name="size"
-        tabindex={@nested? && "-1"}
         class={["select select-sm w-auto", Parts.Editors.control_edge()]}
       >
         <option

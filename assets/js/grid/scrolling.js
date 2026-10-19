@@ -4,8 +4,8 @@
 // puts together, and share its state through `this`.
 
 import {filterRow as filterRowId, headRow as headRowId} from "../ids.js"
-import {GRIDCELL, ROW, ROWGROUP} from "../markers.js"
-import {PLACE, BAR, SEEN} from "./shared.js"
+import {ROW, ROWGROUP} from "../markers.js"
+import {BAR, DATACELL, PLACE, SEEN} from "./shared.js"
 
 export default {
   // Every table scrolls sideways in its own area, which is this
@@ -94,7 +94,7 @@ export default {
     const at = `#${CSS.escape(table.id)}`
     // the cells of the column: in the header and the filter row, and
     // of the records and their lines (not a cell that spans the grid)
-    const body = place => `${at}>${ROWGROUP}>${ROW}>${GRIDCELL}[aria-colindex="${place}"]:not([colspan])`
+    const body = place => `${at}>${ROWGROUP}>${ROW}>:is(${DATACELL})[aria-colindex="${place}"]:not([colspan])`
     const cells = th => {
       const place = th.getAttribute("aria-colindex")
       const head = [headRowId(this.id), filterRowId(this.id)].map(row => `#${CSS.escape(row)}>[aria-colindex="${place}"]`)

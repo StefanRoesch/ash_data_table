@@ -264,7 +264,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
 
     test "has its own boxes and its own line, as the table of its resource has",
          %{html: html, comments: comments} do
-      assert attribute(html, "[id='#{comments}-table']", "aria-multiselectable") == ["true"]
+      assert attribute(html, "[id='#{comments}-table']", "aria-multiselectable") == []
 
       assert attribute(html, "[id='#{comments}-select-head'] > input", "aria-label") ==
                ["Select all rows of this page"]
@@ -513,7 +513,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
       assert bulk_result(html, "crate") == nil
 
       # the page is in use meanwhile
-      html = view |> element("#crate-head-title") |> render_click()
+      html = view |> element("#crate-sort-title") |> render_click()
       assert column(html, "crate", "title") == ["Crate 01", "Crate 02"]
 
       html = ran(view)
@@ -860,8 +860,14 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
     test "lets no row be selected",
          %{html: html} do
       assert attribute(html, "#plain-grid", "data-select") == []
-      assert attribute(html, "#plain-table [role=gridcell]", "role") != []
-      assert attribute(html, "#plain-table [role=gridcell][data-selector]", "id") == []
+      assert attribute(html, "#plain-table :is([role=cell],[role=rowheader])", "role") != []
+
+      assert attribute(
+               html,
+               "#plain-table :is([role=cell],[role=rowheader])[data-selector]",
+               "id"
+             ) == []
+
       assert selection(html, "plain") == nil
       assert attribute(html, "#plain-table", "aria-colcount") == ["1"]
     end
@@ -869,8 +875,14 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
     test "nor where its records have no primary key", %{html: html} do
       assert column(html, "tally", "title") == ["A tally"]
       assert attribute(html, "#tally-grid", "data-select") == []
-      assert attribute(html, "#tally-table [role=gridcell]", "role") != []
-      assert attribute(html, "#tally-table [role=gridcell][data-selector]", "id") == []
+      assert attribute(html, "#tally-table :is([role=cell],[role=rowheader])", "role") != []
+
+      assert attribute(
+               html,
+               "#tally-table :is([role=cell],[role=rowheader])[data-selector]",
+               "id"
+             ) == []
+
       assert selection(html, "tally") == nil
     end
   end

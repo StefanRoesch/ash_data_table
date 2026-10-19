@@ -195,7 +195,7 @@ defmodule DemoWeb.Tables.ColumnHidingTest do
       assert entry(html, "task", "status") == "State (filtered)"
       assert entry(html, "task", "priority") == "Priority"
 
-      view |> element("#task-head-priority") |> render_click()
+      view |> element("#task-sort-priority") |> render_click()
       html = render_async(view, 10_000)
 
       assert flags(html, "task") == [
@@ -205,7 +205,7 @@ defmodule DemoWeb.Tables.ColumnHidingTest do
 
       assert entry(html, "task", "priority") == "Priority (sorted)"
 
-      view |> element("#task-head-status") |> render_click()
+      view |> element("#task-sort-status") |> render_click()
       html = render_async(view, 10_000)
       assert flags(html, "task") == [{"status", ["data-filtered", "data-sorted"]}]
       assert entry(html, "task", "status") == "State (filtered, sorted)"
@@ -254,7 +254,7 @@ defmodule DemoWeb.Tables.ColumnHidingTest do
       assert List.first(attribute(html, "[id='#{id}-columns-button']", "data-text-with")) ==
                "Columns of Comments ({details})"
 
-      assert attribute(html, "[id='#{id}-columns-button']", "tabindex") == ["-1"]
+      assert attribute(html, "[id='#{id}-columns-button']", "tabindex") == []
       assert attribute(html, "[id='#{id}-columns-button']", "popovertarget") == ["#{id}-columns"]
 
       # on the line that names it
@@ -325,7 +325,7 @@ defmodule DemoWeb.Tables.ColumnHidingTest do
     assert attribute(html, "#task-column-status", "data-say-shown") == ["Status eingeblendet"]
 
     html = filter(view, "task", "status", v: "todo")
-    view |> element("#task-head-status") |> render_click()
+    view |> element("#task-sort-status") |> render_click()
     html = if html, do: render_async(view, 10_000)
     assert entry(html, "task", "status") =~ "(gefiltert, sortiert)"
   end

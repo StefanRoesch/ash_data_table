@@ -6,6 +6,7 @@ defmodule AshDataTable.Parts.Selection do
   use Phoenix.Component
 
   alias AshDataTable.Attrs
+  alias AshDataTable.Ids
   alias AshDataTable.Parts
   alias Phoenix.LiveView.JS
 
@@ -184,20 +185,19 @@ defmodule AshDataTable.Parts.Selection do
       <Parts.Messages.notice
         id={@id}
         myself={@myself}
-        nested?={@nested?}
         notice?={@notice?}
         texts={@texts}
       />
-      <%!-- the button goes away with the filters, so focus is sent on to the grid --%>
+      <%!-- the button goes away with the filters, so focus is sent on to the
+      first control of the filter row --%>
       <button
         :if={@state.filters != %{}}
         type="button"
         id={"#{@id}-clear-filters"}
-        tabindex={@nested? && "-1"}
         class="btn btn-ghost btn-sm ms-auto"
         phx-click={
           JS.push(Attrs.event(@id, "clear_filters"), target: @myself)
-          |> JS.focus(to: "##{@id}-table [tabindex='0']")
+          |> JS.focus_first(to: "##{Ids.filter_row(@id)}")
         }
       >
         {@texts.clear_filters}

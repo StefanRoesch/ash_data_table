@@ -121,17 +121,27 @@ defmodule DemoWeb.Tables.PickerTest do
 
       assert attribute(html, "##{@projects}-grid", "data-select") == ["single"]
       assert attribute(html, "##{@projects}-grid", "data-choose") == [""]
-      assert attribute(html, "##{@projects}-table", "aria-multiselectable") == ["false"]
+      assert attribute(html, "##{@projects}-table", "aria-multiselectable") == []
 
-      assert attribute(html, "##{@projects}-table [role=gridcell][data-selector] > input", "type") ==
+      assert attribute(
+               html,
+               "##{@projects}-table :is([role=cell],[role=rowheader])[data-selector] > input",
+               "type"
+             ) ==
                ["radio", "radio"]
 
       assert editors(html, @projects) == []
-      assert attribute(html, "##{@projects}-table [aria-readonly]", "id") == []
+      assert attribute(html, "##{@projects}-table [tabindex='0']", "id") == []
       assert attribute(html, "##{@projects}-create", "id") == []
       assert attribute(html, "##{@projects}-actions-head", "id") == []
       assert attribute(html, "##{@projects}-expander-head", "id") == []
-      assert attribute(html, "##{@projects}-table [role=gridcell][data-expander]", "id") == []
+
+      assert attribute(
+               html,
+               "##{@projects}-table :is([role=cell],[role=rowheader])[data-expander]",
+               "id"
+             ) == []
+
       assert selection(html, @projects) == nil
       assert attribute(html, "##{@projects}-dialog", "id") == []
     end
@@ -195,7 +205,7 @@ defmodule DemoWeb.Tables.PickerTest do
       assert column(html, @people, "name") == ["Ada Lovelace"]
       assert picker(html).heading == "Assignee: choose user"
 
-      html = click(view, "##{@people}-head-email")
+      html = click(view, "##{@people}-sort-email")
       render_async(view)
       assert attribute(html, "##{@people}-head-email", "aria-sort") == ["ascending"]
 

@@ -4,8 +4,12 @@ defmodule AshDataTable.KitCase do
   table of `AshDataTable.Test.Resource` through the kit in every state, with
   what opens over the page and in it, and asserts that every page on the
   way carries the markers, ids and `data-*` values the table's hooks find
-  their elements by and read, the element kinds they need, and that no page
-  holds the test resource's sensitive value.
+  their elements by and read, the element kinds they need, the Tab stops of
+  a table (`AshDataTable.Kit`, "The Tab stops": its controls and its
+  editable cells, no read-only cell, no header that does not sort, no cell
+  that holds controls; the skip link and its target; no `aria-readonly`,
+  `aria-selected`, `aria-multiselectable` and no `aria-invalid` on a cell),
+  and that no page holds the test resource's sensitive value.
 
       defmodule MyAppWeb.TableKitTest do
         use AshDataTable.KitCase, kit: MyAppWeb.TableKit, endpoint: MyAppWeb.Endpoint
@@ -111,7 +115,7 @@ defmodule AshDataTable.KitCase do
 
       defmodule Probe do
         @moduledoc false
-        use AshDataTable.Kit, contract: 2
+        use AshDataTable.Kit, contract: 3
 
         unquote_splicing(probed)
 
@@ -535,11 +539,27 @@ defmodule AshDataTable.KitCase do
     grid =
       need(
         page,
-        "[id='kit-grid'][data-ash-data-table][data-table='kit'][phx-hook][data-lead][data-select='multi']",
-        "the grid's hook, with where the arrow keys start and how rows are selected"
+        "[id='kit-grid'][data-ash-data-table][data-table='kit'][phx-hook][data-lead][data-select='multi'][tabindex='-1']",
+        "the grid's hook, with how many columns lead and how rows are selected, no Tab stop"
       ) ++
         need(page, "[id='kit-sender'][data-sender][data-table='kit'][phx-hook]", "its sender") ++
-        need(page, "[id='kit-table'][role=grid][aria-colcount][data-first-row]", "the grid") ++
+        need(page, "[id='kit-table'][role=table][aria-colcount][data-first-row]", "the table") ++
+        need(
+          page,
+          "a[id='#{Ids.skip("kit")}'][href='##{Ids.skip_target("kit")}']",
+          "the link that skips the table (`Attrs.skip/1`)"
+        ) ++
+        need(
+          page,
+          "[id='kit'] [id='#{Ids.skip_target("kit")}'][tabindex='-1']",
+          "where it jumps to, in the table's root (`Attrs.skip_target/1`)"
+        ) ++
+        skip_order(page, "kit") ++
+        need(
+          page,
+          "[id='#{Ids.editable("kit")}']",
+          "the text that describes an editable cell (`Attrs.editable/1`)"
+        ) ++
         need(page, "[id='kit-table'] [id='#{Ids.head("kit")}']", "its header in it") ++
         need(
           page,
@@ -558,7 +578,7 @@ defmodule AshDataTable.KitCase do
           "[id='kit-foot'] [id='kit-summaries'][role=row][data-summaries]",
           "the row of the summaries"
         ) ++
-        need(page, "[id='kit-summary-size'][role=gridcell]", "the summary of size") ++
+        need(page, "[id='kit-summary-size'][role=cell]", "the summary of size") ++
         need(page, "[id='kit-arguments'][data-arguments]", "the argument line") ++
         need(page, "[id='kit-arguments'] [data-argument='near']", "the argument near") ++
         need(page, "[id='kit-do-greet'][data-table-action='greet']", "the table action") ++
@@ -617,13 +637,18 @@ defmodule AshDataTable.KitCase do
           "[id='#{Ids.header_cell("kit", :name)}'][data-label]",
           "the label column, kept in view"
         ) ++
-        need(page, "[id='#{Ids.header_cell("kit", :name)}'][data-sort]", "a header that sorts")
+        need(
+          page,
+          "[id='#{Ids.header_cell("kit", :name)}'][data-sort][aria-sort] > button[id='#{Ids.sort("kit", :name)}'][phx-click='ash_data_table:kit:sort']",
+          "a header that sorts, with its sort button (`Attrs.sort/3`)"
+        ) ++
+        sort_buttons(page)
 
     columns =
       Enum.flat_map(@columns, fn field ->
         need(
           page,
-          "[id='#{Ids.header_cell("kit", field)}'][role=columnheader][aria-colindex][tabindex='-1']",
+          "[id='#{Ids.header_cell("kit", field)}'][role=columnheader][aria-colindex]",
           "the header of #{field}"
         ) ++
           need(
@@ -633,7 +658,7 @@ defmodule AshDataTable.KitCase do
           ) ++
           need(
             page,
-            "[id='kit-filter-#{field}'][role=gridcell][aria-colindex][tabindex='-1']",
+            "[id='kit-filter-#{field}'][role=cell][aria-colindex]",
             "the filter cell of #{field}"
           )
       end)
@@ -664,13 +689,47 @@ defmodule AshDataTable.KitCase do
     grid ++ columns ++ editors ++ constants(page)
   end
 
-  # What every cell, header, row and record is, whatever the kit draws it with.
+  # What every cell, header, row and record is, whatever the kit draws it
+  # with, and the Tab stops: controls, and an editable cell; nothing else.
   defp constants(page) do
-    none(page, "[role=gridcell]:not([aria-colindex])", "a cell without its place") ++
-      none(page, "[role=gridcell]:not([tabindex='-1'])", "a cell that is a tab stop of its own") ++
+    none(
+      page,
+      ":is([role=cell],[role=rowheader]):not([aria-colindex])",
+      "a cell without its place"
+    ) ++
       none(page, "[role=columnheader]:not([aria-colindex])", "a header without its place") ++
-      none(page, "[role=columnheader]:not([tabindex='-1'])", "a header that is a tab stop") ++
-      none(page, "[id='kit-table'] [tabindex='0']", "a tab stop in the grid") ++
+      none(page, "[role=grid],[role=gridcell]", "an ARIA grid: a table is a table") ++
+      none(
+        page,
+        ":is([role=cell],[role=rowheader])[tabindex]:not([tabindex='0'])",
+        "a cell with another tabindex than an editable cell's"
+      ) ++
+      described(page) ++
+      none(
+        page,
+        ":is([role=cell],[role=rowheader])[tabindex='0']:is([data-selector],[data-expander],[data-actions],[data-line],[data-nested],[data-pager],[data-view],[data-filter],[colspan])",
+        "a cell that holds controls and is a Tab stop besides them"
+      ) ++
+      none(page, "[id='kit-foot'] [tabindex]", "a Tab stop among the summaries") ++
+      none(
+        page,
+        "[role=columnheader][tabindex]",
+        "a header that is a Tab stop (its sort button is)"
+      ) ++
+      none(
+        page,
+        "[id^='kit'] :is(input,select,textarea,button,a)[tabindex]",
+        "a control taken out of the Tab order, or put into it by hand"
+      ) ++
+      none(page, "[id^='kit-pick-'] [tabindex='0']", "an editable cell in a table to choose from") ++
+      none(page, "[aria-readonly]", "aria-readonly, which no table cell takes") ++
+      none(page, "[aria-selected]", "aria-selected, which no table row takes") ++
+      none(page, "[aria-multiselectable]", "aria-multiselectable, which no table takes") ++
+      none(
+        page,
+        ":is([role=cell],[role=rowheader])[aria-invalid]",
+        "aria-invalid on a cell (`data-failed`)"
+      ) ++
       Enum.flat_map(LazyHTML.query(page, "[id^='#{Ids.row("kit", "")}'][id$='-r']"), fn row ->
         if LazyHTML.attribute(row, "role") == ["row"] and
              LazyHTML.attribute(row, "aria-rowindex") != [nil],
@@ -685,21 +744,26 @@ defmodule AshDataTable.KitCase do
 
     need(page, "[id='#{row}'][role=rowgroup]", "the row group of the record") ++
       need(page, "[id='#{row}'] [id='#{row}-r'][role=row][aria-rowindex]", "its row") ++
-      need(page, "[id='#{Ids.selector(row)}'][role=gridcell][data-selector] input", "its box") ++
+      need(page, "[id='#{Ids.selector(row)}'][role=cell][data-selector] input", "its box") ++
       need(
         page,
-        "[id='#{Ids.expander(row)}'][role=gridcell][data-expander] button[aria-expanded]",
+        "[id='#{Ids.expander(row)}'][role=cell][data-expander] button[aria-expanded]",
         "its expander"
       ) ++
       need(
         page,
-        "[id='#{Ids.actions_cell(row)}'][role=gridcell][data-actions]",
+        "[id='#{Ids.actions_cell(row)}'][role=cell][data-actions]",
         "its actions cell"
       ) ++
       need(
         page,
-        "[id='#{Ids.actions_cell(row)}'] [data-action='stamp'][tabindex='-1']",
+        "[id='#{Ids.actions_cell(row)}'] button[data-action='stamp']",
         "the button of an action"
+      ) ++
+      need(
+        page,
+        "[id='#{Ids.cell(row, :name)}'][role=rowheader][tabindex='0']",
+        "the cell of the label column, the row's header, editable"
       ) ++
       need(
         page,
@@ -709,7 +773,7 @@ defmodule AshDataTable.KitCase do
       Enum.flat_map(@columns, fn field ->
         need(
           page,
-          "[id='#{Ids.cell(row, field)}'][role=gridcell][aria-colindex][tabindex='-1']",
+          "[id='#{Ids.cell(row, field)}']:is([role=cell],[role=rowheader])[aria-colindex]",
           "its cell #{field}"
         )
       end) ++
@@ -838,7 +902,14 @@ defmodule AshDataTable.KitCase do
         "[id='#{Ids.nested_cell(Ids.row("kit", key), :parts)}'] [id='#{nested}-grid'][data-ash-data-table]",
         "the nested grid in its cell"
       ) ++
-      need(page, "[id='#{nested}-table'][role=grid]", "the nested grid") ++
+      need(page, "[id='#{nested}-table'][role=table]", "the nested table") ++
+      need(
+        page,
+        "a[id='#{Ids.skip(nested)}'][href='##{Ids.skip_target(nested)}']",
+        "the nested table's own skip link"
+      ) ++
+      need(page, "[id='#{Ids.skip_target(nested)}'][tabindex='-1']", "where it jumps to") ++
+      skip_order(page, nested) ++
       need(
         page,
         "[id='#{nested}-table'][aria-labelledby~='#{Ids.line_button(Ids.row("kit", key), :parts)}']",
@@ -867,7 +938,7 @@ defmodule AshDataTable.KitCase do
 
     need(
       page,
-      "[id='#{cell}'][aria-invalid][aria-describedby='#{Ids.error(cell)}'][data-value][data-saved]",
+      "[id='#{cell}'][data-failed][aria-describedby~='#{Ids.error(cell)}'][data-value][data-saved]",
       "the failed cell, with what was typed and what is saved"
     ) ++
       need(page, "[id='#{cell}'] [id='#{Ids.error(cell)}']", "its message, in the cell")
@@ -878,7 +949,7 @@ defmodule AshDataTable.KitCase do
 
     need(
       page,
-      "[id='#{cell}'][aria-invalid][aria-describedby='#{Ids.error(cell)}']",
+      "[id='#{cell}'][data-failed][aria-describedby~='#{Ids.error(cell)}']",
       "the failed cell"
     ) ++
       need(page, "[id='#{cell}'] [id='#{Ids.error(cell)}']", "its message, in the cell")
@@ -1014,7 +1085,7 @@ defmodule AshDataTable.KitCase do
     do:
       need(
         page,
-        "[id='#{Ids.nested_table(Ids.row("kit", key), :parts)}-view'][role=gridcell][data-view] a[id='#{Ids.nested_table(Ids.row("kit", key), :parts)}-full-view']",
+        "[id='#{Ids.nested_table(Ids.row("kit", key), :parts)}-view'][role=cell][data-view] a[id='#{Ids.nested_table(Ids.row("kit", key), :parts)}-full-view']",
         "the link to the full view"
       )
 
@@ -1026,7 +1097,7 @@ defmodule AshDataTable.KitCase do
     ) ++
       need(
         page,
-        "[id='#{Ids.line_cell(Ids.row("kit", key), :parts)}'][role=gridcell][data-line='parts']",
+        "[id='#{Ids.line_cell(Ids.row("kit", key), :parts)}'][role=cell][data-line='parts']",
         "the line"
       ) ++
       need(
@@ -1036,7 +1107,7 @@ defmodule AshDataTable.KitCase do
       ) ++
       need(
         page,
-        "[id='#{Ids.nested_cell(Ids.row("kit", key), :parts)}'][role=gridcell][data-nested][data-line-cell][data-expander-cell]",
+        "[id='#{Ids.nested_cell(Ids.row("kit", key), :parts)}'][role=cell][data-nested][data-line-cell][data-expander-cell]",
         "the cell of the nested table, with the cells it is reached from"
       )
   end
@@ -1115,6 +1186,61 @@ defmodule AshDataTable.KitCase do
         "#{id}, in the page"
       ) ++
         none(page, "dialog[id='#{id}']", "#{id} as a <dialog> while it is inline")
+
+  # The skip link of the table `id` stands before its header row, and where
+  # it jumps to after its table and its pagination, in the page's order.
+  defp skip_order(page, id) do
+    html = LazyHTML.to_html(page)
+    at = fn element -> :binary.match(html, ~s(id="#{element}")) end
+
+    case Enum.map([Ids.skip(id), Ids.head_row(id), "#{id}-table", Ids.skip_target(id)], at) do
+      [{skip, _}, {head, _}, {table, _}, {target, _}] when skip < head and table < target ->
+        case at.("#{id}-pagination") do
+          {pages, _} when pages > target -> ["#{id}'s skip target after its pagination"]
+          _none_or_before -> []
+        end
+
+      _otherwise ->
+        ["#{id}'s skip link before its header row, and its target after the table"]
+    end
+  end
+
+  # Every editable cell is described as one by its own table's text
+  # (`Ids.editable/1`), which is in the page.
+  defp described(page) do
+    for cell <- LazyHTML.query(page, ":is([role=cell],[role=rowheader])[tabindex='0']"),
+        [id] = LazyHTML.attribute(cell, "id"),
+        tokens = cell |> LazyHTML.attribute("aria-describedby") |> Enum.flat_map(&String.split/1),
+        not Enum.any?(tokens, &editable?(page, id, &1)) do
+      "the description of the editable cell #{id} (`Ids.editable/1` of its table)"
+    end
+  end
+
+  defp editable?(page, cell, token) do
+    case String.split(token, "-editable") do
+      [table, ""] ->
+        token == Ids.editable(table) and String.starts_with?(cell, Ids.row(table, "")) and
+          count(page, "[id='#{token}']") == 1
+
+      _other ->
+        false
+    end
+  end
+
+  # Each header that sorts holds its sort button; one that does not, none.
+  defp sort_buttons(page) do
+    for header <- LazyHTML.query(page, "[id='#{Ids.head_row("kit")}'] > [role=columnheader]"),
+        [id] = LazyHTML.attribute(header, "id"),
+        String.starts_with?(id, Ids.header_cell("kit", "")),
+        name = String.replace_prefix(id, Ids.header_cell("kit", ""), ""),
+        sorts? = LazyHTML.attribute(header, "data-sort") != [],
+        button? = Enum.count(LazyHTML.query(header, "button[id='#{Ids.sort("kit", name)}']")) == 1,
+        sorts? != button? do
+      if sorts?,
+        do: "the sort button of #{name} (#{Ids.sort("kit", name)})",
+        else: "no sort button in the header of #{name}, which does not sort"
+    end
+  end
 
   # ---- reading the page ---------------------------------------------------
 

@@ -5,7 +5,7 @@
 
 import {filterRow as filterRowId, filters as filtersId, head as headId} from "../ids.js"
 import {ACTION, ACTIONS, EXPANDER, FILTER, GRID, HANDLE, LINE, NESTED, OPEN, PAGER, REVEAL, ROW, ROWGROUP, SELECTOR, SELECT_PAGE, SUMMARIES, TABLE, WHOLE} from "../markers.js"
-import {AROUND, CELL, SPANNING, cellsOf, firstRow, is, page, place, rowsOf} from "./shared.js"
+import {ANYCELL, AROUND, SPANNING, cellsOf, firstRow, is, page, place, rowsOf} from "./shared.js"
 
 export default {
   // The grid on the page that this one is nested in, at whatever
@@ -90,7 +90,7 @@ export default {
   },
 
   cellOf(node) {
-    const cell = node && node.closest ? node.closest(CELL) : null
+    const cell = node && node.closest ? node.closest(ANYCELL) : null
     return cell && this.owns(cell) ? cell : null
   },
 
@@ -354,7 +354,7 @@ export default {
     const handle = e.target.closest(HANDLE)
     if (handle) {
       e.stopPropagation()
-      this.resetWidth(handle.closest(CELL))
+      this.resetWidth(handle.closest(ANYCELL))
       return
     }
     const cell = this.cellOf(e.target)

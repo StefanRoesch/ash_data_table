@@ -109,11 +109,11 @@ defmodule DemoWeb.Tables.ReferenceCellTest do
 
       # `update` accepts `project_id` and `assignee_id`, and no action `reporter_id`
       assert "reporter" not in editors(html, "task")
-      assert attribute(html, cell(task.id, "reporter"), "aria-readonly") == ["true"]
+      assert attribute(html, cell(task.id, "reporter"), "tabindex") == []
 
       for name <- ["project", "assignee"] do
         assert name in editors(html, "task")
-        assert attribute(html, cell(task.id, name), "aria-readonly") == []
+        assert attribute(html, cell(task.id, name), "tabindex") == ["0"]
       end
     end
 

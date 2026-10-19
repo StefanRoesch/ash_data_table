@@ -78,7 +78,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
 
       # the boxes, the expanders, the nineteen columns of the table, the actions
       assert attribute(html, "#task-table", "aria-colcount") == ["25"]
-      assert attribute(html, "#task-table", "aria-multiselectable") == ["true"]
+      assert attribute(html, "#task-table", "aria-multiselectable") == []
       assert attribute(html, "#task-grid", "data-select") == ["multi"]
       assert attribute(html, "#task-grid", "data-lead") == ["2"]
 
@@ -92,22 +92,31 @@ defmodule DemoWeb.Tables.TaskBulkTest do
       assert attribute(html, "#task-select-head > input[type=checkbox]", "aria-label") ==
                ["Select all rows of this page"]
 
-      assert attribute(html, "#task-filter-row > [role=gridcell]:first-child", "id") == [
+      assert attribute(
+               html,
+               "#task-filter-row > :is([role=cell],[role=rowheader]):first-child",
+               "id"
+             ) == [
                "task-select-filter"
              ]
 
       assert text(html, "#task-select-filter") == ""
       assert attribute(html, "#task-select-filter", "aria-colindex") == ["1"]
 
-      assert attribute(html, "[id='task-row-#{task.id}-r'] > [role=gridcell]:first-child", "id") ==
+      assert attribute(
+               html,
+               "[id='task-row-#{task.id}-r'] > :is([role=cell],[role=rowheader]):first-child",
+               "id"
+             ) ==
                ["task-row-#{task.id}-s"]
 
-      assert attribute(html, "[id='task-row-#{task.id}-s']", "role") == ["gridcell"]
+      assert attribute(html, "[id='task-row-#{task.id}-s']", "role") == ["cell"]
       assert attribute(html, "[id='task-row-#{task.id}-s']", "aria-colindex") == ["1"]
       assert attribute(html, box(task.id), "aria-label") == ["Select row"]
-      # neither box is a tab stop: the grid is one
-      assert attribute(html, box(task.id), "tabindex") == ["-1"]
-      assert attribute(html, "#task-select-head > input", "tabindex") == ["-1"]
+      # each box is a Tab stop of its own, its cell none
+      assert attribute(html, box(task.id), "tabindex") == []
+      assert attribute(html, "#task-select-head > input", "tabindex") == []
+      assert attribute(html, "[id='task-row-#{task.id}-s']", "tabindex") == []
 
       # the columns after it stand one further: the expander, the first
       # column, the actions
@@ -132,7 +141,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
       # a member may run the actions on their own tasks
       {:ok, _view, html} = conn |> log_in(world.member) |> live("/tasks")
       assert attribute(html, box(task.id), "aria-label") == ["Select row"]
-      assert attribute(html, "#task-table", "aria-multiselectable") == ["true"]
+      assert attribute(html, "#task-table", "aria-multiselectable") == []
 
       # a viewer can run none: no boxes, no line, and the grid says nothing of selecting
       {:ok, _view, html} = conn |> log_in(world.viewer) |> live("/tasks")
@@ -240,7 +249,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
       select(view, "task", :all)
 
       # another sort, the same selection
-      view |> element("#task-head-title") |> render_click()
+      view |> element("#task-sort-title") |> render_click()
       refute_push_event view, "ash_data_table:select", %{table: "task"}
 
       filter(view, "task", "title", v: "Task 01")
@@ -439,7 +448,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
       html = run_bulk(view, "archive", [first.id])
       assert bulk_result(html).summary == "Archive: 1 done."
 
-      html = view |> element("#task-head-title") |> render_click()
+      html = view |> element("#task-sort-title") |> render_click()
       assert bulk_result(html).summary == "Archive: 1 done."
 
       # the hook says that the person has selected something else

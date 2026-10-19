@@ -52,7 +52,11 @@ defmodule DemoWeb.Tables.TaskLabelTableTest do
              "task_label-row-#{task.id}-#{second.id}"
            ]
 
-    assert attribute(html, "#task_label-table [role=gridcell][id$='-c-label_id']", "id") == [
+    assert attribute(
+             html,
+             "#task_label-table :is([role=cell],[role=rowheader])[id$='-c-label_id']",
+             "id"
+           ) == [
              "task_label-row-#{task.id}-#{first.id}-c-label_id",
              "task_label-row-#{task.id}-#{second.id}-c-label_id"
            ]
@@ -64,8 +68,8 @@ defmodule DemoWeb.Tables.TaskLabelTableTest do
 
     assert hd(column(html, "task_label", "note")) == "Note 01"
 
-    view |> element("#task_label-head-note") |> render_click()
-    view |> element("#task_label-head-note") |> render_click()
+    view |> element("#task_label-sort-note") |> render_click()
+    view |> element("#task_label-sort-note") |> render_click()
     assert_patch(view, "/task_labels?task_label[sort]=-note")
 
     assert Enum.take(column(render_async(view), "task_label", "note"), 2) == [

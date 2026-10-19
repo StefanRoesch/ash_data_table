@@ -4,8 +4,8 @@
 // puts together, and share its state through `this`.
 
 import {editor as editorId, error as errorId} from "../ids.js"
-import {CLEAR, EXPANDER, GRIDCELL, ROWGROUP} from "../markers.js"
-import {CONTROL_IN, is} from "./shared.js"
+import {CLEAR, EXPANDER, ROWGROUP} from "../markers.js"
+import {CONTROL_IN, DATACELL, is} from "./shared.js"
 
 export default {
   // A cell's ids hold what an event names: `ID-row-KEY` on the row's
@@ -18,7 +18,7 @@ export default {
   // A data cell of an editable column that the server has not marked
   // as read-only for this person, and whose last save has been answered.
   canEdit(cell) {
-    return is(cell, GRIDCELL) && !!this.record(cell) && !is(cell, EXPANDER) &&
+    return is(cell, DATACELL) && !!this.record(cell) && !is(cell, EXPANDER) &&
       cell.getAttribute("aria-readonly") !== "true" && !cell.hasAttribute("aria-busy") &&
       !!this.editorOf(cell)
   },

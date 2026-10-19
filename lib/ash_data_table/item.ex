@@ -70,9 +70,9 @@ defmodule AshDataTable.Item do
     * `failure` - after a save failed: `typed` (what was typed, `""` for a
       sensitive column), `text` and `message` (what the action said);
       else nil
-    * `attrs` - the cell's attributes that vary (`aria-readonly`,
-      `aria-invalid`, `aria-describedby`, `data-value`, `data-saved`, see
-      `AshDataTable.Attrs.cell/2`)
+    * `attrs` - the cell's attributes that vary (`tabindex` and
+      `aria-describedby` on a cell that can be edited, `data-failed`,
+      `data-value`, `data-saved`, see `AshDataTable.Attrs.cell/2`)
 
   A masked cell has no `text` and no `value`: nothing of a sensitive value
   is in an item (the row is scrubbed before, `AshDataTable.Present`).
@@ -141,13 +141,14 @@ defmodule AshDataTable.Item do
 
   @doc """
   The item of a record's row, of a `Present.Row` (scrubbed): `model` the
-  table's, `table` what the table says of all its rows: `time_zone` (the
-  page's), `editing?` (whether the table offers editing at all) and
-  `selecting` (`:single`, `:multi` or nil). Its texts are said in the
-  locale of this process.
+  table's, `table` what the table says of all its rows: `id` (the table's),
+  `time_zone` (the page's), `editing?` (whether the table offers editing
+  at all) and `selecting` (`:single`, `:multi` or nil). Its texts are said
+  in the locale of this process.
   """
   @spec row(map, Present.Row.t(), map) :: t
   def row(model, %Present.Row{} = row, %{
+        id: id,
         time_zone: zone,
         editing?: editing?,
         selecting: selecting
@@ -167,7 +168,7 @@ defmodule AshDataTable.Item do
         }),
       cells:
         Map.new(model.columns, fn column ->
-          {column.name, cell(column, row.cells[column.name], row.dom_id, zone, editing?)}
+          {column.name, cell(column, row.cells[column.name], row.dom_id, zone, editing? && id)}
         end)
     }
   end
@@ -204,7 +205,8 @@ defmodule AshDataTable.Item do
     }
   end
 
-  defp cell(column, cell, dom_id, zone, editing?) do
+  # `editing` is the table's id where it offers editing, else false.
+  defp cell(column, cell, dom_id, zone, editing) do
     {state, value} = held_state(column, cell)
 
     %{
@@ -213,7 +215,7 @@ defmodule AshDataTable.Item do
       value: value,
       editable: cell.editable?,
       failure: cell.failure && Map.put(said(cell.failure.message), :typed, cell.failure.typed),
-      attrs: plain(Map.new(editing(editing?, Ids.cell(dom_id, column.name), column, cell, zone)))
+      attrs: plain(Map.new(editing(editing, Ids.cell(dom_id, column.name), column, cell, zone)))
     }
   end
 
@@ -243,49 +245,51 @@ defmodule AshDataTable.Item do
   defp said(message), do: %{text: Text.say(message), message: Messages.of(message)}
 
   # What a cell says about editing, for people and for the hook
-  # (`AshDataTable.Attrs.cell/2` documents each).
+  # (`AshDataTable.Attrs.cell/2` documents each). A read-only cell says
+  # nothing: it is no Tab stop. An editable one is (`tabindex="0"`), and is
+  # described by the table's text that says it can be edited, and by its
+  # message where its save failed.
   defp editing(false, _id, _column, _cell, _zone), do: []
+  defp editing(_table, _id, _column, %{editable?: false}, _zone), do: []
 
-  defp editing(true, id, column, cell, zone) do
-    case {cell.editable?, cell.failure} do
-      {false, _failure} ->
-        [{"aria-readonly", "true"}]
+  defp editing(table, id, column, cell, zone) do
+    editable = Ids.editable(table)
 
-      # a reference cell has no editor that holds a value: it is edited in
-      # the picker, which opens on the record the row has
-      {true, %{}} when column.kind == :reference ->
-        [{"aria-invalid", "true"}, {"aria-describedby", Ids.error(id)}]
-
-      {true, nil} when column.kind == :reference ->
-        []
-
-      # The editor of a sensitive cell starts empty, and holds nothing of
-      # the record: neither does the cell.
-      {true, %{}} when column.sensitive? ->
-        [
-          {"aria-invalid", "true"},
-          {"aria-describedby", Ids.error(id)},
-          {"data-value", ""},
-          {"data-saved", ""}
-        ]
-
-      {true, nil} when column.sensitive? ->
-        [{"data-value", ""}]
-
-      {true, %{typed: typed}} ->
-        [
-          {"aria-invalid", "true"},
-          {"aria-describedby", Ids.error(id)},
-          {"data-value", typed},
-          {"data-saved", held(Typed.of(column, cell.value, zone))}
-        ]
-
-      {true, nil} ->
-        if own_value?(column),
-          do: [{"data-value", held(Typed.of(column, cell.value, zone))}],
-          else: []
-    end
+    [{"tabindex", "0"}, {"aria-describedby", described(editable, id, cell.failure)}] ++
+      case cell.failure do
+        nil -> held_value(column, cell, zone)
+        failure -> failed(column, cell, failure, zone)
+      end
   end
+
+  defp described(editable, _id, nil), do: editable
+  defp described(editable, id, _failure), do: editable <> " " <> Ids.error(id)
+
+  # What the editor of a cell holds where it is not the text the cell shows.
+  # A reference cell has no editor that holds a value: it is edited in the
+  # picker, which opens on the record the row has. The editor of a
+  # sensitive cell starts empty, and holds nothing of the record: neither
+  # does the cell.
+  defp held_value(%{kind: :reference}, _cell, _zone), do: []
+  defp held_value(%{sensitive?: true}, _cell, _zone), do: [{"data-value", ""}]
+
+  defp held_value(column, cell, zone) do
+    if own_value?(column),
+      do: [{"data-value", held(Typed.of(column, cell.value, zone))}],
+      else: []
+  end
+
+  defp failed(%{kind: :reference}, _cell, _failure, _zone), do: [{"data-failed", true}]
+
+  defp failed(%{sensitive?: true}, _cell, _failure, _zone),
+    do: [{"data-failed", true}, {"data-value", ""}, {"data-saved", ""}]
+
+  defp failed(column, cell, %{typed: typed}, zone),
+    do: [
+      {"data-failed", true},
+      {"data-value", typed},
+      {"data-saved", held(Typed.of(column, cell.value, zone))}
+    ]
 
   # Whether what a column's editor holds is something else than the text its
   # cells show: a choice, which shows its label; a boolean; and a column

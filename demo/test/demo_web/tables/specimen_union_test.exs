@@ -75,7 +75,7 @@ defmodule DemoWeb.Tables.SpecimenUnionTest do
     } do
       {:ok, _view, html} = live(conn, "/specimens")
 
-      assert attribute(html, cell("specimen", specimen.id, "a_union"), "aria-readonly") == []
+      assert attribute(html, cell("specimen", specimen.id, "a_union"), "tabindex") == ["0"]
       assert attribute(html, "[id='specimen-editor-a_union']", "data-editor") == ["union"]
       assert text(html, "[id='specimen-editor-a_union']") == ""
 

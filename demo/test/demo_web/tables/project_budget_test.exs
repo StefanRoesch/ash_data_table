@@ -65,7 +65,7 @@ defmodule DemoWeb.Tables.ProjectBudgetTest do
                  live: ["polite"],
                  button: "Show",
                  label: "Show Budget",
-                 tabindex: "-1"
+                 tabindex: nil
                }
       end
     end
@@ -145,9 +145,9 @@ defmodule DemoWeb.Tables.ProjectBudgetTest do
     test "nothing is sent of a budget when the table reads again", %{view: view} do
       wire =
         wire(view, fn ->
-          view |> element("#project-head-name") |> render_click()
+          view |> element("#project-sort-name") |> render_click()
           assert names(render_async(view)) == ["Alpha", "Beta", "Gamma"]
-          view |> element("#project-head-name") |> render_click()
+          view |> element("#project-sort-name") |> render_click()
           assert names(render_async(view)) == ["Gamma", "Beta", "Alpha"]
         end)
 

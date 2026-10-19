@@ -17,7 +17,8 @@
 const UNREADABLE = form =>
   Array.from(form.elements).find(control => control.validity && control.validity.badInput)
 
-import {ADD, CANCEL, CONTROL, COUNT, DESTRUCTIVE, FIELD, GRID, GRIDCELL, HEADER, ITEM, LIST, OF, OPENED, REMOVE, REMOVE_GROUP, SELECTION, VALUE_TEXT} from "./markers.js"
+import {ADD, CANCEL, CONTROL, COUNT, DESTRUCTIVE, FIELD, GRID, ITEM, LIST, OF, OPENED, REMOVE, REMOVE_GROUP, SELECTION, VALUE_TEXT} from "./markers.js"
+import {ANYCELL} from "./grid/shared.js"
 
 // The field of an array that is given value by value (`LIST`): its rows,
 // one per value (`ITEM`), each with the control that holds the value.
@@ -268,7 +269,7 @@ export default {
       const opener = this.opener && this.opener.isConnected
         ? this.opener
         : (this.openerId ? document.getElementById(this.openerId) : null)
-      const cell = opener && opener.closest(`${GRIDCELL},${HEADER}`)
+      const cell = opener && opener.closest(ANYCELL)
       if (active && active !== document.body && active !== cell) return
       if (opener && opener.getClientRects().length > 0) opener.focus({preventScroll: true})
       // a button of the line above the grid went with the selection

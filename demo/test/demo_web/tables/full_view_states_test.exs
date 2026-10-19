@@ -108,7 +108,7 @@ defmodule DemoWeb.Tables.FullViewStatesTest do
         assert heading(html, "paper") =~ "Contracts"
 
         Gate.close()
-        view |> element("#paper-head-title") |> render_click()
+        view |> element("#paper-sort-title") |> render_click()
         html = render_async(view)
 
         assert text(html, "#paper-error") == "You are not allowed to see these records."
@@ -120,7 +120,7 @@ defmodule DemoWeb.Tables.FullViewStatesTest do
       {:ok, view, _html} = live(conn, drafts)
 
       Gate.close()
-      view |> element("#draft-head-title") |> render_click()
+      view |> element("#draft-sort-title") |> render_click()
 
       # the browser is sent to ask for the page afresh, which answers 404
       {path, _flash} = assert_redirect(view, 2000)
@@ -205,7 +205,7 @@ defmodule DemoWeb.Tables.FullViewStatesTest do
       assert Enum.sort(column(html, "held", "title")) == ["Docket one", "Docket two"]
       assert heading(html, "held") == "Wilhelmina: Dockets"
 
-      view |> element("#held-head-title") |> render_click()
+      view |> element("#held-sort-title") |> render_click()
 
       assert assert_patch(view) ==
                "/support/held-dockets?held[of][clerk][dockets]=#{clerk.id}&held[sort]=title"

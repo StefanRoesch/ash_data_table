@@ -126,12 +126,12 @@ defmodule DemoWeb.Tables.SensitiveTableTest do
         assert editor(html, "safe", field).control == "password", field
         assert attribute(html, "#safe-editor-#{field}", "data-editor") == ["secret"], field
         assert attribute(html, cell("safe", main.id, field), "data-value") == [""], field
-        assert attribute(html, cell("safe", main.id, field), "aria-readonly") == [], field
+        assert attribute(html, cell("safe", main.id, field), "tabindex") == ["0"], field
       end
 
       # a box cannot hide what it holds, and a calculation is never edited
       for field <- ~w(locked token_length) do
-        assert attribute(html, cell("safe", main.id, field), "aria-readonly") == ["true"], field
+        assert attribute(html, cell("safe", main.id, field), "tabindex") == [], field
       end
     end
 
@@ -164,9 +164,9 @@ defmodule DemoWeb.Tables.SensitiveTableTest do
     } do
       wire =
         wire(view, fn ->
-          view |> element("#safe-head-name") |> render_click()
+          view |> element("#safe-sort-name") |> render_click()
           render_async(view)
-          view |> element("#safe-head-name") |> render_click()
+          view |> element("#safe-sort-name") |> render_click()
           assert column(render_async(view), "safe", "name") == ~w(void open main)
           save(view, "safe", main.id, "name", "main door")
         end)
@@ -687,7 +687,7 @@ defmodule DemoWeb.Tables.SensitiveTableTest do
          %{html: html, main: main, open: open} do
       assert text(html, cell("safe", main.id, "pin")) == "Not available"
       assert masked(html, "safe", main.id, "pin") == nil
-      assert attribute(html, cell("safe", main.id, "pin"), "aria-readonly") == ["true"]
+      assert attribute(html, cell("safe", main.id, "pin"), "tabindex") == []
 
       assert masked(html, "safe", open.id, "pin").label == "Show Pin"
     end

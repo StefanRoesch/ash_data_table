@@ -118,7 +118,7 @@ defmodule DemoWeb.Tables.FullViewLinkTest do
         id = nested(task.id, relationship)
 
         # the table is there and has been read
-        assert attribute(html, "[id='#{id}-table']", "role") == ["grid"]
+        assert attribute(html, "[id='#{id}-table']", "role") == ["table"]
 
         case expected do
           {path, table} ->
@@ -143,13 +143,15 @@ defmodule DemoWeb.Tables.FullViewLinkTest do
       assert attribute(html, "[id='#{id}-foot'] > [role=row]:last-child", "id") ==
                ["#{id}-view-row"]
 
-      assert attribute(html, "[id='#{id}-view-row'] > [role=gridcell]", "id") == ["#{id}-view"]
-      assert attribute(html, "[id='#{id}-view']", "role") == ["gridcell"]
-      assert attribute(html, "[id='#{id}-view']", "tabindex") == ["-1"]
+      assert attribute(html, "[id='#{id}-view-row'] > :is([role=cell],[role=rowheader])", "id") ==
+               ["#{id}-view"]
+
+      assert attribute(html, "[id='#{id}-view']", "role") == ["cell"]
+      assert attribute(html, "[id='#{id}-view']", "tabindex") == []
       # as wide as the grid: the comments' boxes and expanders, their five
       # columns and their actions
       assert attribute(html, "[id='#{id}-view']", "colspan") == ["8"]
-      assert attribute(html, "[id='#{id}-full-view']", "tabindex") == ["-1"]
+      assert attribute(html, "[id='#{id}-full-view']", "tabindex") == []
       # that it is a live navigation, which does not load the page afresh,
       # the browser shows (`full_view.spec.ts`)
     end

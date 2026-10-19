@@ -122,7 +122,7 @@ defmodule DemoWeb.Tables.FailedReadTest do
 
     {html, log} =
       with_log(fn ->
-        view |> element("#report-head-title") |> render_click()
+        view |> element("#report-sort-title") |> render_click()
         render_async(view)
       end)
 
@@ -148,14 +148,14 @@ defmodule DemoWeb.Tables.FailedReadTest do
     assert column(html, "report", "title") == ["Quarterly"]
 
     Switch.set(:invalid)
-    view |> element("#report-head-title") |> render_click()
+    view |> element("#report-sort-title") |> render_click()
     html = render_async(view)
 
     assert text(html, "#report-error") == "is closed until Monday"
     assert column(html, "report", "title") == []
 
     Switch.set(:ok)
-    view |> element("#report-head-title") |> render_click()
+    view |> element("#report-sort-title") |> render_click()
     html = render_async(view)
 
     assert text(html, "#report-error") == nil
@@ -166,7 +166,7 @@ defmodule DemoWeb.Tables.FailedReadTest do
     {:ok, view, html} = live(conn, "/support/reports")
     assert attribute(html, "#report-table", "aria-busy") == []
 
-    html = view |> element("#report-head-title") |> render_click()
+    html = view |> element("#report-sort-title") |> render_click()
 
     assert attribute(html, "#report-table", "aria-busy") == ["true"]
     assert column(html, "report", "title") == ["Quarterly"]

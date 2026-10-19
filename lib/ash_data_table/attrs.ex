@@ -14,7 +14,7 @@ defmodule AshDataTable.Attrs do
     %{
       name: "sort",
       by: :bundle,
-      bundle: "column_header/5",
+      bundle: "sort/3",
       payload: "`{column}`",
       reply: "none",
       example: %{"column" => "title"}
@@ -384,15 +384,25 @@ defmodule AshDataTable.Attrs do
   # draws it; a kit draws any elements that carry the same markers
   # (`AshDataTable.Kit`, "What a part is given, and what it must write"):
   #
-  #   * the `<table role="grid">` is the stream container; the header is a
-  #     child with its own id and every row is one `<tbody>`;
+  #   * the `<table role="table">` is the stream container; the header is a
+  #     child with its own id and every row is one `<tbody>`. A table, not
+  #     an ARIA grid (ADR 0003): its controls and its editable cells are
+  #     the Tab stops, in the order they stand in, nested tables' too; a
+  #     read-only cell, a header that does not sort, a cell that holds
+  #     controls and the summaries are none. The cells are `role="cell"`,
+  #     the label column's `role="rowheader"`;
+  #   * before the header row a link "Skip table NAME" (`ID-skip`, seen
+  #     only while it has the focus) jumps to `ID-end`, an empty element
+  #     after the table's pagination that takes the focus; a nested table
+  #     has its own;
   #   * the header has two rows, the column headers and the filter row, which
   #     are not part of the stream; a table none of whose columns has a
   #     filter has no filter row and no form (`filter_row?/1`). The controls
   #     of the filter row belong to the form `ID-filters`, which sits outside
   #     the table;
   #   * ids are stable and built from names, never from positions:
-  #     `ID-head-FIELD` for a header cell, `ID-filter-FIELD` for a filter cell
+  #     `ID-head-FIELD` for a header cell (its sort button `ID-sort-FIELD`,
+  #     where it sorts), `ID-filter-FIELD` for a filter cell
   #     (its controls end in `-operator`, `-value` and `-clear`; a range has
   #     `-value` and `-to`, and a filter for several values the button
   #     `-value`, which opens the side panel with a box per value),
@@ -439,7 +449,7 @@ defmodule AshDataTable.Attrs do
   #     buttons are `ID-row-KEY-t-NAME-create` and the like;
   #   * `ID-grid`, the grid's hook's element (`data-ash-data-table`, `data-lead`,
   #     `data-select`, `data-choose`, `data-chosen-rows`); in it `ID-table`,
-  #     the `<table role="grid">`, which says `aria-busy` while it reads, and
+  #     the `<table role="table">`, which says `aria-busy` while it reads, and
   #     while a table action or an action on the selected rows runs; its
   #     header `ID-head` with the rows `ID-head-row` and `ID-filter-row`, and
   #     `ID-foot`;
@@ -456,9 +466,11 @@ defmodule AshDataTable.Attrs do
   #     (`aria-expanded`), and in the same `div` the place of the nested
   #     table's heading line, `ID-row-KEY-l-NAME-h`; the cell of a nested
   #     table `data-nested`;
-  #   * a failed cell, and a failed actions cell: `aria-invalid` and
+  #   * a failed cell, and a failed actions cell: `data-failed` and
   #     `aria-describedby`, which names the message, a child of the cell
-  #     after what it shows, `ID-…-error`;
+  #     after what it shows, `ID-…-error` (an editable cell's names
+  #     `ID-editable` besides, the text out of sight that says it can be
+  #     edited);
   #   * a sensitive cell: `button[data-reveal]`, `[data-mask]`,
   #     `[data-masked]`, `[data-secret]`;
   #   * the editor of a column: `template` `ID-editor-FIELD` (`data-editor`,
@@ -555,7 +567,7 @@ defmodule AshDataTable.Attrs do
   # the table is limited to changed) or narrows (a row went, a run left
   # the rows it did not run on), which it tells the hook
   # (`ash_data_table:select`). The hook says of each row whether it is
-  # selected (`aria-selected`, and the box), tells whoever listens
+  # selected (its box), tells whoever listens
   # (`ash_data_table:selection` on `ID-grid`, with what `selected()` of the hook
   # gives), and names a row to the server by its primary key: the key in the
   # row's id, or what the row says in `data-key`.
@@ -839,7 +851,7 @@ defmodule AshDataTable.Attrs do
   # in, after it). A table without a summary has no such row, and a table of
   # its own then has no `<tfoot>` at all.
   #
-  # The row is a row of the grid like any other: a `gridcell` under every
+  # The row is a row of the grid like any other: a `cell` under every
   # column, with the column's `aria-colindex`, so that a number stands under
   # its column, is hidden and resized with it by the hook's rules, and is
   # reached with the arrow keys. The cell under a column is
@@ -871,11 +883,12 @@ defmodule AshDataTable.Attrs do
   alias Phoenix.LiveView.JS
 
   @markers ~w(
-    [role=grid] [role=rowgroup] [role=row] [role=gridcell] [role=columnheader] [role=dialog]
+    [role=table] [role=rowgroup] [role=row] [role=cell] [role=rowheader] [role=columnheader]
+    [role=dialog]
     [data-ash-data-table] data-table [data-sender]
     [colspan] [data-selector] [data-select-page] [data-expander] [data-line] [data-nested]
     [data-actions] [data-pager] [data-view] [data-filter] [data-lines] [data-paragraph] [data-detail]
-    [data-current] [data-summaries]
+    [data-current] [data-summaries] [data-failed]
     [data-resize] [data-open] [data-action] [data-table-action] [data-destructive]
     [data-question] [data-confirm]
     [data-reveal] [data-mask] [data-masked] [data-secret] [data-unseen] [data-whole]
@@ -928,9 +941,9 @@ defmodule AshDataTable.Attrs do
   `data-chosen-rows`, where several are chosen, which rows are selected as
   it opens; `data-show-whole` and `data-show-less` what the button says
   that shows a cell's whole text and cuts it off again (the `grid` part's
-  `texts.show_whole` and `texts.show_less`). No tab stop (`tabindex`),
-  which a browser may make of an element that scrolls: the tab stop of a
-  grid is one of its cells.
+  `texts.show_whole` and `texts.show_less`). No Tab stop (`tabindex="-1"`),
+  which a browser may make of an element that scrolls: the stops are the
+  controls and the editable cells in it.
   """
   def grid(id, myself, lead, selecting, choose, texts) do
     %{
@@ -972,18 +985,18 @@ defmodule AshDataTable.Attrs do
   end
 
   @doc """
-  The grid itself, whose rows are a stream. `model` says how many header
-  rows it has (one, and the filter row where a column has a filter).
+  The table itself (`role="table"`), whose rows are a stream. `model` says
+  how many header rows it has (one, and the filter row where a column has
+  a filter).
   """
-  def table(id, label, labelledby, model, page, summarised?, colcount, selecting, busy?) do
+  def table(id, label, labelledby, model, page, summarised?, colcount, busy?) do
     %{
       "id" => "#{id}-table",
-      "role" => "grid",
+      "role" => "table",
       "aria-label" => is_nil(labelledby) && label,
       "aria-labelledby" => labelledby,
       "aria-rowcount" => rowcount(model, page, summarised?),
       "aria-colcount" => colcount,
-      "aria-multiselectable" => selecting && to_string(selecting == :multi),
       "aria-busy" => busy? && "true",
       "data-first-row" => Present.first_row(model, page),
       "phx-update" => "stream"
@@ -1009,29 +1022,20 @@ defmodule AshDataTable.Attrs do
   def row(id, rowindex \\ nil), do: %{"id" => id, "role" => "row", "aria-rowindex" => rowindex}
 
   @doc """
-  A cell that is no record's, and no column header: of the filter row, of
-  the footer row of the summaries. `colindex` is where it stands.
+  An empty cell that is no record's: under the boxes, the expanders and
+  the actions in the filter row. `colindex` is where it stands. No Tab
+  stop: it holds nothing to use.
   """
-  def gridcell(id, colindex, more \\ %{}) do
-    Map.merge(
-      %{"id" => id, "role" => "gridcell", "aria-colindex" => colindex, "tabindex" => "-1"},
-      more
-    )
-  end
+  def empty_cell(id, colindex), do: %{"id" => id, "role" => "cell", "aria-colindex" => colindex}
 
   @doc """
-  A cell that spans the grid: a line, the cell a nested table is in, the
-  pages of a nested table, its link to the full view.
+  A cell that spans the table: a line, the cell a nested table is in, the
+  pages of a nested table, its link to the full view. No Tab stop itself:
+  the controls in it are.
   """
   def spanning(id, colspan, more) do
     Map.merge(
-      %{
-        "id" => id,
-        "role" => "gridcell",
-        "colspan" => colspan,
-        "aria-colindex" => "1",
-        "tabindex" => "-1"
-      },
+      %{"id" => id, "role" => "cell", "colspan" => colspan, "aria-colindex" => "1"},
       more
     )
   end
@@ -1039,43 +1043,73 @@ defmodule AshDataTable.Attrs do
   @doc """
   A header that is no column's: of the boxes that select rows (where one
   stands for the rows of the page, `data-select-page`), of the expanders,
-  of the actions.
+  of the actions. No Tab stop: the box in the first is one.
   """
   def header(id, colindex, more \\ %{}) do
     Map.merge(
-      %{
-        "id" => id,
-        "role" => "columnheader",
-        "scope" => "col",
-        "aria-colindex" => colindex,
-        "tabindex" => "-1"
-      },
+      %{"id" => id, "role" => "columnheader", "scope" => "col", "aria-colindex" => colindex},
       more
     )
   end
 
   @doc """
-  The header of a column, beside its id, place, role, name and
-  `tabindex`, which the part writes, as it does for every element drawn
-  once per column (an opened nested table sends them once per column).
-  `data-label` where it stays in view as the grid scrolls
-  sideways (`sticky_label?`), `data-sort` where it sorts; a click sorts
-  by it. `data-number` where the column shows a number as text, as its
-  cells (`cell/2`).
+  The header of a column, beside its id, place, role and name, which the
+  part writes, as it does for every element drawn once per column (an
+  opened nested table sends them once per column). `aria-sort` and
+  `data-sort` where it sorts: it then holds the column's sort button
+  (`sort/3`), the header's one Tab stop; a header that does not sort is
+  none. `data-label` where it stays in view as the grid scrolls sideways
+  (`sticky_label?`). `data-number` where the column shows a number as
+  text, as its cells (`cell/2`).
   """
-  def column_header(id, column, sort, label?, myself) do
+  def column_header(column, sort, label?) do
     sortable? = column.sortable?
 
     %{
       "aria-sort" => sortable? && aria_sort(sort, column),
       "data-label" => label?,
       "data-number" => number?(column),
-      "data-sort" => sortable?,
-      "phx-click" => sortable? && event(id, "sort"),
-      "phx-value-column" => sortable? && column.name,
-      "phx-target" => sortable? && myself
+      "data-sort" => sortable?
     }
   end
+
+  @doc """
+  The button in the header of a column that sorts (`Ids.sort/2`): a click,
+  Enter or Space sorts by the column, ascending, descending, then not
+  (`sort`). It holds the column's label; the header says the direction
+  (`aria-sort`).
+  """
+  def sort(id, column, myself) do
+    %{
+      "id" => Ids.sort(id, column.name),
+      "type" => "button",
+      "phx-click" => event(id, "sort"),
+      "phx-value-column" => column.name,
+      "phx-target" => myself
+    }
+  end
+
+  @doc """
+  The link at the start of a table, before its header row, that jumps past
+  it to its end (`skip_target/1`): `Ids.skip/1`, its text the `grid`
+  part's `texts.skip_table` ("Skip table Tasks"). Seen only while it has
+  the focus. The browser follows it: no script.
+  """
+  def skip(id), do: %{"id" => Ids.skip(id), "href" => "#" <> Ids.skip_target(id)}
+
+  @doc """
+  Where the link at the start of a table jumps to: an empty element after
+  the table's pagination (`Ids.skip_target/1`) that takes the focus
+  (`tabindex="-1"`), so that the next Tab goes on after the table.
+  """
+  def skip_target(id), do: %{"id" => Ids.skip_target(id), "tabindex" => "-1"}
+
+  @doc """
+  The text out of sight that every editable cell of the table is described
+  by (`Ids.editable/1`, in the cell's `aria-describedby`): the `grid`
+  part's `texts.editable`.
+  """
+  def editable(id), do: %{"id" => Ids.editable(id), "hidden" => true}
 
   @doc "What a column's header says of the sort (`aria-sort`): `ascending`, `descending` or `none`."
   def aria_sort({name, :asc}, %{name: name}), do: "ascending"
@@ -1107,11 +1141,11 @@ defmodule AshDataTable.Attrs do
   `data-current` on the record that is chosen now, in a table to choose
   from. The hooks take a `role=rowgroup` of the grid for a record's unless
   it is the header (`ID-head`), the footer (`ID-foot`) or a detail. The
-  rows of the records hold what varies only: their id, `role` and
-  `tabindex`, the same on every row, are written by the part, as every
-  byte of a row is sent again whenever the row is (with them in the
-  bundle "Page change" sent 11 % more). So do the row of a record, its
-  cells and its actions cell below.
+  rows of the records hold what varies only: their id and `role`, the same
+  on every row, are written by the part, as every byte of a row is sent
+  again whenever the row is (with them in the bundle "Page change" sent
+  11 % more). So do the row of a record, its cells and its actions cell
+  below.
   """
   def detail?(%{detail: true}), do: true
   def detail?(_item), do: nil
@@ -1121,14 +1155,15 @@ defmodule AshDataTable.Attrs do
   and those of the cell of the item (`AshDataTable.Item`, its `attrs`). What
   it says about editing, for people and for the hook:
 
-    * `aria-readonly` on a cell that cannot be edited, when the table
-      offers editing at all;
+    * on a cell that can be edited, `tabindex="0"`: it is a Tab stop, the
+      only cell that is (a read-only cell is none), and `aria-describedby`
+      names the table's text that says so (`editable/1`);
     * `data-value` where the editor's value is not the text the cell shows:
       a choice and a boolean, a cell whose content is a component's, and a
       cell whose save failed, which shows what was typed;
-    * on a cell whose save failed, also `aria-invalid`, `aria-describedby`
-      naming the action's message, and `data-saved`, the value the record
-      still has, which the hook compares with what is typed next.
+    * on a cell whose save failed, also `data-failed`, `aria-describedby`
+      naming the action's message too, and `data-saved`, the value the
+      record still has, which the hook compares with what is typed next.
 
   A cell of a sensitive column says that its editor holds nothing
   (`data-value=""`), and nothing else: what was typed into it is never
@@ -1137,7 +1172,8 @@ defmodule AshDataTable.Attrs do
   through a component), so that a kit can set it at the end of the cell.
 
   The part writes the cell's id (`AshDataTable.Ids.cell/2`) with its place
-  and role, as above.
+  and role, as above: `role="cell"`, and `role="rowheader"` in the column
+  a record is called by (the label column), which names the row.
   """
   def cell(column, cell) do
     Map.merge(
@@ -1161,12 +1197,13 @@ defmodule AshDataTable.Attrs do
 
   @doc """
   The actions cell of a record. What it says about an action that failed:
-  as a cell whose save failed, `aria-invalid` and `aria-describedby`
-  naming the action's message. `id` is the cell's id.
+  as a cell whose save failed, `data-failed` and `aria-describedby`
+  naming the action's message. `id` is the cell's id. No Tab stop itself:
+  its buttons are.
   """
   def actions(id, row) do
     %{
-      "aria-invalid" => row.failure && "true",
+      "data-failed" => !!row.failure,
       "aria-describedby" => row.failure && Ids.error(id)
     }
   end
@@ -1181,9 +1218,10 @@ defmodule AshDataTable.Attrs do
 
   @doc """
 
-  The cells of the row, as the cells of a record, write their id, place,
-  role and `tabindex` themselves, as the row is sent again while its
-  summaries are on their way and once more when they are there.
+  The cells of the row, as the cells of a record, write their id, place
+  and role themselves, as the row is sent again while its summaries are on
+  their way and once more when they are there. No cell of it is a Tab
+  stop: it holds nothing to use.
   """
   def summary(column, summing?) do
     %{
@@ -1194,8 +1232,8 @@ defmodule AshDataTable.Attrs do
   end
 
   @doc """
-  A row action's button, beside its id, `tabindex` and `data-action`,
-  which the part writes: `data-question` the question the hook asks
+  A row action's button, beside its id and `data-action`, which the part
+  writes: `data-question` the question the hook asks
   first (none in controlled mode, where the host asks), `data-destructive`
   on an action that destroys.
   """
@@ -1205,7 +1243,8 @@ defmodule AshDataTable.Attrs do
 
   @doc """
   A line under an expanded row: `data-line` names its relationship, on
-  the line's cell (the part writes its id, role, place and `tabindex`).
+  the line's cell (the part writes its id, role and place). Its button is
+  the Tab stop, not the cell.
   """
   def line(relationship), do: %{"data-line" => relationship.name}
 

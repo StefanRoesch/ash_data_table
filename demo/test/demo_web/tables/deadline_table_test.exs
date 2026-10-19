@@ -185,7 +185,7 @@ defmodule DemoWeb.Tables.DeadlineTableTest do
       save(view, "deadline", soon.id, "due_on", iso(1))
       assert_reply view, %{ok: false, error: "This record is no longer available."}
 
-      view |> element("#deadline-head-title") |> render_click()
+      view |> element("#deadline-sort-title") |> render_click()
       assert titles(render_async(view)) == ["Later"]
     end
   end

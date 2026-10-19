@@ -2,7 +2,7 @@
 // constants, helpers that need no hook, and what is the same for all
 // grids of a page (where the scrollbars at the bottom edge go, whether
 // focus is moving with Tab).
-import {CONTROL, DIALOG, GRID, GRIDCELL, HEADER, OPENED, ROW, ROWGROUP, TABLE} from "../markers.js"
+import {CELL, CONTROL, DIALOG, GRID, HEADER, OPENED, ROW, ROWGROUP, ROWHEADER, TABLE} from "../markers.js"
 
 // a key that types a character
 export const PRINTABLE = e => e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey
@@ -37,10 +37,13 @@ export const AROUND = (node, what) => {
 // says where it stands among the columns (`aria-colindex`, from 1).
 
 // a cell of a row: a column's header or a grid cell
-export const CELL = `${GRIDCELL},${HEADER}`
+// a cell of the rows (the label column's is the row's header), and any
+// cell, a column's header among them
+export const DATACELL = `${CELL},${ROWHEADER}`
+export const ANYCELL = `${DATACELL},${HEADER}`
 
 // the cells of a row, in their order
-export const cellsOf = row => row ? Array.from(row.children).filter(child => child.matches(CELL)) : []
+export const cellsOf = row => row ? Array.from(row.children).filter(child => child.matches(ANYCELL)) : []
 
 // where a cell stands among the columns, counted from 0
 export const place = cell => Number(cell.getAttribute("aria-colindex")) - 1

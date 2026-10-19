@@ -144,7 +144,7 @@ defmodule DemoWeb.Tables.NestedRegistryTest do
     assert holds!(view) == [comments, deep]
 
     # sorting the nested table reads it again: what was open in it closes
-    click(view, "[id='#{comments}-head-body']")
+    click(view, "[id='#{comments}-sort-body']")
     render_async(view, 10_000)
     assert holds!(view) == [comments]
     assert column(render(view), comments, "body") == ["First comment", "Second comment"]
@@ -175,13 +175,13 @@ defmodule DemoWeb.Tables.NestedRegistryTest do
     assert holds!(view) == [comments]
 
     # sorting the table on the page closes everything under its rows
-    click(view, "[id='task-head-title']")
+    click(view, "[id='task-sort-title']")
     render_async(view, 10_000)
     assert holds!(view) == []
 
     # a page change takes the rows away with their tables
-    click(view, "[id='task-head-title']")
-    click(view, "[id='task-head-title']")
+    click(view, "[id='task-sort-title']")
+    click(view, "[id='task-sort-title']")
     render_async(view, 10_000)
     expand(view, task.id)
     toggle(view, task.id, "comments")

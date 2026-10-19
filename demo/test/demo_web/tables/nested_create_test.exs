@@ -98,8 +98,8 @@ defmodule DemoWeb.Tables.NestedCreateTest do
 
       # the line's own button says "Comments" and nothing else
       assert text(html, "[id='task-row-#{task.id}-l-comments-b']") == "Comments"
-      # out of the tab order, as everything in the grid
-      assert attribute(html, button, "tabindex") == ["-1"]
+      # a Tab stop of its own, as every control is
+      assert attribute(html, button, "tabindex") == []
       # shown once the nested table has read: it says so itself
       assert attribute(html, "[id='#{nested(task.id, "comments")}']", "data-read") == [""]
 

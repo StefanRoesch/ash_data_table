@@ -123,7 +123,7 @@ defmodule DemoWeb.Tables.PageValuesTest do
     assert calls() == ["card"]
 
     # a sort, which reads the page again
-    view |> element("[id='card-head-title']") |> render_click()
+    view |> element("[id='card-sort-title']") |> render_click()
     render_async(view)
     assert calls() == ["card"]
 

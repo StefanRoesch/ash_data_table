@@ -25,17 +25,25 @@ defmodule DemoWeb.Tables.NobodyTest do
     test "#{path} shows no records", %{conn: conn} do
       {:ok, view, html} = live(conn, unquote(path))
 
-      assert attribute(html, "##{unquote(id)}-table[role=grid]", "role") != []
+      assert attribute(html, "##{unquote(id)}-table[role=table]", "role") != []
       assert attribute(html, "##{unquote(id)}-table [role=rowgroup]", "id") == []
       assert text(html, "##{unquote(id)}-empty") == "No records"
       assert text(html, "##{unquote(id)}-error") == nil
       # and offers no editing
       assert editors(html, unquote(id)) == []
-      assert attribute(html, "##{unquote(id)}-table [role=gridcell]", "role") != []
-      assert attribute(html, "##{unquote(id)}-table [role=gridcell]", "aria-readonly") == []
+
+      assert attribute(html, "##{unquote(id)}-table :is([role=cell],[role=rowheader])", "role") !=
+               []
+
+      assert attribute(
+               html,
+               "##{unquote(id)}-table :is([role=cell],[role=rowheader])",
+               "tabindex"
+             ) == []
+
       # the page is alive: it can be sorted
       [header | _] = attribute(html, "##{unquote(id)}-table [role=columnheader][data-sort]", "id")
-      click(view, "##{header}")
+      click(view, "##{header} > button")
       assert text(render_async(view), "##{unquote(id)}-empty") == "No records"
     end
   end

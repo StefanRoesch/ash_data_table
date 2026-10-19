@@ -71,9 +71,9 @@ defmodule DemoWeb.Tables.AttachTest do
     {:ok, view, _html} = live(conn, "/support/attached")
 
     # ascending, as the read action sorts already, then descending
-    view |> element("#bulletin-head-title") |> render_click()
+    view |> element("#bulletin-sort-title") |> render_click()
     assert_patch(view, "/support/attached?bulletin[sort]=title")
-    view |> element("#bulletin-head-title") |> render_click()
+    view |> element("#bulletin-sort-title") |> render_click()
     assert_patch(view, "/support/attached?bulletin[sort]=-title")
     assert titles(render_async(view)) == ["Plain", "Kept back"]
 
@@ -86,7 +86,7 @@ defmodule DemoWeb.Tables.AttachTest do
     {:ok, view, html} = live(conn, "/support/attached/paramless?bulletin[sort]=-title")
     assert titles(html) == ["Plain", "Kept back"]
 
-    view |> element("#bulletin-head-title") |> render_click()
+    view |> element("#bulletin-sort-title") |> render_click()
     assert_patch(view, "/support/attached/paramless")
     assert titles(render_async(view)) == ["Kept back", "Plain"]
     assert Process.alive?(view.pid)
@@ -242,8 +242,8 @@ defmodule DemoWeb.Tables.AttachTest do
     {:ok, view, html} = live(conn, "/support/attached")
     assert titles(html) == ["Kept back", "Plain"]
 
-    view |> element("#bulletin-head-title") |> render_click()
-    view |> element("#bulletin-head-title") |> render_click()
+    view |> element("#bulletin-sort-title") |> render_click()
+    view |> element("#bulletin-sort-title") |> render_click()
     assert titles(render_async(view)) == ["Plain", "Kept back"]
     assert text(render(view), "#url") == "http://www.example.com/support/attached"
   end

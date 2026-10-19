@@ -13,16 +13,14 @@ defmodule AshDataTable.Parts.Heading do
   alias AshDataTable.Parts
 
   # The create button of a table: it opens the action panel with the inputs
-  # of the table's create action. In a nested table no tab stop, as the
-  # other buttons on its line (`tabindex`).
+  # of the table's create action.
   attr :id, :string, required: true
   attr :action, :map, required: true
   attr :target, :any, required: true
-  attr :tabindex, :any, default: nil
 
   def create(assigns) do
     ~H"""
-    <button type="button" {Attrs.create(@id, @target)} tabindex={@tabindex} class="btn btn-sm">
+    <button type="button" {Attrs.create(@id, @target)} class="btn btn-sm">
       {@action.label}
     </button>
     """
@@ -34,7 +32,6 @@ defmodule AshDataTable.Parts.Heading do
   attr :id, :string, required: true
   attr :actions, :list, required: true
   attr :target, :any, required: true
-  attr :tabindex, :any, default: nil
 
   def table_actions(assigns) do
     ~H"""
@@ -42,7 +39,6 @@ defmodule AshDataTable.Parts.Heading do
       :for={action <- @actions}
       type="button"
       {Attrs.table_action(@id, action, @target)}
-      tabindex={@tabindex}
       class="btn btn-sm"
     >
       {action.label}
@@ -135,14 +131,8 @@ defmodule AshDataTable.Parts.Heading do
           id={@id}
           action={@model.create}
           target={@myself}
-          tabindex={@nested? && "-1"}
         />
-        <.table_actions
-          id={@id}
-          actions={@offered}
-          target={@myself}
-          tabindex={@nested? && "-1"}
-        />
+        <.table_actions id={@id} actions={@offered} target={@myself} />
       </div>
     </div>
     """

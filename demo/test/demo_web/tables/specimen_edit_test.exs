@@ -70,11 +70,11 @@ defmodule DemoWeb.Tables.SpecimenEditTest do
       assert editors(html, "specimen") == @editable
 
       for field <- @editable do
-        assert attribute(html, cell("specimen", specimen.id, field), "aria-readonly") == [], field
+        assert attribute(html, cell("specimen", specimen.id, field), "tabindex") == ["0"], field
       end
 
       for field <- @read_only do
-        assert attribute(html, cell("specimen", specimen.id, field), "aria-readonly") == ["true"],
+        assert attribute(html, cell("specimen", specimen.id, field), "tabindex") == [],
                field
       end
     end

@@ -232,7 +232,7 @@ defmodule DemoWeb.Tables.TaskCreateTest do
       html = run_panel(view, title: "Zebra crossing", project_id: project.id)
       assert titles(html) == ["Zebra crossing", "Older", "Oldest"]
 
-      view |> element("#task-head-title") |> render_click()
+      view |> element("#task-sort-title") |> render_click()
       html = render_async(view)
 
       assert titles(html) == ["Older", "Oldest", "Zebra crossing"]

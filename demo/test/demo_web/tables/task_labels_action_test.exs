@@ -250,7 +250,7 @@ defmodule DemoWeb.Tables.TaskLabelsActionTest do
       assert column(html, @labels, "name") == ["Bug", "Docs", "Urgent"]
 
       # a box per row, and one for the rows of the page
-      assert attribute(html, "##{@labels}-table", "aria-multiselectable") == ["true"]
+      assert attribute(html, "##{@labels}-table", "aria-multiselectable") == []
       assert attribute(html, "##{@labels}-grid", "data-select") == ["multi"]
       assert attribute(html, "##{@labels}-grid", "data-choose") == [""]
 

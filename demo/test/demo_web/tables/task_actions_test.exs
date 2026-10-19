@@ -74,14 +74,22 @@ defmodule DemoWeb.Tables.TaskActionsTest do
       assert text(html, "#task-actions-filter") == ""
       assert attribute(html, "#task-actions-filter", "aria-colindex") == ["25"]
 
-      assert attribute(html, "#task-filter-row > [role=gridcell]:last-child", "id") == [
+      assert attribute(
+               html,
+               "#task-filter-row > :is([role=cell],[role=rowheader]):last-child",
+               "id"
+             ) == [
                "task-actions-filter"
              ]
 
-      assert attribute(html, actions_cell(task.id), "role") == ["gridcell"]
+      assert attribute(html, actions_cell(task.id), "role") == ["cell"]
       assert attribute(html, actions_cell(task.id), "aria-colindex") == ["25"]
 
-      assert attribute(html, "[id='task-row-#{task.id}-r'] > [role=gridcell]:last-child", "id") ==
+      assert attribute(
+               html,
+               "[id='task-row-#{task.id}-r'] > :is([role=cell],[role=rowheader]):last-child",
+               "id"
+             ) ==
                ["task-row-#{task.id}-a"]
 
       # the columns before it are where they were
@@ -295,7 +303,7 @@ defmodule DemoWeb.Tables.TaskActionsTest do
     test "is forgotten by the next read", %{view: view, foreign: foreign} do
       assert action_failure(act(view, foreign.id, "archive"), foreign.id) != nil
 
-      view |> element("#task-head-title") |> render_click()
+      view |> element("#task-sort-title") |> render_click()
       html = render_async(view)
 
       assert titles(html) == ["Mine", "Somebody else's"]
@@ -655,7 +663,7 @@ defmodule DemoWeb.Tables.TaskActionsTest do
          %{view: view, task: task} do
       assert panel(act(view, task.id, "reassign")) != nil
 
-      view |> element("#task-head-title") |> render_click()
+      view |> element("#task-sort-title") |> render_click()
       html = render_async(view)
 
       assert titles(html) == ["File the report", "Write the report"]

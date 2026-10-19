@@ -215,7 +215,7 @@ defmodule DemoWeb.Tables.TaskArraysTest do
       {:ok, view, html} = conn |> log_in(world.member) |> live("/tasks")
 
       # a member is offered editing on every task
-      assert attribute(html, cell(task.id, "tags"), "aria-readonly") == []
+      assert attribute(html, cell(task.id, "tags"), "tabindex") == ["0"]
 
       html = save_in_panel(view, task, "tags", ["mine"])
       assert panel(html).errors == ["You are not allowed to change this."]

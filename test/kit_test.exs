@@ -13,12 +13,12 @@ defmodule AshDataTable.KitTest do
   end
 
   # The fields of the structs a part is given, as `Kit`'s moduledoc lists
-  # them under "Kit contract 2", by struct.
+  # them under "Kit contract 3", by struct.
   defp contract do
     {:docs_v1, _anno, _language, _format, %{"en" => doc}, _meta, _docs} =
       Code.fetch_docs(Kit)
 
-    [_before, section] = String.split(doc, "## Kit contract 2", parts: 2)
+    [_before, section] = String.split(doc, "## Kit contract 3", parts: 2)
     [section | _after] = String.split(section, "\n## ", parts: 2)
 
     section
@@ -38,7 +38,7 @@ defmodule AshDataTable.KitTest do
     end)
   end
 
-  test "kit contract 2 names every field of every struct a part is given, and no other" do
+  test "kit contract 3 names every field of every struct a part is given, and no other" do
     contract = contract()
 
     assert Map.keys(contract) |> Enum.sort() ==
@@ -71,7 +71,7 @@ defmodule AshDataTable.KitTest do
     kit =
       compile("""
       defmodule AshDataTable.KitTest.Styled do
-        use AshDataTable.Kit, contract: 2
+        use AshDataTable.Kit, contract: 3
 
         def class(:panel, _state), do: "mine"
         def class(part, state), do: super(part, state)
@@ -90,21 +90,35 @@ defmodule AshDataTable.KitTest do
     assert Kit.check!(kit, "a test") == kit
   end
 
-  test "another contract fails to compile, and says which one this version has" do
+  test "another contract fails to compile, and says which one this version has and what changed" do
     error =
       assert_raise CompileError, fn ->
         compile("""
         defmodule AshDataTable.KitTest.Old do
-          use AshDataTable.Kit, contract: 1
+          use AshDataTable.Kit, contract: 2
         end
         """)
       end
 
     assert Exception.message(error) =~
-             "`use AshDataTable.Kit` was given `contract: 1`, and this version of AshDataTable has contract 2"
+             "`use AshDataTable.Kit` was given `contract: 2`, and this version of AshDataTable has contract 3"
 
-    # what changed since: the rows are items
+    # what changed since: a table, not a grid
+    assert Exception.message(error) =~ ~s(role="table")
+    assert Exception.message(error) =~ "Attrs.sort/3"
+
+    # and from contract 1 both steps
+    error =
+      assert_raise CompileError, fn ->
+        compile("""
+        defmodule AshDataTable.KitTest.Older do
+          use AshDataTable.Kit, contract: 1
+        end
+        """)
+      end
+
     assert Exception.message(error) =~ "AshDataTable.Item"
+    assert Exception.message(error) =~ ~s(role="table")
   end
 
   test "a public function of one argument that is no part fails to compile" do
@@ -112,7 +126,7 @@ defmodule AshDataTable.KitTest do
       assert_raise CompileError, fn ->
         compile("""
         defmodule AshDataTable.KitTest.Typo do
-          use AshDataTable.Kit, contract: 2
+          use AshDataTable.Kit, contract: 3
 
           def pagniation(assigns), do: super_pagination(assigns)
           defp super_pagination(assigns), do: AshDataTable.Kit.Default.pagination(assigns)
@@ -129,7 +143,7 @@ defmodule AshDataTable.KitTest do
       assert_raise CompileError, fn ->
         compile("""
         defmodule AshDataTable.KitTest.Arity do
-          use AshDataTable.Kit, contract: 2
+          use AshDataTable.Kit, contract: 3
 
           def class(_part), do: "one"
         end
@@ -151,7 +165,7 @@ defmodule AshDataTable.KitTest do
     sideways =
       compile("""
       defmodule AshDataTable.KitTest.Sideways do
-        use AshDataTable.Kit, contract: 2
+        use AshDataTable.Kit, contract: 3
 
         def presentation(:picker), do: :sideways
         def presentation(thing), do: super(thing)
@@ -220,7 +234,7 @@ defmodule AshDataTable.KitTest do
       assert_raise CompileError, fn ->
         compile("""
         defmodule AshDataTable.KitTest.LookArity do
-          use AshDataTable.Kit, contract: 2
+          use AshDataTable.Kit, contract: 3
 
           def look(_option, _table), do: true
         end
@@ -235,7 +249,7 @@ defmodule AshDataTable.KitTest do
     kit =
       compile("""
       defmodule AshDataTable.KitTest.Striped do
-        use AshDataTable.Kit, contract: 2
+        use AshDataTable.Kit, contract: 3
 
         def look(:stripes), do: true
         def look(option), do: super(option)
@@ -284,7 +298,7 @@ defmodule AshDataTable.KitTest do
     kit =
       compile("""
       defmodule AshDataTable.KitTest.Dense do
-        use AshDataTable.Kit, contract: 2
+        use AshDataTable.Kit, contract: 3
 
         def look(:density), do: :dense
         def look(option), do: super(option)

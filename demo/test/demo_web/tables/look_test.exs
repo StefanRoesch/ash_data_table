@@ -20,11 +20,11 @@ defmodule DemoWeb.Tables.LookTest do
   defp classes(html, selector),
     do: html |> attribute(selector, "class") |> Enum.flat_map(&String.split/1)
 
-  @sticky "[&_[role=grid]>:has(>[role=row]>[role=columnheader])]:sticky"
-  @stripes "[&_[role=grid]>:where([role=rowgroup]:nth-child(even_of_[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))))>[role=row]>[role=gridcell]]:[background-image:linear-gradient(var(--ash-data-table-stripe),var(--ash-data-table-stripe))]"
-  @column_lines "[&_[role=grid]>*>[role=row]>:not(:first-child,[colspan])]:border-s"
-  @compact "[&_[role=grid]>*>[role=row]>:not([colspan])]:py-1"
-  @normal "[&_[role=grid]>*>[role=row]>:not([colspan])]:py-2"
+  @sticky "[&_[role=table]>:has(>[role=row]>[role=columnheader])]:sticky"
+  @stripes "[&_[role=table]>:where([role=rowgroup]:nth-child(even_of_[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))))>[role=row]>:is([role=cell],[role=rowheader])]:[background-image:linear-gradient(var(--ash-data-table-stripe),var(--ash-data-table-stripe))]"
+  @column_lines "[&_[role=table]>*>[role=row]>:not(:first-child,[colspan])]:border-s"
+  @compact "[&_[role=table]>*>[role=row]>:not([colspan])]:py-1"
+  @normal "[&_[role=table]>*>[role=row]>:not([colspan])]:py-2"
 
   test "the default kit draws its default look: no option on", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/tasks")
@@ -120,9 +120,9 @@ defmodule DemoWeb.Tables.LookTest do
       end
 
       assert attribute(html, "#task-head-title > svg", "aria-label") == []
-      # and its cells say so to assistive technology; an editable one does not
-      assert attribute(html, cell("task", task.id, "reporter"), "aria-readonly") == ["true"]
-      assert attribute(html, cell("task", task.id, "title"), "aria-readonly") == []
+      # and its cells are no Tab stops; an editable one is
+      assert attribute(html, cell("task", task.id, "reporter"), "tabindex") == []
+      assert attribute(html, cell("task", task.id, "title"), "tabindex") == ["0"]
     end
 
     test "a table that offers the person no editing draws no lock at all", %{
@@ -145,10 +145,16 @@ defmodule DemoWeb.Tables.LookTest do
                    String.ends_with?(&1, ":cursor-text"))
              )
 
-      assert Enum.any?(
+      # every focus ring of the kit's own in the text colour (#46): none in
+      # the primary colour, none dashed
+      refute Enum.any?(root, &String.contains?(&1, "outline-dashed"))
+
+      refute Enum.any?(
                root,
-               &String.contains?(&1, "[aria-readonly]:is(:focus,:focus-within)]:outline-dashed")
+               &String.contains?(&1, "outline-[color-mix(in_oklab,var(--color-primary)")
              )
+
+      assert Enum.any?(root, &String.ends_with?(&1, ":focus]:outline-base-content"))
     end
   end
 end

@@ -12,7 +12,8 @@
 // opened it.
 import {error as errorId} from "./ids.js"
 import {cellsOf} from "./grid/shared.js"
-import {ARGUMENTS, CANCEL, GRID, GRIDCELL, HEADER, NONE, OF, TAKE} from "./markers.js"
+import {ARGUMENTS, CANCEL, GRID, NONE, OF, TAKE} from "./markers.js"
+import {ANYCELL, DATACELL} from "./grid/shared.js"
 import {opened} from "./panel.js"
 
 export default {
@@ -100,7 +101,7 @@ export default {
   // The cell the picker was opened from, when it was a cell.
   cell() {
     const opener = this.opener && this.opener.isConnected ? this.opener : (this.openerId ? document.getElementById(this.openerId) : null)
-    return opener && opener.matches(GRIDCELL) ? opener : null
+    return opener && opener.matches(DATACELL) ? opener : null
   },
 
   cancel() { this.transport.push("picker_cancel", {}) },
@@ -117,7 +118,7 @@ export default {
       const opener = this.opener && this.opener.isConnected
         ? this.opener
         : (this.openerId ? document.getElementById(this.openerId) : null)
-      const cell = opener && opener.closest(`${GRIDCELL},${HEADER}`)
+      const cell = opener && opener.closest(ANYCELL)
       if (failed && cell && cell === opener && this.grid) {
         this.grid.fail(cell, failed, () => {
           const message = document.getElementById(errorId(cell.id))

@@ -124,7 +124,7 @@ defmodule DemoWeb.Tables.ArrayTableTest do
       assert shown(html, roster, "grid") == "1, 2, 3"
 
       for field <- ~w(keys grid) do
-        assert attribute(html, cell("roster", roster.id, field), "aria-readonly") == ["true"]
+        assert attribute(html, cell("roster", roster.id, field), "tabindex") == []
       end
     end
 
@@ -301,7 +301,7 @@ defmodule DemoWeb.Tables.ArrayTableTest do
       assert editors(html, "roster") == editable
 
       for field <- editable do
-        assert attribute(html, cell("roster", roster.id, field), "aria-readonly") == [], field
+        assert attribute(html, cell("roster", roster.id, field), "tabindex") == ["0"], field
       end
     end
 
@@ -309,7 +309,7 @@ defmodule DemoWeb.Tables.ArrayTableTest do
          %{view: view, html: html, roster: roster} do
       for field <- ~w(frozen sealed) do
         assert editor(html, "roster", field) == nil
-        assert attribute(html, cell("roster", roster.id, field), "aria-readonly") == ["true"]
+        assert attribute(html, cell("roster", roster.id, field), "tabindex") == []
         edit(view, "roster", roster.id, field)
         assert_reply view, %{ok: false}
         assert panel(render(view), "roster") == nil

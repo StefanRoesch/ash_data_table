@@ -224,7 +224,7 @@ defmodule DemoWeb.Tables.DomainSettingsTest do
       assert titles(html) == ["Ada at Acme"]
 
       Gate.close()
-      view |> element("#note-head-title") |> render_click()
+      view |> element("#note-sort-title") |> render_click()
       assert_patch(view, "/support/guarded-notes?note[sort]=title")
 
       # The read runs beside the page. Once it is refused, the page ends with

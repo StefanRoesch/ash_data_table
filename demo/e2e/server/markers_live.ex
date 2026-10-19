@@ -103,13 +103,13 @@ defmodule DemoWeb.E2E.MarkersLive do
       (`:where`), so that the hook's own rules (widths, hidden columns)
       come first, as they do over the classes of the table's own look. --%>
       <style>
-        :where(#kit [role=grid]) { display: table; border-collapse: collapse }
+        :where(#kit [role=table]) { display: table; border-collapse: collapse }
         :where(#kit [role=rowgroup]) { display: table-row-group }
         :where(#kit-head, #kit-row-a-t-parts-head) { display: table-header-group }
         :where(#kit [role=row]) { display: table-row }
-        :where(#kit [role=gridcell], #kit [role=columnheader]) { display: table-cell; padding: 2px 8px; border: 1px solid; position: relative }
+        :where(#kit [role=cell], #kit [role=columnheader]) { display: table-cell; padding: 2px 8px; border: 1px solid; position: relative }
         :where(#kit [data-lines] > [data-paragraph]) { margin: 0; max-width: 16rem; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden }
-        :where(#kit [role=gridcell]:has(> [data-whole][aria-expanded=true]) > [data-paragraph]) { display: block; -webkit-line-clamp: unset }
+        :where(#kit [role=cell]:has(> [data-whole][aria-expanded=true]) > [data-paragraph]) { display: block; -webkit-line-clamp: unset }
         :where(#kit [data-whole])::before { content: attr(data-whole) }
         :where(#kit [data-resize]) { position: absolute; top: 0; bottom: 0; right: 0; width: 8px; cursor: col-resize }
         :where(#kit-grid) { overflow-x: auto }
@@ -173,11 +173,10 @@ defmodule DemoWeb.E2E.MarkersLive do
         >
           <div
             id="kit-table"
-            role="grid"
+            role="table"
             aria-label="Kit"
             aria-rowcount="5"
             aria-colcount="4"
-            aria-multiselectable="true"
           >
             <div id="kit-head" role="rowgroup">
               <div id="kit-head-row" role="row" aria-rowindex="1">
@@ -185,10 +184,9 @@ defmodule DemoWeb.E2E.MarkersLive do
                   id="kit-select-head"
                   role="columnheader"
                   aria-colindex="1"
-                  tabindex="-1"
                   data-select-page
                 >
-                  <input type="checkbox" tabindex="-1" aria-label="Select all rows of this page" />
+                  <input type="checkbox" aria-label="Select all rows of this page" />
                 </span>
                 <span
                   :for={{{name, label}, index} <- Enum.with_index(@columns)}
@@ -196,7 +194,6 @@ defmodule DemoWeb.E2E.MarkersLive do
                   role="columnheader"
                   aria-colindex={index + 2}
                   aria-label={label}
-                  tabindex="-1"
                 >
                   {label}<span
                     id={"kit-resize-#{name}"}
@@ -205,7 +202,6 @@ defmodule DemoWeb.E2E.MarkersLive do
                     aria-label={"Resize #{label}"}
                     aria-valuemin="48"
                     aria-valuemax="1000"
-                    tabindex="-1"
                     data-resize
                   ></span>
                 </span>
@@ -213,16 +209,14 @@ defmodule DemoWeb.E2E.MarkersLive do
               <div id="kit-filter-row" role="row" aria-rowindex="2">
                 <span
                   id="kit-select-filter"
-                  role="gridcell"
+                  role="cell"
                   aria-colindex="1"
-                  tabindex="-1"
                 ></span>
                 <span
                   :for={{{name, _label}, index} <- Enum.with_index(@columns)}
                   id={"kit-filter-#{name}"}
-                  role="gridcell"
+                  role="cell"
                   aria-colindex={index + 2}
-                  tabindex="-1"
                 ></span>
               </div>
             </div>
@@ -231,26 +225,24 @@ defmodule DemoWeb.E2E.MarkersLive do
                 <div id={"kit-row-#{key}-r"} role="row" aria-rowindex={at + 3}>
                   <span
                     id={"kit-row-#{key}-s"}
-                    role="gridcell"
+                    role="cell"
                     aria-colindex="1"
-                    tabindex="-1"
                     data-selector
                   >
-                    <input type="checkbox" tabindex="-1" aria-label="Select row" />
+                    <input type="checkbox" aria-label="Select row" />
                   </span>
                   <span
                     :for={{{name, _label}, index} <- Enum.with_index(@columns)}
                     id={"kit-row-#{key}-c-#{name}"}
-                    role="gridcell"
+                    role="cell"
                     aria-colindex={
                       if @missing == "colindex" and key == "b" and name == :size,
                         do: nil,
                         else: index + 2
                     }
-                    aria-readonly={name != :name && "true"}
                     data-value={name == :name && values[name]}
                     data-lines={name == :note && "2"}
-                    tabindex="-1"
+                    tabindex={name == :name && "0"}
                   ><p :if={name == :note} data-paragraph>{values[name]}</p>
                   <%= if name != :note do %>
                     {values[name]}
@@ -267,13 +259,12 @@ defmodule DemoWeb.E2E.MarkersLive do
                 <div id={"kit-row-#{key}-l-parts"} role="row">
                   <span
                     id={"kit-row-#{key}-l-parts-c"}
-                    role="gridcell"
+                    role="cell"
                     colspan="4"
                     aria-colindex="1"
-                    tabindex="-1"
                     data-line="parts"
                   >
-                    <button type="button" tabindex="-1" aria-expanded={to_string(@open)}>
+                    <button type="button" aria-expanded={to_string(@open)}>
                       Parts
                     </button>
                   </span>
@@ -281,10 +272,9 @@ defmodule DemoWeb.E2E.MarkersLive do
                 <div :if={@open} id={"kit-row-#{key}-n-parts"} role="row">
                   <span
                     id={"kit-row-#{key}-n-parts-c"}
-                    role="gridcell"
+                    role="cell"
                     colspan="4"
                     aria-colindex="1"
-                    tabindex="-1"
                     data-nested
                   >
                     <div
@@ -305,7 +295,7 @@ defmodule DemoWeb.E2E.MarkersLive do
                     >
                       <div
                         id={"kit-row-#{key}-t-parts-table"}
-                        role="grid"
+                        role="table"
                         aria-label="Parts"
                         aria-colcount="1"
                       >
@@ -319,7 +309,6 @@ defmodule DemoWeb.E2E.MarkersLive do
                               id={"kit-row-#{key}-t-parts-head-title"}
                               role="columnheader"
                               aria-colindex="1"
-                              tabindex="-1"
                             >
                               Part
                             </span>
@@ -337,10 +326,8 @@ defmodule DemoWeb.E2E.MarkersLive do
                           >
                             <span
                               id={"kit-row-#{key}-t-parts-row-#{part}-c-title"}
-                              role="gridcell"
+                              role="cell"
                               aria-colindex="1"
-                              aria-readonly="true"
-                              tabindex="-1"
                             >
                               {title}
                             </span>

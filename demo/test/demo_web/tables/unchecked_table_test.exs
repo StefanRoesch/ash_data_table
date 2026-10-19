@@ -99,9 +99,9 @@ defmodule DemoWeb.Tables.UncheckedTableTest do
     end
 
     test "reads again when it is sorted and when it is filtered", %{view: view} do
-      view |> element("#case-head-title") |> render_click()
+      view |> element("#case-sort-title") |> render_click()
       render_async(view)
-      view |> element("#case-head-title") |> render_click()
+      view |> element("#case-sort-title") |> render_click()
       assert titles(render_async(view)) == ["Beta", "Alpha"]
 
       html = filter(view, "case", "title", v: "Alp")

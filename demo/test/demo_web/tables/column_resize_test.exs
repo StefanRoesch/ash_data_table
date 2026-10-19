@@ -35,8 +35,7 @@ defmodule DemoWeb.Tables.ColumnResizeTest do
              "aria-label" => "Resize Title",
              "aria-valuemin" => "48",
              "aria-valuemax" => "1000",
-             # no `aria-valuenow`: the width is the browser's to say
-             "tabindex" => "-1",
+             # no `aria-valuenow`: the width is the browser's to say; no Tab stop
              "data-resize" => ""
            }
 
@@ -87,7 +86,7 @@ defmodule DemoWeb.Tables.ColumnResizeTest do
   test "it is still there after the header was rendered again", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/tasks")
 
-    view |> element("#task-head-title") |> render_click()
+    view |> element("#task-sort-title") |> render_click()
     html = render_async(view, 10_000)
 
     assert attribute(html, "#task-head-title", "aria-sort") == ["ascending"]

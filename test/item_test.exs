@@ -1,6 +1,6 @@
 defmodule AshDataTable.ItemTest do
   @moduledoc """
-  An item of a table's stream (`AshDataTable.Item`, kit contract 2, ADR
+  An item of a table's stream (`AshDataTable.Item`, kit contract 3, ADR
   0002): a plain map whose cells hold their finished text. Its keys are the
   ones its moduledoc lists, both ways; it goes to JSON as it is; and it
   holds no sensitive value, as the row it is made of holds none.
@@ -17,7 +17,7 @@ defmodule AshDataTable.ItemTest do
   # every sensitive value of the vault below, and what was typed for one
   @secrets ~r/tok-123|4711|hunter2|swordfish|letmein|wax|B-7|2027|typed-secret/
 
-  @table %{time_zone: "Etc/UTC", editing?: true, selecting: :multi}
+  @table %{id: "v", time_zone: "Etc/UTC", editing?: true, selecting: :multi}
 
   defp model, do: Model.build(Vault)
 
@@ -156,11 +156,42 @@ defmodule AshDataTable.ItemTest do
     assert item.failure.text == "This could not be done."
 
     assert item.cells.name.attrs == %{
-             "aria-invalid" => "true",
-             "aria-describedby" => "v-row-k1-c-name-error",
+             "tabindex" => "0",
+             "data-failed" => true,
+             "aria-describedby" => "v-editable v-row-k1-c-name-error",
              "data-value" => "Mine",
              "data-saved" => "Main"
            }
+
+    # a sensitive cell holds nothing of what was typed
+    assert item.cells.token.attrs == %{
+             "tabindex" => "0",
+             "data-failed" => true,
+             "aria-describedby" => "v-editable v-row-k1-c-token-error",
+             "data-value" => "",
+             "data-saved" => ""
+           }
+  end
+
+  test "an editable cell is a Tab stop, described as editable; a read-only cell says nothing" do
+    item = item(vault())
+
+    assert item.cells.name.attrs == %{"tabindex" => "0", "aria-describedby" => "v-editable"}
+    # the editor of a sensitive cell starts empty
+    assert item.cells.pin.attrs == %{
+             "tabindex" => "0",
+             "aria-describedby" => "v-editable",
+             "data-value" => ""
+           }
+
+    # `owner` and `locked` cannot be edited: no stop, and no ARIA of a grid's
+    assert item.cells.owner.attrs == %{}
+    assert item.cells.locked.attrs == %{}
+
+    for {_name, cell} <- item.cells do
+      refute Map.has_key?(cell.attrs, "aria-readonly")
+      refute Map.has_key?(cell.attrs, "aria-invalid")
+    end
   end
 
   test "the attributes that vary: nil and false left out, true kept, the rest as text" do

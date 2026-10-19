@@ -129,8 +129,10 @@ defmodule DemoWeb.Tables.LongTextTableTest do
       assert attribute(html, cell("essay", essay.id, "token") <> " [data-mask]", "aria-hidden") ==
                ["true"]
 
-      assert attribute(html, "#essay-table [role=gridcell]", "role") != []
-      assert attribute(html, "#essay-table [role=gridcell][title]", "title") == []
+      assert attribute(html, "#essay-table :is([role=cell],[role=rowheader])", "role") != []
+
+      assert attribute(html, "#essay-table :is([role=cell],[role=rowheader])[title]", "title") ==
+               []
     end
 
     test "a field the person may not see on a row is not in the page, in a column of several lines either",

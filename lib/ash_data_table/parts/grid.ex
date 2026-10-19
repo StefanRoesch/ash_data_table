@@ -21,12 +21,11 @@ defmodule AshDataTable.Parts.Grid do
   alias AshDataTable.Present
 
   # The handle at the end of a column's header, with which a person makes
-  # the column wider or narrower: dragged, or moved with the arrow keys once
-  # F2 on the header has put the focus on it. A separator that can be moved,
-  # as ARIA has it for the bar between two panes, and what it says of itself
-  # is the column's width in pixels; `aria-valuenow` is the hook's, which
-  # alone knows how wide a column is. It is not seen until it is pointed at,
-  # has the focus or is dragged: then a line at the column's edge.
+  # the column wider or narrower: dragged. A separator, as ARIA has it for
+  # the bar between two panes, and what it says of itself is the column's
+  # width in pixels; `aria-valuenow` is the hook's, which alone knows how
+  # wide a column is. No Tab stop. It is not seen until it is pointed at or
+  # dragged: then a line at the column's edge.
   #
   # Nothing of this reaches the server: the widths are the hook's, kept in a
   # style sheet of its own, and are gone with the page (see "the widths of
@@ -45,7 +44,6 @@ defmodule AshDataTable.Parts.Grid do
       aria-label={@texts.resize_column}
       aria-valuemin={Attrs.least_width()}
       aria-valuemax={Attrs.most_width()}
-      tabindex="-1"
       data-resize
       class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&:is(:hover,:focus,[data-dragging])]:after:absolute [&:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&:is(:hover,:focus,[data-dragging])]:after:end-0 [&:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&:is(:hover,:focus,[data-dragging])]:after:border-base-content [&:is(:hover,:focus,[data-dragging])]:after:content-['']"
     ></span>
@@ -103,10 +101,8 @@ defmodule AshDataTable.Parts.Grid do
   # writes (`ID-columns-text`, out of sight: "Columns (2 hidden)", of a
   # nested table "Columns of Comments (2 hidden)"), which begins with what
   # it shows. The badge is the hook's too (`ID-columns-count`), empty and
-  # out of sight while nothing is hidden. In a nested table the button is no
-  # tab stop, as the other buttons on its line are not: the line's cell is
-  # entered from the grid (F2, Enter) and its buttons reached with the
-  # arrow keys.
+  # out of sight while nothing is hidden. A Tab stop, in a nested table too,
+  # where it stands on the table's line.
   attr :id, :string, required: true
   attr :columns, :list, required: true
   attr :keeps_one?, :boolean, required: true
@@ -121,7 +117,6 @@ defmodule AshDataTable.Parts.Grid do
       <button
         type="button"
         {Attrs.columns_button(@id, @texts)}
-        tabindex={@nested? && "-1"}
         style={"anchor-name: #{anchor(@id)}"}
         class="btn btn-ghost btn-sm gap-1 px-2"
       >
@@ -277,11 +272,14 @@ defmodule AshDataTable.Parts.Grid do
     """
   end
 
+  # A boolean has no editor that takes the focus: Enter on the cell toggles
+  # it, and the hook shows this box in the cell while the value is saved
+  # (`inert`: no Tab stop, the cell is).
   def editor(%{column: %{editor: :boolean}} = assigns) do
     ~H"""
     <input
       type="checkbox"
-      tabindex="-1"
+      inert
       aria-label={@column.label}
       class="checkbox checkbox-xs pointer-events-none"
     />
@@ -326,12 +324,17 @@ defmodule AshDataTable.Parts.Grid do
 
   # The header of a column: its label, the mark of the sort, the handle
   # that resizes it (the kit's `resizer/1`). `attrs` is what varies
-  # (`AshDataTable.Attrs.column_header/5`); its id, place, role, name and
-  # `tabindex` are written here, as of every element drawn once per column.
+  # (`AshDataTable.Attrs.column_header/3`); its id, place, role and name are
+  # written here, as of every element drawn once per column. A column that
+  # sorts has its label and mark in a button (`button`,
+  # `AshDataTable.Attrs.sort/3`), the header's one Tab stop; the header says
+  # the direction (`aria-sort`). A header that does not sort is no stop.
   attr :id, :string, required: true
   attr :column, :map, required: true
   attr :colindex, :integer, required: true
   attr :attrs, :map, required: true
+  # the sort button's bundle, false where the column does not sort
+  attr :button, :any, required: true
   attr :sort, :any, required: true
   attr :resizer, :string, required: true
   attr :kit, :atom, required: true
@@ -345,14 +348,10 @@ defmodule AshDataTable.Parts.Grid do
       scope="col"
       aria-colindex={@colindex}
       aria-label={@column.label}
-      tabindex="-1"
       {@attrs}
-      class={[
-        "relative whitespace-nowrap",
-        @column.sortable? && "cursor-pointer select-none"
-      ]}
+      class="relative whitespace-nowrap"
       phx-no-format
-    >{@column.label}<svg :if={@texts.read_only} role="img" aria-label={@texts.read_only} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ms-1 inline-block size-3 align-[-1px] opacity-60"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span :if={@column.sortable?} aria-hidden="true">{sort_mark(@sort, @column)}</span><Kit.part part={:resizer} kit={@kit} id={@resizer} column={@column} texts={Words.texts(:resizer, %{column: @column})} messages={Words.messages(:resizer, %{column: @column})} /></th>
+    ><button :if={@button} {@button} class="cursor-pointer select-none rounded-sm font-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current">{@column.label}<span aria-hidden="true">{sort_mark(@sort, @column)}</span></button><%= if !@button do %>{@column.label}<% end %><svg :if={@texts.read_only} role="img" aria-label={@texts.read_only} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ms-1 inline-block size-3 align-[-1px] opacity-60"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><Kit.part part={:resizer} kit={@kit} id={@resizer} column={@column} texts={Words.texts(:resizer, %{column: @column})} messages={Words.messages(:resizer, %{column: @column})} /></th>
     """
   end
 
@@ -373,9 +372,8 @@ defmodule AshDataTable.Parts.Grid do
     ~H"""
     <td
       id={@id}
-      role="gridcell"
+      role="cell"
       aria-colindex={@colindex}
-      tabindex="-1"
       data-filter={@column.operators != []}
     >
       <Kit.part
@@ -401,13 +399,21 @@ defmodule AshDataTable.Parts.Grid do
   # column and the actions cell (the kit's `actions_cell/1`). Written without whitespace on purpose: every byte of a
   # row is sent again whenever the row is, and a cell's text must not be
   # padded. The constant attributes of the row and its cells are written
-  # here; what varies is the item's (`AshDataTable.Attrs.cell/2`). What a cell
-  # holds is the column's component's, else the kit's `cell/1`'s
-  # (`component?/2`).
+  # here; what varies is the item's (`AshDataTable.Attrs.cell/2`: an
+  # editable cell's `tabindex="0"` among it). What a cell holds is the
+  # column's component's, else the kit's `cell/1`'s (`component?/2`).
+  #
+  # The cell of the label column (`label`, its name; nil for none) is the
+  # row's header (`<th scope="row" role="rowheader">`), which names the row
+  # as a screen reader moves down a column. It is drawn between the cells
+  # before it and those after it, so that every other cell keeps its
+  # constant role in the markup, not in what is sent with each row. The
+  # box and the expander are no Tab stops themselves: their controls are.
   attr :dom_id, :string, required: true
   attr :row, :any, required: true
   attr :id, :string, required: true
   attr :columns, :list, required: true
+  attr :label, :atom, required: true
   attr :actions, :list, required: true
   attr :lead, :integer, required: true
   attr :selecting, :any, required: true
@@ -430,23 +436,76 @@ defmodule AshDataTable.Parts.Grid do
     ><td
       :if={@selecting}
       id={Ids.selector(@dom_id)}
-      role="gridcell"
+      role="cell"
       aria-colindex="1"
-      tabindex="-1"
       data-selector
-    ><input :if={@selecting == :multi} type="checkbox" tabindex="-1" aria-label={@texts.select_row} class="checkbox checkbox-xs border-base-content/50" /><input :if={@selecting == :single} type="radio" name={"#{@id}-select"} tabindex="-1" aria-label={@texts.select_row} class="radio radio-xs border-base-content/50" /></td><td
+    ><input :if={@selecting == :multi} type="checkbox" aria-label={@texts.select_row} class="checkbox checkbox-xs border-base-content/50" /><input :if={@selecting == :single} type="radio" name={"#{@id}-select"} aria-label={@texts.select_row} class="radio radio-xs border-base-content/50" /></td><td
       :if={@expandable?}
       id={Ids.expander(@dom_id)}
-      role="gridcell"
+      role="cell"
       aria-colindex={@lead}
-      tabindex="-1"
       data-expander
-    ><button type="button" tabindex="-1" aria-expanded={to_string(@row.open)} aria-label={@texts.related_records}></button></td><td
-      :for={{column, colindex, cell} <- cells(@columns, @lead, @row)}
+    ><button type="button" aria-expanded={to_string(@row.open)} aria-label={@texts.related_records}></button></td><td
+      :for={{column, colindex, cell} <- cells(@columns, @lead, @row, @label, :before)}
       id={Ids.cell(@dom_id, column.name)}
-      role="gridcell"
+      role="cell"
       aria-colindex={colindex}
-      tabindex="-1"
+      {Attrs.cell(column, cell)}
+    ><Common.dynamic_component
+      :if={component?(column, cell)}
+      module={column.component.module}
+      function={:cell}
+      value={cell.value}
+      text={cell.text}
+      column={column.component.column}
+    /><Kit.part
+      :if={!component?(column, cell)}
+      part={:cell}
+      kit={@kit}
+      id={Ids.cell(@dom_id, column.name)}
+      column={column}
+      state={cell.state}
+      value={cell.value}
+      text={cell.text}
+      failure={cell.failure}
+      time_zone={@time_zone}
+      texts={Words.texts(:cell, %{column: column, cell: cell})}
+      messages={Words.messages(:cell, %{column: column, cell: cell})}
+      locale={Words.locale()}
+    /></td><th
+      :for={{column, colindex, cell} <- cells(@columns, @lead, @row, @label, :label)}
+      id={Ids.cell(@dom_id, column.name)}
+      scope="row"
+      role="rowheader"
+      aria-colindex={colindex}
+      {Attrs.cell(column, cell)}
+      class="text-start font-normal"
+    ><Common.dynamic_component
+      :if={component?(column, cell)}
+      module={column.component.module}
+      function={:cell}
+      value={cell.value}
+      text={cell.text}
+      column={column.component.column}
+    /><Kit.part
+      :if={!component?(column, cell)}
+      part={:cell}
+      kit={@kit}
+      id={Ids.cell(@dom_id, column.name)}
+      column={column}
+      state={cell.state}
+      value={cell.value}
+      text={cell.text}
+      failure={cell.failure}
+      time_zone={@time_zone}
+      texts={Words.texts(:cell, %{column: column, cell: cell})}
+      messages={Words.messages(:cell, %{column: column, cell: cell})}
+      locale={Words.locale()}
+    /></th><td
+      :for={{column, colindex, cell} <- cells(@columns, @lead, @row, @label, :after)}
+      id={Ids.cell(@dom_id, column.name)}
+      role="cell"
+      aria-colindex={colindex}
       {Attrs.cell(column, cell)}
     ><Common.dynamic_component
       :if={component?(column, cell)}
@@ -483,10 +542,23 @@ defmodule AshDataTable.Parts.Grid do
     """
   end
 
-  # The cells of a record's row: each column, where it stands, and what
-  # the row's item (`AshDataTable.Item`) says of the cell.
-  defp cells(columns, lead, row) do
-    for {column, index} <- Enum.with_index(columns),
+  # The cells of a record's row, before the label column's cell, that cell,
+  # or after it: each column, where it stands, and what the row's item
+  # (`AshDataTable.Item`) says of the cell. Without a label column every
+  # cell is before it.
+  defp cells(columns, lead, row, label, part) do
+    {before, rest} = Enum.split_while(columns, &(&1.name != label))
+    {labelled, behind} = Enum.split(rest, 1)
+
+    taken = %{
+      before: {before, 0},
+      label: {labelled, length(before)},
+      after: {behind, length(before) + 1}
+    }
+
+    {columns, from} = taken[part]
+
+    for {column, index} <- Enum.with_index(columns, from),
         do: {column, Common.colindex(index, lead), row.cells[column.name]}
   end
 
@@ -559,9 +631,8 @@ defmodule AshDataTable.Parts.Grid do
     ~H"""
     <td
       id={@id}
-      role="gridcell"
+      role="cell"
       aria-colindex={@colindex}
-      tabindex="-1"
       data-actions
       {Attrs.actions(@id, @row)}
       phx-no-format
@@ -569,14 +640,12 @@ defmodule AshDataTable.Parts.Grid do
       :if={@open}
       type="button"
       id={"#{@id}-open"}
-      tabindex="-1"
       data-open
       class="btn btn-xs -my-1 me-1"
     >{@open}</button><button
       :for={action <- @actions}
       type="button"
       id={"#{@id}-#{action.name}"}
-      tabindex="-1"
       data-action={action.name}
       {Attrs.action(action, @asks?)}
       class="btn btn-xs -my-1 me-1"
@@ -633,7 +702,7 @@ defmodule AshDataTable.Parts.Grid do
        ~s(</span><span data-masked class="sr-only">),
        escape(texts.hidden_value),
        ~s(</span><span data-secret aria-live="polite" class="min-w-0 truncate"></span>),
-       ~s(<button type="button" tabindex="-1" data-reveal data-show="),
+       ~s(<button type="button" data-reveal data-show="),
        escape(texts.show),
        ~s(" data-hide="),
        escape(texts.hide),
@@ -716,12 +785,23 @@ defmodule AshDataTable.Parts.Grid do
     `AshDataTable.Attrs.grid/6`'s. Before it the sender of its events,
     which LiveView locks while one is on its way, in place of the grid. --%>
     <div {Attrs.sender(@id)}></div>
+    <%!-- "Skip table NAME": the first Tab stop of the grid, seen only while it
+    has the focus, over the table's top left; it jumps past the table, to
+    the end of its root (the kit's `root/1`). And the text out of sight that
+    every editable cell is described by. --%>
+    <a
+      {Attrs.skip(@id)}
+      class="btn btn-sm absolute z-30 not-focus:sr-only"
+    >
+      {@texts.skip_table}
+    </a>
+    <span :if={@editing?} {Attrs.editable(@id)}>{@texts.editable}</span>
     <div
       {Attrs.grid(@id, @myself, @lead, @selecting, @choose, @texts)}
       class={@kit.class(:grid, %{nested?: @nested?})}
     >
       <table
-        {Attrs.table(@id, @label, @labelledby, @model, @page, @summarised?, Attrs.colcount(@model, @lead, @acting?), @selecting, @busy? or not is_nil(@running))}
+        {Attrs.table(@id, @label, @labelledby, @model, @page, @summarised?, Attrs.colcount(@model, @lead, @acting?), @busy? or not is_nil(@running))}
         class={["table", @nested? && "w-auto"]}
       >
         <thead id={Ids.head(@id)}>
@@ -739,7 +819,6 @@ defmodule AshDataTable.Parts.Grid do
               <input
                 :if={@selecting == :multi}
                 type="checkbox"
-                tabindex="-1"
                 aria-label={@texts.select_page}
                 class={["checkbox checkbox-xs block", Parts.Editors.box_edge()]}
               />
@@ -761,13 +840,12 @@ defmodule AshDataTable.Parts.Grid do
               colindex={Common.colindex(index, @lead)}
               attrs={
                 Attrs.column_header(
-                  @id,
                   column,
                   @state.sort,
-                  @model.sticky_label? and column == @label_column,
-                  @myself
+                  @model.sticky_label? and column == @label_column
                 )
               }
+              button={column.sortable? && Attrs.sort(@id, column, @myself)}
               sort={@state.sort}
               resizer={"#{@id}-resize-#{column.name}"}
               texts={Words.texts(:header_cell, %{column: column, editing?: @editing?})}
@@ -783,8 +861,8 @@ defmodule AshDataTable.Parts.Grid do
           </tr>
           <%!-- The filter row, where a column has a filter. --%>
           <tr :if={Attrs.filter_row?(@model)} {Attrs.row(Ids.filter_row(@id), "2")}>
-            <td :if={@selecting} {Attrs.gridcell("#{@id}-select-filter", "1")}></td>
-            <td :if={@expandable?} {Attrs.gridcell("#{@id}-expander-filter", @lead)}></td>
+            <td :if={@selecting} {Attrs.empty_cell("#{@id}-select-filter", "1")}></td>
+            <td :if={@expandable?} {Attrs.empty_cell("#{@id}-expander-filter", @lead)}></td>
             <Kit.part
               :for={{column, index} <- Enum.with_index(@model.columns)}
               part={:filter_cell}
@@ -801,7 +879,7 @@ defmodule AshDataTable.Parts.Grid do
             />
             <td
               :if={@acting?}
-              {Attrs.gridcell("#{@id}-actions-filter", length(@model.columns) + @lead + 1)}
+              {Attrs.empty_cell("#{@id}-actions-filter", length(@model.columns) + @lead + 1)}
             >
             </td>
           </tr>
@@ -832,6 +910,7 @@ defmodule AshDataTable.Parts.Grid do
               row={row}
               id={@id}
               columns={@model.columns}
+              label={@label_column && @label_column.name}
               actions={@model.actions}
               lead={@lead}
               selecting={@selecting}
@@ -913,8 +992,8 @@ defmodule AshDataTable.Parts.Grid do
   #
   # And the look of every grid inside it, the nested tables' and the
   # pickers' tables' too, which are drawn inside this root: written once
-  # here, on the grid's markers (`role=grid`, `role=rowgroup`, `role=row`,
-  # `role=gridcell`, `data-lines`, `aria-invalid`, …), not on every grid,
+  # here, on the grid's markers (`role=table`, `role=rowgroup`, `role=row`,
+  # `role=cell`, `role=rowheader`, `data-lines`, `data-failed`, …), not on every grid,
   # so that an opened nested table or picker sends none of it. A rule
   # about a grid's own cells reaches them
   # through its row groups and rows (`>`), so that a nested table, which
@@ -924,57 +1003,53 @@ defmodule AshDataTable.Parts.Grid do
           [
             "ash-data-table",
             "[--ash-data-table-default-ground:var(--color-base-100)] [--ash-data-table-default-line:var(--color-base-content)]",
-            # the focus ring, which a cell keeps while its editor has the focus. In
-            # the text colour: the one colour a theme promises to be seen on its
-            # background, which its brand colour need not be.
-            "[&_:is([role=gridcell],[role=columnheader]):not([data-line],[data-nested]):focus]:outline-2 [&_:is([role=gridcell],[role=columnheader]):not([data-line],[data-nested]):focus]:-outline-offset-2 [&_:is([role=gridcell],[role=columnheader]):not([data-line],[data-nested]):focus]:outline-base-content",
-            "[&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:not([data-nested],[data-line]):focus-within]:outline-2 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:not([data-nested],[data-line]):focus-within]:-outline-offset-2 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:not([data-nested],[data-line]):focus-within]:outline-base-content",
-            # A line and the cell of a nested table span the whole table, far
-            # wider than what is seen of it: their ring is drawn on what stays
-            # in view of them, the line's own element and the nested table's
-            # view (`data-ash-data-table-view`, not one of a table nested
-            # deeper), above the nested table's header, which would cover a
-            # ring drawn inside the view (a border, which forced colours keep).
-            "[&_[data-line]:is(:focus,:focus-within)>div]:outline-2 [&_[data-line]:is(:focus,:focus-within)>div]:-outline-offset-2 [&_[data-line]:is(:focus,:focus-within)>div]:outline-base-content",
-            "[&_[data-nested]:focus_[data-ash-data-table-view]:not([data-nested]:focus_[data-nested]_*)]:after:pointer-events-none [&_[data-nested]:focus_[data-ash-data-table-view]:not([data-nested]:focus_[data-nested]_*)]:after:absolute [&_[data-nested]:focus_[data-ash-data-table-view]:not([data-nested]:focus_[data-nested]_*)]:after:inset-0 [&_[data-nested]:focus_[data-ash-data-table-view]:not([data-nested]:focus_[data-nested]_*)]:after:z-20 [&_[data-nested]:focus_[data-ash-data-table-view]:not([data-nested]:focus_[data-nested]_*)]:after:border-2 [&_[data-nested]:focus_[data-ash-data-table-view]:not([data-nested]:focus_[data-nested]_*)]:after:border-base-content [&_[data-nested]:focus_[data-ash-data-table-view]:not([data-nested]:focus_[data-nested]_*)]:after:content-['']",
+            # The focus rings the kit draws itself, as daisyUI draws its own: 2px in
+            # the text colour, the one colour a theme promises to be seen on its
+            # background, which its brand colour need not be (#46). A daisyUI
+            # control (a button, a box, a menu, an input) keeps its own.
+            #
+            # An editable cell, the one cell that is a Tab stop, inside its
+            # edge; it keeps it while its editor has the focus (not while a
+            # button in it has, a sensitive cell's "Show", which has its own).
+            # A cell that spans the table draws none.
+            "[&_:is([role=cell],[role=rowheader]):not([colspan]):focus]:outline-2 [&_:is([role=cell],[role=rowheader]):not([colspan]):focus]:-outline-offset-2 [&_:is([role=cell],[role=rowheader]):not([colspan]):focus]:outline-base-content",
+            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader]):not([data-selector],[data-expander],[data-actions],[data-filter],[colspan]):focus-within:not(:has(button:focus))]:outline-2 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader]):not([data-selector],[data-expander],[data-actions],[data-filter],[colspan]):focus-within:not(:has(button:focus))]:-outline-offset-2 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader]):not([data-selector],[data-expander],[data-actions],[data-filter],[colspan]):focus-within:not(:has(button:focus))]:outline-base-content",
+            # The buttons of the kit's own look: a column's sort button, the
+            # expander of a row and the button of a line, outside their edge.
+            "[&_:is([data-sort]>button,[data-expander]>button,[data-line]_button[aria-expanded]):focus-visible]:outline-2 [&_:is([data-sort]>button,[data-expander]>button,[data-line]_button[aria-expanded]):focus-visible]:outline-offset-2 [&_:is([data-sort]>button,[data-expander]>button,[data-line]_button[aria-expanded]):focus-visible]:outline-current",
             # Which cells can be edited, where a table offers editing (its grid
             # has an editor's template): at rest they look alike. With the
-            # pointer an editable cell shows a thin edge inside it, a text
-            # cursor and a small pencil at its end (not on a failed cell, whose
-            # end holds its mark); a read-only cell (`aria-readonly`) does not
-            # change. With the focus an editable cell's ring is in the primary
-            # colour, mixed with the text colour so that it has 3:1 against the
-            # cell in any theme; a read-only cell's is dashed, in the text colour
-            # at half strength.
-            "[&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan])]:relative [&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan])]:cursor-text [&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan]):hover]:shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-base-content)_30%,transparent)]",
-            "[&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan]):not([aria-invalid]):is(:hover,:focus)]:after:absolute [&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan]):not([aria-invalid]):is(:hover,:focus)]:after:end-1.5 [&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan]):not([aria-invalid]):is(:hover,:focus)]:after:top-1/2 [&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan]):not([aria-invalid]):is(:hover,:focus)]:after:-translate-y-1/2 [&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan]):not([aria-invalid]):is(:hover,:focus)]:after:text-xs [&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan]):not([aria-invalid]):is(:hover,:focus)]:after:leading-none [&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan]):not([aria-invalid]):is(:hover,:focus)]:after:text-base-content/60 [&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan]):not([aria-invalid]):is(:hover,:focus)]:after:content-['✎'_/_'']",
-            "[&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan]):is(:focus,:focus-within)]:outline-[color-mix(in_oklab,var(--color-primary)_80%,var(--color-base-content))]",
-            "[&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][aria-readonly]:is(:focus,:focus-within)]:outline-dashed [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][aria-readonly]:is(:focus,:focus-within)]:outline-[1.5px] [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][aria-readonly]:is(:focus,:focus-within)]:-outline-offset-[3px] [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][aria-readonly]:is(:focus,:focus-within)]:outline-[color-mix(in_oklab,var(--color-base-content)_50%,transparent)]",
+            # pointer an editable cell (`tabindex="0"`) shows a thin edge inside
+            # it, a text cursor and a small pencil at its end (not on a failed
+            # cell, whose end holds its mark); a read-only cell does not change.
+            "[&_[data-ash-data-table]:has(>template[data-editor])>[role=table]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>:is([role=cell],[role=rowheader])[tabindex='0']]:relative [&_[data-ash-data-table]:has(>template[data-editor])>[role=table]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>:is([role=cell],[role=rowheader])[tabindex='0']]:cursor-text [&_[data-ash-data-table]:has(>template[data-editor])>[role=table]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>:is([role=cell],[role=rowheader])[tabindex='0']:hover]:shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-base-content)_30%,transparent)]",
+            "[&_[data-ash-data-table]:has(>template[data-editor])>[role=table]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>:is([role=cell],[role=rowheader])[tabindex='0']:not([data-failed]):is(:hover,:focus)]:after:absolute [&_[data-ash-data-table]:has(>template[data-editor])>[role=table]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>:is([role=cell],[role=rowheader])[tabindex='0']:not([data-failed]):is(:hover,:focus)]:after:end-1.5 [&_[data-ash-data-table]:has(>template[data-editor])>[role=table]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>:is([role=cell],[role=rowheader])[tabindex='0']:not([data-failed]):is(:hover,:focus)]:after:top-1/2 [&_[data-ash-data-table]:has(>template[data-editor])>[role=table]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>:is([role=cell],[role=rowheader])[tabindex='0']:not([data-failed]):is(:hover,:focus)]:after:-translate-y-1/2 [&_[data-ash-data-table]:has(>template[data-editor])>[role=table]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>:is([role=cell],[role=rowheader])[tabindex='0']:not([data-failed]):is(:hover,:focus)]:after:text-xs [&_[data-ash-data-table]:has(>template[data-editor])>[role=table]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>:is([role=cell],[role=rowheader])[tabindex='0']:not([data-failed]):is(:hover,:focus)]:after:leading-none [&_[data-ash-data-table]:has(>template[data-editor])>[role=table]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>:is([role=cell],[role=rowheader])[tabindex='0']:not([data-failed]):is(:hover,:focus)]:after:text-base-content/60 [&_[data-ash-data-table]:has(>template[data-editor])>[role=table]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>:is([role=cell],[role=rowheader])[tabindex='0']:not([data-failed]):is(:hover,:focus)]:after:content-['✎'_/_'']",
             # A cell whose save is on its way, and the rows of a table that is
             # reading: dimmed, and no further than text may be. The header and the
             # filters are not dimmed, as they can be used meanwhile and are muted
             # already; nor is a nested table, which is not what is reading.
-            "[&_[role=gridcell][aria-busy]]:opacity-70 [&_[role=grid][aria-busy]>[role=rowgroup]>[role=row]>[role=gridcell]:not([data-nested])]:opacity-70",
-            # A cell whose save or action failed: a ring and a mark, both drawn by
-            # the cell's style, so that they add nothing to a row's markup. The ring
-            # is a border, which forced colours keep and a shadow they do not, in
-            # the error colour mixed with the text colour, so that it is seen on the
-            # background in a theme whose error colour alone is not. With focus it
-            # moves inside the focus ring, and both show.
-            "[&_[role=gridcell][aria-invalid]]:relative [&_[role=gridcell][aria-invalid]]:before:pointer-events-none [&_[role=gridcell][aria-invalid]]:before:absolute [&_[role=gridcell][aria-invalid]]:before:inset-0 [&_[role=gridcell][aria-invalid]]:before:border-2 [&_[role=gridcell][aria-invalid]]:before:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] [&_[role=gridcell][aria-invalid]]:before:content-['']",
-            "[&_[role=gridcell][aria-invalid]:is(:focus,:focus-within)]:before:inset-[3px]",
+            "[&_:is([role=cell],[role=rowheader])[aria-busy]]:opacity-70 [&_[role=table][aria-busy]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader]):not([data-nested])]:opacity-70",
+            # A cell whose save or action failed (`data-failed`): a ring and a
+            # mark, both drawn by the cell's style, so that they add nothing to a
+            # row's markup. The ring is a border, which forced colours keep and a
+            # shadow they do not, in the error colour mixed with the text colour,
+            # so that it is seen on the background in a theme whose error colour
+            # alone is not. With focus it moves inside the focus ring, and both
+            # show.
+            "[&_:is([role=cell],[role=rowheader])[data-failed]]:relative [&_:is([role=cell],[role=rowheader])[data-failed]]:before:pointer-events-none [&_:is([role=cell],[role=rowheader])[data-failed]]:before:absolute [&_:is([role=cell],[role=rowheader])[data-failed]]:before:inset-0 [&_:is([role=cell],[role=rowheader])[data-failed]]:before:border-2 [&_:is([role=cell],[role=rowheader])[data-failed]]:before:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] [&_:is([role=cell],[role=rowheader])[data-failed]]:before:content-['']",
+            "[&_:is([role=cell],[role=rowheader])[data-failed]:is(:focus,:focus-within)]:before:inset-[3px]",
             # The mark is what says "failed" without a colour: a "!" in the cell's
             # padding at its end, in the text colour. It is for the eye only (the
-            # empty alternative text): the cell says the same with `aria-invalid`.
-            "[&_[role=gridcell][aria-invalid]]:after:absolute [&_[role=gridcell][aria-invalid]]:after:end-2 [&_[role=gridcell][aria-invalid]]:after:top-1/2 [&_[role=gridcell][aria-invalid]]:after:-translate-y-1/2 [&_[role=gridcell][aria-invalid]]:after:leading-none [&_[role=gridcell][aria-invalid]]:after:font-bold [&_[role=gridcell][aria-invalid]]:after:content-['!'_/_'']",
+            # empty alternative text): the cell is described by its message.
+            "[&_:is([role=cell],[role=rowheader])[data-failed]]:after:absolute [&_:is([role=cell],[role=rowheader])[data-failed]]:after:end-2 [&_:is([role=cell],[role=rowheader])[data-failed]]:after:top-1/2 [&_:is([role=cell],[role=rowheader])[data-failed]]:after:-translate-y-1/2 [&_:is([role=cell],[role=rowheader])[data-failed]]:after:leading-none [&_:is([role=cell],[role=rowheader])[data-failed]]:after:font-bold [&_:is([role=cell],[role=rowheader])[data-failed]]:after:content-['!'_/_'']",
             # one line per row: long text is cut off, not wrapped. Not in a cell
             # that spans the table: a line, or the cell a nested table is in.
-            "[&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:not([colspan],[data-actions])]:max-w-80 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:not([colspan],[data-actions])]:truncate [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-actions]]:whitespace-nowrap",
+            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader]):not([colspan],[data-actions])]:max-w-80 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader]):not([colspan],[data-actions])]:truncate [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-actions]]:whitespace-nowrap",
             # But for the cells of a column that says `max_lines`: their text is
             # in a paragraph that wraps, keeps the line breaks of the value and is
             # cut off after that many lines (`data-lines` on the cell). The row is
             # as high as its highest cell. A word longer than the column breaks.
-            "[&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines]]:whitespace-normal [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines]>[data-paragraph]]:min-w-40 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines]>[data-paragraph]]:break-words [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines]>[data-paragraph]]:whitespace-pre-line",
+            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines]]:whitespace-normal [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines]>[data-paragraph]]:min-w-40 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines]>[data-paragraph]]:break-words [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines]>[data-paragraph]]:whitespace-pre-line",
             # A cell that cuts some of its text off shows all of it while the
             # button the hook puts into it says so (`data-whole`,
             # `aria-expanded`): the text wraps, keeps its line breaks and
@@ -982,25 +1057,25 @@ defmodule AshDataTable.Parts.Grid do
             # marker holds (`content: attr(data-whole)`): it has no text of
             # its own. Cut off, it stands at the cell's end, over the end of
             # the text; expanded, on a line of its own under the text.
-            "[&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:has(>[data-whole])]:relative [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:has(>[data-whole][aria-expanded=true])]:whitespace-pre-line [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:has(>[data-whole][aria-expanded=true])]:[overflow-wrap:anywhere] [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:has(>[data-whole][aria-expanded=true])>[data-paragraph]]:line-clamp-none",
+            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader]):has(>[data-whole])]:relative [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader]):has(>[data-whole][aria-expanded=true])]:whitespace-pre-line [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader]):has(>[data-whole][aria-expanded=true])]:[overflow-wrap:anywhere] [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader]):has(>[data-whole][aria-expanded=true])>[data-paragraph]]:line-clamp-none",
             "[&_[data-whole]]:absolute [&_[data-whole]]:end-1 [&_[data-whole]]:top-1 [&_[data-whole]]:cursor-pointer [&_[data-whole]]:rounded [&_[data-whole]]:bg-base-100 [&_[data-whole]]:px-1 [&_[data-whole]]:text-xs [&_[data-whole]]:leading-tight [&_[data-whole]]:underline [&_[data-whole]]:before:content-[attr(data-whole)] [&_[data-whole][aria-expanded=true]]:static [&_[data-whole][aria-expanded=true]]:block [&_[data-whole][aria-expanded=true]]:px-0 [&_[data-whole][aria-expanded=true]]:whitespace-normal [&_[data-whole]]:[overflow-wrap:anywhere]",
-            "[&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='2']>[data-paragraph]]:line-clamp-2 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='3']>[data-paragraph]]:line-clamp-3 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='4']>[data-paragraph]]:line-clamp-4 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='5']>[data-paragraph]]:line-clamp-5 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='6']>[data-paragraph]]:line-clamp-6 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='7']>[data-paragraph]]:line-clamp-7 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='8']>[data-paragraph]]:line-clamp-8 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='9']>[data-paragraph]]:line-clamp-9 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='10']>[data-paragraph]]:line-clamp-10",
+            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines='2']>[data-paragraph]]:line-clamp-2 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines='3']>[data-paragraph]]:line-clamp-3 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines='4']>[data-paragraph]]:line-clamp-4 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines='5']>[data-paragraph]]:line-clamp-5 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines='6']>[data-paragraph]]:line-clamp-6 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines='7']>[data-paragraph]]:line-clamp-7 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines='8']>[data-paragraph]]:line-clamp-8 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines='9']>[data-paragraph]]:line-clamp-9 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines='10']>[data-paragraph]]:line-clamp-10",
             # the expander of a row and the button of a line (which is in the
             # element of its cell that stays in view). Their mark is a
             # triangle drawn in CSS, not a character: it turns about its own
             # centre, so it sits in the same place open and closed.
-            "[&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:cursor-pointer [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-expander]]:w-0 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-expander]>button]:px-1",
+            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:cursor-pointer [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-expander]]:w-0 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-expander]>button]:px-1",
             # the box that selects a row: its cell as narrow as the box, and
             # the box in the middle of it
-            "[&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-selector]]:w-0 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-selector]>input]:block",
-            "[&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:inline-block [&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:size-0 [&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:content-['']",
-            "[&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:border-y-[0.3em] [&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:border-y-transparent [&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:border-s-[0.45em] [&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:border-s-current",
-            "[&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:transition-transform [&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded=true]]:before:rotate-90",
+            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-selector]]:w-0 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-selector]>input]:block",
+            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:inline-block [&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:size-0 [&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:content-['']",
+            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:border-y-[0.3em] [&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:border-y-transparent [&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:border-s-[0.45em] [&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:border-s-current",
+            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:transition-transform [&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded=true]]:before:rotate-90",
             # forced colours would fill the two transparent sides of the triangle
             # and make it a square, which looks the same open and closed
-            "[&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:forced-color-adjust-none forced-colors:[&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:border-s-[CanvasText]",
+            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:forced-color-adjust-none forced-colors:[&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:border-s-[CanvasText]",
             # a line's mark stands under its row's
-            "[&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-line]_button[aria-expanded]]:ps-1 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-line]_button[aria-expanded]]:before:me-2",
+            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-line]_button[aria-expanded]]:ps-1 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-line]_button[aria-expanded]]:before:me-2",
             # a nested table stays at the left edge of the scroll area around
             # it, and is as wide as that area (`--ash-data-table-view`, which
             # the grid's hook sets); its heading, the other portal, is on its

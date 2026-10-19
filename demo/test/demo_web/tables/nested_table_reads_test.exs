@@ -122,7 +122,7 @@ defmodule DemoWeb.Tables.NestedTableReadsTest do
     forget()
 
     # a new read of the page: eleven tasks, of four reporters and three assignees
-    html = view |> element("#task-head-title") |> render_click()
+    html = view |> element("#task-sort-title") |> render_click()
     render_async(view)
 
     assert length(column(html, "task", "title")) == 2
@@ -183,7 +183,7 @@ defmodule DemoWeb.Tables.NestedTableReadsTest do
     toggle(view, task.id, "labels")
     forget()
 
-    click(view, "[id='#{nested(task.id, "comments")}-head-body']")
+    click(view, "[id='#{nested(task.id, "comments")}-sort-body']")
     render_async(view)
 
     assert Enum.sort(reads(:read)) == [:comment, :task]

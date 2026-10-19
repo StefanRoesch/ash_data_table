@@ -233,10 +233,10 @@ defmodule DemoWeb.Tables.PickerKeysTest do
          %{conn: conn, stop: stop, sealed: sealed} do
       {:ok, view, html} = conn |> as(%{role: :member}) |> live("/support/stops")
 
-      assert attribute(html, cell("stop", stop.id, "zone"), "aria-readonly") == []
-      assert attribute(html, cell("stop", sealed.id, "zone"), "aria-readonly") == ["true"]
+      assert attribute(html, cell("stop", stop.id, "zone"), "tabindex") == ["0"]
+      assert attribute(html, cell("stop", sealed.id, "zone"), "tabindex") == []
       # the bay of the same row is theirs to see, and to change
-      assert attribute(html, cell("stop", sealed.id, "bay"), "aria-readonly") == []
+      assert attribute(html, cell("stop", sealed.id, "bay"), "tabindex") == ["0"]
 
       html = pick(view, "stop", sealed.id, "zone")
       assert_reply view, %{ok: false}
@@ -263,7 +263,7 @@ defmodule DemoWeb.Tables.PickerKeysTest do
 
       assert picker(html, "stop") == nil
       assert stored!(stop).zone_code == "DE-N"
-      assert attribute(html, cell("stop", stop.id, "zone"), "aria-readonly") == ["true"]
+      assert attribute(html, cell("stop", stop.id, "zone"), "tabindex") == []
 
       assert announcement(html, "stop") ==
                "Zone was not saved: You are not allowed to change this."
@@ -272,7 +272,7 @@ defmodule DemoWeb.Tables.PickerKeysTest do
     test "an admin sees it, and edits it", %{conn: conn, sealed: sealed} do
       {:ok, view, html} = conn |> as(%{role: :admin}) |> live("/support/stops")
 
-      assert attribute(html, cell("stop", sealed.id, "zone"), "aria-readonly") == []
+      assert attribute(html, cell("stop", sealed.id, "zone"), "tabindex") == ["0"]
 
       pick(view, "stop", sealed.id, "zone")
       picked(view, "stop", ["DE", "2"])

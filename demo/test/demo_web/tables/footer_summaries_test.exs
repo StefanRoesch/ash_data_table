@@ -120,7 +120,7 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
 
       # the footer group is in the grid, after its records, and its first row
       # is the summaries'
-      assert attribute(html, "#task-table[role=grid] > #task-foot", "id") == ["task-foot"]
+      assert attribute(html, "#task-table[role=table] > #task-foot", "id") == ["task-foot"]
       assert attribute(html, "#task-foot > [role=row]", "id") == ["task-summaries"]
       assert attribute(html, "#task-summaries", "role") == ["row"]
 
@@ -128,19 +128,24 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
       assert attribute(html, "#task-table", "aria-rowcount") == ["6"]
       assert attribute(html, "#task-summaries", "aria-rowindex") == ["6"]
 
-      # a cell for every column of the grid, each a gridcell in its column's place
+      # a cell for every column of the grid, each a cell in its column's place
       assert attribute(html, "#task-summaries > *", "aria-colindex") ==
                attribute(html, "#task-head-row > *", "aria-colindex")
 
-      assert html |> attribute("#task-summaries > *", "role") |> Enum.uniq() == ["gridcell"]
-      assert html |> attribute("#task-summaries > *", "tabindex") |> Enum.uniq() == ["-1"]
+      assert html |> attribute("#task-summaries > *", "role") |> Enum.uniq() == ["cell"]
+      # no Tab stops: a screen reader reads them with its table keys
+      assert html |> attribute("#task-summaries > *", "tabindex") == []
 
       for field <- ~w(progress estimate_hours due_on completed_at) do
         assert attribute(html, "#task-summary-#{field}", "aria-colindex") ==
                  attribute(html, "#task-head-#{field}", "aria-colindex")
       end
 
-      assert attribute(html, "#task-summaries > [role=gridcell][data-summary]", "id") == [
+      assert attribute(
+               html,
+               "#task-summaries > :is([role=cell],[role=rowheader])[data-summary]",
+               "id"
+             ) == [
                "task-summary-progress",
                "task-summary-estimate_hours",
                "task-summary-due_on",
@@ -201,7 +206,7 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
     test "a table without a summary has no footer row, and no footer", %{conn: conn, world: world} do
       {_view, html} = open_table(conn, world.admin, "/labels")
 
-      assert attribute(html, "#label-table", "role") == ["grid"]
+      assert attribute(html, "#label-table", "role") == ["table"]
       assert attribute(html, "#label-foot", "id") == []
       assert attribute(html, "[data-summaries]", "id") == []
     end
@@ -276,7 +281,7 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
       {view, _html} = open_table(conn, world.admin)
 
       # the page as it is while the rows are on their way
-      html = view |> element("#task-head-title") |> render_click()
+      html = view |> element("#task-sort-title") |> render_click()
       refute busy?(html, "progress")
       assert footer(html, "progress") == {"Average", "60"}
       render_async(view, 10_000)
@@ -488,7 +493,7 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
 
       {view, html} = open_table(conn, world.admin, "/projects")
       # the table of the projects declares no summary
-      assert attribute(html, "#project-table", "role") == ["grid"]
+      assert attribute(html, "#project-table", "role") == ["table"]
       assert attribute(html, "#project-foot", "id") == []
 
       expand(view, "project", project.id)
@@ -500,7 +505,7 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
 
       assert attribute(
                html,
-               "[id='#{id}-table'][role=grid] > [id='#{id}-foot'] > [role=row]:first-child",
+               "[id='#{id}-table'][role=table] > [id='#{id}-foot'] > [role=row]:first-child",
                "id"
              ) == [
                "#{id}-summaries"
@@ -544,7 +549,7 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
 
       # "New comment": its task is chosen from the table of the tasks
       {view, html} = open_table(conn, world.admin, "/comments")
-      assert attribute(html, "#comment-table", "role") == ["grid"]
+      assert attribute(html, "#comment-table", "role") == ["table"]
       assert attribute(html, "#comment-foot", "id") == []
 
       open_create(view, "comment")

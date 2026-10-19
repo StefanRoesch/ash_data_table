@@ -84,7 +84,7 @@ defmodule DemoWeb.Tables.MapTableTest do
   defp shown(html, site, field), do: text(html, cell("site", site.id, field))
 
   defp read_only?(html, site, field),
-    do: attribute(html, cell("site", site.id, field), "aria-readonly") == ["true"]
+    do: attribute(html, cell("site", site.id, field), "tabindex") == []
 
   # A field of the open panel, by the way to it.
   defp field(html, name), do: Enum.find(panel(html, "site").fields, &(&1.name == name))

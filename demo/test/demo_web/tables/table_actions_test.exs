@@ -460,13 +460,13 @@ defmodule DemoWeb.Tables.TableActionsTest do
       assert line_buttons(html, "rota", rota.id, "shifts") ==
                ["New shift", "Count", "Clear all", "Rename all"]
 
-      # they look as the create button of the line does, and are no tab stops
+      # they look as the create button of the line does, and are Tab stops
       button = "[id='rota-row-#{rota.id}-t-shifts-do-count']"
 
       assert attribute(html, button, "class") ==
                attribute(html, "[id='rota-row-#{rota.id}-t-shifts-create']", "class")
 
-      assert attribute(html, button, "tabindex") == ["-1"]
+      assert attribute(html, button, "tabindex") == []
 
       # a nested table has no line of its own for them
       assert table_actions(html, nested("rota", rota.id, "shifts")) == []

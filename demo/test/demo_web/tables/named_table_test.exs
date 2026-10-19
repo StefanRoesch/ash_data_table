@@ -96,7 +96,7 @@ defmodule DemoWeb.Tables.NamedTableTest do
       {:ok, view, _html} = live(conn, "/comments/compact")
       html = render_async(view)
 
-      assert attribute(html, "##{@compact}-table", "role") == ["grid"]
+      assert attribute(html, "##{@compact}-table", "role") == ["table"]
       assert headers(html, @compact) == ["Body", "Author", "Inserted at"]
 
       assert Enum.sort(column(html, @compact, "body")) == [
@@ -123,7 +123,7 @@ defmodule DemoWeb.Tables.NamedTableTest do
     test "keeps its state in the URL under its own id", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/comments/compact")
 
-      view |> element("##{@compact}-head-body") |> render_click()
+      view |> element("##{@compact}-sort-body") |> render_click()
       assert_patch(view, "/comments/compact?comment_compact[sort]=body")
 
       assert column(render_async(view), @compact, "body") ==
@@ -326,8 +326,8 @@ defmodule DemoWeb.Tables.NamedTableTest do
       {:ok, view, _html} = live(conn, "/named")
       html = render_async(view)
 
-      assert attribute(html, "#comment-table", "role") == ["grid"]
-      assert attribute(html, "##{@compact}-table", "role") == ["grid"]
+      assert attribute(html, "#comment-table", "role") == ["table"]
+      assert attribute(html, "##{@compact}-table", "role") == ["table"]
 
       assert headers(html, "comment") == ["ID", "Body", "Inserted at", "Task ID", "Author ID"]
       assert headers(html, @compact) == ["Body", "Author", "Inserted at"]
@@ -345,16 +345,16 @@ defmodule DemoWeb.Tables.NamedTableTest do
       {:ok, view, _html} = live(conn, "/named")
       render_async(view)
 
-      view |> element("##{@compact}-head-body") |> render_click()
+      view |> element("##{@compact}-sort-body") |> render_click()
       assert_patch(view, "/named?comment_compact[sort]=body")
 
-      view |> element("#comment-head-body") |> render_click()
+      view |> element("#comment-sort-body") |> render_click()
       path = assert_patch(view)
 
       assert parsed(path) ==
                {"/named", %{"comment" => %{"sort" => "body"}, @compact => %{"sort" => "body"}}}
 
-      view |> element("#comment-head-body") |> render_click()
+      view |> element("#comment-sort-body") |> render_click()
       path = assert_patch(view)
 
       assert parsed(path) ==

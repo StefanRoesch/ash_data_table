@@ -4,8 +4,8 @@
 // puts together, and share its state through `this`.
 
 import {filterRow as filterRowId, head as headId, headRow as headRowId} from "../ids.js"
-import {GRIDCELL, HANDLE, HEADER, ROW, ROWGROUP} from "../markers.js"
-import {STEP, cellsOf} from "./shared.js"
+import {HANDLE, HEADER, ROW, ROWGROUP} from "../markers.js"
+import {DATACELL, STEP, cellsOf} from "./shared.js"
 
 export default {
   // A person changes how wide a column is with the handle at the
@@ -41,7 +41,7 @@ export default {
   // spans the grid, and not a cell of a grid nested in it.
   under(table, place) {
     const at = `#${CSS.escape(table.id)}`
-    const cell = `${GRIDCELL}[aria-colindex="${place}"]:not([colspan])`
+    const cell = `:is(${DATACELL})[aria-colindex="${place}"]:not([colspan])`
     return `:is(${at}>${ROWGROUP}>${ROW}>${cell},#${CSS.escape(`${this.id}-summaries`)}>${cell})`
   },
 

@@ -38,7 +38,7 @@ defmodule DemoWeb.Tables.LayoutTest do
 
       assert attribute(html, "main", "id") == ["main"], path
       assert attribute(html, "main h1", "class") != [], path
-      assert attribute(html, "main [role=grid]", "role") == ["grid"], path
+      assert attribute(html, "main [role=table]", "role") == ["table"], path
     end
   end
 end

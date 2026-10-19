@@ -24,8 +24,10 @@ defmodule AshDataTable.Parts.Common do
   end
 
   # The root element of a table (`Attrs.root/2`, with the kit's class of
-  # it): the table (`inner_block`), and after it what opens over it or in
-  # the page, the question, the action panel and the picker (`opened`).
+  # it): the table (`inner_block`), after it the place "Skip table" jumps
+  # to (`Attrs.skip_target/1`, after the pagination), and after that what
+  # opens over it or in the page, the question, the action panel and the
+  # picker (`opened`).
   # `nested?` says whether the table is shown inside another (nested in a
   # row, or a picker's); `look` is its look (`AshDataTable.Kit`), whose
   # heights the table on the page holds as custom properties.
@@ -44,7 +46,9 @@ defmodule AshDataTable.Parts.Common do
       class={@kit.class(:root, %{nested?: @nested?, look: @look})}
       {!@nested? && AshDataTable.Parts.Look.style(@look) || %{}}
     >
-      {render_slot(@inner_block)}{render_slot(@opened)}
+      {render_slot(@inner_block)}<span {Attrs.skip_target(@id)} class="outline-none"></span>{render_slot(
+        @opened
+      )}
     </div>
     """
   end

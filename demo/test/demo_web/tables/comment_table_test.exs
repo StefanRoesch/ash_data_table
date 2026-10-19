@@ -114,7 +114,7 @@ defmodule DemoWeb.Tables.CommentTableTest do
   test "sorts by an attribute, and pages in that order", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/comments")
 
-    view |> element("#comment-head-body") |> render_click()
+    view |> element("#comment-sort-body") |> render_click()
     assert_patch(view, "/comments?comment[sort]=body")
     assert column(render_async(view), "comment", "body") == bodies(1..20)
 

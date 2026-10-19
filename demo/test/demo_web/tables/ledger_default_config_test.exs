@@ -72,7 +72,7 @@ defmodule DemoWeb.Tables.LedgerDefaultConfigTest do
     assert text(html, "#job-error") == nil
     assert column(html, "job", "tag_count") == ["1", "0"]
 
-    view |> element("#job-head-tag_count") |> render_click()
+    view |> element("#job-sort-tag_count") |> render_click()
     html = render_async(view)
 
     assert text(html, "#job-error") == nil
@@ -88,7 +88,7 @@ defmodule DemoWeb.Tables.LedgerDefaultConfigTest do
     assert text(html, "[id='#{id}-error']") == nil
     assert column(html, id, "tagging_count") == ["0", "0", "0"]
 
-    click(view, "[id='#{id}-head-tagging_count']")
+    click(view, "[id='#{id}-sort-tagging_count']")
     html = render_async(view)
 
     assert text(html, "[id='#{id}-error']") == nil

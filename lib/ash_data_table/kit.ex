@@ -42,7 +42,7 @@ defmodule AshDataTable.Kit do
   ## A kit of one's own
 
       defmodule MyAppWeb.TableKit do
-        use AshDataTable.Kit, contract: 2
+        use AshDataTable.Kit, contract: 3
 
         # restyle a part drawn once per table
         def class(:panel, _state), do: "my-panel"
@@ -65,7 +65,7 @@ defmodule AshDataTable.Kit do
         def look(option), do: super(option)
       end
 
-  `use AshDataTable.Kit, contract: 2` makes every part `Kit.Default`'s; a
+  `use AshDataTable.Kit, contract: 3` makes every part `Kit.Default`'s; a
   kit defines the parts it draws itself, and calls `super/1` for what
   `Kit.Default` draws. It is checked as it compiles: a contract other
   than this version's, a public function of one argument that is no
@@ -109,8 +109,8 @@ defmodule AshDataTable.Kit do
 
   The table's behaviour in the browser (its hooks) finds the elements of
   the table by their *markers*, never by their tags: an ARIA role where the
-  element has one (`grid`, `rowgroup`, `row`, `gridcell`, `columnheader`,
-  `dialog`, `region`), else a `data-*` attribute, and by the ids that
+  element has one (`table`, `rowgroup`, `row`, `cell`, `rowheader`,
+  `columnheader`, `dialog`, `region`), else a `data-*` attribute, and by the ids that
   begin with the table's id. So a part may draw any elements, as long as
   they carry the markers. Most of them come in *bundles*, the functions of
   `AshDataTable.Attrs`: maps of attributes a part spreads on its element
@@ -129,7 +129,7 @@ defmodule AshDataTable.Kit do
   its rows (the items of its stream, `AshDataTable.Item`), its panel and
   picker (`Present.Panel`, …) and its model (`Model.Column`,
   `Model.Action`, …), never a record: their fields are listed in "Kit
-  contract 2" below. `myself` and `target`
+  contract 3" below. `myself` and `target`
   are the `phx-target` of the part's events (nil for an attached table);
   `id` is the table's id, or the element's where it says so.
 
@@ -144,9 +144,37 @@ defmodule AshDataTable.Kit do
   `Ids.argument_value/2`), and the grid's that the hooks find by id: the
   header (`Ids.head/1`, `Ids.head_row/1`, `Ids.header_cell/2`), the filter
   row and its form (`Ids.filter_row/1`, `Ids.filters/1`), a row's selection
-  box (`Ids.selector/1`), an editor's template (`Ids.editor/2`), a failed
-  cell's message (`Ids.error/1`) and the question (`Ids.dialog/1`). The other
-  ids below are the table's id and a suffix.
+  box (`Ids.selector/1`), a column's sort button (`Ids.sort/2`), an
+  editor's template (`Ids.editor/2`), a failed cell's message
+  (`Ids.error/1`), the text that describes an editable cell
+  (`Ids.editable/1`), the skip link and where it jumps to (`Ids.skip/1`,
+  `Ids.skip_target/1`) and the question (`Ids.dialog/1`). The other ids
+  below are the table's id and a suffix.
+
+  ## The Tab stops
+
+  A table is a table (`role="table"`), not an ARIA grid: its controls
+  are the Tab stops, in the order they stand in, and the browser moves
+  the focus (ADR 0003). What a kit draws follows one rule, which
+  `AshDataTable.KitCase` checks:
+
+    * every control is a native Tab stop, with no `tabindex`: a row's box
+      and the page's, the expander, a line's button, a column's sort
+      button, a filter's controls, the action buttons, the heading line's
+      controls, the skip link, the pagination, a masked cell's "Show";
+    * an editable cell is a stop too: its item's `attrs` give it
+      `tabindex="0"` (`AshDataTable.Item`), and the kit spreads them;
+    * a read-only cell, a header that does not sort, a cell that holds
+      controls (the box, the expander, the actions, a line, a nested
+      table, the pages, the full view) and the cells of the summaries are
+      no stops: they have no `tabindex`;
+    * no element of the table has `aria-readonly`, `aria-selected` or
+      `aria-multiselectable`, and no cell `aria-invalid` (ARIA has none of
+      them on a table's cells): a failed cell says `data-failed` and is
+      described by its message, a selected row by its box.
+
+  The only `tabindex="-1"` are the grid's scroll area (`Attrs.grid/6`) and
+  the skip link's target (`Attrs.skip_target/1`), which take no Tab.
 
   A part of one's own is called with `apply/3` (`part/1`): the defaults of
   its `attr`s are not applied. It is given every assign named below, and
@@ -158,10 +186,11 @@ defmodule AshDataTable.Kit do
       `class(:root, …)`), of the table on the page, of a nested table and
       of a picker's table: `inner_block` (the table) and `opened` (what
       opens: the question, the action panel and the picker, where they are
-      drawn in the page); `id`, `nested?` (whether the table is shown
-      inside another: nested in a row, or a picker's), `page`, `look` (the
-      table's look, see "The look of a table": the same for every table
-      it shows). In
+      drawn in the page), and between the two the element the skip link
+      jumps to (`Attrs.skip_target/1`, after the pagination); `id`,
+      `nested?` (whether the table is shown inside another: nested in a
+      row, or a picker's), `page`, `look` (the table's look, see "The look
+      of a table": the same for every table it shows). In
       `AshDataTable.table/1` it is inside a plain element of the tag's own
       (`display: contents`): a live component's root must be static.
     * `heading` - the heading line (`ID-header`): the table's name, the
@@ -171,8 +200,8 @@ defmodule AshDataTable.Kit do
       `related`, `state`, `lines`, `refused`, `nested?`, `myself`. A nested
       table's is drawn in a portal of its own onto its line
       (`Ids.line_heading/2`, which the `line` part draws), where the line
-      gives the name; its buttons are no tab stops there, as the line's are
-      not (`tabindex="-1"`).
+      gives the name; its controls are Tab stops there, after the line's
+      button.
     * `related` - above a table limited to the records of one record
       (`ID-related`, `ID-related-clear`): `id`, `via` (the relationship),
       `title`, `parent` (`path` of its page, or nil), `clear` (the path of
@@ -210,7 +239,11 @@ defmodule AshDataTable.Kit do
       (`ID-result`): `id`, `announcement`, `announcements`, `result`.
     * `grid` - the grid's hook's element (`ID-grid`, `data-ash-data-table`,
       `data-lead`, `data-select`, `data-choose`, `data-chosen-rows`), its
-      sender (`data-sender`) before it, the `role=grid` element `ID-table`
+      sender (`data-sender`) before it, the skip link "Skip table NAME"
+      before the header row (`Attrs.skip/1`, seen only while it has the
+      focus, its text `texts.skip_table`), where the table offers editing
+      the text that describes its editable cells (`Attrs.editable/1`,
+      `texts.editable`), the `role=table` element `ID-table`
       (`data-first-row`) with `ID-head` and its two rows, the filter row's
       form `ID-filters` (the filter row and its form only where
       `Attrs.filter_row?/1` says so: else `ID-head` has one row), a `role=rowgroup` element per item of the stream
@@ -270,30 +303,35 @@ defmodule AshDataTable.Kit do
   writes itself:
 
     * `header_cell` - `id`, `column`, `colindex`, `attrs`
-      (`Attrs.column_header/5`: `data-sort`, `data-label`, …), `sort`:
-      writes `role="columnheader"`, `aria-colindex`, `tabindex="-1"`; draws
-      the `resizer`, and after the label a lock where its `texts` give
+      (`Attrs.column_header/3`: `aria-sort`, `data-sort`, `data-label`, …),
+      `button` (the sort button's bundle, `Attrs.sort/3`, false where the
+      column does not sort), `sort`: writes `role="columnheader"`,
+      `aria-colindex`, and no `tabindex`; where it sorts, a `<button>` with
+      `button` holds the label (the header's Tab stop); draws the
+      `resizer`, and after the label a lock where its `texts` give
       `read_only` (its accessible name).
-    * `resizer` - a column's handle (`role="separator"`, `data-resize`):
-      `id`, `column`.
+    * `resizer` - a column's handle (`role="separator"`, `data-resize`, no
+      Tab stop): `id`, `column`.
     * `filter_cell` - `id`, `column`, `colindex`, `filter`, `form`, `table`,
-      `applied?`, `rejected?`, `target`: `role="gridcell"`, `aria-colindex`,
-      `tabindex="-1"`, `data-filter` where the column filters; draws the
-      column's `filter`.
+      `applied?`, `rejected?`, `target`: `role="cell"`, `aria-colindex`,
+      `data-filter` where the column filters; draws the column's `filter`.
     * `filter` - one column's filter (for several values a button with
       `Attrs.filter_values/4`, which opens the side panel, and the values
       that apply as hidden inputs `filter[FIELD][in][]` of the filter
       row's form): `id`, `column`, `filter`, `form`,
       `table`, `applied?`, `rejected?`, `target`.
     * `row` - a record's row: `id`, `dom_id`, `row` (its item,
-      `AshDataTable.Item`), `columns`, `lead`, `selecting`, `expandable?`,
+      `AshDataTable.Item`), `columns`, `label` (the name of the column a
+      record is called by, or nil), `lead`, `selecting`, `expandable?`,
       `editing?`, `acting?`, `actions`, `asks?`, `open`, `time_zone`:
-      `role="row"`, `aria-rowindex`; its cells `role="gridcell"`,
-      `aria-colindex`, `tabindex="-1"`, the box's `data-selector`
-      (`Ids.selector/1`), the expander's `data-expander` (`Ids.expander/1`,
-      a button with `aria-expanded`), and per column (`Ids.cell/2`) the
-      bundle `Attrs.cell/2` (`data-value`, `data-saved`, `data-lines`, …);
-      what a cell holds is `cell/1`'s; the `actions_cell`.
+      `role="row"`, `aria-rowindex`; its cells `role="cell"` (the `label`
+      column's `role="rowheader"`, which names the row), `aria-colindex`,
+      the box's `data-selector` (`Ids.selector/1`), the expander's
+      `data-expander` (`Ids.expander/1`, a button with `aria-expanded`),
+      and per column (`Ids.cell/2`) the bundle `Attrs.cell/2`
+      (`tabindex="0"` and `aria-describedby` on an editable cell,
+      `data-value`, `data-saved`, `data-failed`, `data-lines`, …); what a
+      cell holds is `cell/1`'s; the `actions_cell`.
     * `actions_cell` - `data-actions`, a button per action with
       `data-action` (and `data-question`, `data-destructive`): `id`, `row`
       (the item), `colindex`, `actions`, `asks?`, `open`.
@@ -328,7 +366,7 @@ defmodule AshDataTable.Kit do
       `summing?`, `time_zone`, `nested?`, `myself`.
     * `summary_cell` - `id`, `column`, `colindex`, `summary` (`{:ok,
       value}`, `:unavailable` or nil), `summing?`, `time_zone`:
-      `role="gridcell"`, `aria-colindex`, `tabindex="-1"`.
+      `role="cell"`, `aria-colindex`.
     * `full_view` - the link to a nested table's full view (`data-view`,
       `ID-full-view`): `id`, `full_view` (its path), `label`, `model`,
       `lead`, `acting?`.
@@ -404,8 +442,10 @@ defmodule AshDataTable.Kit do
       of `columns`), `column_hidden`, `column_shown` and `flags` (one per
       column; a flag nil for none);
     * `status` - `announcement`, `summary` and `failures` of a run's result;
-    * `grid` - `select_page`, `select_row`, `related_records`, `actions`,
-      `show_whole`, `show_less` (for `Attrs.grid/6`);
+    * `grid` - `skip_table` (the skip link, with the table's name),
+      `editable` (what describes an editable cell), `select_page`,
+      `select_row`, `related_records`, `actions`, `show_whole`, `show_less`
+      (for `Attrs.grid/6`);
     * `row` - `select_row`, `related_records`;
     * `cell` - `locale`; masked: `hidden_value`, `show`, `hide`,
       `show_value`, `hide_value`; forbidden, and of a union:
@@ -452,13 +492,13 @@ defmodule AshDataTable.Kit do
   table in it would be lost. The same holds for every place something is
   opened into.
 
-  ## Kit contract 2: the values a part is given
+  ## Kit contract 3: the values a part is given
 
   The items of the stream (`rows` of `grid`, `row` of `row`, `detail` and
   `actions_cell`) are `AshDataTable.Item`'s maps, documented there. The
   structs below are what the other parts are given (`panel`, `picker`,
   `model`, `column`, `state`, `page`, …). Their fields, as listed here, and
-  the item's keys are the kit contract of version 2: a field is not
+  the item's keys are the kit contract of version 3: a field is not
   renamed, taken away or given another meaning without the contract's
   number going up. The modules themselves, and their functions, are the
   table's own and undocumented: a kit reads the fields, and calls none of
@@ -679,13 +719,29 @@ defmodule AshDataTable.Kit do
   `actions_cell`); a message is a map `%{key:, values:}`, not a tuple;
   `Attrs.cell/2` in place of `Attrs.cell/5`, and an item's `attrs` in place
   of `Attrs.rowgroup/2`.
+
+  Contract 3 (from contract 2): a table, not an ARIA grid (ADR 0003, see
+  "The Tab stops"). `role="table"`, `role="cell"` and `role="rowheader"`
+  (the label column, `row`'s new `label`) in place of `role="grid"` and
+  `role="gridcell"`; no `tabindex="-1"` on cells, headers and controls;
+  an editable cell's `tabindex="0"` and `aria-describedby` in its item's
+  `attrs`, a failed cell's `data-failed` in place of `aria-invalid`, no
+  `aria-readonly`; `Attrs.table/8` without `selecting` (no
+  `aria-multiselectable`); `Attrs.empty_cell/2` in place of
+  `Attrs.gridcell/3`; a sortable header holds a button (`header_cell`'s
+  new `button`, `Attrs.sort/3`) in place of the header's `phx-click`
+  (`Attrs.column_header/3` in place of `/5`); the `grid` part draws the
+  skip link (`Attrs.skip/1`, `texts.skip_table`) and the text of the
+  editable cells (`Attrs.editable/1`, `texts.editable`), and the `root`
+  part the skip link's target (`Attrs.skip_target/1`) after its
+  `inner_block`.
   """
 
   use Phoenix.Component
 
   alias AshDataTable.Kit.Words
 
-  @contract 2
+  @contract 3
 
   @parts [
     :root,
@@ -1052,7 +1108,15 @@ defmodule AshDataTable.Kit do
     do:
       ". Contract 2 draws the grid's rows from the items of AshDataTable.Item " <>
         "(maps whose cells hold their text) in place of Present.Row, and gives " <>
-        "every message as a map %{key:, values:} (see \"Contract versions\" in AshDataTable.Kit)"
+        "every message as a map %{key:, values:}" <> changed(2)
+
+  defp changed(2),
+    do:
+      ". Contract 3 draws a table, not an ARIA grid: role=\"table\", \"cell\" and \"rowheader\" " <>
+        "in place of \"grid\" and \"gridcell\", no tabindex=\"-1\" on cells and controls, a sort " <>
+        "button in a sortable header (Attrs.sort/3), the skip link and its target " <>
+        "(Attrs.skip/1, Attrs.skip_target/1), data-failed in place of aria-invalid, and no " <>
+        "aria-readonly or aria-multiselectable (see \"Contract versions\" in AshDataTable.Kit)"
 
   defp changed(_contract), do: "."
 

@@ -88,21 +88,21 @@ defmodule DemoWeb.Tables.TaskTableTest do
       assert column(html, "task", "title") == ["Banana", "Apple", "Cherry"]
       assert attribute(html, "#task-head-title", "aria-sort") == ["none"]
 
-      view |> element("#task-head-title") |> render_click()
+      view |> element("#task-sort-title") |> render_click()
       assert_patch(view, "/tasks?task[sort]=title")
       html = render_async(view)
 
       assert column(html, "task", "title") == ["Apple", "Banana", "Cherry"]
       assert attribute(html, "#task-head-title", "aria-sort") == ["ascending"]
 
-      view |> element("#task-head-title") |> render_click()
+      view |> element("#task-sort-title") |> render_click()
       assert_patch(view, "/tasks?task[sort]=-title")
       html = render_async(view)
 
       assert column(html, "task", "title") == ["Cherry", "Banana", "Apple"]
       assert attribute(html, "#task-head-title", "aria-sort") == ["descending"]
 
-      view |> element("#task-head-title") |> render_click()
+      view |> element("#task-sort-title") |> render_click()
       assert_patch(view, "/tasks")
       html = render_async(view)
 
@@ -113,9 +113,9 @@ defmodule DemoWeb.Tables.TaskTableTest do
     test "only one column is sorted at a time", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/tasks")
 
-      view |> element("#task-head-title") |> render_click()
+      view |> element("#task-sort-title") |> render_click()
       render_async(view)
-      view |> element("#task-head-progress") |> render_click()
+      view |> element("#task-sort-progress") |> render_click()
       assert_patch(view, "/tasks?task[sort]=progress")
       html = render_async(view)
 
@@ -142,14 +142,14 @@ defmodule DemoWeb.Tables.TaskTableTest do
       Generator.generate(Generator.comment([task_id: apple.id] ++ comment))
 
       {:ok, view, _html} = live(conn, "/tasks")
-      view |> element("#task-head-comment_count") |> render_click()
+      view |> element("#task-sort-comment_count") |> render_click()
       assert_patch(view, "/tasks?task[sort]=comment_count")
       html = render_async(view)
 
       assert column(html, "task", "title") == ["Banana", "Apple", "Cherry"]
       assert column(html, "task", "comment_count") == ["0", "1", "2"]
 
-      view |> element("#task-head-comment_count") |> render_click()
+      view |> element("#task-sort-comment_count") |> render_click()
       html = render_async(view)
 
       assert column(html, "task", "comment_count") == ["2", "1", "0"]
@@ -159,9 +159,9 @@ defmodule DemoWeb.Tables.TaskTableTest do
       tasks_titled(world, ["Late"], due_on: Date.add(Date.utc_today(), -3), status: :todo)
 
       {:ok, view, _html} = live(conn, "/tasks")
-      view |> element("#task-head-overdue\\?") |> render_click()
+      view |> element("#task-sort-overdue\\?") |> render_click()
       render_async(view)
-      view |> element("#task-head-overdue\\?") |> render_click()
+      view |> element("#task-sort-overdue\\?") |> render_click()
       assert_patch(view, "/tasks?task[sort]=-overdue%3F")
       html = render_async(view)
 
@@ -262,7 +262,7 @@ defmodule DemoWeb.Tables.TaskTableTest do
     test "sorting returns to the first page and keeps the sort while paging", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/tasks?task[page]=2")
 
-      view |> element("#task-head-title") |> render_click()
+      view |> element("#task-sort-title") |> render_click()
       assert_patch(view, "/tasks?task[sort]=title")
       assert column(render_async(view), "task", "title") == titles(1..25)
 
@@ -284,7 +284,7 @@ defmodule DemoWeb.Tables.TaskTableTest do
          %{conn: conn} do
       {:ok, view, _html} = live(conn, "/tasks")
 
-      view |> element("#task-head-title") |> render_click()
+      view |> element("#task-sort-title") |> render_click()
       assert_patch(view, "/tasks?task[sort]=title")
       render_async(view)
       view |> element("#task-next") |> render_click()
@@ -356,7 +356,7 @@ defmodule DemoWeb.Tables.TaskTableTest do
 
       assert column(html, "task", "title") == titles(5..1//-1)
 
-      view |> element("#task-head-title") |> render_click()
+      view |> element("#task-sort-title") |> render_click()
 
       assert_patch(view, "/tasks?other[a]=1&task[sort]=title&utm=mail")
     end
@@ -478,7 +478,7 @@ defmodule DemoWeb.Tables.TaskTableTest do
 
       assert attribute(
                html,
-               "#task-table [role=gridcell][id$='-c-estimate_hours'] > span",
+               "#task-table :is([role=cell],[role=rowheader])[id$='-c-estimate_hours'] > span",
                "class"
              ) ==
                ["sr-only"]

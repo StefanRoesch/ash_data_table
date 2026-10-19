@@ -106,7 +106,7 @@ defmodule DemoWeb.Tables.TaskArgumentsTest do
     test "stays through a sort, a filter and a page", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/tasks?task[a][search]=report")
 
-      view |> element("#task-head-title") |> render_click()
+      view |> element("#task-sort-title") |> render_click()
       assert assert_patch(view) == "/tasks?task[a][search]=report&task[sort]=title"
       assert titles(render_async(view)) == ["This week", "Write the report"]
 
@@ -181,8 +181,8 @@ defmodule DemoWeb.Tables.TaskArgumentsTest do
     test "each column is sorted by with its own argument", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/tasks")
 
-      view |> element("#task-head-due_within") |> render_click()
-      view |> element("#task-head-due_within") |> render_click()
+      view |> element("#task-sort-due_within") |> render_click()
+      view |> element("#task-sort-due_within") |> render_click()
       html = render_async(view)
 
       # within 30 days first: two tasks

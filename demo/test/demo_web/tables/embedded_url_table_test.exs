@@ -51,18 +51,18 @@ defmodule DemoWeb.Tables.EmbeddedUrlTableTest do
   test "a sort patches the host's URL, and the table shows what the URL says", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/support/url")
 
-    view |> element("#entries-head-title") |> render_click()
+    view |> element("#entries-sort-title") |> render_click()
     assert_patch(view, "/support/url?entries[sort]=title")
     assert entries(render_async(view)) == named("Entry", 1..5)
 
-    view |> element("#entries-head-title") |> render_click()
+    view |> element("#entries-sort-title") |> render_click()
     assert_patch(view, "/support/url?entries[sort]=-title")
     html = render_async(view)
 
     assert entries(html) == named("Entry", 12..8//-1)
     assert attribute(html, "#entries-head-title", "aria-sort") == ["descending"]
 
-    view |> element("#entries-head-title") |> render_click()
+    view |> element("#entries-sort-title") |> render_click()
     assert_patch(view, "/support/url")
     assert entries(render_async(view)) == named("Entry", 1..5)
   end
@@ -111,11 +111,11 @@ defmodule DemoWeb.Tables.EmbeddedUrlTableTest do
   test "the page's own parameters stay when a table patches the URL", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/support/url?tab=overview")
 
-    view |> element("#entries-head-title") |> render_click()
+    view |> element("#entries-sort-title") |> render_click()
     assert_patch(view, "/support/url?entries[sort]=title&tab=overview")
 
-    view |> element("#entries-head-title") |> render_click()
-    view |> element("#entries-head-title") |> render_click()
+    view |> element("#entries-sort-title") |> render_click()
+    view |> element("#entries-sort-title") |> render_click()
     assert_patch(view, "/support/url?tab=overview")
   end
 

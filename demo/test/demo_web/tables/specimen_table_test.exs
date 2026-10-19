@@ -86,12 +86,15 @@ defmodule DemoWeb.Tables.SpecimenTableTest do
 
     assert attribute(
              html,
-             "#specimen-table [role=gridcell][id$='-c-a_boolean'] [aria-hidden=true]",
+             "#specimen-table :is([role=cell],[role=rowheader])[id$='-c-a_boolean'] [aria-hidden=true]",
              "class"
            ) ==
              []
 
-    assert text(html, "#specimen-table [role=gridcell][id$='-c-a_boolean'] .sr-only") == "Yes"
+    assert text(
+             html,
+             "#specimen-table :is([role=cell],[role=rowheader])[id$='-c-a_boolean'] .sr-only"
+           ) == "Yes"
   end
 
   test "dates and datetimes are shown in the format of the native inputs", %{html: html} do

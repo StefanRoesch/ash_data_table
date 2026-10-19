@@ -20,8 +20,7 @@ defmodule AshDataTable.Parts.Filter do
   end
 
   # The controls of one column's filter, showing the filter that applies.
-  # They are out of the tab order: the grid is one tab stop, and the hook
-  # moves focus into a filter cell.
+  # Each is a Tab stop of its own.
   #
   # What the value is given with follows from the operator, as the column
   # says (`takes`): one control for one value; for a range two inputs,
@@ -47,7 +46,6 @@ defmodule AshDataTable.Parts.Filter do
         id={"#{@id}-value"}
         name={"filter[#{@column.name}][o]"}
         form={@form}
-        tabindex="-1"
         aria-label={@texts.filter}
         class={["select select-xs w-auto", Parts.Editors.control_edge()]}
       >
@@ -65,7 +63,6 @@ defmodule AshDataTable.Parts.Filter do
         id={"#{@id}-operator"}
         name={"filter[#{@column.name}][o]"}
         form={@form}
-        tabindex="-1"
         aria-label={@texts.filter_operator}
         class={["select select-xs w-auto", Parts.Editors.control_edge()]}
       >
@@ -82,7 +79,6 @@ defmodule AshDataTable.Parts.Filter do
         id={"#{@id}-value"}
         name={"filter[#{@column.name}][v]"}
         form={@form}
-        tabindex="-1"
         aria-label={@texts.filter}
         class={["select select-xs w-auto", Parts.Editors.control_edge()]}
       >
@@ -116,7 +112,6 @@ defmodule AshDataTable.Parts.Filter do
         form={@form}
         value={@value}
         phx-debounce="blur"
-        tabindex="-1"
         aria-label={@texts.filter}
         aria-invalid={@rejected? && "true"}
         aria-describedby={@rejected? && Ids.error(@id)}
@@ -145,7 +140,6 @@ defmodule AshDataTable.Parts.Filter do
             form={@form}
             value={typed}
             phx-debounce="blur"
-            tabindex="-1"
             aria-label={name}
             aria-invalid={
               @rejected? && not is_nil(typed) && not State.value?(@column, typed) && "true"
@@ -159,7 +153,6 @@ defmodule AshDataTable.Parts.Filter do
         :if={@clears?}
         type="button"
         id={"#{@id}-clear"}
-        tabindex="-1"
         aria-label={@texts.clear_filter}
         class="btn btn-ghost btn-xs"
         phx-click={Attrs.event(@table, "clear_filter")}
@@ -206,7 +199,6 @@ defmodule AshDataTable.Parts.Filter do
     <button
       type="button"
       id={"#{@id}-value"}
-      tabindex="-1"
       aria-haspopup="dialog"
       aria-label={"#{@texts.filter}: #{@says}"}
       title={@labels != [] && Enum.join(@labels, ", ")}

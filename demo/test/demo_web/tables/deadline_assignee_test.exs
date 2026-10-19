@@ -70,7 +70,7 @@ defmodule DemoWeb.Tables.DeadlineAssigneeTest do
       assert text(html, cell("deadline", task.id, "assignee")) == "Ada Lovelace"
       assert "assignee" in editors(html, "deadline")
       assert %{control: "reference", confirm: nil} = editor(html, "deadline", "assignee")
-      assert attribute(html, cell("deadline", task.id, "assignee"), "aria-readonly") == []
+      assert attribute(html, cell("deadline", task.id, "assignee"), "tabindex") == ["0"]
 
       refute :assignee_id in Ash.Resource.Info.action(Demo.Tracker.Deadline, :hand_over).accept
       refute :assignee_id in Ash.Resource.Info.action(Demo.Tracker.Deadline, :reschedule).accept

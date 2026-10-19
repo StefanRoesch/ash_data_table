@@ -3,8 +3,8 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {ACTIONS, EXPANDER, GRIDCELL, MASK, REVEAL, SECRET, SELECTOR, PARAGRAPH, WHOLE} from "../markers.js"
-import {ATTRIBUTE, is} from "./shared.js"
+import {ACTIONS, EXPANDER, MASK, REVEAL, SECRET, SELECTOR, PARAGRAPH, WHOLE} from "../markers.js"
+import {ATTRIBUTE, DATACELL, is} from "./shared.js"
 
 export default {
   // A cell shows one line of its text, or as many as its column
@@ -32,7 +32,7 @@ export default {
   // Null for a cell that shows all it holds, and for one that has
   // no whole text to show.
   cutIn(cell) {
-    if (!cell || !cell.isConnected || !is(cell, GRIDCELL) || this.spans(cell)) return null
+    if (!cell || !cell.isConnected || !is(cell, DATACELL) || this.spans(cell)) return null
     if (!this.record(cell)) return null
     if (is(cell, SELECTOR) || is(cell, EXPANDER) || is(cell, ACTIONS)) return null
     // never for a sensitive cell: neither its mask nor its value

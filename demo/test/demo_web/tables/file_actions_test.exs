@@ -249,7 +249,7 @@ defmodule DemoWeb.Tables.FileActionsTest do
       # the rows are read again while a file is chosen: the panel goes
       act(view, "scan", scan.id, "attach")
       upload(view, "file", "notes.txt", "hello")
-      view |> element("#scan-head-title") |> render_click()
+      view |> element("#scan-sort-title") |> render_click()
       html = render_async(view)
       assert panel(html, "scan") == nil
 

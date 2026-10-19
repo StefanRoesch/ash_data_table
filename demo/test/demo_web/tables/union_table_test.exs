@@ -53,7 +53,7 @@ defmodule DemoWeb.Tables.UnionTableTest do
   defp shown(html, gift, field), do: text(html, cell("gift", gift.id, field))
 
   defp read_only?(html, gift, field),
-    do: attribute(html, cell("gift", gift.id, field), "aria-readonly") == ["true"]
+    do: attribute(html, cell("gift", gift.id, field), "tabindex") == []
 
   defp field(html, name), do: Enum.find(panel(html, "gift").fields, &(&1.name == name))
   defp names(html), do: Enum.map(panel(html, "gift").fields, & &1.name)

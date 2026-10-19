@@ -60,7 +60,7 @@ defmodule DemoWeb.Tables.EventsTest do
 
     refute Map.has_key?(details, :path)
 
-    view |> element("#card-head-title") |> render_click()
+    view |> element("#card-sort-title") |> render_click()
     render_async(view)
     assert {"card", %{state: %{"sort" => "title"}, count: 2}} = event(:read)
   end

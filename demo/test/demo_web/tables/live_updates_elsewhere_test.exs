@@ -126,7 +126,7 @@ defmodule DemoWeb.Tables.LiveUpdatesElsewhereTest do
 
       assert titles(html) == ["Plain, renamed"]
       assert column(html, "bulletin", "draft") == ["Not available"]
-      assert attribute(html, cell("bulletin", plain.id, "draft"), "aria-readonly") == ["true"]
+      assert attribute(html, cell("bulletin", plain.id, "draft"), "tabindex") == []
       refute html =~ @draft
       refute sent =~ @draft
       assert sent =~ "Plain, renamed"

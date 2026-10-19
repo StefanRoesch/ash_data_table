@@ -112,7 +112,7 @@ defmodule DemoWeb.Tables.NestedTableStatesTest do
       assert column(html, id, "title") == ["Page one"]
 
       Gate.close()
-      click(view, "[id='#{id}-head-title']")
+      click(view, "[id='#{id}-sort-title']")
       html = render_async(view)
 
       assert text(html, "[id='#{id}-error']") == "You are not allowed to see these records."

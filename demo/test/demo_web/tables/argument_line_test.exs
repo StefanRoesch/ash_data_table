@@ -567,8 +567,8 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
 
     test "its column is sorted by with it", %{view: view} do
       argue(view, "stock", a: %{"any_kind?" => "true"})
-      view |> element("#stock-head-amount_asked") |> render_click()
-      view |> element("#stock-head-amount_asked") |> render_click()
+      view |> element("#stock-sort-amount_asked") |> render_click()
+      view |> element("#stock-sort-amount_asked") |> render_click()
       html = render_async(view)
 
       assert column(html, "stock", "name") == ["date", "cherry"]
@@ -909,8 +909,8 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
       refute_patched(view)
 
       # through a change of its sort
-      view |> element("#held-head-name") |> render_click()
-      view |> element("#held-head-name") |> render_click()
+      view |> element("#held-sort-name") |> render_click()
+      view |> element("#held-sort-name") |> render_click()
       html = render_async(view)
 
       assert column(html, "held", "name") == ["date", "cherry"]

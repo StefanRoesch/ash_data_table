@@ -11,7 +11,7 @@ defmodule DemoWeb.DivKit do
   the columns line up; what is not a grid part is the default kit's. What
   it says is what each part is given (`texts`), in the person's language.
   """
-  use AshDataTable.Kit, contract: 2
+  use AshDataTable.Kit, contract: 3
 
   alias AshDataTable.Attrs
   alias AshDataTable.Ids
@@ -24,12 +24,16 @@ defmodule DemoWeb.DivKit do
     ~H"""
     <form :if={Attrs.filter_row?(@model)} {Attrs.filters(@id, @myself)}></form>
     <div {Attrs.sender(@id)}></div>
+    <a {Attrs.skip(@id)} class="link absolute z-30 bg-base-100 not-focus:sr-only">
+      {@texts.skip_table}
+    </a>
+    <span :if={@editing?} {Attrs.editable(@id)}>{@texts.editable}</span>
     <div
       {Attrs.grid(@id, @myself, @lead, @selecting, @choose, @texts)}
       class={@kit.class(:grid, %{nested?: @nested?})}
     >
       <div
-        {Attrs.table(@id, @label, @labelledby, @model, @page, @summarised?, Attrs.colcount(@model, @lead, @acting?), @selecting, @busy? or not is_nil(@running))}
+        {Attrs.table(@id, @label, @labelledby, @model, @page, @summarised?, Attrs.colcount(@model, @lead, @acting?), @busy? or not is_nil(@running))}
         class="table w-full border-collapse text-sm"
         data-kit="div"
       >
@@ -43,7 +47,6 @@ defmodule DemoWeb.DivKit do
               <input
                 :if={@selecting == :multi}
                 type="checkbox"
-                tabindex="-1"
                 aria-label={@texts.select_page}
                 class="checkbox checkbox-xs"
               />
@@ -65,13 +68,12 @@ defmodule DemoWeb.DivKit do
               colindex={@lead + index + 1}
               attrs={
                 Attrs.column_header(
-                  @id,
                   column,
                   @state.sort,
-                  @model.sticky_label? and column == @label_column,
-                  @myself
+                  @model.sticky_label? and column == @label_column
                 )
               }
+              button={column.sortable? && Attrs.sort(@id, column, @myself)}
               sort={@state.sort}
               resizer={"#{@id}-resize-#{column.name}"}
               texts={Words.texts(:header_cell, %{column: column, editing?: @editing?})}
@@ -86,11 +88,11 @@ defmodule DemoWeb.DivKit do
             </div>
           </div>
           <div :if={Attrs.filter_row?(@model)} {Attrs.row(Ids.filter_row(@id), "2")} class="table-row">
-            <div :if={@selecting} {Attrs.gridcell("#{@id}-select-filter", "1")} class="table-cell">
+            <div :if={@selecting} {Attrs.empty_cell("#{@id}-select-filter", "1")} class="table-cell">
             </div>
             <div
               :if={@expandable?}
-              {Attrs.gridcell("#{@id}-expander-filter", @lead)}
+              {Attrs.empty_cell("#{@id}-expander-filter", @lead)}
               class="table-cell"
             >
             </div>
@@ -110,7 +112,7 @@ defmodule DemoWeb.DivKit do
             />
             <div
               :if={@acting?}
-              {Attrs.gridcell("#{@id}-actions-filter", length(@model.columns) + @lead + 1)}
+              {Attrs.empty_cell("#{@id}-actions-filter", length(@model.columns) + @lead + 1)}
               class="table-cell"
             >
             </div>
@@ -140,6 +142,7 @@ defmodule DemoWeb.DivKit do
               row={row}
               id={@id}
               columns={@model.columns}
+              label={@label_column && @label_column.name}
               actions={@model.actions}
               lead={@lead}
               selecting={@selecting}
@@ -203,11 +206,10 @@ defmodule DemoWeb.DivKit do
       role="columnheader"
       aria-colindex={@colindex}
       aria-label={@column.label}
-      tabindex="-1"
       {@attrs}
       class="relative table-cell px-2 py-1 text-start whitespace-nowrap"
       phx-no-format
-    >{@column.label}<Kit.part part={:resizer} kit={@kit} id={@resizer} column={@column} texts={Words.texts(:resizer, %{column: @column})} messages={Words.messages(:resizer, %{column: @column})} /></div>
+    ><button :if={@button} {@button} class="font-semibold">{@column.label}</button><%= if !@button do %>{@column.label}<% end %><Kit.part part={:resizer} kit={@kit} id={@resizer} column={@column} texts={Words.texts(:resizer, %{column: @column})} messages={Words.messages(:resizer, %{column: @column})} /></div>
     """
   end
 
@@ -215,9 +217,8 @@ defmodule DemoWeb.DivKit do
     ~H"""
     <div
       id={@id}
-      role="gridcell"
+      role="cell"
       aria-colindex={@colindex}
-      tabindex="-1"
       data-filter={@column.operators != []}
       class="table-cell px-2 py-1"
     >
@@ -245,25 +246,22 @@ defmodule DemoWeb.DivKit do
     <div id={"#{@dom_id}-r"} role="row" aria-rowindex={@row.rowindex} class="table-row" phx-no-format><div
       :if={@selecting}
       id={Ids.selector(@dom_id)}
-      role="gridcell"
+      role="cell"
       aria-colindex="1"
-      tabindex="-1"
       data-selector
       class="table-cell px-2 py-1"
-    ><input :if={@selecting == :multi} type="checkbox" tabindex="-1" aria-label={@texts.select_row} class="checkbox checkbox-xs" /><input :if={@selecting == :single} type="radio" name={"#{@id}-select"} tabindex="-1" aria-label={@texts.select_row} class="radio radio-xs" /></div><div
+    ><input :if={@selecting == :multi} type="checkbox" aria-label={@texts.select_row} class="checkbox checkbox-xs" /><input :if={@selecting == :single} type="radio" name={"#{@id}-select"} aria-label={@texts.select_row} class="radio radio-xs" /></div><div
       :if={@expandable?}
       id={Ids.expander(@dom_id)}
-      role="gridcell"
+      role="cell"
       aria-colindex={@lead}
-      tabindex="-1"
       data-expander
       class="table-cell px-2 py-1"
-    ><button type="button" tabindex="-1" aria-expanded={to_string(@row.open)} aria-label={@texts.related_records}></button></div><div
+    ><button type="button" aria-expanded={to_string(@row.open)} aria-label={@texts.related_records}></button></div><div
       :for={{column, index} <- Enum.with_index(@columns)}
       id={Ids.cell(@dom_id, column.name)}
-      role="gridcell"
+      role={if column.name == @label, do: "rowheader", else: "cell"}
       aria-colindex={@lead + index + 1}
-      tabindex="-1"
       {Attrs.cell(column, @row.cells[column.name])}
       class="table-cell px-2 py-1"
     ><Kit.cell kit={@kit} id={Ids.cell(@dom_id, column.name)} column={column} cell={@row.cells[column.name]} time_zone={@time_zone} /></div><Kit.part
@@ -284,9 +282,8 @@ defmodule DemoWeb.DivKit do
     ~H"""
     <div
       id={@id}
-      role="gridcell"
+      role="cell"
       aria-colindex={@colindex}
-      tabindex="-1"
       data-actions
       {Attrs.actions(@id, @row)}
       class="table-cell px-2 py-1 whitespace-nowrap"
@@ -295,14 +292,12 @@ defmodule DemoWeb.DivKit do
       :if={@open}
       type="button"
       id={"#{@id}-open"}
-      tabindex="-1"
       data-open
       class="btn btn-xs me-1"
     >{@open}</button><button
       :for={action <- @actions}
       type="button"
       id={"#{@id}-#{action.name}"}
-      tabindex="-1"
       data-action={action.name}
       {Attrs.action(action, @asks?)}
       class="btn btn-xs me-1"
@@ -337,10 +332,9 @@ defmodule DemoWeb.DivKit do
     <div id={"#{@id}-l-#{@relationship.name}"} role="row" class="table-row">
       <div
         id={Ids.line_cell(@id, @relationship.name)}
-        role="gridcell"
+        role="cell"
         colspan={@colspan}
         aria-colindex="1"
-        tabindex="-1"
         {Attrs.line(@relationship)}
         class="table-cell px-2 py-1"
       >
@@ -348,7 +342,6 @@ defmodule DemoWeb.DivKit do
           <button
             type="button"
             id={Ids.line_button(@id, @relationship.name)}
-            tabindex="-1"
             aria-expanded={to_string(@open?)}
             class="font-medium"
           >
@@ -362,10 +355,9 @@ defmodule DemoWeb.DivKit do
     <div :if={@open?} id={Ids.nested_row(@id, @relationship.name)} role="row" class="table-row">
       <div
         id={Ids.nested_cell(@id, @relationship.name)}
-        role="gridcell"
+        role="cell"
         colspan={@colspan}
         aria-colindex="1"
-        tabindex="-1"
         data-nested
         data-line-cell={Ids.line_cell(@id, @relationship.name)}
         data-expander-cell={Ids.expander(@id)}
@@ -391,18 +383,16 @@ defmodule DemoWeb.DivKit do
         <div
           :if={@selecting}
           id={"#{@id}-summaries-select"}
-          role="gridcell"
+          role="cell"
           aria-colindex="1"
-          tabindex="-1"
           class="table-cell"
         >
         </div>
         <div
           :if={@expandable?}
           id={"#{@id}-summaries-expander"}
-          role="gridcell"
+          role="cell"
           aria-colindex={@lead}
-          tabindex="-1"
           class="table-cell"
         >
         </div>
@@ -431,9 +421,8 @@ defmodule DemoWeb.DivKit do
         <div
           :if={@acting?}
           id={"#{@id}-summaries-actions"}
-          role="gridcell"
+          role="cell"
           aria-colindex={length(@model.columns) + @lead + 1}
-          tabindex="-1"
           class="table-cell"
         >
         </div>
@@ -501,9 +490,8 @@ defmodule DemoWeb.DivKit do
     ~H"""
     <div
       id={@id}
-      role="gridcell"
+      role="cell"
       aria-colindex={@colindex}
-      tabindex="-1"
       {Attrs.summary(@column, @summing?)}
       class="table-cell whitespace-nowrap"
     >
@@ -523,7 +511,6 @@ defmodule DemoWeb.DivKit do
         <.link
           id={"#{@id}-full-view"}
           navigate={@full_view}
-          tabindex="-1"
           aria-label={@texts.full_view_of}
           class="link"
         >

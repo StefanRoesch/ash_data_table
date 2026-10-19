@@ -71,10 +71,11 @@ defmodule DemoWeb.Tables.ComponentTableTest do
                tree(html, cell("gauge", gauge.id, "level"))
 
       assert {"id", "gauge-row-#{gauge.id}-c-level"} in attributes
-      assert {"role", "gridcell"} in attributes
+      assert {"role", "cell"} in attributes
       # after the boxes of the rows and the first column
       assert {"aria-colindex", "3"} in attributes
-      assert {"tabindex", "-1"} in attributes
+      # an editable cell: a Tab stop
+      assert {"tabindex", "0"} in attributes
       assert {"data-probe", "level"} in probe
     end
 
@@ -93,7 +94,7 @@ defmodule DemoWeb.Tables.ComponentTableTest do
               [{"span", [{"class", "sr-only"}, {"data-unseen", ""}], ["Not available"]}]} =
                tree(html, cell("gauge", other.id, "amount"))
 
-      assert {"aria-readonly", "true"} in attributes
+      refute List.keymember?(attributes, "tabindex", 0)
     end
 
     test "of a record that has no value is empty, as an empty cell of any column: the component is not called",
@@ -287,7 +288,7 @@ defmodule DemoWeb.Tables.ComponentTableTest do
       assert {_cell, attributes, [{"span", _probe, ["max"]}]} =
                tree(html, cell("gauge", gauge.id, "owner"))
 
-      assert {"aria-readonly", "true"} in attributes
+      refute List.keymember?(attributes, "tabindex", 0)
       refute "owner" in editors(html, "gauge")
 
       save(view, "gauge", gauge.id, "owner", "ada")

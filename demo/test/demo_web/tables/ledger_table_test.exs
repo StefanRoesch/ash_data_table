@@ -126,7 +126,7 @@ defmodule DemoWeb.Tables.LedgerTableTest do
     test "nor when the page is sorted by the calculation", %{conn: conn, world: world} do
       {view, _html} = jobs(conn, world.member)
 
-      view |> element("#job-head-assignee_role") |> render_click()
+      view |> element("#job-sort-assignee_role") |> render_click()
       html = render_async(view)
 
       assert titles(html) == ["B other", "A own", "C abroad", "D free"]
@@ -166,7 +166,7 @@ defmodule DemoWeb.Tables.LedgerTableTest do
     test "nor when the page is sorted or filtered by the aggregate", %{conn: conn, world: world} do
       {view, _html} = jobs(conn, world.member)
 
-      view |> element("#job-head-assignee_name") |> render_click()
+      view |> element("#job-sort-assignee_name") |> render_click()
       html = render_async(view)
 
       assert text(html, "#job-error") == nil
@@ -203,7 +203,7 @@ defmodule DemoWeb.Tables.LedgerTableTest do
 
       # sorted by the aggregate: the name of the person of the other
       # organization, which comes first in the alphabet, moves nothing
-      view |> element("#errand-head-assignee_name") |> render_click()
+      view |> element("#errand-sort-assignee_name") |> render_click()
       html = render_async(view)
 
       assert column(html, "errand", "assignee_name") ==
@@ -291,8 +291,8 @@ defmodule DemoWeb.Tables.LedgerTableTest do
       {view, html} = jobs(conn, world.member)
       assert attribute(html, "#job-head-tag_count", "data-sort") == [""]
 
-      view |> element("#job-head-tag_count") |> render_click()
-      view |> element("#job-head-tag_count") |> render_click()
+      view |> element("#job-sort-tag_count") |> render_click()
+      view |> element("#job-sort-tag_count") |> render_click()
       html = render_async(view)
 
       assert attribute(html, "#job-head-tag_count", "aria-sort") == ["descending"]
@@ -367,13 +367,13 @@ defmodule DemoWeb.Tables.LedgerTableTest do
       assert attribute(html, "[id='#{id}-head-tagging_count']", "data-sort") == [""]
       assert attribute(html, "[id='#{id}-head-tagged?']", "data-sort") == [""]
 
-      click(view, "[id='#{id}-head-tagging_count']")
+      click(view, "[id='#{id}-sort-tagging_count']")
       html = render_async(view)
       assert text(html, "[id='#{id}-error']") == nil
       assert attribute(html, "[id='#{id}-head-tagging_count']", "aria-sort") == ["ascending"]
       assert column(html, id, "body") == ["Not available", "Remark 2", "Not available"]
 
-      click(view, "[id='#{id}-head-tagged?']")
+      click(view, "[id='#{id}-sort-tagged?']")
       html = render_async(view)
       assert text(html, "[id='#{id}-error']") == nil
       assert attribute(html, "[id='#{id}-head-tagged?']", "aria-sort") == ["ascending"]
@@ -390,7 +390,7 @@ defmodule DemoWeb.Tables.LedgerTableTest do
       toggle(view, "job", other.id, "remarks")
       id = nested("job", other.id, "remarks")
 
-      click(view, "[id='#{id}-head-tagging_count']")
+      click(view, "[id='#{id}-sort-tagging_count']")
       html = render_async(view)
 
       assert attribute(html, "[id='#{id}-head-tagging_count']", "aria-sort") == ["ascending"]

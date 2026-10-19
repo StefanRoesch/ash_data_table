@@ -58,11 +58,11 @@ defmodule DemoWeb.Tables.TaskEditTest do
         ~w(title status priority progress estimate_hours billable? due_on completed_at description)
 
       for field <- editable do
-        assert attribute(html, cell(task.id, field), "aria-readonly") == [], field
+        assert attribute(html, cell(task.id, field), "tabindex") == ["0"], field
       end
 
       for field <- ~w(overdue? comment_count headline external_ref inserted_at) do
-        assert attribute(html, cell(task.id, field), "aria-readonly") == ["true"], field
+        assert attribute(html, cell(task.id, field), "tabindex") == [], field
       end
     end
 
@@ -430,7 +430,7 @@ defmodule DemoWeb.Tables.TaskEditTest do
     end
 
     test "is forgotten when the page is read again", %{view: view, task: task} do
-      view |> element("#task-head-title") |> render_click()
+      view |> element("#task-sort-title") |> render_click()
       html = render_async(view)
 
       assert failure(html, task.id, "title") == nil
@@ -507,10 +507,10 @@ defmodule DemoWeb.Tables.TaskEditTest do
     test "is not editable where it is hidden, and editable where it is shown",
          %{html: html, theirs: theirs, other: other} do
       assert text(html, cell(other.id, "estimate_hours")) == "Not available"
-      assert attribute(html, cell(other.id, "estimate_hours"), "aria-readonly") == ["true"]
+      assert attribute(html, cell(other.id, "estimate_hours"), "tabindex") == []
 
       assert text(html, cell(theirs.id, "estimate_hours")) == "12.5 h"
-      assert attribute(html, cell(theirs.id, "estimate_hours"), "aria-readonly") == []
+      assert attribute(html, cell(theirs.id, "estimate_hours"), "tabindex") == ["0"]
     end
 
     test "is still hidden in the row after another cell of that row was saved",
@@ -519,7 +519,7 @@ defmodule DemoWeb.Tables.TaskEditTest do
 
       assert text(html, cell(other.id, "title")) == "Still assigned to nobody"
       assert text(html, cell(other.id, "estimate_hours")) == "Not available"
-      assert attribute(html, cell(other.id, "estimate_hours"), "aria-readonly") == ["true"]
+      assert attribute(html, cell(other.id, "estimate_hours"), "tabindex") == []
     end
 
     test "is still hidden in the row after the save of another cell failed",
@@ -774,8 +774,11 @@ defmodule DemoWeb.Tables.TaskEditTest do
       id = nested(task.id, "reporter")
 
       assert column(html, id, "name") == [world.admin.name]
-      assert attribute(html, "[id='#{id}-table'] [role=gridcell]", "role") != []
-      assert attribute(html, "[id='#{id}-table'] [role=gridcell]", "aria-readonly") == []
+      assert attribute(html, "[id='#{id}-table'] :is([role=cell],[role=rowheader])", "role") != []
+
+      assert attribute(html, "[id='#{id}-table'] :is([role=cell],[role=rowheader])", "tabindex") ==
+               []
+
       assert editors(html, id) == []
       assert attribute(html, "[id='#{id}'] template", "id") == []
       assert attribute(html, "[id='#{id}'] dialog", "id") == []

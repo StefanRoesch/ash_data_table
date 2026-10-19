@@ -6,7 +6,7 @@
 // the table lacks: what a kit that draws the table's parts with markup
 // of its own has to write. Nothing is checked otherwise.
 
-import {CELL, cellsOf} from "./grid/shared.js"
+import {ANYCELL, cellsOf} from "./grid/shared.js"
 import {dialog as dialogId, head as headId} from "./ids.js"
 import {BULK, CONFIRM, DIALOG, OF, OPENED, QUESTION, REGION, SENDER, TABLE} from "./markers.js"
 
@@ -34,7 +34,7 @@ const lacks = {
     }
     for (const row of hook.rows()) {
       for (const cell of cellsOf(row)) {
-        if (!cell.hasAttribute("aria-colindex")) missing.push(`aria-colindex on the cell ${cell.id || `(${CELL})`}`)
+        if (!cell.hasAttribute("aria-colindex")) missing.push(`aria-colindex on the cell ${cell.id || `(${ANYCELL})`}`)
       }
     }
     return missing

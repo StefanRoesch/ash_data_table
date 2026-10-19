@@ -141,7 +141,7 @@ defmodule DemoWeb.Tables.PageSizeTest do
     test "the sort, the filters and the arguments stay", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/tasks")
 
-      view |> element("#task-head-title") |> render_click()
+      view |> element("#task-sort-title") |> render_click()
       render_async(view)
       filter(view, "task", "title", v: "Task 0")
       argue(view, "task", a: %{"search" => "task"})
@@ -159,7 +159,7 @@ defmodule DemoWeb.Tables.PageSizeTest do
       assert text(html, "#task-range") == "1–9 of 9"
 
       # and a change of sort or filter keeps the size
-      view |> element("#task-head-title") |> render_click()
+      view |> element("#task-sort-title") |> render_click()
 
       assert_patch(
         view,
@@ -374,8 +374,8 @@ defmodule DemoWeb.Tables.PageSizeTest do
                chosen: ["20"]
              }
 
-      # reached through the cell of the row it is in, as the buttons are
-      assert attribute(html, "[id='#{id}-page-size']", "tabindex") == ["-1"]
+      # a Tab stop of its own, as the buttons are
+      assert attribute(html, "[id='#{id}-page-size']", "tabindex") == []
       assert column(html, id, "body") == bodies(45..26//-1)
 
       html = page_size(view, id, 10)

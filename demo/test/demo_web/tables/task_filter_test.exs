@@ -114,14 +114,18 @@ defmodule DemoWeb.Tables.TaskFilterTest do
          %{html: html} do
       for field <- ["description", "headline"] do
         assert filter_controls(html, "task", field) == %{operators: nil, input: nil, choices: nil}
-        assert attribute(html, "#task-filter-#{field}", "role") == ["gridcell"]
+        assert attribute(html, "#task-filter-#{field}", "role") == ["cell"]
       end
     end
 
     test "is the second row of the grid, with a cell under every header", %{html: html} do
       assert attribute(html, "#task-head [role=row]", "aria-rowindex") == ["1", "2"]
 
-      assert attribute(html, "#task-filter-row [role=gridcell]", "aria-colindex") ==
+      assert attribute(
+               html,
+               "#task-filter-row :is([role=cell],[role=rowheader])",
+               "aria-colindex"
+             ) ==
                attribute(html, "#task-head-row [role=columnheader]", "aria-colindex")
     end
 
@@ -410,14 +414,14 @@ defmodule DemoWeb.Tables.TaskFilterTest do
     test "combines with the sort, whichever was chosen first", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/tasks")
 
-      view |> element("#task-head-title") |> render_click()
+      view |> element("#task-sort-title") |> render_click()
       render_async(view)
       html = filter(view, "task", "billable?", o: "no")
 
       assert titles(html) == numbered(2..50//2)
       assert attribute(html, "#task-head-title", "aria-sort") == ["ascending"]
 
-      view |> element("#task-head-title") |> render_click()
+      view |> element("#task-sort-title") |> render_click()
       html = render_async(view)
 
       assert titles(html) == numbered(60..12//-2)

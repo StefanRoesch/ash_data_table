@@ -69,7 +69,7 @@ defmodule DemoWeb.Tables.EmbeddedTableTest do
     test "sort independently, and without the URL", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/dashboard")
 
-      view |> element("##{@tasks}-head-title") |> render_click()
+      view |> element("##{@tasks}-sort-title") |> render_click()
       html = render_async(view)
 
       assert attribute(html, "##{@tasks}-head-title", "aria-sort") == ["ascending"]
@@ -77,8 +77,8 @@ defmodule DemoWeb.Tables.EmbeddedTableTest do
       assert attribute(html, "##{@projects}-head-name", "aria-sort") == ["none"]
       assert hd(column(html, @projects, "name")) == "Project 01"
 
-      view |> element("##{@projects}-head-name") |> render_click()
-      view |> element("##{@projects}-head-name") |> render_click()
+      view |> element("##{@projects}-sort-name") |> render_click()
+      view |> element("##{@projects}-sort-name") |> render_click()
       html = render_async(view)
 
       assert attribute(html, "##{@projects}-head-name", "aria-sort") == ["descending"]

@@ -14,8 +14,8 @@ defmodule AshDataTable.Parts.Related do
   # What is under an expanded row: one line per relationship the person is
   # offered, and under an open line the row whose one cell holds the nested
   # table. A line is a cell that spans the table, with a button that says
-  # whether it is open; so is the cell of a nested table, which the hook lets
-  # a person go into and come back out of.
+  # whether it is open, the line's Tab stop; the cell of a nested table spans
+  # it too, and the nested table's controls in it are stops in their turn.
   #
   # The nested table is named by its line and by the first cell of the row
   # it belongs to ("Comments" and "Write the report"): both are on the page,
@@ -79,10 +79,9 @@ defmodule AshDataTable.Parts.Related do
     <tr id={"#{@id}-l-#{@relationship.name}"} role="row">
       <td
         id={Ids.line_cell(@id, @relationship.name)}
-        role="gridcell"
+        role="cell"
         colspan={@colspan}
         aria-colindex="1"
-        tabindex="-1"
         {Attrs.line(@relationship)}
         class="p-0"
       >
@@ -96,7 +95,6 @@ defmodule AshDataTable.Parts.Related do
           <button
             type="button"
             id={Ids.line_button(@id, @relationship.name)}
-            tabindex="-1"
             aria-expanded={to_string(@open?)}
             class="text-sm font-semibold"
           >
@@ -123,10 +121,9 @@ defmodule AshDataTable.Parts.Related do
     <tr :if={@open?} id={Ids.nested_row(@id, @relationship.name)} role="row">
       <td
         id={Ids.nested_cell(@id, @relationship.name)}
-        role="gridcell"
+        role="cell"
         colspan={@colspan}
         aria-colindex="1"
-        tabindex="-1"
         data-nested
         data-line-cell={Ids.line_cell(@id, @relationship.name)}
         data-expander-cell={Ids.expander(@id)}
@@ -184,8 +181,7 @@ defmodule AshDataTable.Parts.Related do
   def full_view?(page, full_view), do: not is_nil(page) and not is_nil(full_view)
 
   # The link to the full view is the last row of a nested table's grid,
-  # for the same reason as its pages: reached with the arrow keys and
-  # followed with Enter.
+  # after its pages: a Tab stop, followed with Enter.
   attr :acting?, :any, required: true
   attr :full_view, :any, required: true
   attr :id, :any, required: true
@@ -200,7 +196,6 @@ defmodule AshDataTable.Parts.Related do
         <.link
           id={"#{@id}-full-view"}
           navigate={@full_view}
-          tabindex="-1"
           aria-label={@texts.full_view_of}
           class="link sticky left-4 text-sm"
         >

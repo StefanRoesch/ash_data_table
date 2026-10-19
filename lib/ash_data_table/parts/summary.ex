@@ -36,7 +36,7 @@ defmodule AshDataTable.Parts.Summary do
   end
 
   # The cell of a column in the footer row: what varies of it is
-  # `AshDataTable.Attrs.summary/2`'s; its id, place, role and `tabindex` are
+  # `AshDataTable.Attrs.summary/2`'s; its id, place and role are
   # written here, as the row is sent again while its summaries are on their
   # way and once more when they are there.
   attr :id, :string, required: true
@@ -52,9 +52,8 @@ defmodule AshDataTable.Parts.Summary do
     ~H"""
     <td
       id={@id}
-      role="gridcell"
+      role="cell"
       aria-colindex={@colindex}
-      tabindex="-1"
       {Attrs.summary(@column, @summing?)}
       class="whitespace-nowrap"
       phx-no-format
@@ -67,10 +66,9 @@ defmodule AshDataTable.Parts.Summary do
   # rows of a nested table hold stays at the left edge of the table's
   # scroll area, as what a line holds does.
   #
-  # The pages of a nested table are a last row of its grid: reached with
-  # the arrow keys and entered with Enter, as a filter is, and no tab stop in
-  # the middle of the grid around it. The element stays where it is once it
-  # is there, as every child of a stream's container with an id does.
+  # The pages of a nested table are a last row of its grid, its buttons Tab
+  # stops as a table's on the page are. The element stays where it is once
+  # it is there, as every child of a stream's container with an id does.
   attr :acting?, :any, required: true
   attr :expandable?, :any, required: true
   attr :full_view, :any, required: true
@@ -185,9 +183,9 @@ defmodule AshDataTable.Parts.Summary do
     ~H"""
     <%!-- The summaries: one more row of the grid after the last record,
     with a cell under every column, so that each number stands under its
-    column, is hidden and resized with it, and is reached with the arrow keys
-    as any cell is. A cell under a column without a summary is empty. See
-    "Footer summaries" at the top. --%>
+    column and is hidden and resized with it. No Tab stops: a screen reader
+    reads it with its table keys. A cell under a column without a summary is
+    empty. See "Footer summaries" at the top. --%>
     <tr
       :if={@summarised? and @page}
       {Attrs.summaries(@id, @model, @page)}
@@ -195,17 +193,15 @@ defmodule AshDataTable.Parts.Summary do
       <td
         :if={@selecting}
         id={"#{@id}-summaries-select"}
-        role="gridcell"
+        role="cell"
         aria-colindex="1"
-        tabindex="-1"
       >
       </td>
       <td
         :if={@expandable?}
         id={"#{@id}-summaries-expander"}
-        role="gridcell"
+        role="cell"
         aria-colindex={@lead}
-        tabindex="-1"
       >
       </td>
       <Kit.part
@@ -233,9 +229,8 @@ defmodule AshDataTable.Parts.Summary do
       <td
         :if={@acting?}
         id={"#{@id}-summaries-actions"}
-        role="gridcell"
+        role="cell"
         aria-colindex={length(@model.columns) + @lead + 1}
-        tabindex="-1"
       >
       </td>
     </tr>

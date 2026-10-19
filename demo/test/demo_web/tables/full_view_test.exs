@@ -218,7 +218,7 @@ defmodule DemoWeb.Tables.FullViewTest do
       |> Ash.Changeset.for_update(:update, %{title: "Write the summary"})
       |> Ash.update!(authorize?: false)
 
-      view |> element("#comment-head-body") |> render_click()
+      view |> element("#comment-sort-body") |> render_click()
       assert heading(render_async(view), "comment") == "Write the summary: Comments"
     end
 
@@ -318,7 +318,7 @@ defmodule DemoWeb.Tables.FullViewTest do
       assert hd(column(html, "task", "title")) == "Task 30"
 
       # a sort
-      view |> element("#task-head-title") |> render_click()
+      view |> element("#task-sort-title") |> render_click()
       assert patched(view) == {"/tasks", %{"task" => Map.put(limit, "sort", "title")}}
       html = render_async(view)
       assert hd(column(html, "task", "title")) == "Task 01"
@@ -462,7 +462,7 @@ defmodule DemoWeb.Tables.FullViewTest do
     test "is dropped from the URL by the next change of the table", %{conn: conn, task: task} do
       {:ok, view, _html} = live(conn, "/comments?comment[of][nothing][comments]=#{task.id}")
 
-      view |> element("#comment-head-body") |> render_click()
+      view |> element("#comment-sort-body") |> render_click()
 
       assert patched(view) == {"/comments", %{"comment" => %{"sort" => "body"}}}
     end
@@ -502,7 +502,7 @@ defmodule DemoWeb.Tables.FullViewTest do
       nothing_told(html)
 
       # nor after a change of the table, which reads again
-      view |> element("#comment-head-body") |> render_click()
+      view |> element("#comment-sort-body") |> render_click()
       nothing_told(render_async(view))
 
       # nor in the server's first response
@@ -528,7 +528,7 @@ defmodule DemoWeb.Tables.FullViewTest do
       assert heading(html, "comment") == "Write the secret report: Comments"
 
       Ash.destroy!(task, authorize?: false)
-      view |> element("#comment-head-body") |> render_click()
+      view |> element("#comment-sort-body") |> render_click()
 
       nothing_told(render_async(view))
     end
@@ -544,7 +544,7 @@ defmodule DemoWeb.Tables.FullViewTest do
         Ecto.UUID.dump!(task.id)
       ])
 
-      view |> element("#comment-head-body") |> render_click()
+      view |> element("#comment-sort-body") |> render_click()
 
       nothing_told(render_async(view))
     end

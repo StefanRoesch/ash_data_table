@@ -126,7 +126,12 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
         assert count == if(unquote(actor) == :viewer, do: 20, else: 24)
         assert attribute(html, "#task-table", "aria-colcount") == ["#{count}"]
         assert attribute(html, "#task-head-row [role=columnheader]", "aria-colindex") == numbers
-        assert attribute(html, "#task-filter-row [role=gridcell]", "aria-colindex") == numbers
+
+        assert attribute(
+                 html,
+                 "#task-filter-row :is([role=cell],[role=rowheader])",
+                 "aria-colindex"
+               ) == numbers
 
         assert attribute(html, "#task-head-description", "aria-colindex") ==
                  ["#{15 + acting}"]
@@ -168,7 +173,11 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
       {:ok, _view, html} = conn |> log_in(world.member) |> live("/tasks")
 
       # the box, the expander, the eighteen columns of a member, the actions
-      assert attribute(html, "#task-table [role=rowgroup] [role=gridcell]", "aria-colindex") ==
+      assert attribute(
+               html,
+               "#task-table [role=rowgroup] :is([role=cell],[role=rowheader])",
+               "aria-colindex"
+             ) ==
                Enum.map(1..24, &Integer.to_string/1)
     end
   end
@@ -230,7 +239,7 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
         |> log_in(world.member)
         |> live("/tasks?task[f][external_ref]=EXT-2&task[sort]=external_ref")
 
-      view |> element("#task-head-title") |> render_click()
+      view |> element("#task-sort-title") |> render_click()
 
       assert_patch(view, "/tasks?task[sort]=title")
       assert titles(render_async(view)) == ["Apple", "Banana", "Cherry"]
@@ -295,7 +304,7 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
 
       assert attribute(
                html,
-               "#task-table [role=gridcell][id$='-c-estimate_hours'] > span",
+               "#task-table :is([role=cell],[role=rowheader])[id$='-c-estimate_hours'] > span",
                "class"
              ) ==
                ["sr-only", "sr-only", "sr-only"]
@@ -371,8 +380,8 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
     test "is offered no editing at all: no cell is marked, and there is no editor",
          %{html: html} do
       assert titles(html) == ["Write the report"]
-      assert attribute(html, "#task-table [role=gridcell]", "role") != []
-      assert attribute(html, "#task-table [role=gridcell]", "aria-readonly") == []
+      assert attribute(html, "#task-table :is([role=cell],[role=rowheader])", "role") != []
+      assert attribute(html, "#task-table :is([role=cell],[role=rowheader])", "tabindex") == []
       assert editors(html, "task") == []
       assert attribute(html, "#task template", "id") == []
       assert attribute(html, "#task dialog", "id") == []
@@ -425,11 +434,11 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
                ~w(title status priority progress estimate_hours billable? due_on completed_at description tags checks recurrence project assignee)
 
       for task <- [mine, theirs], field <- ~w(title status priority progress billable?) do
-        assert attribute(html, cell(task.id, field), "aria-readonly") == [], field
+        assert attribute(html, cell(task.id, field), "tabindex") == ["0"], field
       end
 
       # read-only for everybody
-      assert attribute(html, cell(mine.id, "inserted_at"), "aria-readonly") == ["true"]
+      assert attribute(html, cell(mine.id, "inserted_at"), "tabindex") == []
     end
 
     test "saves a cell of a task that is theirs", %{view: view, mine: mine} do
@@ -468,7 +477,7 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
       assert editors(html, "task") ==
                ~w(title status priority progress estimate_hours billable? due_on completed_at description tags checks recurrence project assignee)
 
-      assert attribute(html, cell(task.id, "title"), "aria-readonly") == []
+      assert attribute(html, cell(task.id, "title"), "tabindex") == ["0"]
 
       html = save(view, task.id, "title", "The admin was here")
 
