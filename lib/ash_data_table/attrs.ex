@@ -1058,7 +1058,7 @@ defmodule AshDataTable.Attrs do
   `data-label` where it stays in view as the grid scrolls
   sideways (`sticky_label?`), `data-sort` where it sorts; a click sorts
   by it. `data-number` where the column shows a number as text, as its
-  cells (`cell/5`).
+  cells (`cell/2`).
   """
   def column_header(id, column, sort, label?, myself) do
     sortable? = column.sortable?
