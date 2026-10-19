@@ -1106,13 +1106,7 @@ export class Table {
     const seen: string[] = []
     for (let i = 0; i < count; i++) {
       await this.page.keyboard.press(back ? "Shift+Tab" : "Tab")
-      seen.push(
-        await this.page.evaluate(() => {
-          const active = document.activeElement as HTMLElement | null
-          if (!active || active === document.body) return "BODY"
-          return active.id || `${active.closest("[id]")?.id}>${active.tagName.toLowerCase()}`
-        }),
-      )
+      seen.push(await this.focusedStop())
     }
     return seen
   }

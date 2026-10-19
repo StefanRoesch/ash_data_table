@@ -97,11 +97,11 @@ const READ_ONLY = ["headline", "overdue?", "comment_count", "due_within?", "due_
 const ACTIONS = ["archive", "reassign", "set_progress", "destroy", "set_labels"]
 
 /**
- * The stops of a row of /tasks, as the admin has them: the box, the
+ * What the stops of a row of /tasks are, as the admin has them: the box, the
  * expander, each editable cell and, after a cell that cuts its text off,
  * its "Show all" (in `cut`, by column), the action buttons.
  */
-function rowStops(table: Table, key: string, cut: string[]): string[] {
+function expectedRowStops(table: Table, key: string, cut: string[]): string[] {
   const row = `${table.id}-row-${key}`
   return [
     `${row}-s>input`,
@@ -142,8 +142,8 @@ test.describe("the Tab order of /tasks", () => {
       // the filter row: per filter its operator menu and its value
       ...FILTERS.map((control) => `task-filter-${control}`),
     ]
-    const first = rowStops(tasks, FIRST, ["description"])
-    const second = rowStops(tasks, SECOND, [])
+    const first = expectedRowStops(tasks, FIRST, ["description"])
+    const second = expectedRowStops(tasks, SECOND, [])
     const all = [...head, ...first, ...second]
     // a date and a datetime filter are several stops of the browser's each
     expect(controls(await tasks.walk(all.length + 40)).slice(0, all.length)).toEqual(all)

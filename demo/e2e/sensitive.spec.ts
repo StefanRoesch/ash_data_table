@@ -194,10 +194,9 @@ test.describe("showing a value", () => {
     await expect(value).toHaveText(PORTAL.budget)
     // Tab from the button, past what else the cell holds (a cut-off text's
     // "Show all"), leaves the cell
-    const after = await cell.evaluate((node) => {
-      const stops = Array.from(node.querySelectorAll<HTMLElement>("button, input, textarea, select"))
-      return stops.length - stops.indexOf(document.activeElement as HTMLElement)
-    })
+    const id = (await cell.getAttribute("id"))!
+    const inCell = (await projects.rowStops(PORTAL.id)).filter((stop) => stop === id || stop.startsWith(`${id}>`))
+    const after = inCell.length - inCell.indexOf(await projects.focusedStop())
     await projects.walk(after)
     expect(await cell.evaluate((node) => node.contains(document.activeElement))).toBe(false)
     await expect(value).toHaveText("")

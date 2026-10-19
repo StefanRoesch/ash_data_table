@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test"
 import { expect, test } from "./support/fixtures"
+import { Table } from "./support/table"
 
 // The grid's hook finds the table's elements by their markers alone:
 // /e2e/markers draws a grid with
@@ -15,22 +16,8 @@ const holder = (page: Page) => page.locator('[id="kit-row-a-n-parts-c"]')
 const line = (page: Page) => page.locator('[id="kit-row-a-l-parts-c"]')
 const part = (page: Page, key: string) => page.locator(`[id="kit-row-a-t-parts-row-${key}-c-title"]`)
 
-/** The id of what has focus, else the id of the element around it and its tag: `kit-row-a-s>input`. */
-const focused = (page: Page) =>
-  page.evaluate(() => {
-    const active = document.activeElement as HTMLElement
-    return active.id || `${active.closest("[id]")?.id}>${active.tagName.toLowerCase()}`
-  })
-
-/** Presses Tab (Shift+Tab with `back`) `count` times, and says what had focus after each. */
-async function walk(page: Page, count: number, back = false): Promise<string[]> {
-  const seen: string[] = []
-  for (let i = 0; i < count; i++) {
-    await page.keyboard.press(back ? "Shift+Tab" : "Tab")
-    seen.push(await focused(page))
-  }
-  return seen
-}
+/** The table of /e2e/markers, for its Tab walks: `Table.walk` names what has focus after each press. */
+const kit = (page: Page) => new Table(page, "kit", "/e2e/markers")
 
 async function opened(page: Page, path = "/e2e/markers"): Promise<void> {
   await page.goto(path)
@@ -64,8 +51,8 @@ test.describe("a grid drawn with other elements than a table's", () => {
       "kit-row-c-s>input",
       "kit-row-c-c-name",
     ]
-    expect(await walk(page, stops.length)).toEqual(stops)
-    expect(await walk(page, stops.length - 1, true)).toEqual(stops.slice(0, -1).reverse())
+    expect(await kit(page).walk(stops.length)).toEqual(stops)
+    expect(await kit(page).walk(stops.length - 1, true)).toEqual(stops.slice(0, -1).reverse())
     // moving about sends nothing
     expect(await pushed.besides("select")).toEqual([])
   })
@@ -229,7 +216,7 @@ test.describe("a grid drawn with other elements than a table's", () => {
 
     // the note's "Show all" is hidden with its cell: Tab goes from the name to the line
     await cell(page, "a", "name").focus()
-    expect(await walk(page, 1)).toEqual(["kit-row-a-l-parts-c>button"])
+    expect(await kit(page).walk(1)).toEqual(["kit-row-a-l-parts-c>button"])
   })
 })
 
