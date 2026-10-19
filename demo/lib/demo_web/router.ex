@@ -96,12 +96,17 @@ defmodule DemoWeb.Router do
         look: [density: :compact, stripes: true, column_lines: true]
 
       # The tasks drawn with a kit of the tests that shows its look on each
-      # root (`DemoWeb.LookKit`, `look_test.exs`).
+      # root (`DemoWeb.LookKit`, `look_test.exs`), and with one that writes
+      # its stream's items as JSON.
       if Application.compile_env(:demo, :test_routes, false) do
         ash_data_table "/look/tasks", Demo.Tracker.Task,
           id: "looked",
           kit: DemoWeb.LookKit,
           look: [density: :compact, sticky_header: true, nested_height: "12rem"]
+
+        # the same, its stream's items as JSON after the grid
+        # (`DemoWeb.Support.ItemsKit`, `item_bytes_test.exs`)
+        ash_data_table "/items/tasks", Demo.Tracker.Task, kit: DemoWeb.Support.ItemsKit
       end
     end
   end

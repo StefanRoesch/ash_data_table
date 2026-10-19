@@ -155,3 +155,27 @@ defmodule DemoWeb.Support.ControlledKitLive do
     """
   end
 end
+
+defmodule DemoWeb.Support.ItemsKit do
+  @moduledoc """
+  A kit for the measurement of the stream's items as JSON
+  (`item_bytes_test.exs`, M2 of the React kit's note): it draws what the
+  default kit draws, and after the grid every item of its stream as JSON,
+  as a kit that hands the stream to the browser sends it, one script each.
+  """
+  use AshDataTable.Kit, contract: 2
+
+  def grid(assigns) do
+    ~H"""
+    {super(assigns)}
+    <script
+      :for={{dom_id, item} <- @rows}
+      id={"#{dom_id}-json"}
+      type="application/json"
+      data-item
+    >
+      <%= Phoenix.HTML.raw(Jason.encode!(item)) %>
+    </script>
+    """
+  end
+end
