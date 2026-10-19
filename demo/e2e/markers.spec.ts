@@ -11,19 +11,29 @@ import { expect, test } from "./support/fixtures"
 // debug is on, a part that lacks a marker is named on the console.
 
 const cell = (page: Page, key: string, column: string) => page.locator(`[id="kit-row-${key}-c-${column}"]`)
-const row = (page: Page, key: string) => page.locator(`[id="kit-row-${key}-r"]`)
 const holder = (page: Page) => page.locator('[id="kit-row-a-n-parts-c"]')
 const line = (page: Page) => page.locator('[id="kit-row-a-l-parts-c"]')
 const part = (page: Page, key: string) => page.locator(`[id="kit-row-a-t-parts-row-${key}-c-title"]`)
 
-/** The cells that are a tab stop: one for the grid and the grid in it. */
-const tabStops = (page: Page) =>
-  page
-    .locator('[id="kit-grid"]')
-    .evaluate((grid) => Array.from(grid.querySelectorAll<HTMLElement>('[tabindex="0"]')).map((node) => node.id))
+/** The id of what has focus, else the id of the element around it and its tag: `kit-row-a-s>input`. */
+const focused = (page: Page) =>
+  page.evaluate(() => {
+    const active = document.activeElement as HTMLElement
+    return active.id || `${active.closest("[id]")?.id}>${active.tagName.toLowerCase()}`
+  })
 
-async function opened(page: Page): Promise<void> {
-  await page.goto("/e2e/markers")
+/** Presses Tab (Shift+Tab with `back`) `count` times, and says what had focus after each. */
+async function walk(page: Page, count: number, back = false): Promise<string[]> {
+  const seen: string[] = []
+  for (let i = 0; i < count; i++) {
+    await page.keyboard.press(back ? "Shift+Tab" : "Tab")
+    seen.push(await focused(page))
+  }
+  return seen
+}
+
+async function opened(page: Page, path = "/e2e/markers"): Promise<void> {
+  await page.goto(path)
   await expect(page.locator('[id="kit-grid"]')).toBeAttached()
   // connected: the join's patch, which mounts the hooks, is in the page
   await expect(page.locator(".phx-connected").first()).toBeAttached()
@@ -34,41 +44,30 @@ test.describe("a grid drawn with other elements than a table's", () => {
     await opened(page)
   })
 
-  test("is one tab stop, and the arrow keys move in it, over the cell a table is nested in", async ({
+  test("Tab goes from control to control in page order, over the nested table, and passes over read-only cells", async ({
     page,
+    pushed,
   }) => {
-    await cell(page, "a", "name").focus()
-    await page.keyboard.press("ArrowRight")
-    await expect(cell(page, "a", "size")).toBeFocused()
-    await page.keyboard.press("ArrowLeft")
-    await page.keyboard.press("ArrowLeft")
-    await expect(page.locator('[id="kit-row-a-s"]')).toBeFocused()
-    await page.keyboard.press("ArrowRight")
-    // down: the line under the record, the cell the nested table is in,
-    // then the next record, in the column the person was in
-    await page.keyboard.press("ArrowDown")
-    await expect(line(page)).toBeFocused()
-    await page.keyboard.press("ArrowDown")
-    await expect(holder(page)).toBeFocused()
-    await page.keyboard.press("ArrowDown")
-    await expect(cell(page, "b", "name")).toBeFocused()
-    // up over what is under the first record (the nested table's cell, the
-    // line), then past the filter cell, which holds no filter here, to the header
-    for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowUp")
-    await expect(page.locator('[id="kit-head-name"]')).toBeFocused()
-    await page.keyboard.press("End")
-    await expect(page.locator('[id="kit-head-note"]')).toBeFocused()
-    expect(await tabStops(page)).toEqual(["kit-head-note"])
-  })
-
-  test("Enter goes into the nested table, and Escape back out", async ({ page }) => {
-    await holder(page).focus()
-    await page.keyboard.press("Enter")
-    await expect(part(page, "p1")).toBeFocused()
-    await page.keyboard.press("ArrowDown")
-    await expect(part(page, "p2")).toBeFocused()
-    await page.keyboard.press("Escape")
-    await expect(holder(page)).toBeFocused()
+    // the hook has put "Show all" into the note that cuts its text off
+    await expect(cell(page, "a", "note").locator(":scope > [data-whole]")).toBeAttached()
+    await page.locator('[id="kit-columns-button"]').focus()
+    const stops = [
+      "kit-select-head>input",
+      "kit-row-a-s>input",
+      // its one editable cell; "Size" is read-only, "Note" offers its whole text
+      "kit-row-a-c-name",
+      "kit-row-a-c-note>button",
+      // the line under it; the nested table under that has no stop, its cells are read-only
+      "kit-row-a-l-parts-c>button",
+      "kit-row-b-s>input",
+      "kit-row-b-c-name",
+      "kit-row-c-s>input",
+      "kit-row-c-c-name",
+    ]
+    expect(await walk(page, stops.length)).toEqual(stops)
+    expect(await walk(page, stops.length - 1, true)).toEqual(stops.slice(0, -1).reverse())
+    // moving about sends nothing
+    expect(await pushed.besides("select")).toEqual([])
   })
 
   test("Enter edits a cell, Enter saves it, and Escape gives an edit up", async ({ page }) => {
@@ -94,45 +93,62 @@ test.describe("a grid drawn with other elements than a table's", () => {
     await expect(name).toBeFocused()
   })
 
-  test("Space selects a row, and Shift with Down Arrow the rows down to the next, over what is under a row", async ({
+  test("Space on a row's box selects the row, and the box of the page selects its records, not the header, which is a row group too", async ({
+    page,
+    pushed,
+  }) => {
+    const box = (key: string) => page.locator(`[id="kit-row-${key}-s"] input`)
+    await box("a").focus()
+    await page.keyboard.press(" ")
+    await expect(box("a")).toBeChecked()
+    await expect(box("b")).not.toBeChecked()
+    await expect.poll(() => pushed.selected("kit")).toEqual(["a"])
+
+    await expect(page.locator('[id="kit-head"]')).toHaveAttribute("role", "rowgroup")
+    await page.locator('[id="kit-select-head"] input').focus()
+    await page.keyboard.press(" ")
+    for (const key of ["a", "b", "c"]) await expect(box(key)).toBeChecked()
+    await expect.poll(async () => [...((await pushed.selected("kit")) as string[])].sort()).toEqual(["a", "b", "c"])
+    // no row says it is selected but by its box
+    await expect(page.locator('[id="kit"] [aria-selected]')).toHaveCount(0)
+  })
+
+  test("a column is made wider with its handle, and from the keyboard in its width field; Reset widths undoes both", async ({
     page,
   }) => {
-    await cell(page, "a", "size").focus()
-    await page.keyboard.press(" ")
-    await expect(row(page, "a")).toHaveAttribute("aria-selected", "true")
-    await expect(row(page, "b")).toHaveAttribute("aria-selected", "false")
-    await page.keyboard.press("Shift+ArrowDown")
-    await expect(cell(page, "b", "size")).toBeFocused()
-    await expect(row(page, "b")).toHaveAttribute("aria-selected", "true")
-    await expect(page.locator('[id="kit-row-a-s"] input')).toBeChecked()
-    await expect(page.locator('[id="kit-row-b-s"] input')).toBeChecked()
-  })
-
-  test("the box of the page selects its records, and not the header, which is a row group too", async ({ page }) => {
-    await expect(page.locator('[id="kit-head"]')).toHaveAttribute("role", "rowgroup")
-    await page.locator('[id="kit-select-head"]').focus()
-    await page.keyboard.press(" ")
-    for (const key of ["a", "b", "c"]) await expect(row(page, key)).toHaveAttribute("aria-selected", "true")
-    await expect(page.locator('[id="kit-head-row"]')).not.toHaveAttribute("aria-selected")
-    await expect(page.locator('[id="kit-filter-row"]')).not.toHaveAttribute("aria-selected")
-  })
-
-  test("a column is made wider with its handle, its cells with it", async ({ page }) => {
     const head = page.locator('[id="kit-head-name"]')
-    const before = (await cell(page, "a", "name").boundingBox())!.width
-    await head.focus()
-    await page.keyboard.press("F2")
-    await expect(page.locator('[id="kit-resize-name"]')).toBeFocused()
-    for (let i = 0; i < 3; i++) await page.keyboard.press("ArrowRight")
-    await expect
-      .poll(async () => Math.round((await cell(page, "a", "name").boundingBox())!.width - before))
-      .toBeGreaterThanOrEqual(29)
+    const width = async () => Math.round((await cell(page, "a", "name").boundingBox())!.width)
+    const before = await width()
+
+    // the handle, dragged with the pointer
+    const handle = (await page.locator('[id="kit-resize-name"]').boundingBox())!
+    await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(handle.x + handle.width / 2 + 30, handle.y + handle.height / 2 + 3, { steps: 4 })
+    await page.mouse.up()
+    await expect.poll(async () => (await width()) - before).toBeGreaterThanOrEqual(29)
     await expect
       .poll(async () => Math.round((await head.boundingBox())!.width))
       .toBe(Math.round((await cell(page, "b", "name").boundingBox())!.width))
+
+    // the width field of the list of "Columns", from the keyboard
+    await page.locator('[id="kit-columns-button"]').click()
+    const field = page.locator('[id="kit-column-name-width"]')
+    await expect(field).toBeVisible()
+    await field.focus()
+    await page.keyboard.press("ControlOrMeta+A")
+    await page.keyboard.type("200")
+    await page.keyboard.press("Tab")
+    await expect.poll(width).toBe(200)
+
+    await page.locator('[id="kit-reset-widths"]').focus()
+    await page.keyboard.press("Enter")
+    await expect.poll(width).toBe(before)
   })
 
-  test("a cell that cuts its text off after its lines offers its whole text in place while it has the focus", async ({ page }) => {
+  test("a cell that cuts its text off after its lines offers its whole text in place: a button, a Tab stop named after its column", async ({
+    page,
+  }) => {
     const note = cell(page, "a", "note")
     // the button the hook puts into the cell (`data-whole`)
     const whole = note.locator(":scope > [data-whole]")
@@ -140,56 +156,61 @@ test.describe("a grid drawn with other elements than a table's", () => {
       const paragraph = node.querySelector(":scope > [data-paragraph]")!
       return paragraph.scrollHeight > paragraph.clientHeight
     })).toBe(true)
-    // the whole text is in the cell, for a screen reader, before any button
+    // the whole text is in the cell, for a screen reader
     await expect(note.locator(":scope > [data-paragraph]")).toHaveText(/where it is kept$/)
-    await expect(whole).toHaveCount(0)
 
-    await note.focus()
     await expect(whole).toBeVisible()
+    await expect(whole).toHaveRole("button")
+    await expect(whole).toHaveAccessibleName("Show all of Note")
     await expect(whole).toHaveAttribute("data-whole", "Show all")
     await expect(whole).toHaveAttribute("aria-expanded", "false")
-    await expect(whole).toHaveAttribute("aria-hidden", "true")
-    await expect(whole).toHaveAttribute("tabindex", "-1")
 
-    // Shift+Enter shows it all, and Escape cuts it off again; focus stays
-    await page.keyboard.press("Shift+Enter")
+    // Enter on it shows it all, and cuts it off again; focus stays on it
+    await whole.focus()
+    await page.keyboard.press("Enter")
     await expect(whole).toHaveAttribute("aria-expanded", "true")
     await expect(whole).toHaveAttribute("data-whole", "Show less")
-    await expect(note).toBeFocused()
-    await page.keyboard.press("Escape")
+    await expect(whole).toHaveAccessibleName("Show less of Note")
+    await expect(whole).toBeFocused()
+    await page.keyboard.press("Enter")
     await expect(whole).toHaveAttribute("aria-expanded", "false")
-    await expect(whole).toHaveAttribute("data-whole", "Show all")
-    await expect(note).toBeFocused()
+    await expect(whole).toBeFocused()
 
-    // the button does the same with the pointer, and an expanded cell
-    // keeps its button when focus moves on
-    await whole.click()
+    // Space too, as on any button; a click does the same, and the text
+    // stays whole while focus moves on
+    await page.keyboard.press(" ")
     await expect(whole).toHaveAttribute("aria-expanded", "true")
-    await expect(note).toBeFocused()
-    await page.mouse.move(1, 1)
-    await page.keyboard.press("ArrowDown")
-    await expect(note).not.toBeFocused()
-    await expect(whole).toHaveAttribute("aria-expanded", "true")
-    // cut off again, the button goes once the cell has neither focus nor pointer
     await whole.click()
     await expect(whole).toHaveAttribute("aria-expanded", "false")
-    await page.mouse.move(1, 1)
-    await cell(page, "b", "name").focus()
-    await expect(whole).toHaveCount(0)
+    await whole.click()
+    await page.keyboard.press("Tab")
+    await expect(whole).not.toBeFocused()
+    await expect(whole).toHaveAttribute("aria-expanded", "true")
 
     // a cell whose text is all shown gets no button
-    await cell(page, "b", "note").focus()
     await expect(cell(page, "b", "note").locator(":scope > [data-whole]")).toHaveCount(0)
   })
 
-  test("Enter on a line closes the nested table under it, and opens it again", async ({ page, pushed }) => {
+  test("the button's name takes the column's label as it is, also what a replacement pattern would read as its own", async ({
+    page,
+  }) => {
+    // `$$` and `$&` mean something to String.prototype.replace with a
+    // string in place of the match; a label is no pattern
+    await opened(page, `/e2e/markers?note=${encodeURIComponent("Cost $$ and $& more")}`)
+    const whole = cell(page, "a", "note").locator(":scope > [data-whole]")
+    await expect(whole).toHaveAccessibleName("Show all of Cost $$ and $& more")
+    await whole.click()
+    await expect(whole).toHaveAccessibleName("Show less of Cost $$ and $& more")
+  })
+
+  test("Enter on the button of a line closes the nested table under it, and opens it again; focus stays on the button", async ({ page, pushed }) => {
     const button = line(page).locator("button")
-    await line(page).focus()
+    await button.focus()
     await expect(button).toHaveAttribute("aria-expanded", "true")
     await page.keyboard.press("Enter")
     await expect(holder(page)).toHaveCount(0)
     await expect(button).toHaveAttribute("aria-expanded", "false")
-    await expect(line(page)).toBeFocused()
+    await expect(button).toBeFocused()
     await page.keyboard.press("Enter")
     await expect(part(page, "p1")).toBeAttached()
     await expect(button).toHaveAttribute("aria-expanded", "true")
@@ -199,16 +220,16 @@ test.describe("a grid drawn with other elements than a table's", () => {
     ])
   })
 
-  test("a hidden column is not shown, and the arrow keys pass over it", async ({ page }) => {
+  test("a hidden column is not shown, and Tab passes over what it holds", async ({ page }) => {
     await page.locator('[id="kit-columns-button"]').click()
-    await page.locator('[id="kit-column-size"]').uncheck()
-    await expect(page.locator('[id="kit-head-size"]')).toBeHidden()
-    await expect(cell(page, "a", "size")).toBeHidden()
-    await expect(page.locator('[id="kit-filter-size"]')).toBeHidden()
+    await page.locator('[id="kit-column-note"]').uncheck()
+    await expect(page.locator('[id="kit-head-note"]')).toBeHidden()
+    await expect(cell(page, "a", "note")).toBeHidden()
+    await expect(page.locator('[id="kit-filter-note"]')).toBeHidden()
 
-    await cell(page, "b", "name").focus()
-    await page.keyboard.press("ArrowRight")
-    await expect(cell(page, "b", "note")).toBeFocused()
+    // the note's "Show all" is hidden with its cell: Tab goes from the name to the line
+    await cell(page, "a", "name").focus()
+    expect(await walk(page, 1)).toEqual(["kit-row-a-l-parts-c>button"])
   })
 })
 
@@ -217,8 +238,7 @@ test.describe("a grid drawn with other elements than a table's", () => {
 // missing dialog for a yes).
 test.describe("a column that asks before a save", () => {
   async function renamed(page: Page, path: string): Promise<void> {
-    await page.goto(path)
-    await expect.poll(() => tabStops(page)).toEqual(["kit-row-a-c-name"])
+    await opened(page, path)
     const name = cell(page, "a", "name")
     await name.focus()
     await page.keyboard.press("Enter")
@@ -335,7 +355,8 @@ test.describe("the development check of the hooks", () => {
     await tasks.expand(await tasks.rowKey(1))
 
     await page.evaluate(() => (window as any).liveSocket.disableDebug())
-    await page.goto("/e2e/markers?missing=colindex")
-    await expect.poll(() => tabStops(page)).toEqual(["kit-row-a-c-name"])
+    await opened(page, "/e2e/markers?missing=colindex")
+    // the hook has run: it has offered the cut-off note its whole text
+    await expect(cell(page, "a", "note").locator(":scope > [data-whole]")).toBeAttached()
   })
 })
