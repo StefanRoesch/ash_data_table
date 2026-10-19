@@ -53,10 +53,8 @@ test.describe("a grid drawn with other elements than a table's", () => {
     await page.keyboard.press("ArrowDown")
     await expect(cell(page, "b", "name")).toBeFocused()
     // up over what is under the first record (the nested table's cell, the
-    // line), then the filter row, then the header
+    // line), then past the filter cell, which holds no filter here, to the header
     for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowUp")
-    await expect(page.locator('[id="kit-filter-name"]')).toBeFocused()
-    await page.keyboard.press("ArrowUp")
     await expect(page.locator('[id="kit-head-name"]')).toBeFocused()
     await page.keyboard.press("End")
     await expect(page.locator('[id="kit-head-note"]')).toBeFocused()
