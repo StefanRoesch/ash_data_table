@@ -237,9 +237,12 @@ defmodule AshDataTable.Kit do
       columns are hidden or nothing; `ID-columns`, `data-columns-list`, a
       box per column with `data-head`, `data-say-hidden`, `data-say-shown`,
       `data-filtered`, `data-sorted`, and its width field
-      (`Attrs.width_field/3`, `data-width`); "Reset widths"
-      (`Attrs.reset_widths/1`); `data-keeps-one`): `id`, `columns`,
-      `keeps_one?`, `state`, `nested?`, `class`.
+      (`Attrs.width_field/3`, `data-width`); before them an entry of the
+      label column, which cannot be hidden: its name and its width field,
+      no box; "Reset widths" (`Attrs.reset_widths/1`); `data-keeps-one`):
+      `id`, `columns` (the columns that can be hidden), `label_column` (the
+      `Model.Column` of the label column, nil for none), `keeps_one?`,
+      `state`, `nested?`, `class`.
     * `status` - the live region `ID-status` and a run's result
       (`ID-result`): `id`, `announcement`, `announcements`, `result`.
     * `grid` - the grid's hook's element (`ID-grid`, `data-ash-data-table`,
@@ -447,7 +450,8 @@ defmodule AshDataTable.Kit do
       `columns_sorted` (each a list: the text for 1, 2, … up to the number
       of `columns`), `column_hidden`, `column_shown`, `width_of` (the name
       of its width field) and `flags` (one per column; a flag nil for
-      none), `reset_widths`;
+      none), `label_width` (the name of the label column's width field,
+      nil for none), `reset_widths`;
     * `status` - `announcement`, `summary` and `failures` of a run's result;
     * `grid` - `skip_table` (the skip link, with the table's name),
       `select_page`, `select_row`, `related_records`, `actions`,

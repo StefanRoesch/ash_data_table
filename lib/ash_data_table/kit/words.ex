@@ -196,7 +196,13 @@ defmodule AshDataTable.Kit.Words do
   # `columns` is what the button shows; `columns_name` what it and its list
   # are called, which names the table where it is nested in another, and
   # `columns_with` that name with what is hidden.
-  defp words(:columns, %{columns: columns, state: state, label: label, nested?: nested?}) do
+  defp words(:columns, %{
+         columns: columns,
+         label_column: label_column,
+         state: state,
+         label: label,
+         nested?: nested?
+       }) do
     counts = 1..length(columns)//1
 
     [
@@ -213,6 +219,7 @@ defmodule AshDataTable.Kit.Words do
       column_hidden: Enum.map(columns, &t(:column_hidden, column: &1.label)),
       column_shown: Enum.map(columns, &t(:column_shown, column: &1.label)),
       width_of: Enum.map(columns, &t(:column_width, column: &1.label)),
+      label_width: label_column && t(:column_width, column: label_column.label),
       reset_widths: t(:reset_widths),
       flags: Enum.map(columns, &flag(state, &1))
     ]

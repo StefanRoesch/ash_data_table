@@ -120,8 +120,15 @@ defmodule DemoWeb.Tables.ColumnResizeTest do
              "data-width" => "task-head-status"
            }
 
+    # the label column first, which has no box: it cannot be hidden
     boxes = attribute(html, "#task-columns input[type=checkbox]", "data-head")
-    assert attribute(html, "#task-columns input[type=number]", "data-width") == boxes
+    refute "task-head-title" in boxes
+
+    assert attribute(html, "#task-columns input[type=number]", "data-width") ==
+             ["task-head-title" | boxes]
+
+    assert width_field(html, "task", "title")["aria-label"] == "Width of Title"
+    assert text(html, "#task-column-title-entry") == "Title"
 
     assert attribute(html, "#task-columns > button[data-reset-widths]", "id") == [
              "task-reset-widths"

@@ -22,6 +22,12 @@
 </button>
 <div aria-label="Columns" class="dropdown menu max-h-[60vh] flex-nowrap overflow-y-auto rounded-box bg-base-100 p-2 text-base-content shadow-sm forced-colors:border [position-area:bottom_span-right] [position-try-fallbacks:flip-inline,flip-block] supports-[position-area:bottom]:inset-auto supports-[position-area:bottom]:m-0 supports-[position-area:bottom]:mt-0.5" data-columns-list="" id="task-columns" popover="auto" role="group" style="position-anchor: --ash-data-table-columns-task">
 <div class="flex items-center gap-2">
+<span class="grow py-0.5 ps-7 pe-1 whitespace-nowrap" id="task-column-title-entry">
+        Title
+      </span>
+<input aria-label="Width of Title" class="input input-xs w-20" data-width="task-head-title" id="task-column-title-width" max="1000" min="48" type="number"/>
+</div>
+<div class="flex items-center gap-2">
 <label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-column-status-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-head-status" data-say-hidden="State hidden" data-say-shown="State shown" id="task-column-status" type="checkbox"/>
 <span>State</span>
@@ -2696,6 +2702,12 @@
 </span>
 </button>
 <div aria-label="Columns" class="dropdown menu max-h-[60vh] flex-nowrap overflow-y-auto rounded-box bg-base-100 p-2 text-base-content shadow-sm forced-colors:border [position-area:bottom_span-right] [position-try-fallbacks:flip-inline,flip-block] supports-[position-area:bottom]:inset-auto supports-[position-area:bottom]:m-0 supports-[position-area:bottom]:mt-0.5" data-columns-list="" id="task-pick-labels-columns" popover="auto" role="group" style="position-anchor: --ash-data-table-columns-task-pick-labels">
+<div class="flex items-center gap-2">
+<span class="grow py-0.5 ps-7 pe-1 whitespace-nowrap" id="task-pick-labels-column-name-entry">
+        Name
+      </span>
+<input aria-label="Width of Name" class="input input-xs w-20" data-width="task-pick-labels-head-name" id="task-pick-labels-column-name-width" max="1000" min="48" type="number"/>
+</div>
 <div class="flex items-center gap-2">
 <label class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="task-pick-labels-column-id-entry">
 <input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="task-pick-labels-head-id" data-say-hidden="ID hidden" data-say-shown="ID shown" id="task-pick-labels-column-id" type="checkbox"/>

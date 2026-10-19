@@ -74,7 +74,9 @@ defmodule AshDataTable.Parts.Grid do
   # popover itself, `rounded-box bg-base-100 shadow-sm`); `flex-nowrap`
   # keeps a long list in one column that scrolls, where `menu` would wrap.
   #
-  # `columns` are the columns that can be hidden (`hideable/1`).
+  # `columns` are the columns that can be hidden (`hideable/1`), and
+  # `label_column` the label column (nil for none), which cannot: its entry
+  # comes first, its name and its width field, with no box.
   # A column that is filtered or sorted by says so at its box, in text, for
   # as long as it is hidden (`data-flag`, shown while the box is not
   # ticked): its filter is in the header row, and goes out of sight with
@@ -102,6 +104,7 @@ defmodule AshDataTable.Parts.Grid do
   # where it stands on the table's line.
   attr :id, :string, required: true
   attr :columns, :list, required: true
+  attr :label_column, :any, required: true
   attr :keeps_one?, :boolean, required: true
   attr :state, :map, required: true
   attr :nested?, :boolean, required: true
@@ -145,6 +148,21 @@ defmodule AshDataTable.Parts.Grid do
         style={"position-anchor: #{anchor(@id)}"}
         class="dropdown menu max-h-[60vh] flex-nowrap overflow-y-auto rounded-box bg-base-100 p-2 text-base-content shadow-sm forced-colors:border [position-area:bottom_span-right] [position-try-fallbacks:flip-inline,flip-block] supports-[position-area:bottom]:inset-auto supports-[position-area:bottom]:m-0 supports-[position-area:bottom]:mt-0.5"
       >
+        <div :if={@label_column} class="flex items-center gap-2">
+          <span
+            id={"#{@id}-column-#{@label_column.name}-entry"}
+            class="grow py-0.5 ps-7 pe-1 whitespace-nowrap"
+          >
+            {@label_column.label}
+          </span>
+          <input
+            type="number"
+            min="48"
+            max="1000"
+            {Attrs.width_field(@id, @label_column, @texts.label_width)}
+            class="input input-xs w-20"
+          />
+        </div>
         <div
           :for={
             {column, flag, hidden, shown, width_of} <-

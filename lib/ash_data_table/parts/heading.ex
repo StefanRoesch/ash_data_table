@@ -90,6 +90,7 @@ defmodule AshDataTable.Parts.Heading do
         kit={@kit}
         id={@id}
         columns={Parts.Grid.hideable(@model)}
+        label_column={Model.label_column(@model)}
         keeps_one?={Model.keeps_one?(@model)}
         state={@state}
         nested?={@nested?}
@@ -97,6 +98,7 @@ defmodule AshDataTable.Parts.Heading do
         texts={
           Words.texts(:columns, %{
             columns: Parts.Grid.hideable(@model),
+            label_column: Model.label_column(@model),
             state: @state,
             label: @label,
             nested?: @nested?
@@ -105,6 +107,7 @@ defmodule AshDataTable.Parts.Heading do
         messages={
           Words.messages(:columns, %{
             columns: Parts.Grid.hideable(@model),
+            label_column: Model.label_column(@model),
             state: @state,
             label: @label,
             nested?: @nested?

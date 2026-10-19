@@ -621,6 +621,16 @@ defmodule AshDataTable.KitCase do
           "[id='kit-columns'] input[type=number][data-width^='kit-head-'][min][max][aria-label]",
           "a column's width field (`Attrs.width_field/3`), named"
         ) ++
+        need(
+          page,
+          "[id='kit-columns'] input[type=number][data-width='#{Ids.header_cell("kit", :name)}'][aria-label]",
+          "the label column's width field"
+        ) ++
+        none(
+          page,
+          "[id='kit-columns'] input[type=checkbox][data-head='#{Ids.header_cell("kit", :name)}']",
+          "a box of the label column, which cannot be hidden"
+        ) ++
         need(page, "[id='kit-columns'] button[data-reset-widths]", "Reset widths") ++
         need(page, "[id='kit-columns-control']", "its control") ++
         need(page, "[id='kit-columns-status']", "what it says") ++

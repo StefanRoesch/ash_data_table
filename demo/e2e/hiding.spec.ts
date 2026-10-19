@@ -225,21 +225,32 @@ test.describe("the button and its list", () => {
     await expect(tasks.columnsList).toBeVisible()
     await expect(tasks.columnsButton).toBeFocused()
 
+    // the label column's entry first: its width field, and no box, as it
+    // cannot be hidden; then each column's box and its width field
+    const width = (column: string) => page.locator(`[id="task-column-${column}-width"]`)
+    await page.keyboard.press("Tab")
+    await expect(width("title")).toBeFocused()
+    await expect(width("title")).toHaveAccessibleName("Width of Title")
     await page.keyboard.press("Tab")
     await expect(tasks.columnBox("status")).toBeFocused()
     await page.keyboard.press("Space")
     await expect(tasks.header("status")).toBeHidden()
     await expect(tasks.columnBox("status")).toBeFocused()
     await page.keyboard.press("Tab")
+    await expect(width("status")).toBeFocused()
+    await page.keyboard.press("Tab")
     await expect(tasks.columnBox("priority")).toBeFocused()
+    await page.keyboard.press("Shift+Tab")
     await page.keyboard.press("Shift+Tab")
     await page.keyboard.press("Space")
     await expect(tasks.header("status")).toBeVisible()
 
-    // out of the list at its end: it closes, and focus is on what comes
-    // after the button on the heading line, the first input of the
-    // argument line
-    await tasks.columnBox("reporter").focus()
+    // out of the list at its end, past "Reset widths": it closes, and focus
+    // is on what comes after the button on the heading line, the first
+    // input of the argument line
+    await width("reporter").focus()
+    await page.keyboard.press("Tab")
+    await expect(page.locator('[id="task-reset-widths"]')).toBeFocused()
     await page.keyboard.press("Tab")
     await expect(tasks.columnsList).toBeHidden()
     await expect.poll(() => tasks.columnsOpen()).toBe(false)
