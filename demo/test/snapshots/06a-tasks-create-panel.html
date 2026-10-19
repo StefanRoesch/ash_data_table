@@ -183,7 +183,6 @@
 <a class="btn btn-sm absolute z-30 not-focus:sr-only" href="#task-end" id="task-skip">
   Skip table Tasks
 </a>
-<span hidden="" id="task-editable">Editable: press Enter</span>
 <div class="overflow-x-auto outline-none" data-ash-data-table="" data-lead="2" data-select="multi" data-show-less="Show less" data-show-whole="Show all" data-table="task" id="task-grid" phx-hook=".Grid" tabindex="-1">
 <table aria-colcount="25" aria-label="Tasks" aria-rowcount="33" class="table " data-first-row="3" id="task-table" phx-update="stream" role="table">
 <thead id="task-head">
@@ -690,25 +689,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-1-c-title" role="rowheader" scope="row" tabindex="0">Task 30</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-1-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-1-c-title" role="rowheader" scope="row" tabindex="0">Task 30</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-1-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-1-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-1-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="0" id="task-row-uuid-1-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="0" id="task-row-uuid-1-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="0">
 </progress>0</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-1-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="true" id="task-row-uuid-1-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-1-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="true" id="task-row-uuid-1-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">✓</span>
 <span class="sr-only" data-unseen="">Yes</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-1-c-due_on" role="cell" tabindex="0">2026-03-03</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-1-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-1-c-due_on" role="cell" tabindex="0">2026-03-03</td>
+<td aria-colindex="10" id="task-row-uuid-1-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-1-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -726,17 +725,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-1-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-1-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-1-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-1-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-1-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-1-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-1-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-1-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-1-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-1-c-inserted_at" role="cell">2026-01-02T18:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-1-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-1-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-1-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-1-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-1-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-1-a" role="cell">
@@ -759,25 +758,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-2-c-title" role="rowheader" scope="row" tabindex="0">Task 29</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-2-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-2-c-title" role="rowheader" scope="row" tabindex="0">Task 29</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-2-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-2-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-2-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="90" id="task-row-uuid-2-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="90" id="task-row-uuid-2-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="90">
 </progress>90</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-2-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="false" id="task-row-uuid-2-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-2-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="false" id="task-row-uuid-2-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">–</span>
 <span class="sr-only" data-unseen="">No</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-2-c-due_on" role="cell" tabindex="0">2026-03-02</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-2-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-2-c-due_on" role="cell" tabindex="0">2026-03-02</td>
+<td aria-colindex="10" id="task-row-uuid-2-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-2-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -795,17 +794,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-2-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-2-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-2-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-2-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-2-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-2-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-2-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-2-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-2-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-2-c-inserted_at" role="cell">2026-01-02T17:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-2-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-2-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-2-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-2-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-2-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-2-a" role="cell">
@@ -828,25 +827,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-3-c-title" role="rowheader" scope="row" tabindex="0">Task 28</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-3-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-3-c-title" role="rowheader" scope="row" tabindex="0">Task 28</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-3-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-3-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-3-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="80" id="task-row-uuid-3-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="80" id="task-row-uuid-3-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="80">
 </progress>80</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-3-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="true" id="task-row-uuid-3-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-3-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="true" id="task-row-uuid-3-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">✓</span>
 <span class="sr-only" data-unseen="">Yes</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-3-c-due_on" role="cell" tabindex="0">2026-03-01</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-3-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-3-c-due_on" role="cell" tabindex="0">2026-03-01</td>
+<td aria-colindex="10" id="task-row-uuid-3-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-3-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -864,17 +863,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-3-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-3-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-3-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-3-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-3-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-3-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-3-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-3-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-3-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-3-c-inserted_at" role="cell">2026-01-02T16:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-3-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-3-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-3-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-3-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-3-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-3-a" role="cell">
@@ -897,25 +896,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-4-c-title" role="rowheader" scope="row" tabindex="0">Task 27</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-4-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-4-c-title" role="rowheader" scope="row" tabindex="0">Task 27</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-4-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-4-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-4-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="70" id="task-row-uuid-4-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="70" id="task-row-uuid-4-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="70">
 </progress>70</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-4-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="false" id="task-row-uuid-4-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-4-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="false" id="task-row-uuid-4-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">–</span>
 <span class="sr-only" data-unseen="">No</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-4-c-due_on" role="cell" tabindex="0">2026-02-28</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-4-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-4-c-due_on" role="cell" tabindex="0">2026-02-28</td>
+<td aria-colindex="10" id="task-row-uuid-4-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-4-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -933,17 +932,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-4-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-4-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-4-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-4-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-4-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-4-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-4-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-4-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-4-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-4-c-inserted_at" role="cell">2026-01-02T15:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-4-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-4-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-4-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-4-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-4-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-4-a" role="cell">
@@ -966,25 +965,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-5-c-title" role="rowheader" scope="row" tabindex="0">Task 26</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-5-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-5-c-title" role="rowheader" scope="row" tabindex="0">Task 26</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-5-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-5-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-5-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="60" id="task-row-uuid-5-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="60" id="task-row-uuid-5-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="60">
 </progress>60</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-5-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="true" id="task-row-uuid-5-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-5-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="true" id="task-row-uuid-5-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">✓</span>
 <span class="sr-only" data-unseen="">Yes</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-5-c-due_on" role="cell" tabindex="0">2026-02-27</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-5-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-5-c-due_on" role="cell" tabindex="0">2026-02-27</td>
+<td aria-colindex="10" id="task-row-uuid-5-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-5-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -1002,17 +1001,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-5-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-5-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-5-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-5-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-5-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-5-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-5-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-5-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-5-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-5-c-inserted_at" role="cell">2026-01-02T14:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-5-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-5-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-5-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-5-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-5-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-5-a" role="cell">
@@ -1035,25 +1034,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-6-c-title" role="rowheader" scope="row" tabindex="0">Task 25</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-6-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-6-c-title" role="rowheader" scope="row" tabindex="0">Task 25</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-6-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-6-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-6-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="50" id="task-row-uuid-6-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="50" id="task-row-uuid-6-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="50">
 </progress>50</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-6-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="false" id="task-row-uuid-6-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-6-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="false" id="task-row-uuid-6-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">–</span>
 <span class="sr-only" data-unseen="">No</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-6-c-due_on" role="cell" tabindex="0">2026-02-26</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-6-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-6-c-due_on" role="cell" tabindex="0">2026-02-26</td>
+<td aria-colindex="10" id="task-row-uuid-6-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-6-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -1071,17 +1070,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-6-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-6-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-6-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-6-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-6-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-6-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-6-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-6-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-6-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-6-c-inserted_at" role="cell">2026-01-02T13:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-6-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-6-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-6-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-6-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-6-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-6-a" role="cell">
@@ -1104,25 +1103,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-7-c-title" role="rowheader" scope="row" tabindex="0">Task 24</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-7-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-7-c-title" role="rowheader" scope="row" tabindex="0">Task 24</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-7-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-7-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-7-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="40" id="task-row-uuid-7-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="40" id="task-row-uuid-7-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="40">
 </progress>40</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-7-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="true" id="task-row-uuid-7-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-7-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="true" id="task-row-uuid-7-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">✓</span>
 <span class="sr-only" data-unseen="">Yes</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-7-c-due_on" role="cell" tabindex="0">2026-02-25</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-7-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-7-c-due_on" role="cell" tabindex="0">2026-02-25</td>
+<td aria-colindex="10" id="task-row-uuid-7-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-7-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -1140,17 +1139,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-7-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-7-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-7-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-7-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-7-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-7-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-7-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-7-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-7-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-7-c-inserted_at" role="cell">2026-01-02T12:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-7-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-7-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-7-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-7-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-7-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-7-a" role="cell">
@@ -1173,25 +1172,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-8-c-title" role="rowheader" scope="row" tabindex="0">Task 23</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-8-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-8-c-title" role="rowheader" scope="row" tabindex="0">Task 23</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-8-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-8-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-8-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="30" id="task-row-uuid-8-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="30" id="task-row-uuid-8-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="30">
 </progress>30</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-8-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="false" id="task-row-uuid-8-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-8-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="false" id="task-row-uuid-8-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">–</span>
 <span class="sr-only" data-unseen="">No</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-8-c-due_on" role="cell" tabindex="0">2026-02-24</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-8-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-8-c-due_on" role="cell" tabindex="0">2026-02-24</td>
+<td aria-colindex="10" id="task-row-uuid-8-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-8-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -1209,17 +1208,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-8-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-8-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-8-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-8-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-8-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-8-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-8-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-8-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-8-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-8-c-inserted_at" role="cell">2026-01-02T11:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-8-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-8-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-8-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-8-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-8-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-8-a" role="cell">
@@ -1242,25 +1241,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-9-c-title" role="rowheader" scope="row" tabindex="0">Task 22</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-9-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-9-c-title" role="rowheader" scope="row" tabindex="0">Task 22</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-9-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-9-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-9-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="20" id="task-row-uuid-9-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="20" id="task-row-uuid-9-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="20">
 </progress>20</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-9-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="true" id="task-row-uuid-9-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-9-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="true" id="task-row-uuid-9-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">✓</span>
 <span class="sr-only" data-unseen="">Yes</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-9-c-due_on" role="cell" tabindex="0">2026-02-23</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-9-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-9-c-due_on" role="cell" tabindex="0">2026-02-23</td>
+<td aria-colindex="10" id="task-row-uuid-9-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-9-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -1278,17 +1277,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-9-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-9-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-9-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-9-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-9-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-9-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-9-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-9-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-9-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-9-c-inserted_at" role="cell">2026-01-02T10:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-9-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-9-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-9-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-9-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-9-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-9-a" role="cell">
@@ -1311,25 +1310,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-10-c-title" role="rowheader" scope="row" tabindex="0">Task 21</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-10-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-10-c-title" role="rowheader" scope="row" tabindex="0">Task 21</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-10-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-10-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-10-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="10" id="task-row-uuid-10-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="10" id="task-row-uuid-10-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="10">
 </progress>10</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-10-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="false" id="task-row-uuid-10-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-10-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="false" id="task-row-uuid-10-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">–</span>
 <span class="sr-only" data-unseen="">No</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-10-c-due_on" role="cell" tabindex="0">2026-02-22</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-10-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-10-c-due_on" role="cell" tabindex="0">2026-02-22</td>
+<td aria-colindex="10" id="task-row-uuid-10-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-10-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -1347,17 +1346,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-10-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-10-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-10-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-10-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-10-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-10-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-10-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-10-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-10-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-10-c-inserted_at" role="cell">2026-01-02T09:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-10-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-10-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-10-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-10-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-10-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-10-a" role="cell">
@@ -1380,25 +1379,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-11-c-title" role="rowheader" scope="row" tabindex="0">Task 20</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-11-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-11-c-title" role="rowheader" scope="row" tabindex="0">Task 20</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-11-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-11-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-11-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="0" id="task-row-uuid-11-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="0" id="task-row-uuid-11-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="0">
 </progress>0</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-11-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="true" id="task-row-uuid-11-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-11-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="true" id="task-row-uuid-11-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">✓</span>
 <span class="sr-only" data-unseen="">Yes</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-11-c-due_on" role="cell" tabindex="0">2026-02-21</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-11-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-11-c-due_on" role="cell" tabindex="0">2026-02-21</td>
+<td aria-colindex="10" id="task-row-uuid-11-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-11-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -1416,17 +1415,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-11-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-11-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-11-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-11-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-11-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-11-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-11-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-11-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-11-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-11-c-inserted_at" role="cell">2026-01-02T08:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-11-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-11-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-11-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-11-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-11-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-11-a" role="cell">
@@ -1449,25 +1448,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-12-c-title" role="rowheader" scope="row" tabindex="0">Task 19</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-12-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-12-c-title" role="rowheader" scope="row" tabindex="0">Task 19</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-12-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-12-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-12-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="90" id="task-row-uuid-12-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="90" id="task-row-uuid-12-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="90">
 </progress>90</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-12-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="false" id="task-row-uuid-12-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-12-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="false" id="task-row-uuid-12-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">–</span>
 <span class="sr-only" data-unseen="">No</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-12-c-due_on" role="cell" tabindex="0">2026-02-20</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-12-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-12-c-due_on" role="cell" tabindex="0">2026-02-20</td>
+<td aria-colindex="10" id="task-row-uuid-12-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-12-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -1485,17 +1484,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-12-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-12-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-12-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-12-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-12-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-12-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-12-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-12-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-12-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-12-c-inserted_at" role="cell">2026-01-02T07:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-12-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-12-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-12-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-12-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-12-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-12-a" role="cell">
@@ -1518,25 +1517,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-13-c-title" role="rowheader" scope="row" tabindex="0">Task 18</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-13-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-13-c-title" role="rowheader" scope="row" tabindex="0">Task 18</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-13-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-13-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-13-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="80" id="task-row-uuid-13-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="80" id="task-row-uuid-13-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="80">
 </progress>80</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-13-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="true" id="task-row-uuid-13-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-13-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="true" id="task-row-uuid-13-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">✓</span>
 <span class="sr-only" data-unseen="">Yes</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-13-c-due_on" role="cell" tabindex="0">2026-02-19</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-13-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-13-c-due_on" role="cell" tabindex="0">2026-02-19</td>
+<td aria-colindex="10" id="task-row-uuid-13-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-13-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -1554,17 +1553,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-13-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-13-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-13-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-13-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-13-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-13-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-13-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-13-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-13-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-13-c-inserted_at" role="cell">2026-01-02T06:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-13-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-13-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-13-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-13-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-13-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-13-a" role="cell">
@@ -1587,25 +1586,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-14-c-title" role="rowheader" scope="row" tabindex="0">Task 17</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-14-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-14-c-title" role="rowheader" scope="row" tabindex="0">Task 17</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-14-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-14-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-14-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="70" id="task-row-uuid-14-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="70" id="task-row-uuid-14-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="70">
 </progress>70</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-14-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="false" id="task-row-uuid-14-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-14-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="false" id="task-row-uuid-14-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">–</span>
 <span class="sr-only" data-unseen="">No</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-14-c-due_on" role="cell" tabindex="0">2026-02-18</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-14-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-14-c-due_on" role="cell" tabindex="0">2026-02-18</td>
+<td aria-colindex="10" id="task-row-uuid-14-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-14-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -1623,17 +1622,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-14-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-14-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-14-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-14-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-14-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-14-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-14-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-14-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-14-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-14-c-inserted_at" role="cell">2026-01-02T05:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-14-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-14-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-14-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-14-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-14-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-14-a" role="cell">
@@ -1656,25 +1655,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-15-c-title" role="rowheader" scope="row" tabindex="0">Task 16</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-15-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-15-c-title" role="rowheader" scope="row" tabindex="0">Task 16</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-15-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-15-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-15-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="60" id="task-row-uuid-15-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="60" id="task-row-uuid-15-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="60">
 </progress>60</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-15-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="true" id="task-row-uuid-15-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-15-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="true" id="task-row-uuid-15-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">✓</span>
 <span class="sr-only" data-unseen="">Yes</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-15-c-due_on" role="cell" tabindex="0">2026-02-17</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-15-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-15-c-due_on" role="cell" tabindex="0">2026-02-17</td>
+<td aria-colindex="10" id="task-row-uuid-15-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-15-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -1692,17 +1691,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-15-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-15-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-15-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-15-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-15-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-15-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-15-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-15-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-15-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-15-c-inserted_at" role="cell">2026-01-02T04:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-15-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-15-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-15-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-15-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-15-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-15-a" role="cell">
@@ -1725,25 +1724,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-16-c-title" role="rowheader" scope="row" tabindex="0">Task 15</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-16-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-16-c-title" role="rowheader" scope="row" tabindex="0">Task 15</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-16-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-16-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-16-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="50" id="task-row-uuid-16-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="50" id="task-row-uuid-16-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="50">
 </progress>50</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-16-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="false" id="task-row-uuid-16-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-16-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="false" id="task-row-uuid-16-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">–</span>
 <span class="sr-only" data-unseen="">No</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-16-c-due_on" role="cell" tabindex="0">2026-02-16</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-16-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-16-c-due_on" role="cell" tabindex="0">2026-02-16</td>
+<td aria-colindex="10" id="task-row-uuid-16-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-16-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -1761,17 +1760,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-16-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-16-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-16-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-16-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-16-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-16-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-16-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-16-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-16-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-16-c-inserted_at" role="cell">2026-01-02T03:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-16-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-16-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-16-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-16-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-16-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-16-a" role="cell">
@@ -1794,25 +1793,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-17-c-title" role="rowheader" scope="row" tabindex="0">Task 14</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-17-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-17-c-title" role="rowheader" scope="row" tabindex="0">Task 14</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-17-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-17-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-17-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="40" id="task-row-uuid-17-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="40" id="task-row-uuid-17-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="40">
 </progress>40</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-17-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="true" id="task-row-uuid-17-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-17-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="true" id="task-row-uuid-17-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">✓</span>
 <span class="sr-only" data-unseen="">Yes</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-17-c-due_on" role="cell" tabindex="0">2026-02-15</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-17-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-17-c-due_on" role="cell" tabindex="0">2026-02-15</td>
+<td aria-colindex="10" id="task-row-uuid-17-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-17-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -1830,17 +1829,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-17-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-17-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-17-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-17-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-17-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-17-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-17-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-17-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-17-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-17-c-inserted_at" role="cell">2026-01-02T02:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-17-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-17-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-17-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-17-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-17-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-17-a" role="cell">
@@ -1863,25 +1862,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-18-c-title" role="rowheader" scope="row" tabindex="0">Task 13</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-18-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-18-c-title" role="rowheader" scope="row" tabindex="0">Task 13</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-18-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-18-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-18-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="30" id="task-row-uuid-18-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="30" id="task-row-uuid-18-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="30">
 </progress>30</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-18-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="false" id="task-row-uuid-18-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-18-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="false" id="task-row-uuid-18-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">–</span>
 <span class="sr-only" data-unseen="">No</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-18-c-due_on" role="cell" tabindex="0">2026-02-14</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-18-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-18-c-due_on" role="cell" tabindex="0">2026-02-14</td>
+<td aria-colindex="10" id="task-row-uuid-18-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-18-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -1899,17 +1898,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-18-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-18-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-18-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-18-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-18-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-18-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-18-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-18-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-18-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-18-c-inserted_at" role="cell">2026-01-02T01:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-18-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-18-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-18-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-18-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-18-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-18-a" role="cell">
@@ -1932,25 +1931,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-19-c-title" role="rowheader" scope="row" tabindex="0">Task 12</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-19-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-19-c-title" role="rowheader" scope="row" tabindex="0">Task 12</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-19-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-19-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-19-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="20" id="task-row-uuid-19-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="20" id="task-row-uuid-19-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="20">
 </progress>20</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-19-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="true" id="task-row-uuid-19-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-19-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="true" id="task-row-uuid-19-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">✓</span>
 <span class="sr-only" data-unseen="">Yes</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-19-c-due_on" role="cell" tabindex="0">2026-02-13</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-19-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-19-c-due_on" role="cell" tabindex="0">2026-02-13</td>
+<td aria-colindex="10" id="task-row-uuid-19-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-19-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -1968,17 +1967,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-19-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-19-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-19-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-19-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-19-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-19-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-19-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-19-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-19-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-19-c-inserted_at" role="cell">2026-01-02T00:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-19-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-19-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-19-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-19-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-19-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-19-a" role="cell">
@@ -2001,25 +2000,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-20-c-title" role="rowheader" scope="row" tabindex="0">Task 11</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-20-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-20-c-title" role="rowheader" scope="row" tabindex="0">Task 11</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-20-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-20-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-20-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="10" id="task-row-uuid-20-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="10" id="task-row-uuid-20-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="10">
 </progress>10</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-20-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="false" id="task-row-uuid-20-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-20-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="false" id="task-row-uuid-20-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">–</span>
 <span class="sr-only" data-unseen="">No</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-20-c-due_on" role="cell" tabindex="0">2026-02-12</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-20-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-20-c-due_on" role="cell" tabindex="0">2026-02-12</td>
+<td aria-colindex="10" id="task-row-uuid-20-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-20-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -2037,17 +2036,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-20-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-20-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-20-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-20-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-20-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-20-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-20-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-20-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-20-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-20-c-inserted_at" role="cell">2026-01-01T23:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-20-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-20-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-20-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-20-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-20-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-20-a" role="cell">
@@ -2070,25 +2069,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-21-c-title" role="rowheader" scope="row" tabindex="0">Task 10</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-21-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-21-c-title" role="rowheader" scope="row" tabindex="0">Task 10</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-21-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-21-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-21-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="0" id="task-row-uuid-21-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="0" id="task-row-uuid-21-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="0">
 </progress>0</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-21-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="true" id="task-row-uuid-21-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-21-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="true" id="task-row-uuid-21-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">✓</span>
 <span class="sr-only" data-unseen="">Yes</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-21-c-due_on" role="cell" tabindex="0">2026-02-11</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-21-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-21-c-due_on" role="cell" tabindex="0">2026-02-11</td>
+<td aria-colindex="10" id="task-row-uuid-21-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-21-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -2106,17 +2105,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-21-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-21-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-21-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-21-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-21-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-21-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-21-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-21-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-21-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-21-c-inserted_at" role="cell">2026-01-01T22:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-21-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-21-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-21-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-21-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-21-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-21-a" role="cell">
@@ -2139,25 +2138,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-22-c-title" role="rowheader" scope="row" tabindex="0">Task 09</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-22-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-22-c-title" role="rowheader" scope="row" tabindex="0">Task 09</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-22-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-22-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-22-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="90" id="task-row-uuid-22-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="90" id="task-row-uuid-22-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="90">
 </progress>90</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-22-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="false" id="task-row-uuid-22-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-22-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="false" id="task-row-uuid-22-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">–</span>
 <span class="sr-only" data-unseen="">No</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-22-c-due_on" role="cell" tabindex="0">2026-02-10</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-22-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-22-c-due_on" role="cell" tabindex="0">2026-02-10</td>
+<td aria-colindex="10" id="task-row-uuid-22-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-22-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -2175,17 +2174,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-22-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-22-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-22-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-22-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-22-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-22-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-22-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-22-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-22-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-22-c-inserted_at" role="cell">2026-01-01T21:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-22-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-22-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-22-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-22-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-22-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-22-a" role="cell">
@@ -2208,25 +2207,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-23-c-title" role="rowheader" scope="row" tabindex="0">Task 08</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-23-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-23-c-title" role="rowheader" scope="row" tabindex="0">Task 08</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-23-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-23-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-23-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="80" id="task-row-uuid-23-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="80" id="task-row-uuid-23-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="80">
 </progress>80</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-23-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="true" id="task-row-uuid-23-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-23-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="true" id="task-row-uuid-23-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">✓</span>
 <span class="sr-only" data-unseen="">Yes</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-23-c-due_on" role="cell" tabindex="0">2026-02-09</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-23-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-23-c-due_on" role="cell" tabindex="0">2026-02-09</td>
+<td aria-colindex="10" id="task-row-uuid-23-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-23-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -2244,17 +2243,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-23-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-23-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-23-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-23-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-23-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-23-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-23-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-23-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-23-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-23-c-inserted_at" role="cell">2026-01-01T20:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-23-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-23-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-23-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-23-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-23-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-23-a" role="cell">
@@ -2277,25 +2276,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-24-c-title" role="rowheader" scope="row" tabindex="0">Task 07</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-24-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-24-c-title" role="rowheader" scope="row" tabindex="0">Task 07</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-24-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-24-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-24-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="70" id="task-row-uuid-24-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="70" id="task-row-uuid-24-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="70">
 </progress>70</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-24-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="false" id="task-row-uuid-24-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-24-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="false" id="task-row-uuid-24-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">–</span>
 <span class="sr-only" data-unseen="">No</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-24-c-due_on" role="cell" tabindex="0">2026-02-08</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-24-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-24-c-due_on" role="cell" tabindex="0">2026-02-08</td>
+<td aria-colindex="10" id="task-row-uuid-24-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-24-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -2313,17 +2312,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-24-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-24-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-24-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-24-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-24-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-24-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-24-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-24-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-24-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-24-c-inserted_at" role="cell">2026-01-01T19:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-24-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-24-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-24-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-24-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-24-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-24-a" role="cell">
@@ -2346,25 +2345,25 @@
 <button aria-expanded="false" aria-label="Related records" type="button">
 </button>
 </td>
-<th aria-colindex="3" aria-describedby="task-editable" class="text-start font-normal" id="task-row-uuid-25-c-title" role="rowheader" scope="row" tabindex="0">Task 06</th>
-<td aria-colindex="4" aria-describedby="task-editable" data-value="in_progress" id="task-row-uuid-25-c-status" role="cell" tabindex="0">
+<th aria-colindex="3" class="text-start font-normal" id="task-row-uuid-25-c-title" role="rowheader" scope="row" tabindex="0">Task 06</th>
+<td aria-colindex="4" data-value="in_progress" id="task-row-uuid-25-c-status" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
 </td>
-<td aria-colindex="5" aria-describedby="task-editable" data-value="medium" id="task-row-uuid-25-c-priority" role="cell" tabindex="0">
+<td aria-colindex="5" data-value="medium" id="task-row-uuid-25-c-priority" role="cell" tabindex="0">
 <span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
 </td>
-<td aria-colindex="6" aria-describedby="task-editable" data-value="60" id="task-row-uuid-25-c-progress" role="cell" tabindex="0">
+<td aria-colindex="6" data-value="60" id="task-row-uuid-25-c-progress" role="cell" tabindex="0">
 <span class="flex items-center gap-2">
 <progress aria-hidden="true" class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" max="100" value="60">
 </progress>60</span>
 </td>
-<td aria-colindex="7" aria-describedby="task-editable" data-value="12.5" id="task-row-uuid-25-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
-<td aria-colindex="8" aria-describedby="task-editable" data-value="true" id="task-row-uuid-25-c-billable?" role="cell" tabindex="0">
+<td aria-colindex="7" data-value="12.5" id="task-row-uuid-25-c-estimate_hours" role="cell" tabindex="0">12.5 h</td>
+<td aria-colindex="8" data-value="true" id="task-row-uuid-25-c-billable?" role="cell" tabindex="0">
 <span aria-hidden="true">✓</span>
 <span class="sr-only" data-unseen="">Yes</span>
 </td>
-<td aria-colindex="9" aria-describedby="task-editable" id="task-row-uuid-25-c-due_on" role="cell" tabindex="0">2026-02-07</td>
-<td aria-colindex="10" aria-describedby="task-editable" id="task-row-uuid-25-c-completed_at" role="cell" tabindex="0">
+<td aria-colindex="9" id="task-row-uuid-25-c-due_on" role="cell" tabindex="0">2026-02-07</td>
+<td aria-colindex="10" id="task-row-uuid-25-c-completed_at" role="cell" tabindex="0">
 </td>
 <td aria-colindex="11" id="task-row-uuid-25-c-overdue?" role="cell">
 <span aria-hidden="true">✓</span>
@@ -2382,17 +2381,17 @@
 </td>
 <td aria-colindex="16" id="task-row-uuid-25-c-external_ref" role="cell">
 </td>
-<td aria-colindex="17" aria-describedby="task-editable" id="task-row-uuid-25-c-description" role="cell" tabindex="0">
+<td aria-colindex="17" id="task-row-uuid-25-c-description" role="cell" tabindex="0">
 </td>
-<td aria-colindex="18" aria-describedby="task-editable" id="task-row-uuid-25-c-tags" role="cell" tabindex="0">
+<td aria-colindex="18" id="task-row-uuid-25-c-tags" role="cell" tabindex="0">
 </td>
-<td aria-colindex="19" aria-describedby="task-editable" id="task-row-uuid-25-c-checks" role="cell" tabindex="0">
+<td aria-colindex="19" id="task-row-uuid-25-c-checks" role="cell" tabindex="0">
 </td>
-<td aria-colindex="20" aria-describedby="task-editable" id="task-row-uuid-25-c-recurrence" role="cell" tabindex="0">
+<td aria-colindex="20" id="task-row-uuid-25-c-recurrence" role="cell" tabindex="0">
 </td>
 <td aria-colindex="21" id="task-row-uuid-25-c-inserted_at" role="cell">2026-01-01T18:00:00</td>
-<td aria-colindex="22" aria-describedby="task-editable" id="task-row-uuid-25-c-project" role="cell" tabindex="0">Project 1</td>
-<td aria-colindex="23" aria-describedby="task-editable" id="task-row-uuid-25-c-assignee" role="cell" tabindex="0">
+<td aria-colindex="22" id="task-row-uuid-25-c-project" role="cell" tabindex="0">Project 1</td>
+<td aria-colindex="23" id="task-row-uuid-25-c-assignee" role="cell" tabindex="0">
 </td>
 <td aria-colindex="24" id="task-row-uuid-25-c-reporter" role="cell">Hana Graf</td>
 <td aria-colindex="25" data-actions="" id="task-row-uuid-25-a" role="cell">

@@ -228,7 +228,6 @@ defmodule AshDataTable.Kit.Words do
   defp words(:grid, %{label: label}) do
     [
       skip_table: t(:skip_table, name: label),
-      editable: t(:editable),
       select_page: t(:select_page),
       select_row: t(:select_row),
       related_records: t(:related_records),

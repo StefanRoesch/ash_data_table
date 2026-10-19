@@ -582,9 +582,5 @@ msgid "read-only"
 msgstr ""
 
 #, elixir-autogen, elixir-format
-msgid "Editable: press Enter"
-msgstr ""
-
-#, elixir-autogen, elixir-format
 msgid "Skip table %{name}"
 msgstr ""

@@ -468,9 +468,7 @@ defmodule AshDataTable.Attrs do
   #     table `data-nested`;
   #   * a failed cell, and a failed actions cell: `data-failed` and
   #     `aria-describedby`, which names the message, a child of the cell
-  #     after what it shows, `ID-…-error` (an editable cell's names
-  #     `ID-editable` besides, the text out of sight that says it can be
-  #     edited);
+  #     after what it shows, `ID-…-error`;
   #   * a sensitive cell: `button[data-reveal]`, `[data-mask]`,
   #     `[data-masked]`, `[data-secret]`;
   #   * the editor of a column: `template` `ID-editor-FIELD` (`data-editor`,
@@ -1104,13 +1102,6 @@ defmodule AshDataTable.Attrs do
   """
   def skip_target(id), do: %{"id" => Ids.skip_target(id), "tabindex" => "-1"}
 
-  @doc """
-  The text out of sight that every editable cell of the table is described
-  by (`Ids.editable/1`, in the cell's `aria-describedby`): the `grid`
-  part's `texts.editable`.
-  """
-  def editable(id), do: %{"id" => Ids.editable(id), "hidden" => true}
-
   @doc "What a column's header says of the sort (`aria-sort`): `ascending`, `descending` or `none`."
   def aria_sort({name, :asc}, %{name: name}), do: "ascending"
   def aria_sort({name, :desc}, %{name: name}), do: "descending"
@@ -1156,13 +1147,12 @@ defmodule AshDataTable.Attrs do
   it says about editing, for people and for the hook:
 
     * on a cell that can be edited, `tabindex="0"`: it is a Tab stop, the
-      only cell that is (a read-only cell is none), and `aria-describedby`
-      names the table's text that says so (`editable/1`);
+      only cell that is (a read-only cell is none);
     * `data-value` where the editor's value is not the text the cell shows:
       a choice and a boolean, a cell whose content is a component's, and a
       cell whose save failed, which shows what was typed;
     * on a cell whose save failed, also `data-failed`, `aria-describedby`
-      naming the action's message too, and `data-saved`, the value the
+      naming the action's message, and `data-saved`, the value the
       record still has, which the hook compares with what is typed next.
 
   A cell of a sensitive column says that its editor holds nothing

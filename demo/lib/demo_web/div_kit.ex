@@ -27,7 +27,6 @@ defmodule DemoWeb.DivKit do
     <a {Attrs.skip(@id)} class="link absolute z-30 bg-base-100 not-focus:sr-only">
       {@texts.skip_table}
     </a>
-    <span :if={@editing?} {Attrs.editable(@id)}>{@texts.editable}</span>
     <div
       {Attrs.grid(@id, @myself, @lead, @selecting, @choose, @texts)}
       class={@kit.class(:grid, %{nested?: @nested?})}

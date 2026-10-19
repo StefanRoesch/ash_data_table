@@ -115,14 +115,6 @@ defmodule AshDataTable.Ids do
   @spec skip_target(String.t()) :: String.t()
   def skip_target(id), do: "#{id}-end"
 
-  @doc """
-  The text, out of sight, that describes every editable cell of a table
-  ("Editable: press Enter"), which their `aria-describedby` names:
-  `ID-editable`.
-  """
-  @spec editable(String.t()) :: String.t()
-  def editable(id), do: "#{id}-editable"
-
   @doc "The filter row, the header's second: `ID-filter-row`."
   @spec filter_row(String.t()) :: String.t()
   def filter_row(id), do: "#{id}-filter-row"

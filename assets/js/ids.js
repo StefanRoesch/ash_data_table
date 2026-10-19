@@ -25,7 +25,6 @@ export const headerCell = (id, name) => `${id}-head-${name}`
 export const sort = (id, name) => `${id}-sort-${name}`
 export const skip = id => `${id}-skip`
 export const skipTarget = id => `${id}-end`
-export const editable = id => `${id}-editable`
 export const filterRow = id => `${id}-filter-row`
 export const filters = id => `${id}-filters`
 export const editor = (id, name) => `${id}-editor-${name}`

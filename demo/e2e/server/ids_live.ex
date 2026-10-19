@@ -32,7 +32,6 @@ defmodule DemoWeb.E2E.IdsLive do
     {:sort, ["tasks", "title"]},
     {:skip, ["tasks"]},
     {:skip_target, ["tasks"]},
-    {:editable, ["tasks"]},
     {:filter_row, ["tasks"]},
     {:filters, ["tasks"]},
     {:editor, ["tasks", "title"]},

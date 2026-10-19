@@ -122,8 +122,7 @@ declared in the resource and mounted with one line in the router.
   `aria-multiselectable` (`Attrs.table/8`), no `aria-readonly`, and a
   failed cell says `data-failed` in place of `aria-invalid`. Every control
   is a Tab stop of its own, with no `tabindex`; an editable cell is one
-  (`tabindex="0"` in its item's `attrs`, described by the table's
-  "Editable: press Enter", `Attrs.editable/1`); a read-only cell, a header
+  (`tabindex="0"` in its item's `attrs`); a read-only cell, a header
   that does not sort and a cell that holds controls are none. A sortable
   header holds a button (`Attrs.sort/3`, `Ids.sort/2`, the `header_cell`
   part's `button`; `Attrs.column_header/3`). The `grid` part draws "Skip

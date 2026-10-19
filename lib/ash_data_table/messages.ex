@@ -110,9 +110,6 @@ defmodule AshDataTable.Messages do
     # that jumps past the table to after its pages, with the table's name:
     # "Skip table Tasks", in a nested table "Skip table Comments".
     skip_table: {[:name], dgettext_noop("ash_data_table", "Skip table %{name}")},
-    # What a screen reader is told of a cell that can be edited, after its
-    # value: once per table, out of sight, named by every editable cell.
-    editable: {[], dgettext_noop("ash_data_table", "Editable: press Enter")},
     # the create button, and the heading of its panel: "New task"
     new_record: {[:name], dgettext_noop("ash_data_table", "New %{name}")},
     # the buttons of the action panel that run a row action and a create action

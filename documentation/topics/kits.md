@@ -234,8 +234,7 @@ browser moves the focus with Tab, from control to control in the order they
 stand in, nested tables included. So a part writes no `tabindex` on a
 control: a box, a button, a link, a menu or an input is a stop by itself. A
 cell is no stop, but an editable one, whose item's `attrs` hold
-`tabindex="0"` (and the `aria-describedby` that says it can be edited);
-a summary cell, as above, has none. Nor does a header: a column that sorts
+`tabindex="0"`; a summary cell, as above, has none. Nor does a header: a column that sorts
 has a button in its header, which is the stop. The `grid` part draws a link
 "Skip table …" before the header row (`Attrs.skip/1`), and the `root` part
 the place it jumps to after the table's pages (`Attrs.skip_target/1`). The

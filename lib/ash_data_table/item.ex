@@ -70,9 +70,9 @@ defmodule AshDataTable.Item do
     * `failure` - after a save failed: `typed` (what was typed, `""` for a
       sensitive column), `text` and `message` (what the action said);
       else nil
-    * `attrs` - the cell's attributes that vary (`tabindex` and
-      `aria-describedby` on a cell that can be edited, `data-failed`,
-      `data-value`, `data-saved`, see `AshDataTable.Attrs.cell/2`)
+    * `attrs` - the cell's attributes that vary (`tabindex` on a cell that
+      can be edited, `data-failed` and `aria-describedby` on one whose save
+      failed, `data-value`, `data-saved`, see `AshDataTable.Attrs.cell/2`)
 
   A masked cell has no `text` and no `value`: nothing of a sensitive value
   is in an item (the row is scrubbed before, `AshDataTable.Present`).
@@ -141,14 +141,13 @@ defmodule AshDataTable.Item do
 
   @doc """
   The item of a record's row, of a `Present.Row` (scrubbed): `model` the
-  table's, `table` what the table says of all its rows: `id` (the table's),
-  `time_zone` (the page's), `editing?` (whether the table offers editing
-  at all) and `selecting` (`:single`, `:multi` or nil). Its texts are said
-  in the locale of this process.
+  table's, `table` what the table says of all its rows: `time_zone` (the
+  page's), `editing?` (whether the table offers editing at all) and
+  `selecting` (`:single`, `:multi` or nil). Its texts are said in the
+  locale of this process.
   """
   @spec row(map, Present.Row.t(), map) :: t
   def row(model, %Present.Row{} = row, %{
-        id: id,
         time_zone: zone,
         editing?: editing?,
         selecting: selecting
@@ -168,7 +167,7 @@ defmodule AshDataTable.Item do
         }),
       cells:
         Map.new(model.columns, fn column ->
-          {column.name, cell(column, row.cells[column.name], row.dom_id, zone, editing? && id)}
+          {column.name, cell(column, row.cells[column.name], row.dom_id, zone, editing?)}
         end)
     }
   end
@@ -205,8 +204,7 @@ defmodule AshDataTable.Item do
     }
   end
 
-  # `editing` is the table's id where it offers editing, else false.
-  defp cell(column, cell, dom_id, zone, editing) do
+  defp cell(column, cell, dom_id, zone, editing?) do
     {state, value} = held_state(column, cell)
 
     %{
@@ -215,7 +213,7 @@ defmodule AshDataTable.Item do
       value: value,
       editable: cell.editable?,
       failure: cell.failure && Map.put(said(cell.failure.message), :typed, cell.failure.typed),
-      attrs: plain(Map.new(editing(editing, Ids.cell(dom_id, column.name), column, cell, zone)))
+      attrs: plain(Map.new(editing(editing?, Ids.cell(dom_id, column.name), column, cell, zone)))
     }
   end
 
@@ -247,23 +245,17 @@ defmodule AshDataTable.Item do
   # What a cell says about editing, for people and for the hook
   # (`AshDataTable.Attrs.cell/2` documents each). A read-only cell says
   # nothing: it is no Tab stop. An editable one is (`tabindex="0"`), and is
-  # described by the table's text that says it can be edited, and by its
-  # message where its save failed.
+  # described by its message where its save failed.
   defp editing(false, _id, _column, _cell, _zone), do: []
-  defp editing(_table, _id, _column, %{editable?: false}, _zone), do: []
+  defp editing(true, _id, _column, %{editable?: false}, _zone), do: []
 
-  defp editing(table, id, column, cell, zone) do
-    editable = Ids.editable(table)
-
-    [{"tabindex", "0"}, {"aria-describedby", described(editable, id, cell.failure)}] ++
+  defp editing(true, id, column, cell, zone) do
+    [{"tabindex", "0"}] ++
       case cell.failure do
         nil -> held_value(column, cell, zone)
-        failure -> failed(column, cell, failure, zone)
+        failure -> [{"aria-describedby", Ids.error(id)} | failed(column, cell, failure, zone)]
       end
   end
-
-  defp described(editable, _id, nil), do: editable
-  defp described(editable, id, _failure), do: editable <> " " <> Ids.error(id)
 
   # What the editor of a cell holds where it is not the text the cell shows.
   # A reference cell has no editor that holds a value: it is edited in the

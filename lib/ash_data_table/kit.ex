@@ -146,8 +146,7 @@ defmodule AshDataTable.Kit do
   row and its form (`Ids.filter_row/1`, `Ids.filters/1`), a row's selection
   box (`Ids.selector/1`), a column's sort button (`Ids.sort/2`), an
   editor's template (`Ids.editor/2`), a failed cell's message
-  (`Ids.error/1`), the text that describes an editable cell
-  (`Ids.editable/1`), the skip link and where it jumps to (`Ids.skip/1`,
+  (`Ids.error/1`), the skip link and where it jumps to (`Ids.skip/1`,
   `Ids.skip_target/1`) and the question (`Ids.dialog/1`). The other ids
   below are the table's id and a suffix.
 
@@ -241,9 +240,7 @@ defmodule AshDataTable.Kit do
       `data-lead`, `data-select`, `data-choose`, `data-chosen-rows`), its
       sender (`data-sender`) before it, the skip link "Skip table NAME"
       before the header row (`Attrs.skip/1`, seen only while it has the
-      focus, its text `texts.skip_table`), where the table offers editing
-      the text that describes its editable cells (`Attrs.editable/1`,
-      `texts.editable`), the `role=table` element `ID-table`
+      focus, its text `texts.skip_table`), the `role=table` element `ID-table`
       (`data-first-row`) with `ID-head` and its two rows, the filter row's
       form `ID-filters` (the filter row and its form only where
       `Attrs.filter_row?/1` says so: else `ID-head` has one row), a `role=rowgroup` element per item of the stream
@@ -329,8 +326,9 @@ defmodule AshDataTable.Kit do
       the box's `data-selector` (`Ids.selector/1`), the expander's
       `data-expander` (`Ids.expander/1`, a button with `aria-expanded`),
       and per column (`Ids.cell/2`) the bundle `Attrs.cell/2`
-      (`tabindex="0"` and `aria-describedby` on an editable cell,
-      `data-value`, `data-saved`, `data-failed`, `data-lines`, …); what a
+      (`tabindex="0"` on an editable cell, `aria-describedby` and
+      `data-failed` on a failed one, `data-value`, `data-saved`,
+      `data-lines`, …); what a
       cell holds is `cell/1`'s; the `actions_cell`.
     * `actions_cell` - `data-actions`, a button per action with
       `data-action` (and `data-question`, `data-destructive`): `id`, `row`
@@ -443,9 +441,8 @@ defmodule AshDataTable.Kit do
       column; a flag nil for none);
     * `status` - `announcement`, `summary` and `failures` of a run's result;
     * `grid` - `skip_table` (the skip link, with the table's name),
-      `editable` (what describes an editable cell), `select_page`,
-      `select_row`, `related_records`, `actions`, `show_whole`, `show_less`
-      (for `Attrs.grid/6`);
+      `select_page`, `select_row`, `related_records`, `actions`,
+      `show_whole`, `show_less` (for `Attrs.grid/6`);
     * `row` - `select_row`, `related_records`;
     * `cell` - `locale`; masked: `hidden_value`, `show`, `hide`,
       `show_value`, `hide_value`; forbidden, and of a union:
@@ -724,16 +721,15 @@ defmodule AshDataTable.Kit do
   "Tab stops"). `role="table"`, `role="cell"` and `role="rowheader"`
   (the label column, `row`'s new `label`) in place of `role="grid"` and
   `role="gridcell"`; no `tabindex="-1"` on cells, headers and controls;
-  an editable cell's `tabindex="0"` and `aria-describedby` in its item's
-  `attrs`, a failed cell's `data-failed` in place of `aria-invalid`, no
+  an editable cell's `tabindex="0"` in its item's `attrs`, a failed
+  cell's `data-failed` in place of `aria-invalid`, no
   `aria-readonly`; `Attrs.table/8` without `selecting` (no
   `aria-multiselectable`); `Attrs.empty_cell/2` in place of
   `Attrs.gridcell/3`; a sortable header holds a button (`header_cell`'s
   new `button`, `Attrs.sort/3`) in place of the header's `phx-click`
   (`Attrs.column_header/3` in place of `/5`); the `grid` part draws the
-  skip link (`Attrs.skip/1`, `texts.skip_table`) and the text of the
-  editable cells (`Attrs.editable/1`, `texts.editable`), and the `root`
-  part the skip link's target (`Attrs.skip_target/1`) after its
+  skip link (`Attrs.skip/1`, `texts.skip_table`), and the `root` part the
+  skip link's target (`Attrs.skip_target/1`) after its
   `inner_block`.
   """
 

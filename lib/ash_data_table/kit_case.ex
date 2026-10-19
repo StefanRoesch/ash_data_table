@@ -555,11 +555,6 @@ defmodule AshDataTable.KitCase do
           "where it jumps to, in the table's root (`Attrs.skip_target/1`)"
         ) ++
         skip_order(page, "kit") ++
-        need(
-          page,
-          "[id='#{Ids.editable("kit")}']",
-          "the text that describes an editable cell (`Attrs.editable/1`)"
-        ) ++
         need(page, "[id='kit-table'] [id='#{Ids.head("kit")}']", "its header in it") ++
         need(
           page,
@@ -704,7 +699,6 @@ defmodule AshDataTable.KitCase do
         ":is([role=cell],[role=rowheader])[tabindex]:not([tabindex='0'])",
         "a cell with another tabindex than an editable cell's"
       ) ++
-      described(page) ++
       none(
         page,
         ":is([role=cell],[role=rowheader])[tabindex='0']:is([data-selector],[data-expander],[data-actions],[data-line],[data-nested],[data-pager],[data-view],[data-filter],[colspan])",
@@ -773,8 +767,8 @@ defmodule AshDataTable.KitCase do
       Enum.flat_map(@columns, fn field ->
         need(
           page,
-          "[id='#{Ids.cell(row, field)}']:is([role=cell],[role=rowheader])[aria-colindex]",
-          "its cell #{field}"
+          "[id='#{Ids.cell(row, field)}']:is([role=cell],[role=rowheader])[aria-colindex][tabindex='0']",
+          "its cell #{field}, editable: a Tab stop"
         )
       end) ++
       need(page, "[id='#{Ids.cell(row, :note)}'][data-lines='2']", "the lines of a cell of note") ++
@@ -918,6 +912,16 @@ defmodule AshDataTable.KitCase do
       need(page, "[id='#{Ids.header_cell(nested, :title)}'][role=columnheader]", "its header") ++
       need(
         page,
+        "[id='#{nested}-table'] [id$='-c-title'][role=cell][tabindex='0']",
+        "an editable cell of the nested table, a Tab stop"
+      ) ++
+      need(
+        page,
+        "[id='#{nested}-table'] [id$='-c-secret'][role=cell]:not([tabindex])",
+        "a read-only cell of the nested table, no Tab stop"
+      ) ++
+      need(
+        page,
         "[id='#{Ids.header_cell(nested, :secret)}'][role=columnheader]",
         "its sensitive column"
       ) ++
@@ -938,8 +942,8 @@ defmodule AshDataTable.KitCase do
 
     need(
       page,
-      "[id='#{cell}'][data-failed][aria-describedby~='#{Ids.error(cell)}'][data-value][data-saved]",
-      "the failed cell, with what was typed and what is saved"
+      "[id='#{cell}'][data-failed][aria-describedby='#{Ids.error(cell)}'][data-value][data-saved]",
+      "the failed cell, described by its message, with what was typed and what is saved"
     ) ++
       need(page, "[id='#{cell}'] [id='#{Ids.error(cell)}']", "its message, in the cell")
   end
@@ -949,8 +953,8 @@ defmodule AshDataTable.KitCase do
 
     need(
       page,
-      "[id='#{cell}'][data-failed][aria-describedby~='#{Ids.error(cell)}']",
-      "the failed cell"
+      "[id='#{cell}'][data-failed][aria-describedby='#{Ids.error(cell)}']",
+      "the failed cell, described by its message"
     ) ++
       need(page, "[id='#{cell}'] [id='#{Ids.error(cell)}']", "its message, in the cell")
   end
@@ -1202,28 +1206,6 @@ defmodule AshDataTable.KitCase do
 
       _otherwise ->
         ["#{id}'s skip link before its header row, and its target after the table"]
-    end
-  end
-
-  # Every editable cell is described as one by its own table's text
-  # (`Ids.editable/1`), which is in the page.
-  defp described(page) do
-    for cell <- LazyHTML.query(page, ":is([role=cell],[role=rowheader])[tabindex='0']"),
-        [id] = LazyHTML.attribute(cell, "id"),
-        tokens = cell |> LazyHTML.attribute("aria-describedby") |> Enum.flat_map(&String.split/1),
-        not Enum.any?(tokens, &editable?(page, id, &1)) do
-      "the description of the editable cell #{id} (`Ids.editable/1` of its table)"
-    end
-  end
-
-  defp editable?(page, cell, token) do
-    case String.split(token, "-editable") do
-      [table, ""] ->
-        token == Ids.editable(table) and String.starts_with?(cell, Ids.row(table, "")) and
-          count(page, "[id='#{token}']") == 1
-
-      _other ->
-        false
     end
   end
 

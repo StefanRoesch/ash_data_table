@@ -144,8 +144,7 @@ on a column that points 1, 2 or 4 keep from ever being edited. See
 [Mistakes at compile time](mistakes-at-compile-time.md).
 
 When a table offers a person any editing, the cells they can edit are Tab
-stops, described by "Editable: press Enter"; the cells they cannot edit are
-no stops.
+stops; the cells they cannot edit are no stops.
 
 ## Actions that cannot serve a cell
 

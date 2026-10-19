@@ -787,15 +787,13 @@ defmodule AshDataTable.Parts.Grid do
     <div {Attrs.sender(@id)}></div>
     <%!-- "Skip table NAME": the first Tab stop of the grid, seen only while it
     has the focus, over the table's top left; it jumps past the table, to
-    the end of its root (the kit's `root/1`). And the text out of sight that
-    every editable cell is described by. --%>
+    the end of its root (the kit's `root/1`). --%>
     <a
       {Attrs.skip(@id)}
       class="btn btn-sm absolute z-30 not-focus:sr-only"
     >
       {@texts.skip_table}
     </a>
-    <span :if={@editing?} {Attrs.editable(@id)}>{@texts.editable}</span>
     <div
       {Attrs.grid(@id, @myself, @lead, @selecting, @choose, @texts)}
       class={@kit.class(:grid, %{nested?: @nested?})}

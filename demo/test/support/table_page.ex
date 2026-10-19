@@ -722,19 +722,9 @@ defmodule DemoWeb.TablePage do
   def action_failure(html, id \\ "task", key) do
     selector = actions_cell(id, key)
 
-    case {attribute(html, selector, "data-failed"), error_of(html, selector)} do
-      {[_failed], error_id} when is_binary(error_id) -> text(html, "[id='#{error_id}']")
-      {[], nil} -> nil
-    end
-  end
-
-  # The message an element is described by: of its `aria-describedby`, the
-  # id that ends in `-error` (an editable cell is described by the table's
-  # text that says so besides). Nil for none.
-  defp error_of(html, selector) do
-    case attribute(html, selector, "aria-describedby") do
-      [ids] -> ids |> String.split() |> Enum.find(&String.ends_with?(&1, "-error"))
-      [] -> nil
+    case {attribute(html, selector, "data-failed"), attribute(html, selector, "aria-describedby")} do
+      {[_failed], [error_id]} -> text(html, "[id='#{error_id}']")
+      {[], []} -> nil
     end
   end
 
@@ -1111,8 +1101,8 @@ defmodule DemoWeb.TablePage do
   def failure(html, id \\ "task", key, field) do
     selector = cell(id, key, field)
 
-    case {attribute(html, selector, "data-failed"), error_of(html, selector)} do
-      {[_failed], error_id} when is_binary(error_id) ->
+    case {attribute(html, selector, "data-failed"), attribute(html, selector, "aria-describedby")} do
+      {[_failed], [error_id]} ->
         [{_td, _attributes, children}] = html |> query(selector) |> LazyHTML.to_tree()
 
         shown =
@@ -1126,7 +1116,7 @@ defmodule DemoWeb.TablePage do
           message: text(html, "[id='#{error_id}']")
         }
 
-      {[], nil} ->
+      {[], []} ->
         nil
     end
   end

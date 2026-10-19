@@ -461,7 +461,6 @@ defmodule AshDataTable.Live.Core.Reading do
     %{caller: caller, entry: entry} = Core.table(socket)
 
     Item.row(entry.model, Present.row(entry.model, record, attributes), %{
-      id: entry.id,
       time_zone: caller.time_zone,
       editing?: entry.editing?,
       selecting: entry.selecting
