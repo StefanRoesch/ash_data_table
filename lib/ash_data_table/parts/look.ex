@@ -63,10 +63,12 @@ defmodule AshDataTable.Parts.Look do
                # The header and the filter row are one group, on the ground
                # of the table (also where it stays in view, `sticky_header`),
                # with one stronger rule under it; the header's labels in
-               # daisyUI's muted header colour.
+               # daisyUI's muted header colour. Where there is a filter row,
+               # the labels sit close above it (and the filter row's own
+               # padding is the density's, below).
                "[&_[role=grid]>:has(>[role=row]>[role=columnheader])>[role=row]>*]:bg-[var(--ash-data-table-ground,var(--ash-data-table-default-ground))]",
                "[&_[role=grid]>:has(>[role=row]>[role=columnheader])>[role=row]:last-child>*]:border-b-2 [&_[role=grid]>:has(>[role=row]>[role=columnheader])>[role=row]:last-child>*]:border-base-content/30",
-               "[&_[role=grid]>:has(>[role=row]>[role=columnheader])>[role=row]:first-child>*]:pb-1 [&_[role=grid]>:has(>[role=row]>[role=columnheader])>[role=row]:last-child>*]:pt-0",
+               "[&_[role=grid]>:has(>[role=row]>[role=columnheader])>[role=row]:first-child:not(:last-child)>*]:pb-1",
                # the footer's row of summaries, under a line as the header
                "[&_[role=grid]_[data-summaries]>*]:border-t [&_[role=grid]_[data-summaries]>*]:border-base-content/15",
                # A number stands at the end of its cell, and its header
@@ -103,14 +105,17 @@ defmodule AshDataTable.Parts.Look do
 
   # How high the rows are: the padding of every cell of a grid, but a cell
   # that spans it (a line, a nested table's cell, a nested table's pages),
-  # which has its own. The text keeps its size.
+  # which has its own. The text keeps its size. The filter row (the header
+  # group's second row) has half of it above and half below, so that its
+  # controls stand in the middle of their cells, and the row is as high as
+  # with the whole of it below.
   @density %{
     compact:
-      "[&_[role=grid]>*>[role=row]>:not([colspan])]:px-3 [&_[role=grid]>*>[role=row]>:not([colspan])]:py-1",
+      "[&_[role=grid]>*>[role=row]>:not([colspan])]:px-3 [&_[role=grid]>*>[role=row]>:not([colspan])]:py-1 [&_[role=grid]>:has(>[role=row]>[role=columnheader])>[role=row]:last-child:not(:first-child)>*]:py-0.5",
     normal:
-      "[&_[role=grid]>*>[role=row]>:not([colspan])]:px-3 [&_[role=grid]>*>[role=row]>:not([colspan])]:py-2",
+      "[&_[role=grid]>*>[role=row]>:not([colspan])]:px-3 [&_[role=grid]>*>[role=row]>:not([colspan])]:py-2 [&_[role=grid]>:has(>[role=row]>[role=columnheader])>[role=row]:last-child:not(:first-child)>*]:py-1",
     roomy:
-      "[&_[role=grid]>*>[role=row]>:not([colspan])]:px-4 [&_[role=grid]>*>[role=row]>:not([colspan])]:py-3"
+      "[&_[role=grid]>*>[role=row]>:not([colspan])]:px-4 [&_[role=grid]>*>[role=row]>:not([colspan])]:py-3 [&_[role=grid]>:has(>[role=row]>[role=columnheader])>[role=row]:last-child:not(:first-child)>*]:py-1.5"
   }
 
   # Every other record, counted over the records' row groups only: a
