@@ -101,7 +101,7 @@ test.describe("in German", () => {
   }) => {
     await expect(page).toHaveTitle("Aufgaben · ash_data_table demo")
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Aufgaben")
-    await expect(page.getByRole("grid", { name: "Aufgaben" })).toHaveId("task-table")
+    await expect(page.getByRole("table", { name: "Aufgaben" })).toHaveId("task-table")
     await expect(tasks.headers).toHaveText([
       "Titel",
       "Status",
@@ -281,7 +281,7 @@ test.describe("in German", () => {
       await tasks.retype("ab")
       await tasks.saves(title, () => tasks.press("Enter"))
 
-      await expect(title).toHaveAttribute("aria-invalid", "true")
+      await expect(title).toHaveAttribute("data-failed")
       await expect(tasks.failure(title)).toHaveText(tooShort)
       await expect(title).toHaveAccessibleDescription(tooShort)
       await expect(tasks.status).toHaveText(`Titel wurde nicht gespeichert: ${tooShort}`)
@@ -330,7 +330,7 @@ test.describe("in German", () => {
       )
 
       const message = "Fortschritt: muss 100 sein, wenn die Aufgabe erledigt ist"
-      await expect(status).toHaveAttribute("aria-invalid", "true")
+      await expect(status).toHaveAttribute("data-failed")
       await expect(status, "what was chosen").toContainText("Erledigt")
       await expect(tasks.failure(status)).toHaveText(message)
       await expect(tasks.status).toHaveText(`Status wurde nicht gespeichert: ${message}`)
@@ -338,7 +338,7 @@ test.describe("in German", () => {
       await status.focus()
       await tasks.press("Escape")
       await expect(status).toHaveText("Zu erledigen")
-      await expect(status).not.toHaveAttribute("aria-invalid")
+      await expect(status).not.toHaveAttribute("data-failed")
     })
 
     test.describe("a record that is gone", () => {
@@ -432,7 +432,7 @@ test.describe("in German", () => {
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Dashboard")
     await expect(projects.pagination).toHaveAccessibleName("Seiten: Projects")
     await expect(dashboardTasks.pagination).toHaveAccessibleName("Seiten: Aufgaben")
-    await expect(page.getByRole("grid", { name: "Aufgaben" })).toHaveId("dashboard-tasks-table")
+    await expect(page.getByRole("table", { name: "Aufgaben" })).toHaveId("dashboard-tasks-table")
     await expect(dashboardTasks.headers.first()).toHaveText("Titel")
     await expect(dashboardTasks.range).toHaveText("1–25 von 320")
   })

@@ -206,6 +206,8 @@ test.describe("two people on /tasks", () => {
     try {
       const theirs = new Table(other.page, "task", "/tasks")
       await theirs.open()
+      const keys = await theirs.rowKeys()
+      const after = keys[keys.indexOf(OWN) + 1]
 
       const title = theirs.cell(OWN, "title")
       await title.focus()
@@ -225,6 +227,41 @@ test.describe("two people on /tasks", () => {
 
       await theirs.press("Escape")
       await expect(theirs.row(OWN)).toHaveCount(0)
+      // focus was on the row that went: it is on the same stop of the row after it
+      await expect(theirs.cell(after, "title")).toBeFocused()
+    } finally {
+      await other.close()
+    }
+  })
+
+  test("a row that is deleted while it has the focus takes it to the same stop of the row after it, else of the row before", async ({
+    browser,
+    page,
+    tasks,
+  }) => {
+    await tasks.open()
+    const other = await another(browser, page, "member")
+
+    try {
+      const theirs = new Table(other.page, "task", "/tasks")
+      await theirs.open()
+      const keys = await theirs.rowKeys()
+
+      // a cell of the row: the same cell of the row after it
+      await theirs.cell(OWN, "title").focus()
+      await destroy(tasks, OWN)
+      await expect(theirs.row(OWN)).toHaveCount(0)
+      await expect(theirs.cell(keys[keys.indexOf(OWN) + 1], "title")).toBeFocused()
+
+      // a row's box, in the last row of the page: the box of the row before it
+      const last = keys.at(-1)!
+      const before = keys.at(-2)!
+      await theirs.box(last).focus()
+      await destroy(tasks, last)
+      await expect(theirs.row(last)).toHaveCount(0)
+      await expect(theirs.box(before)).toBeFocused()
+      // a row that went is not announced
+      await expect(notice(theirs)).toHaveCount(0)
     } finally {
       await other.close()
     }
@@ -252,7 +289,7 @@ test.describe("two people on /tasks", () => {
       await expect(theirs.row(OWN)).toHaveCount(1)
 
       await theirs.press("Enter")
-      await expect(title).toHaveAttribute("aria-invalid", "true")
+      await expect(title).toHaveAttribute("data-failed")
       await expect(theirs.failure(title)).toHaveText("This record is no longer available.")
       await expect(theirs.status).toContainText("This record is no longer available.")
       // the row stays for the answer to be read
@@ -295,7 +332,7 @@ test.describe("two people on /tasks", () => {
         expect(await theirs.rowKeys()).toEqual(before)
         await expectNoAxeViolations(other.page)
 
-        // by keyboard: the button is a tab stop before the grid
+        // by keyboard: the button is a Tab stop before the table
         await readAgain(theirs).focus()
         await theirs.reads(() => other.page.keyboard.press("Enter"))
 

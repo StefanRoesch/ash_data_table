@@ -10,8 +10,8 @@ import { expect, test } from "./support/fixtures"
 //     made of it;
 //   * `mountGrid` and `liveViewTransport` mount the grid's hook by hand on
 //     a grid that has no `phx-hook` (/e2e/markers?mount=1, the demo's hook
-//     `MountedGrid`): the keys, an edit and its save work, `onEdit` hears
-//     the edit begin and end, and the hook mounted again on the same
+//     `MountedGrid`): an edit and its save work from the keyboard, `onEdit`
+//     hears the edit begin and end, and the hook mounted again on the same
 //     element after `destroy()` (React's StrictMode) acts once per key.
 
 type Ids = Record<string, (...args: unknown[]) => string>
@@ -56,12 +56,8 @@ test.describe("the grid's hook mounted by hand", () => {
     await page.waitForFunction(() => "kitMount" in window)
   })
 
-  test("moves with the keys, edits and saves, and tells onEdit", async ({ page }) => {
+  test("edits and saves from the keyboard, and tells onEdit", async ({ page }) => {
     await cell(page, "a", "name").focus()
-    await page.keyboard.press("ArrowRight")
-    await expect(cell(page, "a", "size")).toBeFocused()
-    await page.keyboard.press("ArrowLeft")
-
     await page.keyboard.press("Enter")
     const editor = cell(page, "a", "name").locator("textarea")
     await expect(editor).toBeFocused()
@@ -113,16 +109,17 @@ test.describe("the grid's hook mounted by hand", () => {
     await call(page, "remount")
     await call(page, "remount")
 
-    await cell(page, "a", "name").focus()
-    await page.keyboard.press("ArrowRight")
-    // one cell on, not two or three: one hook hears the key
-    await expect(cell(page, "a", "size")).toBeFocused()
-    await page.keyboard.press("ArrowDown")
-    await expect(page.locator('[id="kit-row-a-l-parts-c"]')).toBeFocused()
-
-    await page.keyboard.press("ArrowUp")
-    await page.keyboard.press("ArrowLeft")
+    // the note that cuts its text off has one "Show all", and Enter on it
+    // shows the whole text: once, not shown and cut off again by a second hook
+    const whole = cell(page, "a", "note").locator(":scope > [data-whole]")
+    await expect(whole).toHaveCount(1)
+    await whole.focus()
     await page.keyboard.press("Enter")
+    await expect(whole).toHaveAttribute("aria-expanded", "true")
+
+    await cell(page, "a", "name").focus()
+    await page.keyboard.press("Enter")
+    await expect(cell(page, "a", "name").locator("textarea")).toHaveCount(1)
     await expect(cell(page, "a", "name").locator("textarea")).toBeFocused()
     await page.keyboard.press("Escape")
     // each edit told once
@@ -130,7 +127,8 @@ test.describe("the grid's hook mounted by hand", () => {
 
     await call(page, "destroy")
     await cell(page, "a", "name").focus()
-    await page.keyboard.press("ArrowRight")
+    await page.keyboard.press("Enter")
     await expect(cell(page, "a", "name")).toBeFocused()
+    await expect(cell(page, "a", "name").locator("textarea")).toHaveCount(0)
   })
 })
