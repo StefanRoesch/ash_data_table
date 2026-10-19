@@ -16,9 +16,9 @@ With Docker only (no Elixir needed):
 docker compose --profile demo up --build
 ```
 
-Or with Elixir 1.18 or later, Node (24, as `demo/assets/.tool-versions`
-pins it; npm is used for the demo's React page only) and Docker for
-Postgres (the Docker image uses Elixir 1.19 on OTP 28):
+Or with Elixir 1.18 or later, Node 20 or later (`demo/assets/.tool-versions`
+pins 24 for asdf; npm is used for the demo's React page only) and Docker for
+Postgres (the Docker image uses Elixir 1.19 on OTP 28 and Debian's Node 20):
 
 ```sh
 docker compose up -d postgres   # Postgres on port 5477

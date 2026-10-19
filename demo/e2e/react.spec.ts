@@ -39,7 +39,7 @@ for (const theme of ["light", "dark"] as const) {
     await expect(shadcn).toBeVisible()
 
     expect(await background(shadcn)).toBe(SHADCN[theme].primary)
-    expect(await background(page.locator("#react-sample > div"))).toBe(SHADCN[theme].background)
+    expect(await background(page.locator("#react-sample-box"))).toBe(SHADCN[theme].background)
 
     // daisyUI's button paints the page's primary, as it did before the
     // island's styles came in

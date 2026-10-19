@@ -19,7 +19,7 @@ export function Sample({count, label, pushEvent}: Props) {
     pushEvent("count", {}, (answer: Record<string, any>) => setReply(String(answer.count)))
 
   return (
-    <div className="flex items-center gap-3 rounded-md border bg-background p-4 text-foreground">
+    <div id="react-sample-box" className="flex items-center gap-3 rounded-md border bg-background p-4 text-foreground">
       <Button id="react-count" type="button" onClick={onClick}>
         {label}
       </Button>

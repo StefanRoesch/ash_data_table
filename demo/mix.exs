@@ -100,11 +100,15 @@ defmodule Demo.MixProject do
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ash.setup --quiet", "test"],
       # npm only for the React islands' packages (assets/package.json), with
-      # the Node version of assets/.tool-versions
+      # Node 20 or later. `npm install`, not `npm ci`: it installs what
+      # package-lock.json pins as well, but changes node_modules only where
+      # it differs from the lockfile, while `npm ci` deletes node_modules
+      # every time, which breaks a running dev server's esbuild watcher
+      # (the browser tests' global setup runs this alias).
       "assets.setup": [
         "tailwind.install --if-missing",
         "esbuild.install --if-missing",
-        "cmd --cd assets npm ci --no-audit --no-fund"
+        "cmd --cd assets npm install --no-audit --no-fund"
       ],
       "assets.build": ["compile", "tailwind demo", "esbuild demo"],
       "assets.deploy": [

@@ -27,9 +27,14 @@ mix phx.server   # http://localhost:4478
 ```
 
 `mix setup` runs `mix assets.setup`, which installs the npm packages of
-`assets/package.json` with `npm ci`: it needs Node, the version of
-`assets/.tool-versions` (24; asdf takes it from there). After a change of
-`assets/package.json` or `package-lock.json`, run `mix assets.setup` again.
+`assets/package.json` with `npm install`: it needs Node 20 or later
+(`assets/.tool-versions` pins 24 for asdf; the Dockerfile uses Debian's Node,
+20). `npm install`, not `npm ci`: it installs what `package-lock.json` pins
+too, but touches `node_modules` only where it differs, while `npm ci` deletes
+`node_modules` on every run and so breaks the esbuild watcher of a dev server
+that is running meanwhile (the browser tests' setup runs `mix assets.setup`).
+After a change of `assets/package.json` or `package-lock.json`, run
+`mix assets.setup` again.
 
 `mix test` runs the tests against the database `demo_test` on the same
 Postgres, in the Ecto sandbox.
@@ -963,7 +968,7 @@ and `@axe-core/playwright` and run in headless Chromium.
 Node is a tool for developing `ash_data_table` here: the library puts no npm
 package into a host app. The demo's own npm packages are those of its React
 islands (`assets/package.json`); the browser tests' global setup installs
-them with the rest of the assets (`mix assets.setup`, `npm ci`), so a run
+them with the rest of the assets (`mix assets.setup`, `npm install`), so a run
 builds the islands too.
 
 ```sh
