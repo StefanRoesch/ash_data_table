@@ -78,6 +78,37 @@ export class Table {
     await this.page.evaluate(() => (window as any).__ashDataTableIdle)
   }
 
+  /**
+   * Runs `action`, and waits until the server has told this table's hooks
+   * `event` with `details` (`ash_data_table:leaving` of a row, which a live
+   * update pushes) and has answered whatever the hooks pushed back. LiveView
+   * dispatches what the server pushes on `window` as `phx:EVENT`
+   * (`Phoenix.LiveView.push_event/3`), where the hooks hear it too
+   * (`handleEvent`); they listen from their mount, so their handlers have
+   * run by the time this one does. What a test then finds is what the hooks
+   * made of the event, and of their answer: for a check that something does
+   * not happen.
+   */
+  async told(event: string, details: Record<string, unknown>, action: () => Promise<unknown>): Promise<void> {
+    await this.page.evaluate(
+      ([event, details]) => {
+        ;(window as any).__ashDataTableTold = new Promise<void>((resolve) => {
+          const heard = ({ detail }: any) => {
+            if (Object.entries(details).every(([key, value]) => detail[key] === value)) {
+              window.removeEventListener(`phx:${event}`, heard)
+              resolve()
+            }
+          }
+          window.addEventListener(`phx:${event}`, heard)
+        })
+      },
+      [event, { ...details, table: this.id }] as const,
+    )
+    await action()
+    await this.page.evaluate(() => (window as any).__ashDataTableTold)
+    await answered(this.page)
+  }
+
   // ---- the parts ----------------------------------------------------------
 
   private byId(id: string): Locator {
@@ -1145,4 +1176,21 @@ export async function ownedSheets(page: Page): Promise<{ sheets: number; grids: 
     sheets: document.adoptedStyleSheets.length,
     grids: document.querySelectorAll("[data-ash-data-table]").length,
   }))
+}
+
+// Everything the page pushed before this is heard once this returns. An
+// event is pushed in the task of the key or click that caused it, or in a
+// timer of 0 ms it set (leaving an editor), which runs before the timer of
+// 0 ms set here after it. Then an event of the tests' own goes the way of
+// every event of the page: the LiveView answers it after all that came
+// before it on the socket, and its answer comes after theirs, patches and
+// all. It is an event of a table that is not there (`e2e-barrier`), which
+// every table answers alike and the recorder does not keep. A page without
+// a table pushes no table event.
+export async function answered(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    const grid: any = document.querySelector("[phx-hook='AshDataTable.Grid']")
+    if (grid?._ashDataTable) await grid._ashDataTable.pushEventTo(grid, "ash_data_table:e2e-barrier:save", {})
+  })
 }

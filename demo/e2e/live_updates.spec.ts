@@ -249,9 +249,9 @@ test.describe("two people on /tasks", () => {
       // another row goes at once; the one with the editor stays
       await destroy(tasks, FIRST)
       await expect(theirs.row(FIRST)).toHaveCount(0)
-      await destroy(tasks, OWN)
+      // the server says the row is to go, and the hook keeps it
+      await theirs.told("ash_data_table:leaving", { row: OWN }, () => destroy(tasks, OWN))
       await expect(theirs.row(SEED.task.second)).toHaveCount(1)
-      await other.page.waitForTimeout(500)
       await expect(theirs.row(OWN)).toHaveCount(1)
       await expect(editor).toBeFocused()
       await expect(editor).toHaveValue("Typed into a task that is going")
@@ -315,8 +315,7 @@ test.describe("two people on /tasks", () => {
       await theirs.press("Enter")
       await theirs.retype("Typed into a task that is going")
 
-      await destroy(tasks, OWN)
-      await other.page.waitForTimeout(500)
+      await theirs.told("ash_data_table:leaving", { row: OWN }, () => destroy(tasks, OWN))
       await expect(theirs.row(OWN)).toHaveCount(1)
 
       await theirs.press("Enter")

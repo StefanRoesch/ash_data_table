@@ -1,7 +1,7 @@
 import { expect, type Page } from "@playwright/test"
 import { storageStateOf, type Actor } from "./actors"
 import { test as base } from "./server"
-import { Table } from "./table"
+import { answered, Table } from "./table"
 
 /** An event the page pushed to its LiveView, as the server heard it. */
 export type Pushed = {
@@ -31,13 +31,13 @@ export class Sent {
 
   /** Forgets what was pushed so far. */
   async clear(): Promise<void> {
-    await this.flush()
+    await answered(this.page)
     expect((await this.page.request.delete("/e2e/recorded")).status()).toBe(200)
   }
 
   /** Everything pushed since the last `clear`. */
   async all(): Promise<Pushed[]> {
-    await this.flush()
+    await answered(this.page)
     const response = await this.page.request.get("/e2e/recorded")
     expect(response.status()).toBe(200)
     return response.json()
@@ -75,22 +75,6 @@ export class Sent {
     const sent = await this.selected(table.id)
     const shown = [...(await table.selectedKeys())].sort()
     expect(sent === "all" ? sent : [...(sent ?? [])].sort(), `what the last select of ${table.id} said`).toEqual(shown)
-  }
-
-  // Everything the page pushed before this is heard once this returns. An
-  // event is pushed in the task of the key or click that caused it, or in a
-  // timer of 0 ms it set (leaving an editor), which runs before the timer
-  // of 0 ms set here after it. Then an event of the tests' own goes the way
-  // of every event of the page: the LiveView answers it after all that came
-  // before it on the socket. It is an event of a table that is not there
-  // (`e2e-barrier`), which every table answers alike and the recorder does
-  // not keep. A page without a table pushes no table event.
-  private async flush(): Promise<void> {
-    await this.page.evaluate(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0))
-      const grid: any = document.querySelector("[phx-hook='AshDataTable.Grid']")
-      if (grid?._ashDataTable) await grid._ashDataTable.pushEventTo(grid, "ash_data_table:e2e-barrier:save", {})
-    })
   }
 }
 

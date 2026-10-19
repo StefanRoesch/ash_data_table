@@ -229,7 +229,6 @@ test.describe("a number field of the action panel", () => {
   }
 
   test("what the browser cannot read as a number is still held back, and never sent as nothing", async ({
-    page,
     tasks,
     pushed,
   }) => {
@@ -243,9 +242,8 @@ test.describe("a number field of the action panel", () => {
 
     await pushed.clear()
     await tasks.panelSubmit.click()
-    // nothing to wait for: the page is asked again after a moment
-    await page.waitForTimeout(300)
 
+    // once the server has heard everything the page pushed so far
     expect(await pushed.count("panel_submit")).toBe(0)
     await expect(tasks.question).toBeHidden()
     await expect(tasks.panel).toBeVisible()
@@ -300,7 +298,6 @@ test.describe("a number of the argument line", () => {
   })
 
   test("what the browser cannot read as a number is still held back on Enter", async ({
-    page,
     tasks,
     pushed,
   }) => {
@@ -311,8 +308,8 @@ test.describe("a number of the argument line", () => {
 
     await pushed.clear()
     await days.press("Enter")
-    await page.waitForTimeout(300)
 
+    // once the server has heard everything the page pushed so far
     expect(await pushed.count("arguments")).toBe(0)
     await expect(days).toBeFocused()
     await expect(tasks.argumentError("due_within-days")).toHaveCount(0)
