@@ -7,12 +7,14 @@ defmodule AshDataTable.Kit.Words do
   is made of changed:
 
       <AshDataTable.Kit.part
-        part={:resizer}
+        part={:full_view}
         kit={@kit}
         id={@id}
-        column={@column}
-        texts={AshDataTable.Kit.Words.texts(:resizer, %{column: @column})}
-        messages={AshDataTable.Kit.Words.messages(:resizer, %{column: @column})}
+        full_view={@full_view}
+        label={@label}
+        …
+        texts={AshDataTable.Kit.Words.texts(:full_view, %{label: @label})}
+        messages={AshDataTable.Kit.Words.messages(:full_view, %{label: @label})}
       />
 
   A kit's own part that draws a part of the table through the kit passes
@@ -223,8 +225,10 @@ defmodule AshDataTable.Kit.Words do
     ]
   end
 
-  defp words(:grid, _values) do
+  defp words(:grid, %{label: label}) do
     [
+      skip_table: t(:skip_table, name: label),
+      editable: t(:editable),
       select_page: t(:select_page),
       select_row: t(:select_row),
       related_records: t(:related_records),

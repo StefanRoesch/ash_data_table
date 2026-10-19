@@ -749,6 +749,12 @@ msgstr "Wird geleert."
 msgid "Resize %{column}"
 msgstr "Breite von %{column} ändern"
 
+msgid "Skip table %{name}"
+msgstr "Tabelle %{name} überspringen"
+
+msgid "Editable: press Enter"
+msgstr "Bearbeitbar: Eingabetaste drücken"
+
 msgid "Columns"
 msgstr "Spalten"
 

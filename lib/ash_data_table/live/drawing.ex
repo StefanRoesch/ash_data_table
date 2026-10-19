@@ -334,8 +334,8 @@ defmodule AshDataTable.Live.Drawing do
         summary={@entry.summary}
         summing?={@entry.summing?}
         time_zone={@time_zone}
-        texts={Words.texts(:grid)}
-        messages={Words.messages(:grid)}
+        texts={Words.texts(:grid, %{label: @entry.label})}
+        messages={Words.messages(:grid, %{label: @entry.label})}
       />
       <Kit.part
         :for={
