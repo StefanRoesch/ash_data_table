@@ -120,7 +120,10 @@ export default {
     const body = group && (this.isRecord(group) ? group : document.getElementById(rowId(this.id, group.dataset.row || "")))
     const row = body ? records.indexOf(body) : -1
     const place = body === group ? this.stopPlace(target) : [0, -1]
-    this.focused = {target, row, place, holder, trail: holder ? [holder.dataset.lineCell, holder.dataset.expanderCell] : []}
+    // a cell outside the records (a filter's): its id, and where in it
+    const cell = !body && !holder ? target.closest(ANYCELL) : null
+    const within = cell ? this.stopsIn(cell).indexOf(target) : -1
+    this.focused = {target, row, place, holder, cell: cell && cell.id, within, trail: holder ? [holder.dataset.lineCell, holder.dataset.expanderCell] : []}
   },
 
   // Where a stop stands in its row: its cell's column (`aria-colindex`),
@@ -140,7 +143,8 @@ export default {
   // moves rows: either way the element is in the page and focus is
   // not); to the element of the same id, if it is back; inside a nested
   // table that went, to its line's button, else to its row's expander;
-  // to the same stop of the row at the same place, which is the row
+  // in a filter's cell, to the stop at the same place in it, else the one
+  // before it; to the same stop of the row at the same place, which is the row
   // after the one that went, else of the row before; else to the
   // table's first stop. A nested table that is still there sees to its
   // own rows. The page does not scroll for it.
@@ -159,6 +163,13 @@ export default {
     for (const id of focused.trail) {
       const cell = id && document.getElementById(id)
       if (cell && take(cell.querySelector("button[aria-expanded]"))) return
+    }
+    // in a filter's cell: the stop at the same place, else the one
+    // before it (a filter's clear button goes with the filter: its value)
+    const cell = focused.cell && document.getElementById(focused.cell)
+    if (cell) {
+      const stops = this.stopsIn(cell)
+      if (take(stops[Math.min(focused.within, stops.length - 1)])) return
     }
     const records = this.records()
     if (focused.row >= 0 && records.length > 0) {
