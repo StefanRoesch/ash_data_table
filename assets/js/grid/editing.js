@@ -4,7 +4,8 @@
 // puts together, and share its state through `this`.
 
 import {editor as editorId, error as errorId} from "../ids.js"
-import {CLEAR, EXPANDER, ROWGROUP} from "../markers.js"
+import {FOCUSABLE} from "../panel.js"
+import {CLEAR, ROWGROUP} from "../markers.js"
 import {CONTROL_IN, DATACELL, is} from "./shared.js"
 
 export default {
@@ -15,12 +16,12 @@ export default {
 
   editorOf(cell) { return document.getElementById(editorId(this.id, this.columnOf(cell))) },
 
-  // A data cell of an editable column that the server has not marked
-  // as read-only for this person, and whose last save has been answered.
+  // A cell of a record that this person can edit: one the server made a
+  // Tab stop (an editable cell is one, a read-only cell is not), of a
+  // column with an editor, and whose last save has been answered.
   canEdit(cell) {
-    return is(cell, DATACELL) && !!this.record(cell) && !is(cell, EXPANDER) &&
-      cell.getAttribute("aria-readonly") !== "true" && !cell.hasAttribute("aria-busy") &&
-      !!this.editorOf(cell)
+    return is(cell, DATACELL) && cell.matches(FOCUSABLE) && !!this.record(cell) &&
+      !cell.hasAttribute("aria-busy") && !!this.editorOf(cell)
   },
 
   // What a cell's editor starts with: the text the cell shows, unless
@@ -30,8 +31,7 @@ export default {
   },
 
   // Opens the column's editor in the cell. `key` is the character
-  // that was typed on the cell, or null for Enter, F2 and a double
-  // click. Returns whether the key has been dealt with here; if not,
+  // that was typed on the cell, or null for Enter and a double click. Returns whether the key has been dealt with here; if not,
   // the browser goes on to type it into the editor, which has the
   // focus by then.
   startEdit(cell, key) {
@@ -42,23 +42,23 @@ export default {
     this.quitWhole(cell)
     const template = this.editorOf(cell)
     const type = template.dataset.editor
-    // a boolean has no edit mode: Enter and F2 toggle it, typing does nothing
+    // a boolean has no edit mode: Enter toggles it, typing does nothing
     if (type === "boolean") {
       if (key === null) this.toggle(cell, template)
       return key === null
     }
-    // nor has a reference cell: Enter and F2 open the picker, typing does nothing
+    // nor has a reference cell: Enter opens the picker, typing does nothing
     if (type === "reference") {
       if (key === null) this.pick(cell)
       return key === null
     }
-    // nor has an array: Enter, F2 and a key typed on it open the side
+    // nor has an array: Enter and a key typed on it open the side
     // panel, with the field of its values
     if (type === "choices" || type === "list") {
       this.editInPanel(cell)
       return true
     }
-    // nor has a map cell, or a union: Enter and F2 open the side panel, typing does nothing
+    // nor has a map cell, or a union: Enter opens the side panel, typing does nothing
     if (type === "group" || type === "groups" || type === "union") {
       if (key === null) this.editInPanel(cell)
       return key === null
@@ -96,7 +96,6 @@ export default {
     const ed = {cell, root, input, type, saved, old, confirm: template.dataset.confirm, commit: template.dataset.commit, lastKey: null}
     this.editing = ed
     this.edited(cell.id)
-    cell.tabIndex = -1
     input.addEventListener("blur", () => this.onEditorBlur(ed))
     let handled = true
     if (type === "component") {
@@ -121,7 +120,7 @@ export default {
       //
       // So the cell is emptied by a button beside the input, where
       // the column can be empty: "Clear". Tab goes from the input to
-      // it and on out of the grid, Shift+Tab back; Enter and Space
+      // it and on to the next stop, Shift+Tab back; Enter and Space
       // use it. It is part of the editor: focus on it is focus in
       // the editor, and leaving it saves what was typed, as leaving
       // the input does. A cell that holds nothing has none.

@@ -2,8 +2,8 @@
 // render of each (target.md S20, the React kit's note C6).
 //
 // The hooks write some attributes of the elements a kit draws, after the
-// kit drew them: where the focus is, what is selected, a cell that is
-// busy or being edited. A kit drawn in HEEx is patched by LiveView, which
+// kit drew them: what is selected, a cell that is busy, being edited or
+// failed. A kit drawn in HEEx is patched by LiveView, which
 // leaves what it did not render alone where the hooks need it. A kit that
 // draws in the browser (a React kit) must leave them alone itself: an
 // attribute it renders again with its own value undoes the hook's.
@@ -13,8 +13,8 @@
 //
 //   "never"  - a kit does not render it at all;
 //   "once"   - a kit renders it as it draws the element, with the value
-//              the table gives (`tabindex="-1"`), and never another value:
-//              the hook moves it;
+//              the table gives (`aria-rowindex`), and never another value:
+//              the hook changes it;
 //   "given"  - a kit renders it as the table gives it (an item's `attrs`,
 //              a bundle), and renders it again only when the table gives
 //              another value: the hook writes it in between, and puts back
@@ -23,29 +23,28 @@
 // Besides, the hooks write the content of some elements, which a kit
 // draws empty or as given and never draws again while the hook holds it
 // (`CHILDREN`). And the values of the filter row's controls are the
-// browser's: a kit draws them as uncontrolled inputs.
+// browser's, and those of the width fields in the list of "Columns" the
+// hook's: a kit draws them as uncontrolled inputs.
 //
 // `test/owned_test.exs` reads every attribute the hooks write in
 // `assets/js/` and compares it with this list, both ways.
 
 /** @type {AshDataTable.Owned[]} */
 export const OWNED = [
-  {attribute: "tabindex", on: "every cell, header and line button of a grid: the one tab stop", kit: "once"},
-  {attribute: "aria-selected", on: "a record's row", kit: "never"},
+  {attribute: "tabindex", on: "a cell, put back after an edit as the table gave it last (an editable cell's stop); the button the hook puts into a cell to show its whole text (-1)", kit: "given"},
   {attribute: "checked", on: "the selection boxes, and the boxes of the Columns list", kit: "never"},
   {attribute: "disabled", on: "the boxes of the Columns list", kit: "never"},
   {attribute: "hidden", on: "a masked cell's mask (`data-mask`, `data-masked`), the question's place in a panel or picker, the scrollbar (`ID-scrollbar`)", kit: "never"},
   {attribute: "aria-busy", on: "a cell or actions cell while its event is on its way", kit: "never"},
   {attribute: "phx-update", on: "the cell being edited", kit: "never"},
-  {attribute: "aria-invalid", on: "a cell whose save or reveal failed, a control of a list field", kit: "given"},
+  {attribute: "aria-invalid", on: "a control of a list field", kit: "given"},
+  {attribute: "data-failed", on: "a cell or actions cell whose save, reveal or action failed", kit: "given"},
   {attribute: "aria-describedby", on: "a cell whose save or reveal failed, a control of a list field", kit: "given"},
-  {attribute: "aria-readonly", on: "a cell, put back after an edit", kit: "given"},
   {attribute: "data-value", on: "a cell, after a save", kit: "given"},
   {attribute: "data-saved", on: "a cell, after a save", kit: "given"},
   {attribute: "aria-rowindex", on: "a record's row, numbered again after a row was added or taken out", kit: "once"},
   {attribute: "aria-expanded", on: "the expander's button, and the button the hook puts into a cell to show its whole text", kit: "given"},
   {attribute: "aria-label", on: "a masked cell's button (Show, Hide), the controls and buttons of a list field", kit: "given"},
-  {attribute: "aria-valuenow", on: "a column's handle (`data-resize`): its width", kit: "never"},
   {attribute: "aria-hidden", on: "the button the hook puts into a cell to show its whole text", kit: "never"},
   {attribute: "data-dragging", on: "a column's handle while it is dragged", kit: "never"},
   {attribute: "data-over", on: "a text's counter (`data-count`) past its most", kit: "never"},

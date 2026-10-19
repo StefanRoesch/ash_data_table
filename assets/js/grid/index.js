@@ -1,17 +1,16 @@
-// Keyboard, focus and editing for one grid: a single tab stop with a
-// roving tabindex, moved by the arrow keys.
+// Editing, selecting and focus for one table. The table is a table
+// (`role=table`): its controls and its editable cells are the Tab
+// stops, as the server renders them, and the browser moves focus with
+// Tab; no key of ours moves it (keys.js). Focus that a patch takes
+// away with its element is put back (`repair`, focus.js).
 //
-// A nested table is a grid of its own, with a hook of its own, inside
-// a cell of the grid around it. The tab stop is one for the whole
-// tree: the tables on top of each other share where it is (`tree()`),
-// and each hook deals only with what happens in its own grid
-// (`owns()`). The arrow keys stay in the grid that has the focus;
-// Enter on the cell that holds a nested table goes into it, and
-// Escape in it comes back out to that cell.
+// A nested table is a table of its own, with a hook of its own, inside
+// a cell of the table around it; each hook deals only with what happens
+// in its own table (`owns()`), and notes where focus is in the tables
+// nested in it, for when one of them goes.
 //
-// Moving about never talks to the server. Enter on a sortable header
-// clicks it and Enter in a filter submits the filter row's form; both
-// are the server's from there.
+// Enter in a filter submits the filter row's form; the sort buttons
+// and the filter row are the server's from there.
 //
 // Which cell is being edited is known here alone. The server renders
 // one editor per editable column in a <template>; a copy of it is put
@@ -24,7 +23,7 @@
 // (`data-select` on this element says whether rows can be selected:
 // "multi" or "single"). The server renders a box in the first cell
 // of every row and nothing of its state: after every patch the rows
-// are marked again (`aria-selected`, and the box), so that no row
+// are marked again (their boxes), so that no row
 // is sent again for it. Every change a person makes is sent
 // (`select`); where the server decides what is selected, it says so
 // (`ash_data_table:select`). A row is remembered by the key in its
@@ -53,7 +52,7 @@
 // selects another.
 //
 // Nor has a cell of several values (an array, an embedded resource, a
-// map, an array of either, a union): Enter, F2 and a double click ask
+// map, an array of either, a union): Enter and a double click ask
 // the server for the side panel (`edit`), in which its values or
 // fields are edited and saved, as a form; so does a key typed on an
 // array.
@@ -71,10 +70,6 @@
 // is on its way the cell shows what it showed, never what was
 // typed.
 //
-// A grid in a dialog is the top of its own tree
-// of grids, wherever the dialog stands in the page: nothing
-// outside a modal dialog can be reached while it is open.
-//
 // How wide the columns are is known here alone as well, once a
 // person has changed a width (see "the widths of the columns"), and
 // so is which columns a person has hidden (see "hiding columns").
@@ -84,10 +79,11 @@
 // is the same for every grid through ./shared.js. No two sections may
 // name a method alike: that is checked as the object is put together.
 
-import {COUNT, OF} from "../markers.js"
+import {COUNT, OF, ROWGROUP} from "../markers.js"
 import {KEPT, PLACE} from "./shared.js"
 import counter from "./counter.js"
-import tree from "./tree.js"
+import focus from "./focus.js"
+import keys from "./keys.js"
 import expanding from "./expanding.js"
 import widths from "./widths.js"
 import hiding from "./hiding.js"
@@ -111,11 +107,8 @@ const core = {
     const until = {signal: this.ending.signal}
     // for the hooks of the grids around this one and in it
     this.el._ashDataTable = this
-    // the cell arrow keys start from: the first data cell of the first
-    // data row, or of the last header row while there are no rows. The
-    // expander of the row is one cell to the left of it.
-    this.pos = {r: this.headRows(), c: this.lead()}
-    this.col = this.lead()
+    // where focus is in the table, for when a patch takes it away (`noteFocus`)
+    this.focused = null
     // the edit in progress: {cell, root, input, type, saved, old,
     // confirm, commit}, and `attributes` once a patch has brought
     // the cell's row again. `root` is what was put into the cell
@@ -130,25 +123,19 @@ const core = {
     // by id (see "the whole text of a cell")
     this.pointed = null
     this.expanded = new Set()
-    // the row action that was used last: where its cell stood, for
-    // when its row is gone
-    this.acted = null
     // the widths of the columns, by the id of their header, once a
     // person has changed one: {width, original}. And the style
     // sheet that holds them.
     this.widths = null
     this.sheet = null
-    // the columns a person has hidden, by the id of their header,
-    // and where those stand now (`aria-colindex`)
+    // the columns a person has hidden, by the id of their header
     this.hidden = new Set()
-    this.goneAt = new Set()
     // What is selected: `keys` holds the rows by the key in their
     // id, each with what the server is told of it (see `named`);
     // `all` says that every record the filters match is selected,
-    // on whatever page. `anchor` is the row a range starts from,
-    // and `range` the range that Shift and the arrow keys are
-    // drawing, with what was selected before it.
-    this.selection = {keys: new Map(), all: false, anchor: null, range: null}
+    // on whatever page. `anchor` is the row a range that Shift and a
+    // click draw starts from.
+    this.selection = {keys: new Map(), all: false, anchor: null}
     // The line above the grid is outside this element, and so is the
     // heading line, which a nested table has on the line that names it,
     // in the table around it: what happens there is heard at the
@@ -177,7 +164,7 @@ const core = {
     this.scope.addEventListener("input", this.onTyped, until)
     // and so is "Columns", with its list
     this.onColumns = e => this.onColumnsEvent(e)
-    for (const type of ["change", "focusout"]) this.scope.addEventListener(type, this.onColumns, until)
+    for (const type of ["change", "input", "click", "focusout"]) this.scope.addEventListener(type, this.onColumns, until)
     // A patch of the argument line brings its counters as the
     // server counted them, from what it had heard by then, which
     // need not be all that has been typed since: they are counted
@@ -214,14 +201,20 @@ const core = {
       if (answer.table === this.id) this.answered(answer)
     })
     // the server says where focus goes after something it did: to
-    // the first cell of a row that was created
-    // and into a row of the argument line that was added, or to
-    // what stands where one that was taken away stood
+    // the first cell of a row that was created (the row's first stop,
+    // where that cell is none), and into a row of the argument line that
+    // was added, or to what stands where one that was taken away stood
     this.transport.on("ash_data_table:focus", ({table, cell}) => {
       if (table !== this.id) return
       const target = document.getElementById(cell)
       const line = this.part("arguments")
-      if (target && (this.el.contains(target) || (line && line.contains(target)))) target.focus({preventScroll: true})
+      if (!target || !(this.el.contains(target) || (line && line.contains(target)))) return
+      target.focus({preventScroll: true})
+      const row = target.closest(ROWGROUP)
+      if (document.activeElement !== target && row) {
+        const stop = this.stopsIn(row)[0]
+        if (stop) stop.focus({preventScroll: true})
+      }
     })
     // The server says that a table action asks first: its question is
     // asked in the table's dialog, and Confirm runs the action. A
@@ -233,11 +226,12 @@ const core = {
         if (confirmed === true) this.transport.push("table_run", {action})
       })
     })
-    // what happens in a grid nested in this one is that grid's
+    // what happens in a table nested in this one is that table's; but
+    // where focus is (focus.js)
     const own = handle => e => { if (this.owns(e.target)) handle(e) }
     this.el.addEventListener("keydown", own(e => this.onKeydown(e)), until)
-    this.el.addEventListener("focusin", own(e => this.onFocusin(e)), until)
-    this.el.addEventListener("focusout", own(e => this.onFocusout(e)), until)
+    this.el.addEventListener("focusin", e => this.onFocusin(e), until)
+    this.el.addEventListener("focusout", e => this.onFocusout(e), until)
     this.el.addEventListener("click", own(e => this.onClick(e)), until)
     this.el.addEventListener("mousedown", own(e => this.onMousedown(e)), until)
     this.el.addEventListener("dblclick", own(e => this.onDblclick(e)), until)
@@ -270,20 +264,42 @@ const core = {
     // stream insert or reset touches the rows alone.
     //
     // A patch of a row also takes away what this hook has said of
-    // it: that it is selected. So that is watched for as well.
-    // (Not for the button of a cell's whole text alone, which this hook
-    // puts in and takes out itself.)
+    // it: that its box is ticked (the attribute, which the hook writes
+    // with the property). So that is watched for as well. (Not for the
+    // button of a cell's whole text alone, which this hook puts in and
+    // takes out itself.)
     this.observer = new MutationObserver(records => {
-      const patched = records.filter(record => !this.ofWhole(record))
-      if (patched.length > 0) this.sync(patched)
+      if (records.some(record => !this.ofWhole(record))) this.sync()
     })
     this.observer.observe(this.el, {
       subtree: true,
       childList: true,
       attributes: true,
-      attributeFilter: ["tabindex", "aria-selected"]
+      attributeFilter: ["checked"]
     })
     this.sync()
+  },
+
+  // After every patch: the header goes before the rows again, the rows
+  // are painted as selected again, the columns and widths follow, and
+  // focus that went with an element is put back.
+  sync() {
+    this.headFirst()
+    this.paint()
+    this.watchColumns()
+    this.fitColumns()
+    this.measure()
+    // a patch has brought the cell whose value was shown as the
+    // server renders it, or taken it away: nothing is shown any more
+    if (this.revealed && !this.shows(this.revealed.cell)) this.revealed = null
+    // or a cell that waits for the host's answer: it waits still
+    if (this.holds && this.holds.size) this.rehold()
+    this.renumber()
+    // while the dialog asks, focus is in the dialog and stays there
+    const asking = this.editing && this.editing.asking
+    if (!asking && (!document.activeElement || document.activeElement === document.body)) this.repair()
+    // a patch may have brought a cell whose whole text showed, or cut off
+    this.offerWhole()
   },
 
   // A cell that is being edited is left alone by patches, so that
@@ -324,7 +340,7 @@ const core = {
 }
 
 const grid = {}
-for (const part of [core, counter, tree, expanding, widths, hiding, scrolling, selecting, actions, editing, saving, sensitive, dialog, wholeText]) {
+for (const part of [core, counter, focus, keys, expanding, widths, hiding, scrolling, selecting, actions, editing, saving, sensitive, dialog, wholeText]) {
   for (const key of Object.keys(part)) {
     if (Object.hasOwn(grid, key)) throw new Error(`ash_data_table: the grid's hook has two methods named ${key}`)
     grid[key] = part[key]

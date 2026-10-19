@@ -9,8 +9,8 @@
 // page or Previous to reach the first, focus goes to the button of
 // the page that is shown now and, in a table without page numbers, to
 // the other of the two. When the pagination itself goes away, with a
-// read that failed, focus goes to the grid.
-import {GRID, OF, PAGER, PAGE_NOW} from "./markers.js"
+// read that failed, focus goes to the table's first stop.
+import {GRID, OF, PAGE_NOW} from "./markers.js"
 
 export default {
   mounted() {
@@ -54,19 +54,16 @@ export default {
     if (control !== document.activeElement) control.focus({preventScroll: true})
   },
 
-  // After the patch, once the grid has its tab stop again, and only
-  // while focus is still nowhere.
+  // After the patch, and only while focus is still nowhere.
   destroyed() {
     this.ending.abort()
     if (!this.hasFocus) return
     setTimeout(() => { if (document.activeElement === document.body) this.toGrid() })
   },
 
-  // To the grid's tab stop; in a nested table, whose tab stop may be
-  // anywhere in the tables around it, to the cell the controls are in.
+  // To the first stop of the table it is of.
   toGrid() {
-    const cell = this.el.closest(PAGER) ||
-      document.querySelector(`${GRID}[${OF}="${CSS.escape(this.table)}"] [tabindex="0"]`)
-    if (cell) cell.focus({preventScroll: true})
+    const grid = document.querySelector(`${GRID}[${OF}="${CSS.escape(this.table)}"]`)
+    if (grid && grid._ashDataTable) grid._ashDataTable.toFirstStop()
   }
 }

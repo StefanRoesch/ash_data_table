@@ -3,7 +3,7 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {ACTIONS, EXPANDER, MASK, REVEAL, SECRET, SELECTOR, PARAGRAPH, WHOLE} from "../markers.js"
+import {ACTIONS, EXPANDER, FAILED, MASK, REVEAL, SECRET, SELECTOR, PARAGRAPH, WHOLE} from "../markers.js"
 import {ATTRIBUTE, DATACELL, is} from "./shared.js"
 
 export default {
@@ -37,7 +37,7 @@ export default {
     if (is(cell, SELECTOR) || is(cell, EXPANDER) || is(cell, ACTIONS)) return null
     // never for a sensitive cell: neither its mask nor its value
     if (cell.querySelector(`${REVEAL},${MASK},${SECRET}`)) return null
-    if (cell.hasAttribute("aria-invalid") || cell.hasAttribute("aria-busy")) return null
+    if (is(cell, FAILED) || cell.hasAttribute("aria-busy")) return null
     if (this.editing && this.editing.cell === cell) return null
     const text = cell.querySelector(`:scope > ${PARAGRAPH}`) || cell
     const cut = text === cell ? cell.scrollWidth > cell.clientWidth : text.scrollHeight > text.clientHeight

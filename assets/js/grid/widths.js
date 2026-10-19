@@ -4,15 +4,25 @@
 // puts together, and share its state through `this`.
 
 import {filterRow as filterRowId, head as headId, headRow as headRowId} from "../ids.js"
-import {HANDLE, HEADER, ROW, ROWGROUP} from "../markers.js"
-import {DATACELL, STEP, cellsOf} from "./shared.js"
+import {HANDLE, HEADER, ROW, ROWGROUP, WIDTH} from "../markers.js"
+import {DATACELL, cellsOf} from "./shared.js"
+
+// The narrowest and the widest a column can be made, in pixels: the
+// width fields' `min` and `max`, as the server renders them
+// (`AshDataTable.Attrs.least_width/0`, `most_width/0`;
+// test/attrs_test.exs compares them).
+const LEAST = 48
+const MOST = 1000
+const clamp = width => Math.round(Math.min(MOST, Math.max(LEAST, width)))
 
 export default {
-  // A person changes how wide a column is with the handle at the
-  // end of its header: by dragging it, or with the arrow keys once
-  // F2 on the header has put the focus on the handle. A double
-  // click on the handle, or Enter, makes the column as wide again
-  // as it was.
+  // A person changes how wide a column is with the handle at the end
+  // of its header, dragged with the pointer (a double click on it makes
+  // the column as wide again as it was), or in the list of "Columns":
+  // a width field per column (`data-width`, the id of its header), a
+  // number in pixels the browser's own keys change, and "Reset widths"
+  // (`data-reset-widths`), which makes every column as wide again as it
+  // was. The handle is no Tab stop.
   //
   // Until a person does, the browser lays the table out: as wide
   // as the place it is in, every column as its content asks. At
@@ -29,8 +39,8 @@ export default {
   // whatever it brings: rows, another page, the header again.
   // They are gone with the hook: with the page, and with a nested
   // table that is closed. Nothing else is written to the page but
-  // what a handle says of its column (`aria-valuenow`), which is
-  // written again after every patch.
+  // what the width fields hold, as the list opens and as a width
+  // changes.
 
   // The cells of the header row, left to right.
   headCells() { return cellsOf(document.getElementById(headRowId(this.id))) },
@@ -44,10 +54,6 @@ export default {
     const cell = `:is(${DATACELL})[aria-colindex="${place}"]:not([colspan])`
     return `:is(${at}>${ROWGROUP}>${ROW}>${cell},#${CSS.escape(`${this.id}-summaries`)}>${cell})`
   },
-
-  // The handle of a column's header, if it has one: the columns of
-  // the table have, the ones before and after them have not.
-  handleOf(th) { return th.querySelector(`:scope > ${HANDLE}`) },
 
   // Gives every column the width it has now. Not while the table
   // cannot be seen and has no widths to take.
@@ -80,7 +86,6 @@ export default {
     if (!table || !document.getElementById(headId(this.id))) return
     const heads = this.headCells()
     this.styled = this.headed(heads)
-    this.goneAt = new Set()
     if (!this.widths && this.hidden.size === 0) {
       if (this.sheet) this.sheet.replaceSync("")
       return
@@ -100,7 +105,6 @@ export default {
       const filter = below && below.id ? `#${CSS.escape(below.id)}` : null
       const all = [head, cells].concat(filter ? [filter] : [])
       if (gone) {
-        this.goneAt.add(place)
         css += `${all.join(",")}{display:none}`
         continue
       }
@@ -125,11 +129,9 @@ export default {
   // which columns the header has, and where each stands
   headed(heads) { return heads.map(th => `${th.id}:${th.getAttribute("aria-colindex")}`).join() },
 
-  // After every patch: each handle says how wide its column is
-  // now, which the server does not know and does not render. And
-  // when the header has another column than before, or a column
-  // stands elsewhere (the boxes that select rows came or went),
-  // the rules are written for the header as it is.
+  // After every patch: when the header has another column than
+  // before, or a column stands elsewhere (the boxes that select rows
+  // came or went), the rules are written for the header as it is.
   fitColumns() {
     const heads = this.headCells()
     if (this.styled !== this.headed(heads)) this.restyle()
@@ -145,32 +147,17 @@ export default {
       }
       if (added) this.restyle()
     }
-    for (const th of heads) {
-      const handle = this.handleOf(th)
-      // the handle of a hidden column says what it said last
-      if (!handle || this.hidden.has(th.id)) continue
-      const [least, most] = this.limits(handle)
-      const now = String(Math.round(Math.min(most, Math.max(least, th.getBoundingClientRect().width))))
-      if (handle.getAttribute("aria-valuenow") !== now) handle.setAttribute("aria-valuenow", now)
-    }
-  },
-
-  // The narrowest and the widest a column can be made, which the
-  // handle says.
-  limits(handle) {
-    return [Number(handle.getAttribute("aria-valuemin")), Number(handle.getAttribute("aria-valuemax"))]
   },
 
   // Makes a column `width` wide, as far as it may be.
   setWidth(th, width) {
-    const handle = th && this.handleOf(th)
-    if (!handle || !this.freeze()) return
+    if (!th || !this.freeze()) return
     const entry = this.widths.get(th.id)
     if (!entry) return
-    const [least, most] = this.limits(handle)
-    entry.width = Math.round(Math.min(most, Math.max(least, width)))
+    entry.width = clamp(width)
     this.restyle()
     this.fitColumns()
+    this.showWidths()
   },
 
   // Makes a column as wide again as it was before a person
@@ -181,6 +168,42 @@ export default {
     entry.width = entry.original
     this.restyle()
     this.fitColumns()
+    this.showWidths()
+  },
+
+  // "Reset widths": every column as the browser lays it out again.
+  resetWidths() {
+    this.widths = null
+    this.restyle()
+    this.showWidths()
+  },
+
+  // Each width field of the list of "Columns" says how wide its column
+  // is now, which the server does not know: as the list opens, and after
+  // a width changed while it is open. Not the field a person is typing
+  // into, nor that of a hidden column, which says what it said last.
+  showWidths() {
+    const list = this.part("columns")
+    if (!list || !list.matches(":popover-open")) return
+    for (const field of Array.from(list.querySelectorAll(WIDTH))) {
+      const th = document.getElementById(field.dataset.width)
+      if (!th || this.hidden.has(th.id) || field === document.activeElement) continue
+      const width = th.getBoundingClientRect().width
+      if (width && field.value !== String(clamp(width))) field.value = String(clamp(width))
+    }
+  },
+
+  // A width field is changed: with the browser's keys or arrows at once,
+  // as typed once the number is one a column can be (while typing "120",
+  // "1" and "12" are none), and as it is left, as far as the column may
+  // be, which the field then says.
+  onWidthField(field, type) {
+    const th = document.getElementById(field.dataset.width)
+    const width = Number(field.value)
+    if (!th || field.value === "" || !Number.isFinite(width)) return
+    if (type === "input" && !field.validity.valid) return
+    this.setWidth(th, width)
+    if (type === "change") field.value = String(clamp(width))
   },
 
   // Where the end of a column is: to the right, or to the left
@@ -224,36 +247,5 @@ export default {
     handle.addEventListener("pointerup", end)
     handle.addEventListener("pointercancel", end)
     handle.addEventListener("lostpointercapture", end)
-  },
-
-  // The keys of a handle that has the focus. Right Arrow and Left
-  // Arrow move the column's end a step; Home and End make the
-  // column as narrow and as wide as it can be; Enter makes it as
-  // wide again as it was; Escape goes back to the header. The
-  // other keys that would move about the grid or scroll the page
-  // do nothing here. Tab leaves the grid, as from a cell.
-  onResizeKeydown(e, handle) {
-    const th = handle.closest(HEADER)
-    const [least, most] = this.limits(handle)
-    const step = key => {
-      if (!this.freeze()) return
-      const forward = (key === "ArrowRight" ? 1 : -1) * this.forward(th)
-      this.setWidth(th, this.widths.get(th.id).width + forward * STEP)
-    }
-    switch (e.key) {
-      case "ArrowRight":
-      case "ArrowLeft": step(e.key); break
-      case "Home": this.setWidth(th, least); break
-      case "End": this.setWidth(th, most); break
-      case "Enter": this.resetWidth(th); break
-      case "Escape": th.focus(); break
-      case "ArrowUp":
-      case "ArrowDown":
-      case "PageUp":
-      case "PageDown":
-      case " ": break
-      default: return
-    }
-    e.preventDefault()
   },
 }

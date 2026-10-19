@@ -4,8 +4,8 @@
 // puts together, and share its state through `this`.
 
 import {error as errorId} from "../ids.js"
-import {ACTIONS, MASK, MASKED, REVEAL, SECRET} from "../markers.js"
-import {is} from "./shared.js"
+import {ACTIONS, FAILED, MASK, MASKED, REVEAL, SECRET} from "../markers.js"
+import {ATTRIBUTE, is} from "./shared.js"
 
 export default {
   // What a sensitive cell holds besides its mask: the button that
@@ -94,7 +94,7 @@ export default {
     const stale = document.getElementById(error.id)
     if (stale) stale.remove()
     cell.append(error)
-    cell.setAttribute("aria-invalid", "true")
+    cell.setAttribute(ATTRIBUTE(FAILED), "")
     cell.setAttribute("aria-describedby", error.id)
   },
 
@@ -106,7 +106,7 @@ export default {
       this.marked.delete(cell)
       const error = document.getElementById(errorId(cell.id))
       if (error && is(cell, ACTIONS)) error.remove()
-      cell.removeAttribute("aria-invalid")
+      cell.removeAttribute(ATTRIBUTE(FAILED))
       cell.removeAttribute("aria-describedby")
       delete cell.dataset.value
       delete cell.dataset.saved

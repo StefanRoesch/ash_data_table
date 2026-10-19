@@ -2,14 +2,14 @@
 // constants, helpers that need no hook, and what is the same for all
 // grids of a page (where the scrollbars at the bottom edge go, whether
 // focus is moving with Tab).
-import {CELL, CONTROL, DIALOG, GRID, HEADER, OPENED, ROW, ROWGROUP, ROWHEADER, TABLE} from "../markers.js"
+import {CELL, CONTROL, GRID, HEADER, ROW, ROWGROUP, ROWHEADER, TABLE} from "../markers.js"
 
 // a key that types a character
 export const PRINTABLE = e => e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey
 
 // What a cell says about itself besides its content, which a patch
 // does not bring to a cell that is being edited.
-export const KEPT = ["aria-readonly", "aria-invalid", "aria-describedby", "data-value", "data-saved"]
+export const KEPT = ["tabindex", "data-failed", "aria-describedby", "data-value", "data-saved"]
 
 // keys that move through the options of a closed select
 export const SELECT_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End", "PageUp", "PageDown"]
@@ -19,16 +19,6 @@ export const SELECT_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "
 // argument line is held back for.
 export const UNREADABLE = form =>
   Array.from(form.elements).find(control => control.validity && control.validity.badInput)
-
-// What is around an element, nearest first, as far as it is of
-// the same tree of grids: the grid it is in, or the cell that
-// holds the nested table it is in. Nothing beyond what opens, over
-// the page or in it: a dialog, an inline panel or picker is a place of
-// its own.
-export const AROUND = (node, what) => {
-  const found = node.parentElement && node.parentElement.closest(`${what},${DIALOG},${OPENED}`)
-  return found && found.matches(what) ? found : null
-}
 
 // The table's structure, by its markers alone: whatever elements a kit
 // draws it with, a table (`role=table`) holds rows, each record's in a
@@ -43,9 +33,6 @@ export const ANYCELL = `${DATACELL},${HEADER}`
 
 // the cells of a row, in their order
 export const cellsOf = row => row ? Array.from(row.children).filter(child => child.matches(ANYCELL)) : []
-
-// where a cell stands among the columns, counted from 0
-export const place = cell => Number(cell.getAttribute("aria-colindex")) - 1
 
 // The rows of a grid, the header rows first: not those of a grid
 // nested in it, which stand in one of its cells.
@@ -122,8 +109,6 @@ export const ATTRIBUTE = marker => marker.slice(1, -1)
 // grid/dialog.js). What asked it neither runs nor takes the focus back.
 export const GIVEN_UP = "given up"
 
-export const STEP = 10
-
 // The scrollbars at the bottom edge of the window (see "scrolling
 // sideways") are placed for all grids of the page at once, before
 // the next frame is drawn: first every grid says whether it wants
@@ -145,9 +130,9 @@ export const PLACE = () => {
 }
 
 // Whether focus is moving with Tab just now: a cell that Tab comes
-// to is brought into view as one the arrow keys come to is (see
-// `intoView`). The key is heard before focus moves, and forgotten
-// right after.
+// to is brought out from under what stays in view (see `intoView`),
+// one the pointer comes to is not. The key is heard before focus
+// moves, and forgotten right after.
 export const page = {tabbing: false}
 window.addEventListener("keydown", e => {
   if (e.key !== "Tab") return

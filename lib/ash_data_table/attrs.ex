@@ -641,7 +641,7 @@ defmodule AshDataTable.Attrs do
   # (one box per value of an enum, or one control per value), and a cell
   # whose value is made of fields (an embedded resource, a map, or an array
   # of either). The hook asks for it with one `edit` event, with the row and
-  # the column, on Enter, F2, a double click or a key typed on the cell, and
+  # the column, on Enter, a double click or a key typed on the cell, and
   # the server opens the action panel for it: the record is read, as the
   # person, and the panel's one input is the column's attribute, shown as
   # the field of an array, as a group of the value's fields (`group/1`), or
@@ -892,7 +892,8 @@ defmodule AshDataTable.Attrs do
     [data-reveal] [data-mask] [data-masked] [data-secret] [data-unseen] [data-whole]
     [data-control] [data-clear] [data-count] [data-value-text] [data-list] [data-item] [data-add]
     [data-remove] [data-own]
-    [data-selection] [data-select-all] [data-bulk] [data-arguments]
+    [data-selection] [data-select-all] [data-bulk] [data-arguments] [data-width]
+    [data-reset-widths]
     [data-field] [data-cancel] [data-remove-group]
     [data-none] [data-take] [aria-current=page] [role=region] [data-presentation]
   )

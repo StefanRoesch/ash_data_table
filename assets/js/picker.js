@@ -11,7 +11,7 @@
 // focus goes back to the cell, or to the button of the panel, that
 // opened it.
 import {error as errorId} from "./ids.js"
-import {ANYCELL, cellsOf, DATACELL} from "./grid/shared.js"
+import {ANYCELL, DATACELL} from "./grid/shared.js"
 import {ARGUMENTS, CANCEL, GRID, NONE, OF, TAKE} from "./markers.js"
 import {opened} from "./panel.js"
 
@@ -49,16 +49,16 @@ export default {
     return grid && grid._ashDataTable
   },
 
-  // Into the table: to the row that is selected as it opens, else
-  // to where the arrow keys start from. A picker whose table could
-  // not be read has no grid, and focus stays on its first button.
+  // Into the table: to the row that is selected as it opens, else to
+  // its first row, its first stop there (the row's button). A picker
+  // whose table could not be read has no grid, and focus stays on its
+  // first button.
   enter() {
     const table = this.table()
     if (!table || !this.el.isConnected) return
-    const current = table.rows().find(row => row.getAttribute("aria-selected") === "true")
-    const cells = current ? cellsOf(current) : []
-    const cell = current ? cells[Math.min(table.lead(), cells.length - 1)] : table.cellAt(table.pos.r, table.pos.c)
-    if (cell) cell.focus()
+    const row = table.selectedRows()[0] || table.records()[0]
+    const stop = row ? table.stopsIn(row)[0] : table.stopsIn(table.table())[0]
+    if (stop) stop.focus()
   },
 
   // Sends the choice: what is selected in the picker's table, which
@@ -124,9 +124,9 @@ export default {
           if (message) message.remove()
         })
       }
-      if (active && active !== document.body && active !== cell) return
+      if (active && active !== document.body) return
       if (opener && opener.getClientRects().length > 0) opener.focus({preventScroll: true})
-      else if (this.grid && this.grid.el.isConnected) this.grid.toTabStop()
+      else if (this.grid && this.grid.el.isConnected) this.grid.repair()
     })
   }
 }

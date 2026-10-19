@@ -5,7 +5,15 @@
 
 import {head as headId, row as rowId} from "../ids.js"
 import {BULK, CLEAR, CURRENT, DESTRUCTIVE, DETAIL, ROWGROUP, SELECT_ALL, SELECTION, SELECTOR, TABLE} from "../markers.js"
-import {LISTED, cellsOf, firstRow, groupsOf, is, place} from "./shared.js"
+import {LISTED, firstRow, groupsOf, is} from "./shared.js"
+
+// A box ticked or not: the property, and the attribute with it, which a
+// patch of the row takes away, and which the hook is watching for
+// (grid/index.js) to tick it again.
+const tick = (box, on) => {
+  if (box.checked !== on) box.checked = on
+  if (box.hasAttribute("checked") !== on) box.toggleAttribute("checked", on)
+}
 
 export default {
   // Whether rows can be selected, and how many at a time: "multi",
@@ -43,6 +51,13 @@ export default {
   },
 
   keyOf(body) { return body.id.slice(this.id.length + 5) },
+
+  // The records' rows that are selected, top to bottom (the picker
+  // takes focus to the first).
+  selectedRows() {
+    const {keys, all} = this.selection
+    return this.records().filter(body => all || keys.has(this.keyOf(body)))
+  },
 
   // What the server is told of a row: nothing more than its key,
   // where that is its primary key, else what the row says itself.
@@ -160,31 +175,9 @@ export default {
     this.select(keys, false)
   },
 
-  // Shift with Down Arrow or Up Arrow: focus goes to the row of
-  // records after or before this one, and the rows from where the
-  // key was first pressed to there are selected, with what was
-  // selected before. Going back takes rows out of it again.
-  extend(cell, step) {
-    const selection = this.selection
-    const rows = this.records()
-    const from = this.record(cell)
-    const to = rows[rows.indexOf(from) + step]
-    if (!to) return
-    const cells = cellsOf(firstRow(to))
-    const target = cells[Math.min(place(cell), cells.length - 1)]
-    // with every record selected there is none to add
-    if (selection.all) return target.focus()
-    if (!selection.range) selection.range = {anchor: this.keyOf(from), before: this.shown()}
-    const keys = new Map(selection.range.before)
-    for (const row of this.between(selection.range.anchor, to)) keys.set(this.keyOf(row), this.named(row))
-    selection.anchor = selection.range.anchor
-    target.focus()
-    this.select(keys, false)
-  },
-
-  // Says of every row whether it is selected, on the row and in
-  // its box. After every change of the selection, and after every
-  // patch: the server sends rows that say nothing of it. The line
+  // Says of every row whether it is selected, in its box. After every
+  // change of the selection, and after every patch: the server sends
+  // rows that say nothing of it. The line
   // above the grid is the server's: it draws it from what it is told.
   paint() {
     const mode = this.selects()
@@ -210,11 +203,9 @@ export default {
     for (const body of rows) {
       const on = selection.all || selection.keys.has(this.keyOf(body))
       if (on) onPage++
-      const row = firstRow(body)
-      if (row.getAttribute("aria-selected") !== String(on)) row.setAttribute("aria-selected", String(on))
-      const selector = row.querySelector(SELECTOR)
+      const selector = firstRow(body).querySelector(SELECTOR)
       const box = selector && selector.querySelector("input")
-      if (box && box.checked !== on) box.checked = on
+      if (box) tick(box, on)
     }
     // A table to choose from says again what is selected when the
     // selected row comes into view or goes out of it, with the
@@ -232,28 +223,22 @@ export default {
     const head = this.part("select-head")
     const page = head && head.querySelector("input")
     if (page) {
-      if (page.checked !== every) page.checked = every
+      tick(page, every)
       const some = onPage > 0 && !every
       if (page.indeterminate !== some) page.indeterminate = some
     }
     // The buttons of the line go with the selection, as the server
     // draws it, and the line with them where nothing else is on it:
-    // where one of them had the focus, it goes on to the grid.
+    // where one of them had the focus, it goes on to the table's first
+    // stop.
     const controls = this.part("selection-controls")
     const focus = this.lineFocus
     const gone = !!focus && (!focus.isConnected || (!!controls && controls.hidden && controls.contains(focus)))
     const left = document.activeElement === document.body || (!!controls && controls.contains(document.activeElement))
     if (gone && left) {
       this.lineFocus = null
-      this.toTabStop()
+      this.toFirstStop()
     }
-  },
-
-  // To the cell that is the tab stop of the tree of grids.
-  toTabStop() {
-    const tree = this.tree()
-    const cell = tree.activeId && document.getElementById(tree.activeId)
-    if (cell) cell.focus({preventScroll: true})
   },
 
   // A button of the line above the grid. The line of a table nested
@@ -266,13 +251,13 @@ export default {
     if (!button) return
     // "Select all that match" goes as every record is selected, and
     // focus goes on to "Clear selection"; that one goes with what was
-    // selected, and focus goes on to the grid
+    // selected, and focus goes on to the table's first stop
     if (is(button, SELECT_ALL)) {
       this.select(new Map(), true)
       this.part("clear-selection").focus({preventScroll: true})
     } else if (is(button, CLEAR)) {
       this.select(new Map(), false)
-      this.toTabStop()
+      this.toFirstStop()
     } else if (is(button, BULK)) {
       // one of the menu of the actions after the first two: the menu
       // closes, and its button has the focus, which the question gives

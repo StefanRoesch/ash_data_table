@@ -3,8 +3,8 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {VALUE_TEXT} from "../markers.js"
-import {GIVEN_UP, PRINTABLE, SELECT_KEYS, TYPED} from "./shared.js"
+import {FAILED, VALUE_TEXT} from "../markers.js"
+import {GIVEN_UP, PRINTABLE, SELECT_KEYS, TYPED, is} from "./shared.js"
 
 export default {
   // The editor of a column's component. What the table does for it
@@ -71,13 +71,18 @@ export default {
     input.style.height = `${Math.min(input.scrollHeight, 160)}px`
   },
 
-  // While a cell is edited the keys belong to its editor, the arrow
-  // keys among them. The grid keeps two; Tab leaves the grid, which
-  // saves.
+  // While a cell is edited the keys belong to its editor, but for two
+  // the table keeps: Enter and Escape. Tab and Shift+Tab go on to the
+  // next stop and the one before, which saves (`onEditorBlur`): from the
+  // editor's control Shift+Tab starts at the cell, so that it goes to
+  // the stop before the cell, not to the cell itself.
   onEditorKeydown(e) {
     const ed = this.editing
     ed.lastKey = PRINTABLE(e) ? "ArrowDown" : e.key
     switch (e.key) {
+      case "Tab":
+        if (e.shiftKey && e.target === ed.input) ed.cell.focus({preventScroll: true})
+        break
       case "Escape":
         e.preventDefault()
         this.finish(ed, false, true)
@@ -159,7 +164,6 @@ export default {
     cell.replaceChildren(...ed.saved)
     // the record is gone: there is no row to send, so the cell is marked here
     if (reply && reply.error) this.mark(cell, value, old, reply.error, () => cell.replaceChildren(...ed.saved))
-    if (this.tree().activeId === cell.id) cell.tabIndex = 0
     if (focused) cell.focus()
   },
 
@@ -189,7 +193,6 @@ export default {
       this.detach(ed)
       this.released(cell, true)
       restore()
-      if (this.tree().activeId === cell.id) cell.tabIndex = 0
       cell.focus()
       cell.setAttribute("aria-busy", "true")
       const payload = {row: this.rowKey(cell), column: this.columnOf(cell)}
@@ -272,7 +275,7 @@ export default {
     // shows what was typed until the server has answered
     const text = input.tagName === "SELECT" && input.selectedOptions[0] ? input.selectedOptions[0].textContent : value
     this.detach(ed)
-    const failed = cell.hasAttribute("aria-invalid")
+    const failed = is(cell, FAILED)
     // what was typed into a sensitive cell is never shown: until
     // the server has answered, the cell shows what it showed
     const typed = () => ed.type === "secret" ? restore() : cell.replaceChildren(...this.textFor(cell, text))
@@ -292,8 +295,6 @@ export default {
       if (failed) this.discard(cell)
       this.released(cell, false)
     }
-    // the cell is the grid's tab stop again, unless focus has gone to another cell
-    if (this.tree().activeId === cell.id) cell.tabIndex = 0
     if (refocus) cell.focus()
   },
 
@@ -304,7 +305,7 @@ export default {
     const old = cell.dataset.saved !== undefined ? cell.dataset.saved : this.valueOf(cell)
     const commit = () => {
       // back at the value the record has: the failed edit is given up
-      if (cell.hasAttribute("aria-invalid") && value === old) return this.discard(cell)
+      if (is(cell, FAILED) && value === old) return this.discard(cell)
       const saved = Array.from(cell.childNodes)
       const box = template.content.firstElementChild.cloneNode(true)
       box.checked = value === "true"
@@ -360,7 +361,6 @@ export default {
     // what was typed into a sensitive cell is never shown
     if (ed.type === "secret") cell.replaceChildren(...ed.saved)
     else cell.replaceChildren(...this.textFor(cell, value))
-    if (this.tree().activeId === cell.id) cell.tabIndex = 0
     if (focused) cell.focus()
   },
 

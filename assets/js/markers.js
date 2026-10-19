@@ -128,6 +128,9 @@ export const SELECT_ALL = "[data-select-all]"
 export const BULK = "[data-bulk]"
 // the argument line's form
 export const ARGUMENTS = "[data-arguments]"
+// in the list of "Columns": a column's width field, and "Reset widths"
+export const WIDTH = "[data-width]"
+export const RESET_WIDTHS = "[data-reset-widths]"
 
 // ---- the action panel and the picker
 

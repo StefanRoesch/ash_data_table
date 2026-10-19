@@ -3,7 +3,7 @@
 // stays there. Inline (`"inline"`), a part of the page: focus moves
 // into it as it opens, and Tab leaves it. Escape (inside it, inline)
 // and Cancel ask the server to take it away; when it is gone, focus
-// goes back to the control that opened it, and to the grid when that
+// goes back to the control that opened it, and to the table when that
 // control is gone too.
 
 // The control of a form that holds something the browser cannot read
@@ -18,7 +18,6 @@ const UNREADABLE = form =>
   Array.from(form.elements).find(control => control.validity && control.validity.badInput)
 
 import {ADD, CANCEL, CONTROL, COUNT, DESTRUCTIVE, FIELD, GRID, ITEM, LIST, OF, OPENED, REMOVE, REMOVE_GROUP, SELECTION, VALUE_TEXT} from "./markers.js"
-import {ANYCELL} from "./grid/shared.js"
 
 // The field of an array that is given value by value (`LIST`): its rows,
 // one per value (`ITEM`), each with the control that holds the value.
@@ -256,10 +255,12 @@ export default {
   },
 
   // Once the patch is done, and only while focus is nowhere: the
-  // server may have sent it somewhere itself (to a new row). The
-  // panel of a nested table is inside the grid around that table,
-  // which takes focus back to its tab stop when the panel goes: the
-  // cell the opener is in. That is nowhere yet, too.
+  // server may have sent it somewhere itself (to a new row), and the
+  // table may have put it back where a patch took it away (`repair`
+  // of the grid's hook). Else to the control that opened the panel; to
+  // the table's first stop where that was a button of the line above
+  // it, which went with the selection; else where focus was in the
+  // table, if that went.
   destroyed() {
     this.ending.abort()
     // a question it asked in it is answered as Cancel
@@ -269,12 +270,10 @@ export default {
       const opener = this.opener && this.opener.isConnected
         ? this.opener
         : (this.openerId ? document.getElementById(this.openerId) : null)
-      const cell = opener && opener.closest(ANYCELL)
-      if (active && active !== document.body && active !== cell) return
+      if (active && active !== document.body) return
       if (opener && opener.getClientRects().length > 0) opener.focus({preventScroll: true})
-      // a button of the line above the grid went with the selection
-      else if (this.grid && this.grid.el.isConnected && opener && opener.closest(SELECTION)) this.grid.toTabStop()
-      else if (this.grid && this.grid.el.isConnected) this.grid.refocus()
+      else if (this.grid && this.grid.el.isConnected && opener && opener.closest(SELECTION)) this.grid.toFirstStop()
+      else if (this.grid && this.grid.el.isConnected) this.grid.repair()
     })
   }
 }

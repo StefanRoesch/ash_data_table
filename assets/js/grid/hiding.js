@@ -3,8 +3,8 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {ROW} from "../markers.js"
-import {cellsOf, place} from "./shared.js"
+import {RESET_WIDTHS, WIDTH} from "../markers.js"
+import {is} from "./shared.js"
 
 export default {
   // A person hides a column of the table, and shows it again, in
@@ -19,56 +19,17 @@ export default {
   // What is hidden is gone with the hook: with the page, and with
   // a nested table that is closed.
   //
-  // A hidden column is still a column of the grid: the cells keep
+  // A hidden column is still a column of the table: the cells keep
   // their place in the row and what they say of it
   // (`aria-colindex`, and `aria-colcount` on the table), as ARIA
-  // has it for a grid of which not every column is there to be
+  // has it for a table of which not every column is there to be
   // seen. They are not shown and not told to a screen reader, and
-  // focus never goes to one: the arrow keys, Home and End pass
-  // over them, and the tab stop is always a cell that is shown.
+  // Tab passes over them, as the browser passes over what is not
+  // shown. Focus is in the list of "Columns" as a column goes.
   //
   // What this hook writes outside its own style sheet: which
   // boxes are ticked, the text of the button, and what is read
   // out (see `columns/1` for what a patch does to them).
-
-  // Whether a cell is one of a hidden column. A cell that spans
-  // the table is of none.
-  gone(cell) {
-    return this.goneAt.size > 0 && !cell.hasAttribute("colspan") && this.goneAt.has(cell.getAttribute("aria-colindex"))
-  },
-
-  // A cell itself, or for one of a hidden column the nearest cell
-  // of its row that is shown: after it, else before it. The same for a
-  // cell the arrow keys do not stop at (`stops`, a filter cell without a
-  // filter).
-  seenNear(cell) {
-    const near = cell => !this.gone(cell) && this.stops(cell)
-    if (near(cell)) return cell
-    const cells = cellsOf(cell.closest(ROW))
-    const at = place(cell)
-    for (let i = at + 1; i < cells.length; i++) if (near(cells[i])) return cells[i]
-    for (let i = at - 1; i >= 0; i--) if (near(cells[i])) return cells[i]
-    return cell
-  },
-
-  // Where the next cell that is shown stands in a cell's row, to
-  // one side of it (`by` is 1 or -1), passing over a cell that is no
-  // stop; where the cell stands itself when there is none.
-  step(cell, by) {
-    const cells = cellsOf(cell.closest(ROW))
-    const at = place(cell)
-    for (let i = at + by; i >= 0 && i < cells.length; i += by) if (!this.gone(cells[i]) && this.stops(cells[i])) return i
-    return at
-  },
-
-  // Where the first cell of a row that is shown, and a stop, stands
-  // (`by` is 1), or the last (-1).
-  edge(row, by) {
-    const cells = cellsOf(row)
-    const from = by > 0 ? 0 : cells.length - 1
-    for (let i = from; i >= 0 && i < cells.length; i += by) if (!this.gone(cells[i]) && this.stops(cells[i])) return i
-    return from
-  },
 
   // A patch may bring the list with another column or without
   // one, say of a column that the rows are filtered or sorted by
@@ -88,6 +49,9 @@ export default {
       attributes: true,
       attributeFilter: ["data-filtered", "data-sorted", "checked", "disabled"]
     })
+    // its width fields say the widths as it opens (see "the widths of
+    // the columns")
+    list.addEventListener("toggle", e => { if (e.newState === "open") this.showWidths() }, {signal: this.ending.signal})
     this.applyColumns()
   },
 
@@ -98,7 +62,8 @@ export default {
   },
 
   // What happens in the list of "Columns", which is outside this
-  // element: a box that is used. The browser opens and closes the
+  // element: a box that is used, a width field, "Reset widths". The
+  // browser opens and closes the
   // list (a popover its button names, `popovertarget`), closes it on a
   // click elsewhere and on Escape, and says whether it is open; focus
   // that goes on to somewhere else closes it here. Those of a table
@@ -109,6 +74,8 @@ export default {
     const control = this.part("columns-control")
     if (!control || !target || !target.closest || !control.contains(target)) return
     if (e.type === "change" && target.dataset.head !== undefined) this.onColumnChange(target)
+    if ((e.type === "input" || e.type === "change") && is(target, WIDTH)) this.onWidthField(target, e.type)
+    if (e.type === "click" && target.closest(RESET_WIDTHS)) this.resetWidths()
     if (e.type === "focusout" && e.relatedTarget && !control.contains(e.relatedTarget)) {
       const list = this.part("columns")
       if (list && list.matches(":popover-open")) list.hidePopover()
@@ -125,15 +92,11 @@ export default {
     if (status) status.textContent = this.hidden.has(box.dataset.head) ? box.dataset.sayHidden : box.dataset.sayShown
   },
 
-  // What is hidden has changed, or may have: the list, the rules,
-  // and where focus and the tab stop are follow.
+  // What is hidden has changed, or may have: the list and the rules
+  // follow.
   applyColumns() {
-    // where focus is before its cell is taken out of sight, which
-    // takes focus away from it
-    const focused = this.cellOf(document.activeElement)
     this.paintColumns()
     this.restyle()
-    this.leaveHidden(focused)
     this.fitColumns()
   },
 
@@ -185,20 +148,5 @@ export default {
     const count = this.part("columns-count")
     const number = counts.hidden > 0 ? String(counts.hidden) : ""
     if (count && count.textContent !== number) count.textContent = number
-  },
-
-  // Nothing stays in a column that is hidden now: focus and the
-  // tab stop move to the nearest cell that is shown. That is all
-  // it takes for what was open in the column: an editor is left
-  // as focus leaves it, which saves, and a sensitive value that
-  // is shown is hidden again, as it is shown for as long as
-  // focus is at its cell. `focused` is the cell focus was in
-  // before the column went.
-  leaveHidden(focused) {
-    if (this.goneAt.size === 0) return
-    if (focused && this.gone(focused)) this.seenNear(focused).focus({preventScroll: true})
-    const tree = this.tree()
-    const active = tree.owner === this.el && tree.activeId && document.getElementById(tree.activeId)
-    if (active && this.el.contains(active) && this.gone(active)) this.setActive(this.seenNear(active))
   },
 }
