@@ -10,10 +10,10 @@ import { Table } from "./support/table"
 // shows all of it in place: the hook puts a button into it (`Table.whole`,
 // "Show all", a Tab stop named after its column), and the button, or
 // Shift+Enter on an editable cell, shows the whole text in the cell, the row
-// as high as it needs, and cuts it off again. (Several tests below still
-// assume the button came with the focus or the pointer alone, before K2's
-// fix-up: K3 rewrites them.) Escape cuts it off too. Nothing of the
-// text is put anywhere but in the cell: the server renders nothing for it.
+// as high as it needs, and cuts it off again. Escape on an editable cell
+// cuts it off too. Nothing of the text is put anywhere but in the cell: the
+// server renders nothing for it. The compact comments edit nothing: their
+// cells are no Tab stops, the buttons are.
 //
 // One comment in ten of the seed is long, of three paragraphs: it starts
 // with "Done on my side, please review." and ends with "merge it as it is."
@@ -120,9 +120,8 @@ test.describe("a column with `max_lines 3` (/comments/compact)", () => {
     expect(await paragraph(cell)).toMatchObject({ lines: 3, cut: true })
 
     // and what is cut off now can be shown as a whole, in the cell
-    await cell.focus()
     await expect(table.whole(cell)).toBeVisible()
-    await table.press("Shift+Enter")
+    await table.whole(cell).click()
     await expect(table.whole(cell)).toHaveAttribute("aria-expanded", "true")
     expect(await paragraph(cell)).toMatchObject({ cut: false })
     expect(await paragraph(cell)).not.toMatchObject({ clamp: "3" })
@@ -183,6 +182,17 @@ test.describe("the whole text of a cell that cuts some off", () => {
     await expect(button).toHaveAttribute("aria-expanded", "false")
     await expect(button).not.toHaveAttribute("aria-hidden")
     await expect(button).not.toHaveAttribute("tabindex")
+    // inside the cell's box
+    const at = (await button.boundingBox())!
+    const box = (await cell.boundingBox())!
+    expect(at.x).toBeGreaterThanOrEqual(box.x)
+    expect(at.x + at.width).toBeLessThanOrEqual(box.x + box.width + 1)
+    expect(at.y).toBeGreaterThanOrEqual(box.y)
+    expect(at.y + at.height).toBeLessThanOrEqual(box.y + box.height + 1)
+    // a screen reader has the whole text in the cell, which is described by nothing
+    await expect(cell).not.toHaveAttribute("aria-describedby")
+    await expect(cell).not.toHaveAttribute("title")
+    expect(await own(cell)).toContain(LONG_END)
 
     // a stop of the Tab order: Shift+Tab leaves it, Tab comes back to it
     await button.focus()
@@ -206,45 +216,7 @@ test.describe("the whole text of a cell that cuts some off", () => {
     expect(await paragraph(cell)).toMatchObject({ lines: 3, cut: true })
   })
 
-  test("a button comes into the cell while it has the focus, which the cell keeps; it is for the eye alone", async ({
-    page,
-  }) => {
-    const table = compact(page)
-    await table.open()
-    const keys = await keysBy(table, "body", LONG)
-    const cell = table.cell(keys.with[0], "body")
-    const button = table.whole(cell)
-
-    // the server renders nothing for it
-    await expect(anyWhole(page)).toHaveCount(0)
-
-    await cell.focus()
-    await expect(button).toBeVisible()
-    await expect(button).toHaveAttribute("data-whole", "Show all")
-    await expect(button).toHaveAttribute("aria-expanded", "false")
-    await expect(cell).toBeFocused()
-    // inside the cell's box
-    const at = (await button.boundingBox())!
-    const box = (await cell.boundingBox())!
-    expect(at.x).toBeGreaterThanOrEqual(box.x)
-    expect(at.x + at.width).toBeLessThanOrEqual(box.x + box.width + 1)
-    expect(at.y).toBeGreaterThanOrEqual(box.y)
-    expect(at.y + at.height).toBeLessThanOrEqual(box.y + box.height + 1)
-
-    // a screen reader has the whole text in the cell, and is told nothing of this
-    await expect(button).toHaveAttribute("aria-hidden", "true")
-    await expect(button).toHaveAttribute("tabindex", "-1")
-    await expect(cell).not.toHaveAttribute("aria-describedby")
-    await expect(cell).not.toHaveAttribute("title")
-    expect(await own(cell)).toContain(LONG_END)
-
-    // gone at once when the focus moves on
-    await table.press("ArrowRight")
-    await expect(button).toHaveCount(0)
-    await expect(anyWhole(page)).toHaveCount(0)
-  })
-
-  test("the button, or Shift+Enter, shows all of the text in the cell, the row as high as it needs, and cuts it off again", async ({
+  test("the button shows all of the text in the cell, the row as high as it needs, and cuts it off again", async ({
     page,
   }) => {
     const table = compact(page)
@@ -255,11 +227,10 @@ test.describe("the whole text of a cell that cuts some off", () => {
     const button = table.whole(cell)
     const before = await height(table, key)
 
-    await cell.focus()
     await button.click()
     await expect(button).toHaveAttribute("aria-expanded", "true")
     await expect(button).toHaveAttribute("data-whole", "Show less")
-    await expect(cell).toBeFocused()
+    await expect(button).toBeFocused()
     // nothing is cut off any more, and the line breaks of the value are kept
     expect(await paragraph(cell)).toMatchObject({ cut: false, breaks: "pre-line" })
     expect(await paragraph(cell)).not.toMatchObject({ clamp: "3" })
@@ -280,77 +251,29 @@ test.describe("the whole text of a cell that cuts some off", () => {
     expect(await paragraph(cell)).toMatchObject({ lines: 3, cut: true, clamp: "3" })
     expect(await height(table, key)).toBe(before)
 
-    // Shift+Enter, the same
-    await table.press("Shift+Enter")
+    // Enter on it, the same; focus stays on it
+    await table.press("Enter")
     await expect(button).toHaveAttribute("aria-expanded", "true")
     expect(await paragraph(cell)).toMatchObject({ cut: false })
-    await table.press("Shift+Enter")
+    await table.press("Enter")
     await expect(button).toHaveAttribute("aria-expanded", "false")
     expect(await paragraph(cell)).toMatchObject({ lines: 3, cut: true })
-    await expect(cell).toBeFocused()
+    await expect(button).toBeFocused()
     await expect(table.openEditors).toHaveCount(0)
   })
 
-  test("is not offered for a cell that shows all of its text; the button goes with the focus as the arrow keys go through cells", async ({
-    page,
-  }) => {
+  test("is in no cell that shows all of its text, in any column", async ({ page }) => {
     const table = compact(page)
     await table.open()
-    const keys = await table.rowKeys()
     const texts = await keysBy(table, "body", LONG)
+    await expect(table.whole(table.cell(texts.with[0], "body"))).toBeVisible()
 
-    await table.cell(texts.without[0], "body").focus()
-    await expect(table.cell(texts.without[0], "body")).toBeFocused()
-    await expect(anyWhole(page)).toHaveCount(0)
-    await table.cell(texts.with[0], "author").focus()
-    await expect(table.cell(texts.with[0], "author")).toBeFocused()
-    await expect(anyWhole(page)).toHaveCount(0)
-
-    // down the column: a button in the cell that has the focus, if it is cut off, and in no other
-    await table.cell(keys[0], "body").focus()
-    for (const key of keys.slice(1)) {
-      await table.press("ArrowDown")
-      const cell = table.cell(key, "body")
-      await expect(cell).toBeFocused()
-      if (texts.with.includes(key)) await expect(table.whole(cell)).toBeVisible()
-      else await expect(table.whole(cell)).toHaveCount(0)
-      await expect.poll(() => anyWhole(page).count()).toBeLessThanOrEqual(1)
-    }
+    for (const key of texts.without) await expect(table.whole(table.cell(key, "body"))).toHaveCount(0)
+    for (const key of await table.rowKeys()) await expect(table.whole(table.cell(key, "author"))).toHaveCount(0)
+    await expect(anyWhole(page)).toHaveCount(texts.with.length)
   })
 
-  test("comes when the pointer is on the cell, without the focus, and goes with the pointer", async ({ page }) => {
-    const table = compact(page)
-    await table.open()
-    const keys = await keysBy(table, "body", LONG)
-    const cell = table.cell(keys.with[0], "body")
-    const button = table.whole(cell)
-
-    await cell.hover()
-    await expect(button).toBeVisible()
-    // the pointer did not bring the focus with it
-    await expect(cell).not.toBeFocused()
-
-    // onto the button: it stays
-    await button.hover()
-    await expect(button).toBeVisible()
-
-    // and away from the cell: it goes
-    await page.getByRole("heading", { level: 1 }).hover()
-    await expect(button).toHaveCount(0)
-
-    // a cell that shows all of its text has none
-    await table.cell(keys.without[0], "body").hover()
-    await expect(table.cell(keys.without[0], "body")).toBeVisible()
-    await expect(anyWhole(page)).toHaveCount(0)
-
-    // a click on the button shows the whole text, and puts the focus on the cell
-    await cell.hover()
-    await button.click()
-    await expect(button).toHaveAttribute("aria-expanded", "true")
-    await expect(cell).toBeFocused()
-  })
-
-  test("a cell whose whole text shows keeps it when focus and pointer go; Escape cuts it off and does nothing else", async ({
+  test("a cell whose whole text shows keeps it when focus and pointer go; its button cuts it off again", async ({
     page,
   }) => {
     const table = compact(page)
@@ -359,29 +282,23 @@ test.describe("the whole text of a cell that cuts some off", () => {
     const cell = table.cell(keys.with[0], "body")
     const button = table.whole(cell)
 
-    await cell.focus()
-    await table.press("Shift+Enter")
+    await button.click()
     await expect(button).toHaveAttribute("aria-expanded", "true")
 
     // the focus moves on, the pointer is elsewhere: it still shows all
     await page.getByRole("heading", { level: 1 }).hover()
-    await table.press("ArrowRight")
-    await expect(table.cell(keys.with[0], "author")).toBeFocused()
+    await table.press("Tab")
+    await expect(button).not.toBeFocused()
     await expect(button).toHaveAttribute("aria-expanded", "true")
     expect(await paragraph(cell)).toMatchObject({ cut: false })
 
-    // back to it, and Escape: cut off again, the focus where it was
-    await table.press("ArrowLeft")
-    await expect(cell).toBeFocused()
-    await table.press("Escape")
+    // back to it, and it cuts the text off again
+    await table.press("Shift+Tab")
+    await expect(button).toBeFocused()
+    await table.press(" ")
     await expect(button).toHaveAttribute("aria-expanded", "false")
     expect(await paragraph(cell)).toMatchObject({ lines: 3, cut: true })
-    await expect(cell).toBeFocused()
-    await expect(table.openEditors).toHaveCount(0)
-
-    // moving away now takes the button with it
-    await table.press("ArrowRight")
-    await expect(button).toHaveCount(0)
+    await expect(button).toBeFocused()
   })
 
   test("a long text in a narrow column: all of it shows in the cell, however many lines it takes", async ({ page }) => {
@@ -394,8 +311,7 @@ test.describe("the whole text of a cell that cuts some off", () => {
     // a column of 48 pixels: the text takes many more lines than three
     await narrow(table, "body")
     const before = await height(table, key)
-    await cell.focus()
-    await table.press("Shift+Enter")
+    await table.whole(cell).click()
     await expect(table.whole(cell)).toHaveAttribute("aria-expanded", "true")
     expect(await paragraph(cell)).toMatchObject({ cut: false })
     expect(await height(table, key)).toBeGreaterThan(before + 40)
@@ -411,16 +327,13 @@ test.describe("the whole text of a cell that cuts some off", () => {
     const name = await text(cell)
 
     expect(await cut(cell)).toBe(false)
-    await cell.focus()
-    await expect(cell).toBeFocused()
     await expect(table.whole(cell)).toHaveCount(0)
 
     await narrow(table, "author")
     expect(await cut(cell)).toBe(true)
     const before = await height(table, key)
-    await cell.focus()
     await expect(table.whole(cell)).toBeVisible()
-    await table.press("Shift+Enter")
+    await table.whole(cell).click()
     await expect(table.whole(cell)).toHaveAttribute("aria-expanded", "true")
     // it wraps, and nothing is cut off
     expect(await cut(cell)).toBe(false)
@@ -449,6 +362,15 @@ test.describe("the whole text and editing (/comments)", () => {
     await expect(button).toHaveAttribute("aria-expanded", "true")
     expect(await cut(cell)).toBe(false)
 
+    // Escape on the cell cuts it off again, and does nothing else
+    await table.press("Escape")
+    await expect(button).toHaveAttribute("aria-expanded", "false")
+    expect(await cut(cell)).toBe(true)
+    await expect(cell).toBeFocused()
+    await expect(table.openEditors).toHaveCount(0)
+    await table.press("Shift+Enter")
+    await expect(button).toHaveAttribute("aria-expanded", "true")
+
     // the editor takes the place of all of it, the button too
     await table.press("Enter")
     await expect(table.editor(cell)).toBeFocused()
@@ -476,7 +398,7 @@ test.describe("the whole text of a nested table, and of a row that changes", () 
     "one sentence after the other, none of which says much, until the cell has more than it shows. ".repeat(4) +
     "The end of it."
 
-  test("a nested table has its own; Escape cuts it off first, and leaves the nested table next", async ({
+  test("a nested table has its own, in every cell of it that cuts its text off", async ({
     page,
     tasks,
   }) => {
@@ -500,21 +422,19 @@ test.describe("the whole text of a nested table, and of a row that changes", () 
     const cell = nested.cell(comment, "body")
     expect(await paragraph(cell)).toMatchObject({ lines: 3, cut: true })
 
-    await cell.focus()
     await expect(nested.whole(cell)).toBeVisible()
-    // the table around it puts no button anywhere of its own
-    await expect(anyWhole(page)).toHaveCount(1)
+    await expect(nested.whole(cell)).toHaveAccessibleName("Show all of Body")
 
-    await nested.press("Shift+Enter")
+    await nested.whole(cell).focus()
+    await nested.press("Enter")
     await expect(nested.whole(cell)).toHaveAttribute("aria-expanded", "true")
     expect(await paragraph(cell)).toMatchObject({ cut: false })
     expect(await own(cell)).toBe(TYPED)
 
-    await nested.press("Escape")
+    await nested.press("Enter")
     await expect(nested.whole(cell)).toHaveAttribute("aria-expanded", "false")
-    await expect(cell).toBeFocused()
-    await nested.press("Escape")
-    await expect(table.nestedCell(SEED.task.first, "comments")).toBeFocused()
+    await expect(nested.whole(cell)).toBeFocused()
+    expect(await paragraph(cell)).toMatchObject({ lines: 3, cut: true })
   })
 
   test("a live update of the row brings the new text, shown whole again, and takes the button away when nothing is cut off any more", async ({
@@ -528,8 +448,7 @@ test.describe("the whole text of a nested table, and of a row that changes", () 
     const cell = table.cell(key, "body")
     const button = table.whole(cell)
 
-    // the pointer is on the cell, and its whole text shows
-    await cell.hover()
+    // its whole text shows
     await button.click()
     await expect(button).toHaveAttribute("aria-expanded", "true")
 
@@ -646,17 +565,16 @@ for (const theme of ["light", "dark"] as const) {
       const cell = table.cell(keys.with[0], "body")
       await expectNoAxeViolations(page)
 
-      await cell.focus()
-      await expect(table.whole(cell)).toBeVisible()
+      await table.whole(cell).focus()
       await expectNoAxeViolations(page)
 
-      await table.press("Shift+Enter")
+      await table.press("Enter")
       await expect(table.whole(cell)).toHaveAttribute("aria-expanded", "true")
       await expectNoAxeViolations(page)
 
       // and in a column so narrow that it takes many lines
       await narrow(table, "body")
-      await cell.focus()
+      await table.whole(cell).focus()
       await expect(table.whole(cell)).toHaveAttribute("aria-expanded", "true")
       await expectNoAxeViolations(page)
     })
@@ -673,7 +591,6 @@ test.describe("in forced colours", () => {
     await table.open()
     const keys = await keysBy(table, "body", LONG)
     const cell = table.cell(keys.with[0], "body")
-    await cell.focus()
     await expect(table.whole(cell)).toBeVisible()
     const look = await table.whole(cell).evaluate((node) => {
       const style = getComputedStyle(node)
