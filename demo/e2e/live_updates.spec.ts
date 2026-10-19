@@ -117,6 +117,37 @@ test.describe("two people on /tasks", () => {
     }
   })
 
+  test("a live update that changes the focused row in place leaves focus on the same stop", async ({
+    browser,
+    page,
+    tasks,
+  }) => {
+    await tasks.open()
+    const other = await another(browser, page, "member")
+
+    try {
+      const theirs = new Table(other.page, "task", "/tasks")
+      await theirs.open()
+      // the member's focus on an editable cell of their own task, and on that row's box
+      for (const [stop, focus] of [
+        [`task-row-${OWN}-c-title`, theirs.cell(OWN, "title")],
+        [`task-row-${OWN}-s>input`, theirs.box(OWN)],
+      ] as const) {
+        await focus.focus()
+        expect(await theirs.focusedStop()).toBe(stop)
+
+        const title = `Changed in place (${stop.endsWith("input") ? "box" : "cell"})`
+        await retype(tasks, OWN, "title", title)
+
+        await expect(theirs.cell(OWN, "title")).toHaveText(title)
+        expect(await theirs.focusedStop(), "focus stayed where it was").toBe(stop)
+        await expect(theirs.openEditors).toHaveCount(0)
+      }
+    } finally {
+      await other.close()
+    }
+  })
+
   test("a cell the member is editing keeps what they typed, and shows the change once the editor is gone", async ({
     browser,
     page,

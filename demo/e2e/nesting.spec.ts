@@ -487,6 +487,56 @@ test.describe("editing in a nested table", () => {
     }
   })
 
+  test("Tab out of an editor in a nested table saves and goes on to the next stop; Shift+Tab saves and goes back to the stop before the cell", async ({
+    tasks,
+    pushed,
+  }) => {
+    const labels = await tasks.openLine(FIRST, "labels")
+    const [key] = await labels.rowKeys()
+    const name = labels.cell(key, "name")
+    const colour = labels.cell(key, "colour")
+    // in page order, the tree's stops: the cell's neighbours are the nested
+    // row's expander before its first editable cell, its first action after its last
+    const stops = await tasks.stops()
+    const before = stops[stops.indexOf(`${labels.id}-row-${key}-c-name`) - 1]
+    const after = stops[stops.indexOf(`${labels.id}-row-${key}-c-colour`) + 1]
+    expect(before).toBe(`${labels.id}-row-${key}-e>button`)
+    expect(after).toBe(`${labels.id}-row-${key}-a-destroy`)
+    await pushed.clear()
+
+    // Tab from the first editable cell's editor: saved, on to the next cell
+    await name.focus()
+    await tasks.press("Enter")
+    await expect(labels.editor(name)).toBeFocused()
+    await tasks.retype("Tabbed out")
+    await labels.saves(name, () => tasks.press("Tab"))
+    await expect(name).toHaveText("Tabbed out")
+    await expect(colour).toBeFocused()
+
+    // Tab from the last one's: saved, on to the row's first action
+    await tasks.press("Enter")
+    await expect(labels.editor(colour)).toBeFocused()
+    await tasks.retype("#654321")
+    await labels.saves(colour, () => tasks.press("Tab"))
+    await expect(colour).toHaveText("#654321")
+    await expect.poll(() => tasks.focusedStop(), "Tab went on to the next stop").toBe(after)
+
+    // Shift+Tab from the first one's: saved, back to the stop before the
+    // cell (the nested row's expander), not to the cell
+    await name.focus()
+    await tasks.press("Enter")
+    await tasks.retype("Shift-tabbed out")
+    await labels.saves(name, () => tasks.press("Shift+Tab"))
+    await expect(name).toHaveText("Shift-tabbed out")
+    await expect.poll(() => tasks.focusedStop(), "Shift+Tab went to the stop before the cell").toBe(before)
+
+    await expect(labels.openEditors).toHaveCount(0)
+    expect(await pushed.count("save")).toBe(3)
+    // the nested table's own saves: the task table around it is not read again
+    expect(await pushed.all()).toHaveLength(3)
+    await expect(tasks.line(FIRST, "labels")).toHaveAttribute("aria-expanded", "true")
+  })
+
   test("the people under a task cannot be edited: their table names no update action", async ({ tasks, pushed }) => {
     const reporter = await tasks.openLine(FIRST, "reporter")
     await expect(reporter.editorTemplates).toHaveCount(0)

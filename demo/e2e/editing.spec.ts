@@ -168,6 +168,46 @@ test.describe("starting and giving up an edit", () => {
     await tasks.press("Escape")
     await expect(title).toBeFocused()
   })
+
+  // A screen reader in browse mode may keep Enter and Space for itself and
+  // click the element instead: a click with no pointer (`detail` 0), as
+  // `HTMLElement.click()` makes one. On an editable cell it edits, as Enter does.
+  test("a click without a pointer, as assistive technology makes one, edits an editable cell; a pointer's single click does not", async ({
+    tasks,
+    pushed,
+  }) => {
+    const title = tasks.cell(FIRST, "title")
+    const atClick = (cell: Locator) => cell.evaluate((node) => (node as HTMLElement).click())
+
+    // a pointer's single click focuses the cell and edits nothing
+    await title.click()
+    await expect(title).toBeFocused()
+    await expect(tasks.openEditors).toHaveCount(0)
+
+    await atClick(title)
+    await expect(tasks.editor(title)).toBeFocused()
+    await expect(tasks.editor(title)).toHaveValue("Rename the onboarding email")
+    await tasks.retype("Edited by a screen reader")
+    await tasks.saves(title, () => tasks.press("Enter"))
+    await expect(title).toHaveText("Edited by a screen reader")
+    await expect(title).toBeFocused()
+
+    // a reference cell: the picker opens, as on Enter
+    const assignee = tasks.cell(FIRST, "assignee")
+    await assignee.focus()
+    await atClick(assignee)
+    await expect(tasks.picker).toBeVisible()
+    await tasks.pickerCancel.click()
+    await expect(tasks.picker).toHaveCount(0)
+    await expect(assignee).toBeFocused()
+
+    // a read-only cell: nothing opens, nothing is sent
+    await pushed.clear()
+    await atClick(tasks.cell(FIRST, "headline"))
+    await expect(tasks.openEditors).toHaveCount(0)
+    await expect(tasks.picker).toHaveCount(0)
+    expect(await pushed.all()).toEqual([])
+  })
 })
 
 test.describe("saving", () => {
