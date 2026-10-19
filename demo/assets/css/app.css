@@ -2,6 +2,8 @@
    https://tailwindcss.com/docs/configuration */
 
 @import "tailwindcss" source(none);
+/* the look of the demo's React kit, by the table's markers (DemoWeb.ReactKit) */
+@import "./react_kit.css";
 @source "../css";
 @source "../js";
 /* The React islands (TSX), whose classes are shadcn/ui's */

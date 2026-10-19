@@ -1,0 +1,327 @@
+/* The look of the demo's React kit (`DemoWeb.ReactKit`, assets/islands/table):
+   the structure of every table inside its root, nested tables and the tables
+   of pickers too, written once here on the table's markers and on the
+   elements the kit draws, in shadcn's colours (`--sh-*`, set under `.shadcn`,
+   which the root has). What a control looks like is shadcn's, in the TSX
+   (`look.ts`).
+
+   A rule about a table's own cells reaches them through its row groups and
+   rows (`>`), so that a nested table, which stands in one of its cells, is
+   not one of them: every table is drawn the same, at every depth.
+
+   The focus rings: 2 pixels in the text colour, as daisyUI draws its own
+   (stage 8a): the one colour a theme promises to be seen on its
+   background. */
+
+.ash-react-table {
+  position: relative;
+  color: var(--sh-foreground);
+  /* what the hooks draw with: the ground behind the cells that stay in
+     view, and the edge beside them */
+  --ash-data-table-default-ground: var(--sh-background);
+  --ash-data-table-default-line: var(--sh-foreground);
+  --ash-react-pad-y: 0.5rem;
+}
+
+.ash-react-table.ash-react-compact { --ash-react-pad-y: 0.25rem; }
+.ash-react-table.ash-react-roomy { --ash-react-pad-y: 0.875rem; }
+
+/* "Skip table": seen only while it has the focus, over the table's top left */
+.ash-react-skip {
+  position: absolute;
+  z-index: 30;
+  border-radius: 0.375rem;
+  border: 1px solid var(--sh-border);
+  background: var(--sh-background);
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+}
+.ash-react-skip:not(:focus) {
+  clip-path: inset(50%);
+  height: 1px;
+  width: 1px;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  white-space: nowrap;
+}
+.ash-react-skip:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
+/* each grid is its own scroll area; a nested table at its end does not go on
+   to scroll the table around it */
+.ash-react-grid { overflow-x: auto; outline: none; }
+.ash-react-grid-nested { overscroll-behavior-x: contain; }
+
+.ash-react-grid-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.ash-react-grid-nested > .ash-react-grid-table { width: auto; }
+
+.ash-react-grid-table > * > tr > :is(td, th) {
+  padding: var(--ash-react-pad-y) 0.75rem;
+  text-align: start;
+  border-bottom: 1px solid var(--sh-border);
+}
+.ash-react-grid-table > thead > tr > th {
+  font-weight: 500;
+  color: var(--sh-muted-foreground);
+  white-space: nowrap;
+}
+.ash-react-grid-table > thead > tr:last-child > :is(td, th) {
+  border-bottom-color: color-mix(in oklab, var(--sh-foreground) 25%, transparent);
+}
+.ash-react-grid-table > thead > tr > td { padding-top: 0.25rem; }
+.ash-react-grid-table > * > tr > :is(td, th)[data-number] { text-align: end; font-variant-numeric: tabular-nums; }
+
+/* a record's rows: a tint under the pointer */
+.ash-react-grid-table > tbody:not([data-detail]) > tr:hover > :is(td, th) {
+  background: color-mix(in oklab, var(--sh-muted) 70%, transparent);
+}
+.ash-react-stripes .ash-react-grid-table > tbody:not([data-detail]):nth-of-type(4n + 2) > tr > :is(td, th) {
+  background: color-mix(in oklab, var(--sh-muted) 45%, transparent);
+}
+.ash-react-column-lines .ash-react-grid-table > * > tr > :is(td, th) + :is(td, th) {
+  border-inline-start: 1px solid var(--sh-border);
+}
+
+/* the header that stays in view: the grid its own scroll area both ways */
+.ash-react-sticky .ash-react-grid {
+  max-height: var(--ash-data-table-height, min(75dvh, 48rem));
+  overflow-y: auto;
+}
+.ash-react-sticky .ash-react-grid-nested { max-height: var(--ash-data-table-nested-height, 28rem); }
+.ash-react-sticky .ash-react-grid-table > thead > tr > :is(td, th) {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--sh-background);
+}
+
+/* one line per row: long text is cut off, not wrapped; not in a cell that
+   spans the table (a line, the cell a nested table is in) */
+.ash-react-grid-table > tbody > tr > :is(td, th):not([colspan], [data-actions]) {
+  max-width: 20rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ash-react-grid-table > tbody > tr > td[data-actions] { white-space: nowrap; }
+
+/* a column that says `max_lines`: its text is a paragraph that wraps, keeps
+   its line breaks and is cut off after that many lines */
+.ash-react-grid-table > tbody > tr > :is(td, th)[data-lines] { white-space: normal; }
+.ash-react-grid-table > tbody > tr > :is(td, th)[data-lines] > [data-paragraph] {
+  min-width: 10rem;
+  overflow-wrap: break-word;
+  white-space: pre-line;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ash-react-grid-table > tbody > tr > [data-lines="2"] > [data-paragraph] { -webkit-line-clamp: 2; line-clamp: 2; }
+.ash-react-grid-table > tbody > tr > [data-lines="3"] > [data-paragraph] { -webkit-line-clamp: 3; line-clamp: 3; }
+.ash-react-grid-table > tbody > tr > [data-lines="4"] > [data-paragraph] { -webkit-line-clamp: 4; line-clamp: 4; }
+.ash-react-grid-table > tbody > tr > [data-lines="5"] > [data-paragraph] { -webkit-line-clamp: 5; line-clamp: 5; }
+.ash-react-grid-table > tbody > tr > [data-lines="6"] > [data-paragraph] { -webkit-line-clamp: 6; line-clamp: 6; }
+.ash-react-grid-table > tbody > tr > [data-lines="7"] > [data-paragraph] { -webkit-line-clamp: 7; line-clamp: 7; }
+.ash-react-grid-table > tbody > tr > [data-lines="8"] > [data-paragraph] { -webkit-line-clamp: 8; line-clamp: 8; }
+.ash-react-grid-table > tbody > tr > [data-lines="9"] > [data-paragraph] { -webkit-line-clamp: 9; line-clamp: 9; }
+.ash-react-grid-table > tbody > tr > [data-lines="10"] > [data-paragraph] { -webkit-line-clamp: 10; line-clamp: 10; }
+
+/* A cell that cuts some of its text off shows all of it while the button
+   the hook puts into it says so (`data-whole`, `aria-expanded`). The button
+   says what its marker holds: it has no text of its own. */
+.ash-react-grid-table > tbody > tr > :is(td, th):has(> [data-whole]) { position: relative; }
+.ash-react-grid-table > tbody > tr > :is(td, th):has(> [data-whole][aria-expanded="true"]) {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.ash-react-grid-table > tbody > tr > :is(td, th):has(> [data-whole][aria-expanded="true"]) > [data-paragraph] {
+  -webkit-line-clamp: none;
+  line-clamp: none;
+}
+.ash-react-table [data-whole] {
+  position: absolute;
+  inset-inline-end: 0.25rem;
+  top: 0.25rem;
+  cursor: pointer;
+  border-radius: 0.25rem;
+  background: var(--sh-background);
+  padding: 0 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1.25;
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
+.ash-react-table [data-whole]::before { content: attr(data-whole); }
+.ash-react-table [data-whole][aria-expanded="true"] {
+  position: static;
+  display: block;
+  padding-inline: 0;
+  white-space: normal;
+}
+
+/* the focus rings of the table's own elements: an editable cell (the one
+   cell that is a Tab stop) inside its edge, also while its editor has the
+   focus (not while a button in it has, which has its own); the sort
+   buttons, the expanders, the lines' buttons and the whole text's outside */
+.ash-react-table :is(td, th):not([colspan]):focus,
+.ash-react-grid-table > tbody > tr > :is(td, th):not([data-selector], [data-expander], [data-actions], [colspan]):focus-within:not(:has(button:focus)) {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+.ash-react-table :is(.ash-react-sort, [data-expander] > button, [data-line] button[aria-expanded], [data-whole], a):focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* which cells can be edited: with the pointer an editable cell shows a thin
+   edge inside it and a text cursor */
+.ash-react-grid-table > tbody > tr > :is(td, th)[tabindex="0"] { cursor: text; }
+.ash-react-grid-table > tbody > tr > :is(td, th)[tabindex="0"]:hover {
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--sh-foreground) 30%, transparent);
+}
+
+/* a cell whose save is on its way, and the rows of a table that reads */
+.ash-react-table :is(td, th)[aria-busy] { opacity: 0.7; }
+.ash-react-grid-table[aria-busy] > tbody > tr > :is(td, th):not([data-nested]) { opacity: 0.7; }
+
+/* a cell whose save or action failed: a ring and a mark, drawn by the
+   cell's style; with focus the ring moves inside the focus ring */
+.ash-react-table :is(td, th)[data-failed] { position: relative; }
+.ash-react-table :is(td, th)[data-failed]::before {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border: 2px solid color-mix(in oklab, var(--sh-destructive) 70%, var(--sh-foreground));
+  content: "";
+}
+.ash-react-table :is(td, th)[data-failed]:is(:focus, :focus-within)::before { inset: 3px; }
+.ash-react-table :is(td, th)[data-failed]::after {
+  position: absolute;
+  inset-inline-end: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  line-height: 1;
+  font-weight: 700;
+  content: "!" / "";
+}
+
+/* the expander of a row and the button of a line: a triangle that turns */
+.ash-react-grid-table > tbody > tr > :is([data-expander], [data-line]) button[aria-expanded] { cursor: pointer; }
+.ash-react-grid-table > tbody > tr > [data-expander] { width: 0; }
+.ash-react-grid-table > tbody > tr > [data-expander] > button { padding-inline: 0.25rem; }
+.ash-react-grid-table > tbody > tr > :is([data-expander], [data-line]) button[aria-expanded]::before {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  content: "";
+  border-block: 0.3em solid transparent;
+  border-inline-start: 0.45em solid currentColor;
+  transition: transform 150ms;
+  forced-color-adjust: none;
+}
+.ash-react-grid-table > tbody > tr > :is([data-expander], [data-line]) button[aria-expanded="true"]::before { transform: rotate(90deg); }
+.ash-react-grid-table > tbody > tr > [data-line] button[aria-expanded] { padding-inline-start: 0.25rem; }
+.ash-react-grid-table > tbody > tr > [data-line] button[aria-expanded]::before { margin-inline-end: 0.5rem; }
+.ash-react-grid-table > tbody > tr > [data-selector] { width: 0; }
+.ash-react-grid-table > tbody > tr > [data-selector] > input { display: block; }
+
+/* what a line holds stays at the left edge of the table's scroll area, as
+   wide as what is seen of the table, with the nested area's line down its
+   left */
+.ash-react-line {
+  position: sticky;
+  left: 0;
+  display: flex;
+  width: var(--ash-data-table-view, 100%);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  border-inline-start: 3px solid color-mix(in oklab, var(--sh-foreground) 35%, transparent);
+  padding: 0.25rem 0 0.25rem 1.25rem;
+}
+.ash-react-grid-table > tbody[data-detail] > tr > td[data-nested] {
+  border-inline-start: 3px solid color-mix(in oklab, var(--sh-foreground) 35%, transparent);
+}
+
+/* a nested table stays at the left edge of the scroll area around it, and is
+   as wide as that area (`--ash-data-table-view`, which the grid's hook sets) */
+.ash-react-table [data-ash-data-table-portal]:has(> [data-ash-data-table-view]) { position: sticky; left: 0; width: 0; }
+.ash-react-table [data-ash-data-table-view] { position: relative; width: var(--ash-data-table-view); }
+
+/* a column's handle: seen as a line at the column's edge while pointed at
+   or dragged */
+.ash-react-resizer {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  width: 0.75rem;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+.ash-react-resizer:is(:hover, [data-dragging])::after {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  border-inline-end: 2px solid var(--sh-foreground);
+  content: "";
+}
+
+.ash-react-sort {
+  cursor: pointer;
+  user-select: none;
+  border-radius: 0.125rem;
+  font: inherit;
+}
+
+/* the scrollbar of the grid once more, at the bottom edge of the window */
+.ash-react-scrollbar { position: fixed; z-index: 10; overflow-x: scroll; overflow-y: hidden; }
+
+/* "Columns" and the menu "More": the browser's popovers, under their
+   buttons (CSS anchor positioning); where a browser has none, in the middle
+   of the window */
+.ash-react-columns, .ash-react-menu {
+  max-height: 60vh;
+  overflow-y: auto;
+  display: none;
+  flex-direction: column;
+  gap: 0.125rem;
+  border: 1px solid var(--sh-border);
+  border-radius: 0.5rem;
+  background: var(--sh-background);
+  color: var(--sh-foreground);
+  padding: 0.5rem;
+  font-size: 0.875rem;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
+  position-area: bottom span-right;
+  position-try-fallbacks: flip-inline, flip-block;
+}
+.ash-react-columns:popover-open, .ash-react-menu:popover-open { display: flex; }
+@supports (position-area: bottom) {
+  .ash-react-columns, .ash-react-menu { inset: auto; margin: 0.125rem 0 0; }
+}
+.ash-react-count:empty { display: none; }
+.ash-react-count {
+  border-radius: 9999px;
+  background: var(--sh-primary);
+  color: var(--sh-primary-foreground);
+  padding: 0 0.375rem;
+  font-size: 0.625rem;
+}
+
+.ash-react-line-above { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+
+.ash-react-pagination { margin-top: 1rem; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
+.ash-react-pagination-nested { position: sticky; left: 1rem; display: flex; width: fit-content; flex-wrap: wrap; align-items: center; gap: 1rem; }
+.ash-react-join { display: inline-flex; }
+.ash-react-join > :is(button, span) > button, .ash-react-join > button { border-radius: 0; margin-inline-start: -1px; }
+.ash-react-join > button:first-child { border-start-start-radius: 0.375rem; border-end-start-radius: 0.375rem; margin-inline-start: 0; }
+.ash-react-join > button:last-child { border-start-end-radius: 0.375rem; border-end-end-radius: 0.375rem; }
+
+.ash-react-link { text-decoration: underline; text-underline-offset: 2px; }
+
+.ash-react-progress { accent-color: currentColor; height: 0.5rem; }

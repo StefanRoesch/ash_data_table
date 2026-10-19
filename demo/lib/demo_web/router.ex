@@ -95,9 +95,9 @@ defmodule DemoWeb.Router do
         id: "task-striped",
         look: [density: :compact, stripes: true, column_lines: true]
 
-      # One React island, drawn with shadcn/ui through live_react: the
-      # tooling the React kit is built on (stage 8, R1).
-      live "/react", ReactLive
+      # The tasks drawn with the demo's React kit (`DemoWeb.ReactKit`):
+      # React islands drawn with shadcn/ui through live_react.
+      live "/react/tasks", ReactTasksLive
 
       # The tasks drawn with a kit of the tests that shows its look on each
       # root (`DemoWeb.LookKit`, `look_test.exs`), and with one that writes
