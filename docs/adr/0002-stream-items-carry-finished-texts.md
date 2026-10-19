@@ -12,7 +12,7 @@ A table's rows are a LiveView stream, and until now its items held values only (
 
 - RQ6 is changed for the stream item only. The data layer (2a) still makes no words: `Present` gives values, `Item` (3w) makes the texts, in the LiveView's process, as `Kit.Words` does for every other part.
 - An item holds no sensitive value: `Item` reads only a `Present.Row`, which `Present` scrubbed. A masked cell has no text and no value.
-- The texts are made when the row is put into the stream, not when it is drawn. LiveView draws a stream item once, as it is put in, so the HEEx kit draws the same as before: the markup snapshots did not change, the rows of `/tasks` are the same byte for byte, and what `/tasks` sends per action stayed within 0.2 % (M1 of the React kit's note).
+- The texts are made when the row is put into the stream, not when it is drawn. LiveView draws a stream item once, as it is put in, so the HEEx kit draws the same as before: the markup snapshots did not change, the rows of `/tasks` are the same byte for byte, and what `/tasks` sends per action stayed within 0.52 % at worst (opening the picker, +194 bytes, from the ids that stage 0's fix-up makes with `AshDataTable.Ids`, whose suffixes HEEx now sends as values; a page change +0.15 %), measured against the version before stage 0, back to back and alternating (M1 of the React kit's note, 2026-10-19).
 - A raw value is in an item only where a kit needs it beside the text (a column's `component`, a yes or no): an item goes to JSON as it is, but a component's value, which a bridge encodes.
 - The item's shape is kit contract 2; changing it raises the contract.
 
