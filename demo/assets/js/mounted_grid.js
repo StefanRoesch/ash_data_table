@@ -6,7 +6,7 @@
 // lets the test destroy and mount the grid again (React's StrictMode
 // mounts twice), read what `onEdit` was told, and call the pagination's
 // `beforeUpdate()` and `updated()` around a commit of its own.
-import {liveViewTransport, mountGrid, mountPagination} from "../../../assets/js/index.js"
+import {liveViewTransport, mountGrid, mountPagination} from "ash_data_table"
 
 export const MountedGrid = {
   mounted() {

@@ -1,0 +1,14 @@
+{
+  "name": "demo-assets",
+  "private": true,
+  "description": "The demo's npm packages, for its React islands (assets/islands) only: bundled by the Hex esbuild, no Vite, no Node at runtime. The library itself has no npm dependency.",
+  "dependencies": {
+    "@radix-ui/react-slot": "1.5.0",
+    "ash_data_table": "file:../..",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "tailwind-merge": "3.7.0"
+  }
+}

@@ -25,6 +25,10 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/demo"
 import {hooks as ashDataTableHooks} from "phoenix-colocated/ash_data_table"
 import {MountedGrid} from "./mounted_grid.js"
+// React islands (live_react, SSR off): `<.react name="…">` in a page
+// renders the component of that name (../islands/index.ts)
+import {getHooks} from "live_react"
+import islands from "../islands"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
@@ -41,6 +45,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ...ashDataTableHooks,
     // the demo's own hook of its browser tests (mounted_grid.js)
     MountedGrid,
+    ...getHooks(islands),
   },
 })
 

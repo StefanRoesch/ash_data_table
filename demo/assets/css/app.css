@@ -4,6 +4,8 @@
 @import "tailwindcss" source(none);
 @source "../css";
 @source "../js";
+/* The React islands (TSX), whose classes are shadcn/ui's */
+@source "../islands";
 @source "../../lib/demo_web";
 /* The classes ash_data_table's markup uses. In this repository the library is the
    parent directory; in an app that has it as a Hex dependency this line is
@@ -107,3 +109,95 @@
 [data-phx-session], [data-phx-teleported-src] { display: contents }
 
 /* This file is for your main application CSS */
+
+/* shadcn/ui beside daisyUI 5, for the React islands (assets/islands).
+
+   shadcn's components use its own colour names (`bg-background`,
+   `text-muted-foreground`, `border-border`, …). They are made theme colours
+   here, each pointing at a raw variable renamed `--sh-*`, whose values are
+   set only under `.shadcn`: outside it they are unset, and nothing of
+   daisyUI changes. The rename is needed, not only tidy: daisyUI's theme has
+   `--border` too, as a width (1.5px), where shadcn's is a colour; importing
+   shadcn's CSS as it is breaks daisyUI's borders.
+
+   `primary`, `secondary` and `accent` are names of both. They stay
+   daisyUI's on the page; inside `.shadcn` they are shadcn's.
+
+   A Radix primitive that portals its content to `document.body` (Dialog,
+   Popover, Select, Tooltip, …) leaves the scope: its portalled element
+   carries the class `shadcn` itself.
+
+   Dark mode follows daisyUI's: `data-theme="dark"`, or the system's
+   preference while no theme is chosen (shadcn's `.dark` is not used). */
+@theme inline {
+  --color-background: var(--sh-background);
+  --color-foreground: var(--sh-foreground);
+  --color-muted: var(--sh-muted);
+  --color-muted-foreground: var(--sh-muted-foreground);
+  --color-primary-foreground: var(--sh-primary-foreground);
+  --color-secondary-foreground: var(--sh-secondary-foreground);
+  --color-accent-foreground: var(--sh-accent-foreground);
+  --color-destructive: var(--sh-destructive);
+  --color-border: var(--sh-border);
+  --color-input: var(--sh-input);
+  --color-ring: var(--sh-ring);
+}
+
+.shadcn {
+  --sh-background: oklch(1 0 0);
+  --sh-foreground: oklch(0.145 0 0);
+  --sh-primary: oklch(0.205 0 0);
+  --sh-primary-foreground: oklch(0.985 0 0);
+  --sh-secondary: oklch(0.97 0 0);
+  --sh-secondary-foreground: oklch(0.205 0 0);
+  --sh-muted: oklch(0.97 0 0);
+  --sh-muted-foreground: oklch(0.556 0 0);
+  --sh-accent: oklch(0.97 0 0);
+  --sh-accent-foreground: oklch(0.205 0 0);
+  --sh-destructive: oklch(0.577 0.245 27.325);
+  --sh-border: oklch(0.922 0 0);
+  --sh-input: oklch(0.922 0 0);
+  --sh-ring: oklch(0.708 0 0);
+  --color-primary: var(--sh-primary);
+  --color-secondary: var(--sh-secondary);
+  --color-accent: var(--sh-accent);
+}
+
+[data-theme=dark] .shadcn {
+  --sh-background: oklch(0.145 0 0);
+  --sh-foreground: oklch(0.985 0 0);
+  --sh-primary: oklch(0.922 0 0);
+  --sh-primary-foreground: oklch(0.205 0 0);
+  --sh-secondary: oklch(0.269 0 0);
+  --sh-secondary-foreground: oklch(0.985 0 0);
+  --sh-muted: oklch(0.269 0 0);
+  --sh-muted-foreground: oklch(0.708 0 0);
+  --sh-accent: oklch(0.269 0 0);
+  --sh-accent-foreground: oklch(0.985 0 0);
+  --sh-destructive: oklch(0.704 0.191 22.216);
+  --sh-border: oklch(1 0 0 / 10%);
+  --sh-input: oklch(1 0 0 / 15%);
+  --sh-ring: oklch(0.556 0 0);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .shadcn {
+    --sh-background: oklch(0.145 0 0);
+    --sh-foreground: oklch(0.985 0 0);
+    --sh-primary: oklch(0.922 0 0);
+    --sh-primary-foreground: oklch(0.205 0 0);
+    --sh-secondary: oklch(0.269 0 0);
+    --sh-secondary-foreground: oklch(0.985 0 0);
+    --sh-muted: oklch(0.269 0 0);
+    --sh-muted-foreground: oklch(0.708 0 0);
+    --sh-accent: oklch(0.269 0 0);
+    --sh-accent-foreground: oklch(0.985 0 0);
+    --sh-destructive: oklch(0.704 0.191 22.216);
+    --sh-border: oklch(1 0 0 / 10%);
+    --sh-input: oklch(1 0 0 / 15%);
+    --sh-ring: oklch(0.556 0 0);
+  }
+}
+
+/* shadcn's base layer, scoped: borders take its colour */
+.shadcn, .shadcn * { border-color: var(--color-border); }

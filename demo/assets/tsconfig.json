@@ -19,6 +19,10 @@
 // }
 //
 // Feel free to adjust this configuration however you need.
+//
+// esbuild honours `baseUrl` and `paths`: a folder `react/` here would be
+// what `import … from "react"` finds, which is why the React components
+// are in `islands/`. npm's packages (package.json) come from node_modules.
 {
   "compilerOptions": {
     "baseUrl": ".",
@@ -26,7 +30,8 @@
       "*": ["../deps/*"]
     },
     "allowJs": true,
-    "noEmit": true
+    "noEmit": true,
+    "jsx": "react-jsx"
   },
-  "include": ["js/**/*"]
+  "include": ["js/**/*", "islands/**/*"]
 }

@@ -4,7 +4,7 @@
 FROM elixir:1.19.4-otp-28-slim
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends build-essential ca-certificates git inotify-tools \
+  && apt-get install -y --no-install-recommends build-essential ca-certificates git inotify-tools nodejs npm \
   && rm -rf /var/lib/apt/lists/*
 
 ENV MIX_ENV=dev

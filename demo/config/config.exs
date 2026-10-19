@@ -91,10 +91,23 @@ config :esbuild,
   version: "0.25.4",
   demo: [
     args:
-      ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
+      ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=. --jsx=automatic),
     cd: Path.expand("../assets", __DIR__),
-    env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
+    # deps/ (phoenix, phoenix_live_view, live_react), the colocated hooks of
+    # the build, and assets/node_modules (npm: react, the shadcn sources'
+    # packages), which live_react's files in deps/ import react from
+    env: %{
+      "NODE_PATH" => [
+        Path.expand("../deps", __DIR__),
+        Mix.Project.build_path(),
+        Path.expand("../assets/node_modules", __DIR__)
+      ]
+    }
   ]
+
+# The React islands (assets/islands) render in the browser only: no server
+# rendering, so no Node at runtime.
+config :live_react, ssr: false
 
 # Configure tailwind (the version is required)
 config :tailwind,

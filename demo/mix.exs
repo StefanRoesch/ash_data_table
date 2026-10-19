@@ -79,7 +79,11 @@ defmodule Demo.MixProject do
       # shows them in the zone of the person's browser (`DemoWeb.Zone`).
       # `ash_data_table` brings none; a host configures its own.
       {:tz, "~> 0.28"},
-      {:bandit, "~> 1.5"}
+      {:bandit, "~> 1.5"},
+      # React islands in LiveView, for the React kit (stage 8 of the
+      # refactor): SSR off (config/config.exs), so no Node at runtime. Its JS
+      # is bundled by the Hex esbuild from deps/, as phoenix_live_view's is.
+      {:live_react, "~> 2.0"}
     ]
   end
 
@@ -95,7 +99,13 @@ defmodule Demo.MixProject do
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ash.setup --quiet", "test"],
-      "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
+      # npm only for the React islands' packages (assets/package.json), with
+      # the Node version of assets/.tool-versions
+      "assets.setup": [
+        "tailwind.install --if-missing",
+        "esbuild.install --if-missing",
+        "cmd --cd assets npm ci --no-audit --no-fund"
+      ],
       "assets.build": ["compile", "tailwind demo", "esbuild demo"],
       "assets.deploy": [
         "tailwind demo --minify",
