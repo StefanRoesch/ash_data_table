@@ -195,6 +195,10 @@ export default {
     const target = e.target
     const to = e.relatedTarget
     if (to && !this.el.contains(to) && !to.closest(`${DIALOG},${OPENED}`)) this.focused = null
+    // focus moves on in the table: what is noted is where it goes, so
+    // that a patch while it is on its way (a value hidden as focus
+    // leaves its cell) does not put it back
+    else if (to && this.el.contains(to)) this.noteFocus(to)
     else if (!to) setTimeout(() => {
       if (target.isConnected && document.activeElement === document.body && this.focused && this.focused.target === target) this.focused = null
     }, 0)
