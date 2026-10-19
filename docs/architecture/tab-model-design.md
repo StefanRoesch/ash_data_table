@@ -35,13 +35,13 @@ It supersedes the open parts of #43 (the arrow walk through nested tables, and i
 In page order, which is the order the table is drawn in:
 
 1. **The heading line**: "Columns", the inputs of the argument line, the create button, the table actions.
-2. **The selection line**, while rows are selected: "Clear selection", "Select all … that match", the bulk actions.
+2. **The selection line**, while it shows: while rows are selected, "Select all … that match" (where offered), "Clear selection", the bulk actions (and "More"); then "Read again" while the table says records changed; then "Clear filters" while a filter is set.
 3. **"Skip table"**: a link, hidden until it has focus. Enter jumps to the end of the table (section 2.4).
 4. **The header row**: the "select all rows of this page" box, then the sort button of each column that sorts. A header that does not sort is no stop (question 6).
 5. **The filter row**, where a column filters: per filter, its operator menu, its value, its clear button. A cell without a filter is no stop.
 6. **Each row, left to right**: the row's box, the expander, each editable cell, the row's action buttons. A read-only cell is passed over; a read-only sensitive cell's "Show" button is a stop, and so is the "Show all" button of a cell that cuts its text off, read-only or editable (after the cell where it is editable; risk 9). Under an expanded row: each relationship line's button, and under an open line its nested table (section 3). Then the next row.
 7. **The footer row** of the summaries: no stops (its cells are read-only).
-8. **The pagination**: page size, Previous, the page numbers, Next.
+8. **The pagination**: Previous, the page numbers, Next, then the page size where the table offers one (after the buttons, so that Previous and Next stay where they are).
 
 A hidden column is not drawn for the eye (`display: none`), so the browser passes it over by itself.
 
@@ -62,7 +62,7 @@ A nested table follows exactly the model of a table on the page. Section 3 says 
 | Element | Enter | Space | Escape | Other |
 | --- | --- | --- | --- | --- |
 | A read-only cell | No stop: a screen reader reads it with its table keys | | | |
-| An editable cell | Starts editing: in place; a boolean toggles and saves; a reference opens the picker; an array, a map, a group or a union opens the side panel (as today) | The browser's | Gives up a failed edit (as today) | A character typed starts editing with it, as today. Shift+Enter shows a cut-off text whole, and cuts it off again (as today). Double click edits, as today |
+| An editable cell | Starts editing: in place; a boolean toggles and saves; a reference opens the picker; an array, a map, a group or a union opens the side panel (as today) | A typed character, as built (`keys.js`): it starts editing with a space typed (a text's value is replaced by it), and opens the side panel of an array; on a boolean, a reference, a map, a group or a union the hook does nothing with it, so it is the browser's (the page scrolls) | Gives up a failed edit (as today) | A character typed starts editing with it, as today. Shift+Enter shows a cut-off text whole, and cuts it off again (as today). Double click edits, as today |
 | The "Show all" button of a cell that cuts its text off (the hook's, in every such cell, read-only too) | Shows the whole text, and cuts it off again; focus stays (`aria-expanded`) | The same (a real button) | | Named after its column, "Show all of Title" |
 | A sensitive cell | Edits, where editable | | Hides a shown value; on its "Show" button whose reveal failed, gives the failure up (K2) | Its "Show" button is a stop of its own, also in a read-only sensitive cell; Shift+Enter on an editable sensitive cell still shows and hides |
 | The editor in a cell | Saves; focus back on the cell | Types | Gives up; focus back on the cell | Tab saves and goes on to the next stop (today it left the grid). Shift+Tab saves and goes back. Arrows belong to the editor |
