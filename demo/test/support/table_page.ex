@@ -269,7 +269,7 @@ defmodule DemoWeb.TablePage do
 
   @doc """
   Opens the editor of a reference cell as the table's hook does when a
-  person presses Enter or F2 on it, or double-clicks it: one `pick` event
+  person presses Enter on it, or double-clicks it: one `pick` event
   with the row's key and the column. Returns the page, with the picker in
   it when the cell can be edited.
 
@@ -435,8 +435,8 @@ defmodule DemoWeb.TablePage do
 
   @doc """
   Opens the editor of a map cell (an embedded resource, a map, an array of
-  either) as the table's hook does when a person presses Enter or F2 on it,
-  or double-clicks it: one `edit` event with the row's key and the column.
+  either) as the table's hook does when a person presses Enter on it, or
+  double-clicks it: one `edit` event with the row's key and the column.
   Returns the page, with the side panel in it when the cell can be edited.
 
       edit(view, "project", project.id, "client")

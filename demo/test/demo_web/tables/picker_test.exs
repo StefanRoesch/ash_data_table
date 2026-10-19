@@ -5,7 +5,7 @@ defmodule DemoWeb.Tables.PickerTest do
   resource's own table.
 
   In the browser the table's hook asks for the picker with one `pick` event
-  (Enter, F2 or a double click on the cell), and the picker's own hook sends
+  (Enter or a double click on the cell), and the picker's own hook sends
   one `picked` event with the row that was selected, as the hook of the
   picker's table names it. These tests send those events as the hooks do,
   and read the page. What a hand-made event can and cannot do is tested

@@ -373,7 +373,7 @@ grep -rnE 'press\("(Shift\+)?Arrow|press\("(Control\+)?(Home|End|PageUp|PageDown
 
 # 6. Words of the old model in comments and guides
 grep -rniE 'arrow key|one tab stop|single tab stop|the tab stop|tree of grids|into the (grid|nested table)|out of the grid|leave[s]? the grid|\bF2\b' \
-  lib assets/js demo/lib demo/e2e documentation docs/agents README.md
+  lib assets/js demo/lib demo/e2e demo/test documentation docs/agents README.md
 # allowed: the CHANGELOG entry that says it was removed; the history sections of the design notes in docs/architecture; a native control's own keys (a slider's, a menu's, a number field's: "the arrow keys" of the browser's control, not of ours)
 ```
 
