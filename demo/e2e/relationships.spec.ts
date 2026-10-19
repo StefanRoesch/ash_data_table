@@ -96,7 +96,6 @@ test.describe("the field of an argument that holds several related records", () 
     expect(await modals(page)).toEqual({ open: ["task-panel", "task-picker"], focusIn: "task-picker" })
 
     // any number of rows: a box per row, and no "None"
-    await expect(labels.grid).toHaveAttribute("aria-multiselectable", "true")
     await expect(labels.boxes).toHaveCount(SEED.labels.acme)
     await expect(tasks.pickerNone).toHaveCount(0)
     await expect(tasks.pickerChoose).toHaveAttribute("aria-disabled", "false")
@@ -208,9 +207,9 @@ test.describe("the picker for several records, from the keyboard", () => {
     await labels.ready()
     expect(await labels.hasFocus()).toBe(true)
 
-    // to a row that is not selected, by the arrow keys
+    // to the box of a row that is not selected
     const added = await another(labels, held)
-    await labels.cell(added.key, "name").focus()
+    await labels.box(added.key).focus()
     await pushed.clear()
 
     await tasks.press("Space")
@@ -220,14 +219,13 @@ test.describe("the picker for several records, from the keyboard", () => {
     await tasks.press("Space")
     await expect(labels.box(added.key)).toBeChecked()
 
-    // where several are chosen there is no one row to take at once
+    // where several are chosen there is no one row to take at once: Enter on a box chooses nothing
     await tasks.press("Enter")
     await expect(tasks.picker).toBeVisible()
     await expect(labels.box(added.key)).toBeChecked()
     await pushed.expectSelected(labels)
     expect(await pushed.besides("select"), "nothing was sent but what is selected").toEqual([])
 
-    // Tab leaves the grid for the picker's buttons
     await tasks.pickerChoose.focus()
     await tasks.press("Enter")
     await expect(tasks.picker).toHaveCount(0)
@@ -257,7 +255,7 @@ test.describe("the picker for several records, from the keyboard", () => {
     await expect(tasks.fieldChosenItems("labels")).toHaveText(held)
   })
 
-  test("Shift with Down Arrow selects the rows it passes, and the box of the header all rows of the page, as in any table with boxes", async ({
+  test("Space on each row's box selects it, and the box of the header all rows of the page, as in any table with boxes", async ({
     tasks,
     pushed,
   }) => {
@@ -268,8 +266,10 @@ test.describe("the picker for several records, from the keyboard", () => {
     const keys = await labels.rowKeys()
     await pushed.clear()
 
-    await labels.cell(keys[0], "name").focus()
-    await tasks.press("Shift+ArrowDown", "Shift+ArrowDown")
+    for (const key of keys.slice(0, 3)) {
+      await labels.box(key).focus()
+      await tasks.press("Space")
+    }
     expect(await labels.selectedKeys()).toEqual(keys.slice(0, 3))
     await pushed.expectSelected(labels)
     await expect(labels.selectedCount).toHaveText("3 selected")
@@ -391,7 +391,7 @@ test.describe("a reference cell that is edited through an argument: the assignee
     expect(index).toBeGreaterThanOrEqual(0)
     const key = keys[index]
     const cell = deadlines.cell(key, "assignee")
-    await expect(cell).not.toHaveAttribute("aria-readonly")
+    await expect(cell).toHaveAttribute("tabindex", "0")
 
     await cell.focus()
     await pushed.clear()
@@ -403,7 +403,8 @@ test.describe("a reference cell that is edited through an argument: the assignee
     const people = deadlines.pickerTable("assignee")
     await people.ready()
     // one row at a time, opened on the assignee
-    await expect(people.grid).toHaveAttribute("aria-multiselectable", "false")
+    await expect(people.radios).not.toHaveCount(0)
+    await expect(people.boxes).toHaveCount(0)
     const current = await keyOf(people, "name", assignees[index])
     expect(await people.selectedKeys()).toEqual([current])
     await expect(deadlines.pickerNone).toBeVisible()
@@ -416,7 +417,7 @@ test.describe("a reference cell that is edited through an argument: the assignee
 
     await expect(deadlines.picker).toHaveCount(0)
     await expect(cell).toHaveText(other)
-    await expect(cell).not.toHaveAttribute("aria-invalid")
+    await expect(cell).not.toHaveAttribute("data-failed")
     await expect(cell).toBeFocused()
 
     // and it is saved: the page says the same after a reload

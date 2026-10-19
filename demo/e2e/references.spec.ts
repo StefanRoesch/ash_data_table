@@ -37,36 +37,32 @@ test.describe("as the admin", () => {
     expect(await reporter.columnTexts("name")).toEqual([shown.reporter])
   })
 
-  test("is a cell the arrow keys stop at, with nothing to sort or to filter; one whose key no action accepts has nothing to edit", async ({
+  test("is a Tab stop where an action accepts its key, with nothing to sort or to filter; one whose key no action accepts is no stop and has nothing to edit", async ({
     tasks,
     pushed,
   }) => {
     for (const column of ["project", "assignee", "reporter"]) {
       await expect(tasks.header(column)).not.toHaveAttribute("aria-sort")
+      await expect(tasks.sortButton(column)).toHaveCount(0)
       await expect(tasks.filterCell(column).locator("input, select")).toHaveCount(0)
     }
-    await expect(tasks.cell(FIRST, "reporter")).toHaveAttribute("aria-readonly", "true")
+    await expect(tasks.cell(FIRST, "project")).toHaveAttribute("tabindex", "0")
+    await expect(tasks.cell(FIRST, "assignee")).toHaveAttribute("tabindex", "0")
+    await expect(tasks.cell(FIRST, "reporter")).not.toHaveAttribute("tabindex")
 
-    await tasks.cell(FIRST, "inserted_at").focus()
-    await tasks.press("ArrowRight")
-    await expect(tasks.cell(FIRST, "project")).toBeFocused()
-    await tasks.press("ArrowRight", "ArrowRight")
-    await expect(tasks.cell(FIRST, "reporter")).toBeFocused()
-    // the last column; the cell after it holds the row's actions
-    await tasks.press("ArrowRight")
-    await expect(tasks.actionsCell(FIRST)).toBeFocused()
-    await tasks.press("ArrowLeft")
-    await expect(tasks.cell(FIRST, "reporter")).toBeFocused()
+    // Tab goes from the project to the assignee, and past the reporter to the row's actions
+    await tasks.cell(FIRST, "project").focus()
+    await tasks.press("Tab")
+    await expect(tasks.cell(FIRST, "assignee")).toBeFocused()
+    await tasks.press("Tab")
+    await expect(tasks.actions(FIRST).first()).toBeFocused()
 
     await pushed.clear()
     const before = await tasks.cell(FIRST, "reporter").textContent()
-    await tasks.press("Enter", "F2", "x")
+    await tasks.cell(FIRST, "reporter").dblclick()
     await expect(tasks.openEditors).toHaveCount(0)
+    await expect(tasks.picker).toHaveCount(0)
     await expect(tasks.cell(FIRST, "reporter")).toHaveText(before!)
-
-    // Enter on its heading and in its filter cell do nothing either
-    await tasks.press("ArrowUp", "Enter", "ArrowUp", "Enter")
-    await expect(tasks.header("reporter")).toBeFocused()
     expect(await pushed.all()).toEqual([])
     expect(new URL(tasks.page.url()).search).toBe("")
   })

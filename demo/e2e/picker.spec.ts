@@ -54,18 +54,17 @@ test.describe("which reference cells are edited", () => {
     tasks,
     pushed,
   }) => {
-    await expect(tasks.cell(FIRST, "project")).not.toHaveAttribute("aria-readonly")
-    await expect(tasks.cell(FIRST, "assignee")).not.toHaveAttribute("aria-readonly")
-    await expect(tasks.cell(FIRST, "reporter")).toHaveAttribute("aria-readonly", "true")
+    // the two are Tab stops, the reporter is none
+    await expect(tasks.cell(FIRST, "project")).toHaveAttribute("tabindex", "0")
+    await expect(tasks.cell(FIRST, "assignee")).toHaveAttribute("tabindex", "0")
+    await expect(tasks.cell(FIRST, "reporter")).not.toHaveAttribute("tabindex")
 
     // nothing of a picker is in the page until one is opened
     await expect(tasks.picker).toHaveCount(0)
     await expect(tasks.page.locator("[id^='task-pick-']")).toHaveCount(0)
 
-    // no key opens one for the reporter
-    await tasks.cell(FIRST, "reporter").focus()
+    // nor does a double click on the reporter
     await pushed.clear()
-    await tasks.press("Enter", "F2", "x")
     await tasks.cell(FIRST, "reporter").dblclick()
     await expect(tasks.picker).toHaveCount(0)
     expect(await pushed.all()).toEqual([])
@@ -74,11 +73,10 @@ test.describe("which reference cells are edited", () => {
   test.describe("as the viewer, who can run no update action", () => {
     test.use({ actor: "viewer" })
 
-    test("none: no key opens a picker", async ({ tasks, pushed }) => {
+    test("none: no reference cell is a Tab stop, and a double click opens no picker", async ({ tasks, pushed }) => {
       const key = await tasks.rowKey(1)
-      await tasks.cell(key, "project").focus()
+      await expect(tasks.cell(key, "project")).not.toHaveAttribute("tabindex")
       await pushed.clear()
-      await tasks.press("Enter", "F2")
       await tasks.cell(key, "project").dblclick()
       await expect(tasks.picker).toHaveCount(0)
       expect(await pushed.all()).toEqual([])
@@ -87,7 +85,7 @@ test.describe("which reference cells are edited", () => {
 })
 
 test.describe("opening the picker", () => {
-  test("Enter opens a modal dialog at the right edge, named by its heading, with the related resource's table; focus is on the row of the record chosen now", async ({
+  test("Enter opens a modal dialog at the right edge, named by its heading, with the related resource's table; focus is on the radio button of the record chosen now", async ({
     page,
     tasks,
     pushed,
@@ -108,7 +106,7 @@ test.describe("opening the picker", () => {
     // the people's table as it is declared, named as that table is
     const people = tasks.pickerTable("assignee")
     await people.ready()
-    await expect(people.grid).toHaveRole("grid")
+    await expect(people.grid).toHaveRole("table")
     await expect(people.grid).toHaveAccessibleName("User")
     expect(await people.columns()).toEqual(["name", "email", "role", "assigned_hours"])
     await expect(people.rows).toHaveCount(9)
@@ -120,14 +118,12 @@ test.describe("opening the picker", () => {
     const kim = await keyOf(people, "name", "Kim Ernst")
     expect(await people.selectedKeys()).toEqual([kim])
     await expect(people.radio(kim)).toBeChecked()
-    await expect(people.cell(kim, "name")).toBeFocused()
+    await expect(people.radio(kim)).toBeFocused()
     await expect(tasks.pickerChoose).toHaveAttribute("aria-disabled", "false")
     // "Columns" of its table, on the table's heading line, named by it
     await expect(tasks.picker.getByRole("button").first()).toHaveAccessibleName("Columns")
-    await expect(tasks.picker.locator("button:not([data-columns-button])")).toHaveText([
-      "Previous",
-      "1",
-      "Next",
+    await expect(people.pagination.getByRole("button")).toHaveText(["Previous", "1", "Next"])
+    await expect(tasks.picker.locator(":is([id$='-picker-cancel'], [id$='-picker-none'], [id$='-picker-choose'])")).toHaveText([
       "Cancel",
       "None",
       "Choose",
@@ -142,17 +138,16 @@ test.describe("opening the picker", () => {
     expect(box.width).toBeCloseTo(768, 0)
   })
 
-  test("F2 and a double click open it too; a printable key does not", async ({ tasks, pushed }) => {
+  test("a double click opens it too; a printable key and Space do not", async ({ tasks, pushed }) => {
     const cell = tasks.cell(FIRST, "assignee")
     await cell.focus()
     await pushed.clear()
     await tasks.press("x", "5", "Space")
     await expect(tasks.picker).toHaveCount(0)
     expect(await pushed.count("pick")).toBe(0)
-    // Space selected the row, as on any cell
-    await tasks.press("Space")
+    await expect(cell).toBeFocused()
 
-    await tasks.press("F2")
+    await cell.dblclick()
     await expect(tasks.picker).toBeVisible()
     await tasks.pickerTable("assignee").ready()
     await tasks.press("Escape")
@@ -166,7 +161,7 @@ test.describe("opening the picker", () => {
     await expect(cell).toBeFocused()
   })
 
-  test("a cell that points at no record opens with nothing selected: focus is on the first row, and Choose is not to be used yet", async ({
+  test("a cell that points at no record opens with nothing selected: focus is on the first row's radio button, and Choose is not to be used yet", async ({
     tasks,
     pushed,
   }) => {
@@ -177,7 +172,7 @@ test.describe("opening the picker", () => {
 
     const people = await openPicker(tasks, unassigned, "assignee")
     expect(await people.selectedKeys()).toEqual([])
-    await expect(people.cell(await people.rowKey(1), "name")).toBeFocused()
+    await expect(people.radio(await people.rowKey(1))).toBeFocused()
     await expect(tasks.pickerChoose).toHaveAttribute("aria-disabled", "true")
 
     // used all the same, it asks the server, which holds no selected row
@@ -204,7 +199,7 @@ test.describe("opening the picker", () => {
     // the pointer away from the button, whose look it would change
     await tasks.page.mouse.move(0, 0)
     const unusable = await look()
-    await people.cell(await people.rowKey(1), "name").focus()
+    await people.radio(await people.rowKey(1)).focus()
     await tasks.press(" ")
     await expect(tasks.pickerChoose).toHaveAttribute("aria-disabled", "false")
     await expect.poll(look).not.toBe(unusable)
@@ -228,7 +223,6 @@ test.describe("opening the picker", () => {
     const projects = await openPicker(tasks, FIRST, "project")
     const key = await projects.rowKey(1)
 
-    await expect(projects.grid).toHaveAttribute("aria-multiselectable", "false")
     await expect(projects.radios).toHaveCount(SEED.projects.acme)
     await expect(projects.boxes).toHaveCount(0)
     await expect(projects.radio(key)).toHaveAccessibleName("Select row")
@@ -248,17 +242,18 @@ test.describe("opening the picker", () => {
     await expect(own.editorTemplates).not.toHaveCount(0)
     await other.close()
 
-    // typing and F2 on a cell of the picker's table edit nothing
-    await projects.cell(key, "name").focus()
+    // no cell of the picker's table is a Tab stop: there is nothing to edit
+    await expect(projects.grid.locator(":is([role=cell],[role=rowheader])[tabindex]")).toHaveCount(0)
     await pushed.clear()
-    await tasks.press("F2", "x")
+    await projects.radio(key).focus()
+    await tasks.press("x")
     await expect(projects.openEditors).toHaveCount(0)
     expect(await pushed.all()).toEqual([])
   })
 })
 
-test.describe("the grid in the picker", () => {
-  test("keeps its keyboard contract: the arrow keys move and send nothing, Space selects, and the selected row stays selected", async ({
+test.describe("the table in the picker", () => {
+  test("its radio buttons are one group of the browser's: the group's own keys move the choice, and the selected row stays selected", async ({
     tasks,
     pushed,
   }) => {
@@ -266,54 +261,35 @@ test.describe("the grid in the picker", () => {
     const keys = await people.rowKeys()
     const kim = await keyOf(people, "name", "Kim Ernst")
     const at = keys.indexOf(kim)
+    await expect(people.radio(kim)).toBeFocused()
     await pushed.clear()
 
-    await tasks.press("ArrowDown")
-    await expect(people.cell(keys[at + 1], "name")).toBeFocused()
-    await tasks.press("ArrowRight")
-    await expect(people.cell(keys[at + 1], "email")).toBeFocused()
-    await tasks.press("Home")
-    await expect(people.boxCell(keys[at + 1])).toBeFocused()
-    await tasks.press("End")
-    await expect(people.cell(keys[at + 1], "assigned_hours")).toBeFocused()
-    await tasks.press("Control+Home")
-    await expect(people.boxCell(keys[0])).toBeFocused()
-    await tasks.press("ArrowRight", "ArrowUp")
-    await expect(people.filterCell("name")).toBeFocused()
-    await tasks.press("ArrowUp")
-    await expect(people.header("name")).toBeFocused()
-    await tasks.press("ArrowDown", "ArrowDown", "ArrowDown")
-    await expect(people.cell(keys[1], "name")).toBeFocused()
-
-    // one tab stop, in the picker's own grid
-    expect(await people.tabStops()).toEqual([`${people.id}-row-${keys[1]}-c-name`])
-
-    // Space selects the row in the other's place
-    await tasks.press("Space")
-    expect(await people.selectedKeys()).toEqual([keys[1]])
-    await expect(people.radio(keys[1])).toBeChecked()
+    // Down Arrow is the radio group's own key: the next row's radio button, checked
+    await tasks.press("ArrowDown") // the radio group's own key
+    await expect(people.radio(keys[at + 1])).toBeFocused()
+    await expect(people.radio(keys[at + 1])).toBeChecked()
     await expect(people.radio(kim)).not.toBeChecked()
-    await expect(people.rowLine(kim)).toHaveAttribute("aria-selected", "false")
-    // and once more leaves it selected: one of a set
+    expect(await people.selectedKeys()).toEqual([keys[at + 1]])
+    // Space on it leaves it selected: one of a set
     await tasks.press("Space")
-    expect(await people.selectedKeys()).toEqual([keys[1]])
-    // Shift selects no range
-    await tasks.press("Shift+ArrowDown")
-    expect(await people.selectedKeys()).toEqual([keys[1]])
+    expect(await people.selectedKeys()).toEqual([keys[at + 1]])
 
     await pushed.expectSelected(people)
     expect(await pushed.besides("select"), "none of it talks to the server but to say what is selected").toEqual([])
     await expect(tasks.picker).toBeVisible()
   })
 
-  test("Tab leaves the grid for the picker's buttons and never reaches the page; Shift+Tab comes back", async ({
+  test("Tab stops at the group once: it goes on to the picker's buttons and never reaches the page; Shift+Tab comes back to the checked row", async ({
     page,
     tasks,
   }) => {
     const people = await openPicker(tasks, FIRST, "assignee")
     const kim = await keyOf(people, "name", "Kim Ernst")
+    await expect(people.radio(kim)).toBeFocused()
 
-    // the pages of the people have nowhere to go: their buttons are disabled
+    // past the other rows (their cells are read-only, their radio buttons the
+    // same group); the pages of the people have nowhere to go: their Previous
+    // and Next are disabled
     await tasks.press("Tab")
     await expect(people.pageButton(1)).toBeFocused()
     await tasks.press("Tab")
@@ -325,7 +301,7 @@ test.describe("the grid in the picker", () => {
 
     for (const key of ["Tab", "Tab", "Shift+Tab", "Shift+Tab", "Shift+Tab", "Shift+Tab", "Shift+Tab", "Shift+Tab"]) {
       await tasks.press(key)
-      expect(await tasks.hasFocus(), `${key}: the grid of the page is out of reach`).toBe(false)
+      expect(await tasks.hasFocus(), `${key}: the table of the page is out of reach`).toBe(false)
       expect(
         await page.evaluate(() => {
           const active = document.activeElement
@@ -335,10 +311,10 @@ test.describe("the grid in the picker", () => {
       ).toBe(true)
     }
 
-    // back in the grid, on the cell it was left at
-    await people.cell(kim, "name").focus()
-    await tasks.press("Tab", "Shift+Tab")
-    await expect(people.cell(kim, "name")).toBeFocused()
+    // back to the group from after it: on the checked row's radio button
+    await tasks.pickerCancel.focus()
+    await tasks.press("Shift+Tab", "Shift+Tab")
+    await expect(people.radio(kim)).toBeFocused()
 
     // the pointer does not reach the page either
     const cell = (await tasks.cell(SECOND, "title").boundingBox())!
@@ -347,15 +323,13 @@ test.describe("the grid in the picker", () => {
     await expect(tasks.picker, "a click beside the picker leaves it open").toBeVisible()
   })
 
-  test("filters and sorts by itself, as the people's table does; Escape in a filter comes back to its cell and leaves the picker open", async ({
+  test("filters and sorts by itself, as the people's table does; Escape in a filter gives up what was typed and leaves the picker open", async ({
     tasks,
   }) => {
     const people = await openPicker(tasks, FIRST, "assignee")
     const url = tasks.page.url()
 
-    await people.filterCell("name").focus()
-    await tasks.press("Enter")
-    await expect(people.filterValue("name")).toBeFocused()
+    await people.filterValue("name").focus()
     await tasks.page.keyboard.type("Pia")
     await people.reads(() => tasks.press("Enter"))
     expect(await people.columnTexts("name")).toEqual(["Pia Graf", "Pia Lang"])
@@ -366,15 +340,17 @@ test.describe("the grid in the picker", () => {
     expect(await people.selectedKeys()).toEqual([])
     await expect(tasks.pickerChoose).toHaveAttribute("aria-disabled", "true")
 
+    await tasks.page.keyboard.type(" G")
     await tasks.press("Escape")
-    await expect(people.filterCell("name")).toBeFocused()
+    await expect(people.filterValue("name")).toHaveValue("Pia")
+    await expect(people.filterValue("name")).toBeFocused()
     await expect(tasks.picker).toBeVisible()
 
-    // Enter on a heading sorts
-    await tasks.press("ArrowUp", "ArrowRight")
-    await expect(people.header("email")).toBeFocused()
+    // Enter on a sort button sorts
+    await people.sortButton("email").focus()
     await people.reads(() => tasks.press("Enter"))
     await expect(people.header("email")).toHaveAttribute("aria-sort", "ascending")
+    await expect(people.sortButton("email")).toBeFocused()
     await people.reads(() => tasks.press("Enter"))
     expect(await people.columnTexts("name")).toEqual(["Pia Lang", "Pia Graf"])
 
@@ -397,7 +373,7 @@ test.describe("choosing", () => {
     const cell = tasks.cell(FIRST, "assignee")
     const people = await openPicker(tasks, FIRST, "assignee")
     const max = await keyOf(people, "name", "Max Member")
-    await people.cell(max, "name").focus()
+    await people.radio(max).focus()
     await tasks.press("Space")
     await pushed.clear()
 
@@ -407,7 +383,7 @@ test.describe("choosing", () => {
 
     await expect(tasks.picker).toHaveCount(0)
     await expect(cell).toHaveText("Max Member")
-    await expect(cell).not.toHaveAttribute("aria-invalid")
+    await expect(cell).not.toHaveAttribute("data-failed")
     await expect(cell).toBeFocused()
     // "Choose" names no row: the server takes the one the picker's table told it is selected
     const sent = (await pushed.all()).filter((one) => one.event === "picked")
@@ -415,19 +391,18 @@ test.describe("choosing", () => {
     expect(sent[0].params).toMatchObject({ none: false })
     expect(sent[0].params).not.toHaveProperty("row")
     expect(await pushed.count("save")).toBe(0)
-    expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-c-assignee`])
 
-    // the arrow keys go on from the cell, and the choice has outlived a reload
-    await tasks.press("ArrowLeft")
+    // Tab goes on from the cell, and the choice has outlived a reload
+    await tasks.press("Shift+Tab")
     await expect(tasks.cell(FIRST, "project")).toBeFocused()
     await tasks.open()
     await expect(cell).toHaveText("Max Member")
   })
 
-  test("Enter on a row chooses it at once, and so does a double click", async ({ tasks, pushed }) => {
+  test("Enter on a row's radio button chooses it at once, and so does a double click on the row", async ({ tasks, pushed }) => {
     const cell = tasks.cell(FIRST, "assignee")
     let people = await openPicker(tasks, FIRST, "assignee")
-    await people.cell(await keyOf(people, "name", "Pia Lang"), "email").focus()
+    await people.radio(await keyOf(people, "name", "Pia Lang")).focus()
     await pushed.clear()
     await tasks.saves(cell, () => tasks.press("Enter"))
 
@@ -455,7 +430,6 @@ test.describe("choosing", () => {
     await people.cell(mia, "email").click()
     expect(await people.selectedKeys()).toEqual([mia])
     await expect(people.radio(mia)).toBeChecked()
-    await expect(people.cell(mia, "email")).toBeFocused()
     // again, and on its radio button: it stays selected
     await people.cell(mia, "name").click()
     await people.radio(mia).click()
@@ -584,7 +558,7 @@ test.describe("choosing", () => {
       await tasks.saves(cell, () => tasks.pickerChoose.click())
 
       await expect(tasks.picker).toHaveCount(0)
-      await expect(cell).toHaveAttribute("aria-invalid", "true")
+      await expect(cell).toHaveAttribute("data-failed")
       await expect(cell).toContainText("Max Member")
       await expect(cell).toBeFocused()
       await expect(tasks.failure(cell)).toBeVisible()
@@ -598,10 +572,10 @@ test.describe("choosing", () => {
       expect(await again.selectedKeys()).toEqual([await keyOf(again, "name", "Kim Ernst")])
       await tasks.press("Escape")
       await expect(cell).toBeFocused()
-      await expect(cell).toHaveAttribute("aria-invalid", "true")
+      await expect(cell).toHaveAttribute("data-failed")
 
       await tasks.press("Escape")
-      await expect(cell).not.toHaveAttribute("aria-invalid")
+      await expect(cell).not.toHaveAttribute("data-failed")
       await expect(cell).toHaveText("Kim Ernst")
       await expect(cell).toBeFocused()
     })
@@ -614,7 +588,7 @@ test.describe("choosing", () => {
       await people.cell(await keyOf(people, "name", "Ada Admin"), "name").click()
       await tasks.saves(cell, () => tasks.pickerChoose.click())
       await expect(cell).toHaveText("Ada Admin")
-      await expect(cell).not.toHaveAttribute("aria-invalid")
+      await expect(cell).not.toHaveAttribute("data-failed")
     })
   })
 
@@ -660,14 +634,10 @@ test.describe("in a nested table", () => {
     const people = nested.pickerTable("assignee")
     await people.ready()
 
-    // the picker's grid is a tree of its own: its tab stop is in it, and
-    // the arrow keys stay in it
-    expect(await people.hasFocus()).toBe(true)
-    expect(await people.tabStops()).toHaveLength(1)
-    await nested.press("ArrowDown", "ArrowUp")
+    // focus is in the picker's table, on a row's radio button
     expect(await people.hasFocus()).toBe(true)
 
-    // Escape closes the picker, and does not leave the nested table
+    // Escape closes the picker: focus is back on the cell
     await nested.press("Escape")
     await expect(nested.picker).toHaveCount(0)
     await expect(cell).toBeFocused()
@@ -676,14 +646,12 @@ test.describe("in a nested table", () => {
     await expect(nested.picker).toBeVisible()
     await people.ready()
     const name = before === "Pia Graf" ? "Pia Lang" : "Pia Graf"
-    await people.cell(await keyOf(people, "name", name), "name").focus()
+    await people.radio(await keyOf(people, "name", name)).focus()
     await nested.saves(cell, () => nested.press("Enter"))
 
     await expect(nested.picker).toHaveCount(0)
     await expect(cell).toHaveText(name)
     await expect(cell).toBeFocused()
-    // one tab stop for the page's tree of grids, as before
-    expect(await projects.tabStops()).toEqual([`${nested.id}-row-${key}-c-assignee`])
     await expectNoAxeViolations(page)
   })
 })
@@ -716,7 +684,7 @@ test.describe("in the action panel", () => {
     // both are modal, the picker on top: focus is in it, on the record the field holds
     expect(await modals(page)).toEqual({ open: ["task-panel", "task-picker"], focusIn: "task-picker" })
     const kim = await keyOf(people, "name", "Kim Ernst")
-    await expect(people.cell(kim, "name")).toBeFocused()
+    await expect(people.radio(kim)).toBeFocused()
     expect(await people.selectedKeys()).toEqual([kim])
     // as wide as a table needs, over the panel
     expect((await tasks.picker.boundingBox())!.width).toBeGreaterThan((await tasks.panel.boundingBox())!.width)
@@ -730,13 +698,15 @@ test.describe("in the action panel", () => {
     await expect(tasks.fieldChosen("assignee_id")).toHaveText("Kim Ernst")
     expect(await pushed.count("panel_cancel")).toBe(0)
 
-    // chosen from the keyboard: Enter on the button, down to a row, Enter
+    // chosen from the keyboard: Enter on the button, down to a row with the
+    // radio group's own Down Arrow, Enter
     await tasks.press("Enter")
     await expect(tasks.picker).toBeVisible()
     await people.ready()
-    await tasks.press("ArrowDown")
+    await expect(people.radio(kim)).toBeFocused()
+    await tasks.press("ArrowDown") // the radio group's own key
     const max = await keyOf(people, "name", "Max Member")
-    await expect(people.cell(max, "name")).toBeFocused()
+    await expect(people.radio(max)).toBeFocused()
     await tasks.press("Enter")
 
     await expect(tasks.picker).toHaveCount(0)
@@ -1012,7 +982,7 @@ test("a row that is no row of the picker's table is not taken: Choose has nothin
   await tasks.press("Escape")
   await expect(tasks.picker).toHaveCount(0)
   await expect(cell).toHaveText("Kim Ernst")
-  await expect(cell).not.toHaveAttribute("aria-invalid")
+  await expect(cell).not.toHaveAttribute("data-failed")
   await tasks.open()
   await expect(cell).toHaveText("Kim Ernst")
 })

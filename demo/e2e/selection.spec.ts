@@ -55,7 +55,6 @@ test.describe("the boxes", () => {
   }) => {
     // the boxes, the expanders, the twenty-two columns of the table, the actions
     await expect(tasks.grid).toHaveAttribute("aria-colcount", "25")
-    await expect(tasks.grid).toHaveAttribute("aria-multiselectable", "true")
     await expect(tasks.headerCells.first()).toHaveId("task-select-head")
     await expect(tasks.pageBoxCell).toHaveRole("columnheader")
     await expect(tasks.pageBoxCell).toHaveAttribute("aria-colindex", "1")
@@ -63,7 +62,7 @@ test.describe("the boxes", () => {
     await expect(tasks.pageBox).not.toBeChecked()
 
     await expect(tasks.rowCells(FIRST).first()).toHaveId(`task-row-${FIRST}-s`)
-    await expect(tasks.boxCell(FIRST)).toHaveRole("gridcell")
+    await expect(tasks.boxCell(FIRST)).toHaveRole("cell")
     await expect(tasks.boxCell(FIRST)).toHaveAttribute("aria-colindex", "1")
     await expect(tasks.box(FIRST)).toHaveAccessibleName("Select row")
     await expect(tasks.boxes).toHaveCount(25)
@@ -73,20 +72,19 @@ test.describe("the boxes", () => {
     await expect(tasks.expanderCell(FIRST)).toHaveAttribute("aria-colindex", "2")
     await expect(tasks.cell(FIRST, "title")).toHaveAttribute("aria-colindex", "3")
 
-    // no box is a tab stop: the grid is one, and it is where it was
-    for (const box of [tasks.pageBox, tasks.box(FIRST)]) await expect(box).toHaveAttribute("tabindex", "-1")
-    expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-c-title`])
+    // every box is a Tab stop, the browser's own checkbox; its cell is none
+    for (const box of [tasks.pageBox, tasks.box(FIRST)]) await expect(box).not.toHaveAttribute("tabindex")
+    await expect(tasks.boxCell(FIRST)).not.toHaveAttribute("tabindex")
+    const stops = await tasks.tabStops()
+    expect(stops).toContain("task-select-head>input")
+    expect(stops).toContain(`task-row-${FIRST}-s>input`)
+    expect(stops).not.toContain(`task-row-${FIRST}-s`)
   })
 
-  test("every row says whether it is selected, and none is at first", async ({ tasks }) => {
-    const said = await tasks.rows.evaluateAll((rows) =>
-      rows.map((row) => (row as HTMLTableSectionElement).rows[0].getAttribute("aria-selected")),
-    )
-    expect(said).toEqual(Array(25).fill("false"))
+  test("each row's box says whether it is selected, and none is at first", async ({ tasks }) => {
+    await expect(tasks.boxes).toHaveCount(25)
+    for (const box of await tasks.boxes.all()) await expect(box).not.toBeChecked()
     expect(await tasks.selectedKeys()).toEqual([])
-
-    // the rows of the header say nothing of it: they cannot be selected
-    await expect(tasks.grid.locator(":scope > #task-head > [role=row][aria-selected]")).toHaveCount(0)
 
     // nothing is selected: the line holds no text and shows no button
     await expect(tasks.selectionLine).toHaveRole("group")
@@ -132,8 +130,6 @@ test.describe("the boxes", () => {
         await expect(tasks.pageBoxCell).toHaveCount(0)
         await expect(tasks.grid.locator("[data-selector]")).toHaveCount(0)
         await expect(tasks.selectionLine).toHaveCount(0)
-        await expect(tasks.grid).not.toHaveAttribute("aria-multiselectable")
-        await expect(tasks.grid.locator("[role=row][aria-selected]")).toHaveCount(0)
       })
     })
   }
@@ -145,15 +141,14 @@ test.describe("selecting with the pointer", () => {
     await tasks.box(SECOND).click()
 
     await expect(tasks.box(SECOND)).toBeChecked()
-    await expect(tasks.rowLine(SECOND)).toHaveAttribute("aria-selected", "true")
-    await expect(tasks.rowLine(FIRST)).toHaveAttribute("aria-selected", "false")
+    await expect(tasks.box(FIRST)).not.toBeChecked()
     expect(await tasks.selectedKeys()).toEqual([SECOND])
     await pushed.expectSelected(tasks)
     await expect(tasks.selectedCount).toHaveText("1 selected")
     await expect(tasks.clearSelection).toBeVisible()
     await expect(tasks.bulkButtons).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
-    // focus is on the box's cell, which is the grid's tab stop now
-    expect(await tasks.focused()).toBe(`task-row-${SECOND}-s`)
+    // focus is on the box
+    await expect(tasks.box(SECOND)).toBeFocused()
 
     await tasks.box(SECOND).click()
     await expect(tasks.box(SECOND)).not.toBeChecked()
@@ -229,40 +224,34 @@ test.describe("selecting with the pointer", () => {
 })
 
 test.describe("selecting from the keyboard", () => {
-  test("Space on any cell of a row selects the row, and takes it out again; the page does not scroll", async ({
+  test("Space on a row's box selects the row, and takes it out again; focus stays, and the page does not scroll", async ({
     page,
     tasks,
     pushed,
   }) => {
-    await tasks.cell(FIRST, "title").focus()
+    await tasks.box(FIRST).focus()
     await pushed.clear()
 
     await page.keyboard.press("Space")
     expect(await tasks.selectedKeys()).toEqual([FIRST])
     await expect(tasks.selectedCount).toHaveText("1 selected")
     // focus is where it was: the count is read out, and nothing is taken
-    expect(await tasks.focused()).toBe(`task-row-${FIRST}-c-title`)
+    await expect(tasks.box(FIRST)).toBeFocused()
 
-    await tasks.press("ArrowDown", "ArrowRight", "Space")
-    expect(await tasks.selectedKeys()).toEqual([FIRST, SECOND])
-
-    // on the box's own cell, and on the actions cell
-    await tasks.press("Home", "ArrowDown", "Space")
-    expect(await tasks.focused()).toBe(`task-row-${THIRD}-s`)
+    for (const key of [SECOND, THIRD]) {
+      await tasks.box(key).focus()
+      await page.keyboard.press("Space")
+    }
     expect(await tasks.selectedKeys()).toEqual([FIRST, SECOND, THIRD])
-    await tasks.press("End", "Space")
-    expect(await tasks.focused()).toBe(`task-row-${THIRD}-a`)
+    await page.keyboard.press("Space")
     expect(await tasks.selectedKeys()).toEqual([FIRST, SECOND])
-
-    await tasks.press("ArrowUp", "Space")
-    expect(await tasks.selectedKeys()).toEqual([FIRST])
 
     expect(await page.evaluate(() => window.scrollY)).toBe(0)
     await pushed.expectSelected(tasks)
-    expect(await pushed.besides("select"), "selecting and moving send nothing but what is selected").toEqual([])
+    expect(await pushed.besides("select"), "selecting sends nothing but what is selected").toEqual([])
   })
 
-  test("Space on a boolean cell selects the row and leaves the value alone: Enter toggles it", async ({
+  test("Space on a boolean cell selects nothing and leaves its value alone: Enter toggles it", async ({
     page,
     tasks,
     pushed,
@@ -271,19 +260,15 @@ test.describe("selecting from the keyboard", () => {
     const before = await cell.textContent()
     await cell.focus()
     await pushed.clear()
-
     await page.keyboard.press("Space")
-
-    expect(await tasks.selectedKeys()).toEqual([FIRST])
     await expect(cell).toHaveText(before!)
-    expect(await pushed.count("save")).toBe(0)
+    expect(await pushed.all()).toEqual([])
+    expect(await tasks.selectedKeys()).toEqual([])
+    await expect(tasks.openEditors).toHaveCount(0)
   })
 
-  test("Space on the cell of the box in the header selects the rows of the page", async ({ page, tasks }) => {
-    await tasks.cell(FIRST, "title").focus()
-    await tasks.press("Home", "ArrowUp", "ArrowUp")
-    expect(await tasks.focused()).toBe("task-select-head")
-
+  test("Space on the box in the header selects the rows of the page", async ({ page, tasks }) => {
+    await tasks.pageBox.focus()
     await page.keyboard.press("Space")
     expect(await tasks.selectedKeys()).toHaveLength(25)
     await expect(tasks.pageBox).toBeChecked()
@@ -292,116 +277,34 @@ test.describe("selecting from the keyboard", () => {
     expect(await tasks.selectedKeys()).toEqual([])
   })
 
-  test("Space on a heading, a filter cell and a relationship line selects nothing", async ({ page, tasks }) => {
-    await tasks.header("title").focus()
+  test("Space on a relationship line's button and on the expander uses the button, and selects nothing", async ({
+    page,
+    tasks,
+  }) => {
+    await tasks.expander(FIRST).focus()
     await page.keyboard.press("Space")
-    await tasks.filterCell("title").focus()
-    await page.keyboard.press("Space")
+    await expect(tasks.expander(FIRST)).toHaveAttribute("aria-expanded", "true")
 
-    await tasks.expand(FIRST)
-    await tasks.lineCell(FIRST, "comments").focus()
+    await tasks.line(FIRST, "comments").focus()
     await page.keyboard.press("Space")
+    await expect(tasks.line(FIRST, "comments")).toHaveAttribute("aria-expanded", "true")
+    await tasks.nested(FIRST, "comments").loaded()
 
     expect(await tasks.selectedKeys()).toEqual([])
     await expect(tasks.selectedCount).toHaveText("")
-    // nor was the filter gone into, or anything typed there
-    await expect(tasks.filterValue("title")).toHaveValue("")
   })
 
-  test("Space on a button in a cell uses the button, and selects nothing", async ({ page, tasks }) => {
-    await tasks.expanderCell(FIRST).focus()
-    await tasks.expander(FIRST).focus()
-    await page.keyboard.press("Space")
-
-    await expect(tasks.expander(FIRST)).toHaveAttribute("aria-expanded", "true")
-    expect(await tasks.selectedKeys()).toEqual([])
-  })
-
-  test("Shift with Down Arrow and Up Arrow selects as it goes, and takes rows out on the way back", async ({
-    tasks,
-    pushed,
-  }) => {
-    const keys = await tasks.rowKeys()
-    await tasks.cell(keys[2], "status").focus()
-    await pushed.clear()
-
-    await tasks.press("Shift+ArrowDown", "Shift+ArrowDown")
-    expect(await tasks.selectedKeys()).toEqual(keys.slice(2, 5))
-    // focus has moved with it, in the same column
-    expect(await tasks.focused()).toBe(`task-row-${keys[4]}-c-status`)
-
-    await tasks.press("Shift+ArrowUp")
-    expect(await tasks.selectedKeys()).toEqual(keys.slice(2, 4))
-
-    // past where it began, the other way
-    await tasks.press("Shift+ArrowUp", "Shift+ArrowUp", "Shift+ArrowUp")
-    expect(await tasks.selectedKeys()).toEqual(keys.slice(0, 3))
-    expect(await tasks.focused()).toBe(`task-row-${keys[0]}-c-status`)
-
-    // at the first row of records it stops: the header rows are not selected into
-    await tasks.press("Shift+ArrowUp")
-    expect(await tasks.focused()).toBe(`task-row-${keys[0]}-c-status`)
-
-    // what was selected before stays, and a new range starts where the key is pressed next
-    await tasks.press("ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", "Shift+ArrowDown")
-    expect(await tasks.selectedKeys()).toEqual([...keys.slice(0, 3), keys[5], keys[6]])
-
-    await pushed.expectSelected(tasks)
-    expect(await pushed.besides("select"), "none of it is sent but what is selected").toEqual([])
-  })
-
-  test("Shift with an arrow key passes over what is open under a row", async ({ tasks }) => {
-    const keys = await tasks.rowKeys()
-    await tasks.expand(keys[0])
-    await tasks.cell(keys[0], "title").focus()
-
-    await tasks.press("Shift+ArrowDown")
-
-    expect(await tasks.focused()).toBe(`task-row-${keys[1]}-c-title`)
-    expect(await tasks.selectedKeys()).toEqual(keys.slice(0, 2))
-  })
-
-  test("the arrow keys still send nothing, and the tab stop is still one, while rows are selected", async ({
-    tasks,
-    pushed,
-  }) => {
-    await tasks.cell(FIRST, "title").focus()
-    await tasks.press("Space")
-    await pushed.clear()
-
-    await tasks.press("ArrowDown", "ArrowRight", "ArrowDown", "ArrowLeft", "End", "Home", "PageDown", "Control+Home")
-
-    expect(await pushed.all()).toEqual([])
-    expect(await tasks.tabStops()).toHaveLength(1)
-    expect(await tasks.selectedKeys()).toEqual([FIRST])
-  })
-
-  test("Left Arrow from the first column reaches the expander and then the box; Tab enters on the first column", async ({
+  test("the buttons of the line are reached with Shift+Tab from \"Skip table\", and used with Enter", async ({
     page,
     tasks,
   }) => {
-    await page.keyboard.press("Tab")
-    while (!(await tasks.hasFocus())) await page.keyboard.press("Tab")
-    expect(await tasks.focused()).toBe(`task-row-${FIRST}-c-title`)
-
-    await tasks.press("ArrowLeft")
-    expect(await tasks.focused()).toBe(`task-row-${FIRST}-e`)
-    await tasks.press("ArrowLeft")
-    expect(await tasks.focused()).toBe(`task-row-${FIRST}-s`)
-    await tasks.press("ArrowLeft")
-    expect(await tasks.focused()).toBe(`task-row-${FIRST}-s`)
-  })
-
-  test("the buttons of the line are reached with Shift+Tab from the grid, and used with Enter", async ({
-    page,
-    tasks,
-  }) => {
-    await tasks.cell(FIRST, "title").focus()
+    await tasks.box(FIRST).focus()
     await tasks.press("Space")
     // the server draws the buttons once it is told of the selection
     await expect(tasks.clearSelection).toBeVisible()
-    // the line stands right before the grid: its last button is "More",
-    // whose menu holds the actions after the first two
+    // the line stands right before the table's "Skip table": its last button
+    // is "More", whose menu holds the actions after the first two
+    await tasks.skip.focus()
     await tasks.press("Shift+Tab")
     expect(await tasks.focused()).toBe("task-bulk-more-button")
     await tasks.press("Shift+Tab")
@@ -411,8 +314,8 @@ test.describe("selecting from the keyboard", () => {
 
     await page.keyboard.press("Enter")
     expect(await tasks.selectedKeys()).toEqual([])
-    // the button went with the selection: focus is back in the grid
-    expect(await tasks.focused()).toBe(`task-row-${FIRST}-c-title`)
+    // the button went with the selection: focus is on the table's first stop, the box of the page
+    await expect(tasks.pageBox).toBeFocused()
   })
 })
 
@@ -435,7 +338,7 @@ test.describe("a selection", () => {
     await expect(tasks.box(FIRST)).toBeChecked()
     await expect(tasks.selectedCount).toHaveText("3 selected")
 
-    await tasks.reads(() => tasks.header("inserted_at").click())
+    await tasks.sortBy("inserted_at")
     await expect(tasks.selectedCount).toHaveText("3 selected")
   })
 
@@ -443,8 +346,7 @@ test.describe("a selection", () => {
     await tasks.box(FIRST).click()
     await tasks.box(SECOND).click()
 
-    await tasks.filterCell("title").focus()
-    await page.keyboard.press("Enter")
+    await tasks.filterValue("title").focus()
     await tasks.reads(async () => {
       await page.keyboard.type("email")
       await page.keyboard.press("Enter")
@@ -474,7 +376,6 @@ test.describe("a selection", () => {
       await tasks.saves(title, () => page.keyboard.press("Enter"))
 
       await expect(title).toHaveText("Renamed while selected")
-      await expect(tasks.rowLine(FIRST)).toHaveAttribute("aria-selected", "true")
       await expect(tasks.box(FIRST)).toBeChecked()
       await expect(tasks.selectedCount).toHaveText("1 selected")
     })
@@ -536,8 +437,7 @@ test.describe("all that match", () => {
 
     await tasks.pageBox.click()
     await tasks.selectAll.click()
-    await tasks.filterCell("title").focus()
-    await page.keyboard.press("Enter")
+    await tasks.filterValue("title").focus()
     await tasks.reads(async () => {
       await page.keyboard.type("email")
       await page.keyboard.press("Enter")
@@ -547,8 +447,7 @@ test.describe("all that match", () => {
   })
 
   test("is not offered where the page is all there is", async ({ page, tasks }) => {
-    await tasks.filterCell("title").focus()
-    await page.keyboard.press("Enter")
+    await tasks.filterValue("title").focus()
     await tasks.reads(async () => {
       await page.keyboard.type("onboarding email")
       await page.keyboard.press("Enter")
@@ -577,7 +476,7 @@ test.describe("the line above the grid", () => {
     tasks,
   }) => {
     await expect(tasks.selectedCount).toHaveRole("status")
-    await tasks.cell(FIRST, "title").focus()
+    const keys = await tasks.rowKeys()
 
     // what a screen reader is told is what the region comes to hold
     await page.evaluate(() => {
@@ -589,7 +488,11 @@ test.describe("the line above the grid", () => {
       )
     })
 
-    await tasks.press("Space", "ArrowDown", "Space", "ArrowDown", "ArrowDown", "Space", "Space")
+    for (const key of [keys[0], keys[1], keys[3]]) {
+      await tasks.box(key).focus()
+      await tasks.press("Space")
+    }
+    await tasks.press("Space")
 
     // the server says each count as it is told of each change
     await expect.poll(() => page.evaluate(() => (window as any).__said)).toEqual([
@@ -598,7 +501,7 @@ test.describe("the line above the grid", () => {
       "3 selected",
       "2 selected",
     ])
-    expect(await tasks.hasFocus()).toBe(true)
+    await expect(tasks.box(keys[3])).toBeFocused()
   })
 
   test("takes no room while nothing is selected, one line once something is, and stands at the other end from Clear filters", async ({
@@ -622,8 +525,7 @@ test.describe("the line above the grid", () => {
     expect(await top()).toBe(selected)
 
     // a filter takes the selection with it, and leaves its own button at the right
-    await tasks.filterCell("title").focus()
-    await page.keyboard.press("Enter")
+    await tasks.filterValue("title").focus()
     await tasks.reads(async () => {
       await page.keyboard.type("email")
       await page.keyboard.press("Enter")
@@ -642,7 +544,7 @@ test.describe("the line above the grid", () => {
     expect(await top()).toBe(before)
   })
 
-  test("Clear selection takes every row out, on every page, and sends focus to the grid", async ({ tasks }) => {
+  test("Clear selection takes every row out, on every page, and sends focus to the table's first stop", async ({ tasks }) => {
     await tasks.box(FIRST).click()
     await tasks.reads(() => tasks.next.click())
     await tasks.pageBox.click()
@@ -650,12 +552,13 @@ test.describe("the line above the grid", () => {
 
     await tasks.clearSelection.click()
 
-    // the hook sends focus to the grid at once; the server then takes the buttons away
-    expect(await tasks.hasFocus()).toBe(true)
+    // the hook sends focus to the table's first stop at once, the box of
+    // the page; the server then takes the buttons away
+    await expect(tasks.pageBox).toBeFocused()
     await expect(tasks.selectedCount).toHaveText("")
     await expect(tasks.clearSelection).toBeHidden()
     expect(await tasks.selectedKeys()).toEqual([])
-    expect(await tasks.hasFocus()).toBe(true)
+    await expect(tasks.pageBox).toBeFocused()
 
     await tasks.reads(() => tasks.previous.click())
     expect(await tasks.selectedKeys()).toEqual([])
@@ -712,8 +615,8 @@ test.describe("an action on the selected rows", () => {
     await expect(tasks.selectedCount).toHaveText("")
     expect(await tasks.selectedKeys()).toEqual([])
     await expect(tasks.bulk("archive")).toBeHidden()
-    // the server took the buttons away: the hook sends focus on to the grid
-    await expect.poll(() => tasks.hasFocus()).toBe(true)
+    // the server took the buttons away: the hook sends focus on to the table's first stop
+    await expect(tasks.pageBox).toBeFocused()
 
     expect(await pushed.count("bulk")).toBe(1)
     expect(await pushed.count("bulk_run")).toBe(1)
@@ -747,7 +650,7 @@ test.describe("an action on the selected rows", () => {
     await tasks.useBulk("archive")
     await confirmed(tasks)
 
-    await tasks.reads(() => tasks.header("title").click())
+    await tasks.sortBy("title")
     await expect(tasks.result).toHaveText("Archive: 1 done.")
 
     await tasks.box((await tasks.rowKeys())[0]).click()
@@ -772,7 +675,6 @@ test.describe("an action on the selected rows", () => {
     await expect(tasks.row(SECOND)).toHaveCount(0)
     await expect(tasks.range).toHaveText(`1–25 of ${SEED.tasks.acme - 2}`)
     expect(await tasks.hasFocus()).toBe(true)
-    expect(await tasks.tabStops()).toHaveLength(1)
   })
 
   test("with inputs opens its panel once, with empty fields, and gives every record what they hold", async ({
@@ -819,9 +721,6 @@ test.describe("an action on the selected rows", () => {
     await expect(tasks.selectedCount).toHaveText("")
     expect(await tasks.hasFocus()).toBe(true)
     expect(await pushed.count("panel_submit")).toBe(1)
-
-    await page.keyboard.press("ArrowDown")
-    expect(await tasks.tabStops()).toHaveLength(1)
   })
 
   test("Escape in its panel runs nothing and keeps the selection, with focus back on the button", async ({
@@ -921,7 +820,6 @@ test.describe("a nested table", () => {
     const [comment] = await comments.rowKeys()
     await pushed.clear()
 
-    await expect(comments.grid).toHaveAttribute("aria-multiselectable", "true")
     await comments.box(comment).click()
 
     await expect(comments.selectedCount).toHaveText("1 selected")
@@ -960,20 +858,21 @@ test.describe("a nested table", () => {
     expect(await pushed.besides("select")).toEqual([])
   })
 
-  test("Space selects in the grid that has the focus, and its buttons are reached from the keyboard", async ({
+  test("Space on its box selects in its own table, and its line's buttons are reached from the keyboard", async ({
     page,
     tasks,
   }) => {
     const comments = await tasks.openLine(FIRST, "comments")
     const [comment] = await comments.rowKeys()
 
-    await comments.cell(comment, "body").focus()
+    await comments.box(comment).focus()
     await page.keyboard.press("Space")
     expect(await comments.selectedKeys()).toEqual([comment])
     expect(await tasks.selectedKeys()).toEqual([])
     await expect(comments.clearSelection).toBeVisible()
 
-    // right before its grid: its "Columns" is on its line, and no tab stop
+    // right before its "Skip table": the buttons of its selection line
+    await comments.skip.focus()
     await page.keyboard.press("Shift+Tab")
     expect(await tasks.focused()).toBe(`${comments.id}-bulk-destroy`)
     // which, as the only action, stands on the line, and in the error colour
@@ -997,7 +896,6 @@ test.describe("a nested table", () => {
       await expect(comments.row(keys[0])).toHaveCount(0)
       await expect(tasks.line(FIRST, "comments")).toHaveAttribute("aria-expanded", "true")
       await expect(tasks.result).toHaveCount(0)
-      expect(await tasks.tabStops()).toHaveLength(1)
     })
   })
 })
