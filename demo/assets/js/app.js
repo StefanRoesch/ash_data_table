@@ -27,10 +27,6 @@ import {hooks as ashDataTableHooks} from "phoenix-colocated/ash_data_table"
 import {MountedGrid} from "./mounted_grid.js"
 import topbar from "../vendor/topbar"
 
-// The demo's own hook of its browser tests (mounted_grid.js), among its
-// colocated ones.
-colocatedHooks.MountedGrid = MountedGrid
-
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
@@ -40,7 +36,8 @@ const liveSocket = new LiveSocket("/live", Socket, {
     // in (`DemoWeb.Zone`): a convenience of the demo's, which the server checks.
     time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   },
-  hooks: {...colocatedHooks, ...ashDataTableHooks},
+  // and the demo's own hook of its browser tests (mounted_grid.js)
+  hooks: {...colocatedHooks, ...ashDataTableHooks, MountedGrid},
 })
 
 // Show progress bar on live navigation and form submits
