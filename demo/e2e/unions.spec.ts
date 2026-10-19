@@ -32,6 +32,7 @@ function kind(table: Table): Locator {
 }
 
 test.describe("the cell of a union", () => {
+  // nothing in the cell but the "Show all" the hook puts into a cell that cuts its text off
   test("shows the value it holds as plain text, as its kind is shown, and nothing of the kind", async ({ page }) => {
     const specimens = specimensOf(page)
     await specimens.open()
@@ -39,8 +40,9 @@ test.describe("the cell of a union", () => {
     for (const specimen of [NUMBER, ADDRESS, SHADE, TEXT]) {
       const cell = specimens.cell(specimen.id, "a_union")
       await expect(cell).toHaveText(specimen.shown)
-      await expect(cell.locator("*")).toHaveCount(0)
-      await expect(cell).not.toHaveAttribute("aria-readonly")
+      await expect(cell.locator("*:not([data-whole])")).toHaveCount(0)
+      // editable in the side panel: a Tab stop
+      await expect(cell).toHaveAttribute("tabindex", "0")
     }
   })
 
@@ -49,6 +51,7 @@ test.describe("the cell of a union", () => {
     await specimens.open()
 
     await expect(specimens.header("a_union")).not.toHaveAttribute("aria-sort")
+    await expect(specimens.sortButton("a_union")).toHaveCount(0)
     await expect(specimens.filterCell("a_union").locator("input, select, button")).toHaveCount(0)
     await pushed.clear()
     await specimens.header("a_union").click()
@@ -91,13 +94,12 @@ test.describe("the side panel of a union", () => {
     expect(await pushed.count("panel_submit")).toBe(0)
   })
 
-  test("a kind made of fields has those fields; F2 and a double click open the panel too", async ({ page }) => {
+  test("a kind made of fields has those fields; a double click opens the panel too", async ({ page }) => {
     const specimens = specimensOf(page)
     await specimens.open()
     const cell = specimens.cell(ADDRESS.id, "a_union")
 
-    await cell.focus()
-    await specimens.press("F2")
+    await cell.dblclick()
     await expect(specimens.panel).toBeVisible()
     await expect(kind(specimens)).toHaveValue("address")
     await expect(union(specimens).getByRole("textbox", { name: "Street" })).toHaveValue("Unionsweg 559")
@@ -169,7 +171,7 @@ test.describe("Save", () => {
     await cell.focus()
     await specimens.press("Enter")
     await expect(kind(specimens)).toBeFocused()
-    // the next kind in the list
+    // the next kind in the list: the menu's own key
     await page.keyboard.press("ArrowDown")
     await expect(kind(specimens)).toHaveValue("text")
     const text = union(specimens).getByRole("textbox", { name: "Text", exact: true })

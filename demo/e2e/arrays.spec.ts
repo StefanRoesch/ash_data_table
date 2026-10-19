@@ -8,7 +8,7 @@ import { Table } from "./support/table"
 // "Tags", an array of text with at most five values of two to twenty
 // characters, edited value by value; and "Checks", an array of enum values,
 // edited as multiple choice. A cell of an array has no editor of its own:
-// Enter, F2, a double click or a key typed on it opens the table's side
+// Enter, a double click or a key typed on it opens the table's side
 // panel with that one field, a form of the column's update action. "Save"
 // saves; Cancel and Escape close it, and the focus is on the cell again.
 // These tests save.
@@ -86,41 +86,27 @@ test.describe("an array cell", () => {
     await expect(await emptyCell(tasks, "checks")).toBeEmpty()
   })
 
-  test("has neither a sort nor a filter: Enter on its header and on its filter cell does nothing", async ({
+  test("has neither a sort nor a filter: its header and its filter cell are no stops; its cell is one", async ({
     tasks,
     pushed,
   }) => {
     for (const column of ["tags", "checks"]) {
       await expect(tasks.header(column)).not.toHaveAttribute("aria-sort")
+      await expect(tasks.sortButton(column)).toHaveCount(0)
+      await expect(tasks.header(column)).not.toHaveAttribute("tabindex")
       await expect(tasks.filterCell(column).locator("input, select, button")).toHaveCount(0)
+      await expect(tasks.filterCell(column)).not.toHaveAttribute("tabindex")
+      // an editable cell like any other: a Tab stop
+      await expect(tasks.cell(FIRST, column)).toHaveAttribute("tabindex", "0")
     }
 
     await pushed.clear()
-    await tasks.header("tags").focus()
-    await tasks.press("Enter")
-    await expect(tasks.header("tags")).toBeFocused()
-    // its filter cell holds nothing, and Down passes it by
-    await tasks.press("ArrowDown")
-    await expect(tasks.cell(await tasks.rowKey(1), "tags")).toBeFocused()
-    await tasks.filterCell("tags").focus()
-    await tasks.press("Enter")
-    await expect(tasks.filterCell("tags")).toBeFocused()
     await tasks.header("checks").click()
+    await tasks.filterCell("tags").click()
     expect(await pushed.all()).toEqual([])
-  })
-
-  test("is a cell like any other to the arrow keys, which send nothing", async ({ tasks, pushed }) => {
-    await tasks.cell(FIRST, "description").focus()
-    await pushed.clear()
-
-    await tasks.press("ArrowRight")
-    await expect(tasks.cell(FIRST, "tags")).toBeFocused()
-    await tasks.press("ArrowRight")
-    await expect(tasks.cell(FIRST, "checks")).toBeFocused()
-    await tasks.press("ArrowDown")
-    await expect(tasks.cell(SECOND, "checks")).toBeFocused()
-    await tasks.press("ArrowLeft")
-    await expect(tasks.cell(SECOND, "tags")).toBeFocused()
+    // Tab goes from one array to the next, and sends nothing
+    await tasks.cell(FIRST, "tags").focus()
+    expect(await tasks.walk(1)).toEqual([`task-row-${FIRST}-c-checks`])
     expect(await pushed.all()).toEqual([])
   })
 })
@@ -164,7 +150,7 @@ test.describe("an array of text: one control per value, in the side panel", () =
     expect(await template.evaluate((node) => (node as HTMLTemplateElement).content.childElementCount)).toBe(0)
   })
 
-  test("F2, a double click and a key typed on the cell open it too; Escape and Cancel close it, and the focus is on the cell again", async ({
+  test("a double click and a key typed on the cell open it too; Escape and Cancel close it, and the focus is on the cell again", async ({
     page,
     tasks,
     pushed,
@@ -172,13 +158,8 @@ test.describe("an array of text: one control per value, in the side panel", () =
     const tags = tasks.cell(FIRST, "tags")
     await pushed.clear()
 
-    const field = await edit(tasks, tags, "tags", "F2")
-    await expect(values(field).nth(0)).toBeFocused()
-    await page.keyboard.press("Escape")
-    await expect(tasks.panel).toHaveCount(0)
-    await expect(tags).toBeFocused()
-
     await tags.dblclick()
+    const field = tasks.field("tags")
     await expect(tasks.panel).toBeVisible()
     await expect(values(field).nth(0)).toBeFocused()
     await tasks.panelCancel.click()
@@ -196,7 +177,7 @@ test.describe("an array of text: one control per value, in the side panel", () =
     await expect(tags).toBeFocused()
 
     await expect(tags).toHaveText("api, customer, quick-win")
-    expect(await pushed.count("edit")).toBe(3)
+    expect(await pushed.count("edit")).toBe(2)
     expect(await pushed.count("panel_submit")).toBe(0)
     expect(await pushed.count("save")).toBe(0)
   })
@@ -209,6 +190,7 @@ test.describe("an array of text: one control per value, in the side panel", () =
     const field = await edit(tasks, tasks.cell(FIRST, "tags"), "tags")
     await pushed.clear()
 
+    // the value's (a textarea's) own keys
     await tasks.press("ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End")
     await expect(values(field).nth(0)).toBeFocused()
 
@@ -253,7 +235,6 @@ test.describe("an array of text: one control per value, in the side panel", () =
     await expect(tags).toBeFocused()
     expect(await pushed.count("panel_submit")).toBe(1)
     expect(await pushed.count("save"), "the panel's form saves, not the cell").toBe(0)
-    expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-c-tags`])
 
     const [{ params }] = (await pushed.all()).filter((sent) => sent.event === "panel_submit")
     // the field's own entry, then the values as typed
@@ -301,7 +282,7 @@ test.describe("an array of text: one control per value, in the side panel", () =
 
     await save(tasks)
     await expect(tags).toBeEmpty()
-    await expect(tags).not.toHaveAttribute("aria-invalid")
+    await expect(tags).not.toHaveAttribute("data-failed")
     await expect(tags).toBeFocused()
   })
 
@@ -323,7 +304,6 @@ test.describe("an array of text: one control per value, in the side panel", () =
     await expect(tasks.panel).toHaveCount(0)
     await expect(tags).toHaveText("api, customer, quick-win")
     await expect(tags).toBeFocused()
-    expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-c-tags`])
     expect(await pushed.count("panel_submit")).toBe(0)
     expect(await pushed.count("save")).toBe(0)
 
@@ -335,7 +315,7 @@ test.describe("an array of text: one control per value, in the side panel", () =
 
   test("Save with the values the task has closes the panel and changes nothing", async ({ tasks, pushed }) => {
     const tags = tasks.cell(FIRST, "tags")
-    await edit(tasks, tags, "tags", "F2")
+    await edit(tasks, tags, "tags")
     await pushed.clear()
     await save(tasks)
     await expect(tags).toBeFocused()
@@ -351,7 +331,7 @@ test.describe("an array of text: one control per value, in the side panel", () =
 
     await expect(tags).toBeFocused()
     await expect(tags).toHaveText("api, customer, quick-win")
-    await expect(tags).not.toHaveAttribute("aria-invalid")
+    await expect(tags).not.toHaveAttribute("data-failed")
     await expect(tasks.status).toBeEmpty()
     expect(await pushed.count("save")).toBe(0)
   })
@@ -395,7 +375,7 @@ test.describe("an array of text: one control per value, in the side panel", () =
     await save(tasks)
 
     await expect(tags).toHaveText("first")
-    await expect(tags).not.toHaveAttribute("aria-invalid")
+    await expect(tags).not.toHaveAttribute("data-failed")
     await expect(tags).toBeFocused()
   })
 
@@ -442,7 +422,7 @@ test.describe("an array of text: a save the action refuses", () => {
 
     // the cell is as the task has it: nothing failed in it
     await expect(tags).toHaveText("api, customer, quick-win")
-    await expect(tags).not.toHaveAttribute("aria-invalid")
+    await expect(tags).not.toHaveAttribute("data-failed")
     await expect(tasks.failure(tags)).toHaveCount(0)
 
     // Cancel: the focus is on the cell, and nothing was saved
@@ -475,7 +455,7 @@ test.describe("an array of text: a save the action refuses", () => {
     await save(tasks)
     await expect(tags).toHaveText("customer, quick-win, xl")
     await expect(tags).toBeFocused()
-    await expect(tags).not.toHaveAttribute("aria-invalid")
+    await expect(tags).not.toHaveAttribute("data-failed")
   })
 
   test("Escape gives the edit up; so does going back to the values the task has", async ({ page, tasks, pushed }) => {
@@ -483,7 +463,7 @@ test.describe("an array of text: a save the action refuses", () => {
     await page.keyboard.press("Escape")
     await expect(tasks.panel).toHaveCount(0)
     await expect(tags).toHaveText("api, customer, quick-win")
-    await expect(tags).not.toHaveAttribute("aria-invalid")
+    await expect(tags).not.toHaveAttribute("data-failed")
     await expect(tags).toBeFocused()
 
     // opened again, it has the values the task has
@@ -501,7 +481,7 @@ test.describe("an array of text: a save the action refuses", () => {
     await pushed.clear()
     await save(tasks)
     await expect(tags).toHaveText("api, customer, quick-win")
-    await expect(tags).not.toHaveAttribute("aria-invalid")
+    await expect(tags).not.toHaveAttribute("data-failed")
     await expect(tags).toBeFocused()
     // (the live region keeps what it said last: nothing new is said of a
     // save that changes nothing)
@@ -649,7 +629,7 @@ test.describe("an array of enum values: multiple choice, in the side panel", () 
     await save(tasks)
 
     await expect(checks).toBeEmpty()
-    await expect(checks).not.toHaveAttribute("aria-invalid")
+    await expect(checks).not.toHaveAttribute("data-failed")
   })
 })
 
@@ -720,7 +700,7 @@ test.describe("the member, on a task that is not theirs", () => {
     await expect(tasks.panel).toHaveCount(0)
     await expect(checks).toHaveText("Reviewed, Released")
     await expect(checks).toBeFocused()
-    await expect(checks).not.toHaveAttribute("aria-invalid")
+    await expect(checks).not.toHaveAttribute("data-failed")
 
     // and the list of text
     const tags = tasks.cell(FIRST, "tags")
@@ -819,13 +799,13 @@ test.describe("an array of numbers, on /specimens", () => {
     await page.keyboard.press("Escape")
     await expect(specimens.panel).toHaveCount(0)
     await expect(integers).toHaveText(before.join(", "))
-    await expect(integers).not.toHaveAttribute("aria-invalid")
+    await expect(integers).not.toHaveAttribute("data-failed")
     await expect(integers).toBeFocused()
   })
 })
 
 test.describe("in a nested table: the tasks under a project", () => {
-  test("both open the nested table's panel as on the page of the tasks; Escape closes it, and only the next one leaves the table", async ({
+  test("both open the nested table's panel as on the page of the tasks; Escape closes it, and focus is on the cell again", async ({
     page,
     pushed,
   }) => {
@@ -852,7 +832,6 @@ test.describe("in a nested table: the tasks under a project", () => {
       (await pushed.besides("panel_change")).map((sent) => sent.event),
       "the projects around it are not read again",
     ).toEqual(["panel_submit"])
-    expect(await projects.tabStops()).toHaveLength(1)
 
     const before = await checks.textContent()
     const field = await edit(nested, checks, "checks")
@@ -862,8 +841,6 @@ test.describe("in a nested table: the tasks under a project", () => {
     await expect(nested.panel).toHaveCount(0)
     await expect(checks).toHaveText(before!)
     await expect(checks).toBeFocused()
-    await projects.press("Escape")
-    await expect(projects.nestedCell(SEED.project.mobileApp, "tasks")).toBeFocused()
 
     await edit(nested, checks, "checks")
     const released = field.getByRole("checkbox", { name: "Released" })

@@ -33,20 +33,21 @@ function box(within: Locator, name: string): Locator {
 }
 
 test.describe("the cell of a value made of fields", () => {
+  // "Nothing else" but the "Show all" the hook puts into a cell that cuts its text off
   test("shows the value on one line, as plain text: nothing else is in the cell", async ({ page }) => {
     const projects = projectsOf(page)
     await projects.open()
 
     const client = projects.cell(PORTAL.id, "client")
     await expect(client).toHaveText(PORTAL.client)
-    await expect(client.locator("*")).toHaveCount(0)
+    await expect(client.locator("*:not([data-whole])")).toHaveCount(0)
     await expect(projects.cell(TOOLS.id, "client")).toHaveText(TOOLS.client)
 
     // the values of an array, with semicolons between them
     const milestones = projects.cell(WAREHOUSE, "milestones")
     await expect(milestones).toContainText("Title: First release, ")
     await expect(milestones).toContainText("; Title: Review, Reached?: No")
-    await expect(milestones.locator("*")).toHaveCount(0)
+    await expect(milestones.locator("*:not([data-whole])")).toHaveCount(0)
 
     // no value is an empty cell
     await expect(projects.cell(WAREHOUSE, "client")).toBeEmpty()
@@ -57,11 +58,11 @@ test.describe("the cell of a value made of fields", () => {
     await tasks.open()
 
     await expect(tasks.cell(WEEKLY.id, "recurrence")).toHaveText(WEEKLY.recurrence)
-    await expect(tasks.cell(WEEKLY.id, "recurrence").locator("*")).toHaveCount(0)
+    await expect(tasks.cell(WEEKLY.id, "recurrence").locator("*:not([data-whole])")).toHaveCount(0)
     await expect(tasks.cell(ONCE, "recurrence")).toBeEmpty()
   })
 
-  test("has neither a sort nor a filter, and is a cell like any other to the arrow keys, which send nothing", async ({
+  test("has neither a sort nor a filter, and is a Tab stop like any editable cell; Tab sends nothing", async ({
     page,
     pushed,
   }) => {
@@ -70,17 +71,19 @@ test.describe("the cell of a value made of fields", () => {
 
     for (const column of ["client", "milestones"]) {
       await expect(projects.header(column)).not.toHaveAttribute("aria-sort")
+      await expect(projects.sortButton(column)).toHaveCount(0)
       await expect(projects.filterCell(column).locator("input, select, button")).toHaveCount(0)
+      await expect(projects.cell(WAREHOUSE, column)).toHaveAttribute("tabindex", "0")
     }
 
-    await projects.cell(PORTAL.id, "budget").focus()
+    // from the client to the milestones, past the client's "Show all" where it cuts its text off
+    const [client, milestones] = ["client", "milestones"].map((column) => `project-row-${PORTAL.id}-c-${column}`)
+    const stops = await projects.rowStops(PORTAL.id)
+    const between = stops.slice(stops.indexOf(client) + 1, stops.indexOf(milestones) + 1)
+    expect(between.slice(0, -1).every((stop) => stop === `${client}>button`)).toBe(true)
+    await projects.cell(PORTAL.id, "client").focus()
     await pushed.clear()
-    await projects.press("ArrowRight")
-    await expect(projects.cell(PORTAL.id, "client")).toBeFocused()
-    await projects.press("ArrowRight")
-    await expect(projects.cell(PORTAL.id, "milestones")).toBeFocused()
-    await projects.press("ArrowLeft", "ArrowDown")
-    await expect(projects.cell(WAREHOUSE, "client")).toBeFocused()
+    expect(await projects.walk(between.length)).toEqual(between)
     await projects.header("client").click()
     expect(await pushed.all()).toEqual([])
   })
@@ -113,7 +116,7 @@ test.describe("opening the editor of an embedded resource", () => {
     expect(await pushed.count("panel_submit")).toBe(0)
   })
 
-  test("F2 and a double click open it too; a key that types a character does not", async ({ page, pushed }) => {
+  test("a double click opens it too; a key that types a character does not", async ({ page, pushed }) => {
     const projects = projectsOf(page)
     await projects.open()
     const cell = projects.cell(PORTAL.id, "client")
@@ -124,12 +127,6 @@ test.describe("opening the editor of an embedded resource", () => {
     await expect(projects.panel).toHaveCount(0)
     await expect(cell).toBeFocused()
     expect(await pushed.all()).toEqual([])
-
-    await projects.press("F2")
-    await expect(projects.panel).toBeVisible()
-    await projects.panelCancel.click()
-    await expect(projects.panel).toHaveCount(0)
-    await expect(cell).toBeFocused()
 
     await cell.dblclick()
     await expect(projects.panel).toBeVisible()
@@ -249,7 +246,7 @@ test.describe("saving an embedded resource from the side panel", () => {
     await projects.panelCancel.click()
     await expect(cell).toHaveText(PORTAL.client)
     await expect(cell).toBeFocused()
-    await expect(cell).not.toHaveAttribute("aria-invalid")
+    await expect(cell).not.toHaveAttribute("data-failed")
   })
 
   test("a value inside it is taken away and added again from the keyboard, and focus follows", async ({ page }) => {
@@ -486,7 +483,7 @@ test.describe("a map that declares its fields", () => {
 
     const once = tasks.cell(ONCE, "recurrence")
     await once.focus()
-    await tasks.press("F2")
+    await tasks.press("Enter")
     const repeats = group(tasks.panel, "Repeats")
     await expect(repeats.getByRole("button", { name: "Add value" })).toBeFocused()
     await page.keyboard.press("Enter")

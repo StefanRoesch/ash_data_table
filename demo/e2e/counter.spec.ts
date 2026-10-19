@@ -171,7 +171,7 @@ test.describe("in the editor of a cell", () => {
     )
 
     await labels.saves(cell, () => labels.press("Enter"))
-    await expect(cell).toHaveAttribute("aria-invalid", "true")
+    await expect(cell).toHaveAttribute("data-failed")
     await expect(labels.failure(cell)).toHaveText("length must be less than or equal to 30")
 
     // the editor opens again with what was typed, and counts it
@@ -239,7 +239,7 @@ test.describe("counts as Ash counts", () => {
 
       await specimens.saves(cell, () => specimens.press("Enter"))
 
-      if (saved) await expect(cell).not.toHaveAttribute("aria-invalid")
+      if (saved) await expect(cell).not.toHaveAttribute("data-failed")
       else await expect(specimens.failure(cell)).toHaveText("length must be less than or equal to 50")
     })
   }

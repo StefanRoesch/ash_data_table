@@ -53,10 +53,8 @@ test.describe("the slider, from the keyboard", () => {
     await expect(slider).toHaveAccessibleName("Progress")
     await expect(number).toHaveText("5")
     expect(await rowHeight(tasks, SECOND), "the row keeps its height").toBeCloseTo(height, 0)
-    expect(await tasks.tabStops(), "the grid is one tab stop: the slider").toEqual(["INPUT"])
 
-    // the keys that move through the grid move the slider now, and the
-    // number beside it follows
+    // the slider's own keys move it, and the number beside it follows
     await tasks.press("ArrowRight", "ArrowRight", "ArrowUp")
     await expect(slider).toBeFocused()
     await expect(slider).toHaveValue("8")
@@ -75,7 +73,6 @@ test.describe("the slider, from the keyboard", () => {
     await expect(progress).toHaveText("5")
     await expect(progress).toBeFocused()
     await expect(tasks.openEditors).toHaveCount(0)
-    expect(await tasks.tabStops()).toEqual([`task-row-${SECOND}-c-progress`])
     expect(await pushed.all(), "the server heard nothing of it").toEqual([])
   })
 
@@ -87,9 +84,10 @@ test.describe("the slider, from the keyboard", () => {
     const slider = tasks.editor(progress)
 
     await progress.focus()
-    await tasks.press("F2")
+    await tasks.press("Enter")
     await expect(slider).toBeFocused()
     await pushed.clear()
+    // the slider's own keys
     await tasks.press("ArrowRight", "ArrowRight", "ArrowRight", "PageUp")
     const chosen = await slider.inputValue()
     expect(Number(chosen)).toBeGreaterThan(8)
@@ -104,19 +102,21 @@ test.describe("the slider, from the keyboard", () => {
     // `set_progress` starts a task that is still to do: the column's own action ran
     await expect(tasks.cell(SECOND, "status")).toHaveText("In progress")
     expect(await pushed.count("save")).toBe(1)
-    expect(await tasks.tabStops()).toEqual([`task-row-${SECOND}-c-progress`])
   })
 
-  test("Tab leaves the grid and saves what the keys chose", async ({ tasks, pushed }) => {
+  test("Tab saves what the keys chose and goes on to the next stop", async ({ tasks, pushed }) => {
     const progress = tasks.cell(SECOND, "progress")
+    const stops = await tasks.tabStops()
+    const next = stops[stops.indexOf(`task-row-${SECOND}-c-progress`) + 1]
 
     await progress.focus()
+    // Enter opens the slider, whose own keys step it
     await tasks.press("Enter", "ArrowRight", "ArrowRight")
     await pushed.clear()
     await tasks.saves(progress, () => tasks.press("Tab"))
 
     await expect(tasks.openEditors).toHaveCount(0)
-    expect(await tasks.hasFocus(), "focus has left the grid").toBe(false)
+    await expect.poll(() => tasks.focusedStop(), "the stop after the cell").toBe(next)
     await expect(progress).toHaveText("7")
     expect(await pushed.count("save")).toBe(1)
   })
@@ -187,7 +187,6 @@ test.describe("the slider, with the pointer", () => {
     await expect(number).toHaveText(dragged)
     await expect(tasks.cell(SECOND, "status")).toHaveText("In progress")
     expect(await rowHeight(tasks, SECOND), "the row keeps its height").toBeCloseTo(height, 0)
-    expect(await tasks.tabStops()).toEqual(["INPUT"])
 
     // adjusted again: saved again
     const back = await pointOn(slider, 0.5)
@@ -220,7 +219,7 @@ test.describe("the slider, with the pointer", () => {
     const saved = await slider.inputValue()
     expect(Number(saved)).toBeGreaterThan(40)
 
-    // moved on with the keys, which is not saved yet
+    // moved on with the slider's own keys, which is not saved yet
     await pushed.clear()
     await tasks.press("ArrowRight", "ArrowRight", "ArrowRight")
     await expect(slider).toHaveValue(String(Number(saved) + 3))
@@ -272,14 +271,13 @@ test.describe("a save through the slider that fails", () => {
     // the resource refused it: the slider is gone, and the cell says what happened
     await expect(tasks.openEditors).toHaveCount(0)
     await expect(progress).toBeFocused()
-    await expect(progress).toHaveAttribute("aria-invalid", "true")
+    await expect(progress).toHaveAttribute("data-failed")
     await expect(progress).toContainText(chosen)
     await expect(tasks.failure(progress)).toHaveText(NOT_DONE)
     await expect(tasks.failure(progress)).toBeVisible()
     await expect(tasks.status).toHaveText(`Progress was not saved: ${NOT_DONE}`)
     // the message stands in the cell, under the value: the row grows to it
     expect(await rowHeight(tasks, key), "the row grows to the message").toBeGreaterThan(height)
-    expect(await tasks.tabStops()).toEqual([`task-row-${key}-c-progress`])
 
     // the slider of a failed cell holds what was chosen
     await pushed.clear()
@@ -292,7 +290,7 @@ test.describe("a save through the slider that fails", () => {
     await tasks.press("Escape")
     await expect(tasks.openEditors).toHaveCount(0)
     await expect(progress).toBeFocused()
-    await expect(progress).not.toHaveAttribute("aria-invalid")
+    await expect(progress).not.toHaveAttribute("data-failed")
     await expect(progress).toHaveText("100")
     await expect(progress.locator("progress")).toHaveAttribute("value", "100")
     expect(await pushed.count("discard")).toBe(1)
@@ -410,7 +408,6 @@ test.describe("the demo's own component, whose editor saves on Enter or on leavi
     await expect(editor).toHaveAccessibleName("Estimate hours")
     await expect(estimate).toHaveText("h")
     expect(await rowHeight(tasks, FIRST), "the row keeps its height").toBeCloseTo(height, 0)
-    expect(await tasks.tabStops()).toEqual(["INPUT"])
 
     // typing sends nothing, and neither do the arrow keys, which are the input's
     await tasks.retype("12.5")
@@ -431,8 +428,8 @@ test.describe("the demo's own component, whose editor saves on Enter or on leavi
 
     await estimate.focus()
     await pushed.clear()
-    await tasks.press("F2")
-    // the arrow keys step a number input, which is a change and no save
+    await tasks.press("Enter")
+    // the number input's own arrow keys step it, which is a change and no save
     await tasks.press("ArrowUp", "ArrowUp")
     await expect(editor).toHaveValue("40")
     await tasks.press("Escape")
@@ -470,6 +467,7 @@ test.describe("the action panel", () => {
     await expect(number).toHaveText("5")
 
     await pushed.clear()
+    // the slider's own keys
     await tasks.press("ArrowRight", "ArrowRight", "ArrowRight")
     await expect(field).toHaveValue("8")
     await expect(number).toHaveText("8")
@@ -500,6 +498,7 @@ test.describe("the action panel, on a slow connection", () => {
     await expect(number).toHaveText("5")
 
     await withLatency(page, 1500)
+    // the slider's own key
     await tasks.press("ArrowRight")
     await expect(number).toHaveText("6", { timeout: 500 })
   })
@@ -528,6 +527,8 @@ test.describe("around the components", () => {
     const progress = nested.cell(key, "progress")
     await expect(progress.locator("progress")).toHaveCount(1)
 
+    // a Tab stop of the nested table as on a page of its own; the slider's own keys
+    await expect(progress).toHaveAttribute("tabindex", "0")
     await progress.focus()
     await nested.press("Enter", "End")
     await expect(nested.editor(progress)).toHaveValue("100")
@@ -535,6 +536,5 @@ test.describe("around the components", () => {
     await nested.saves(progress, () => nested.press("Enter"))
     await expect(progress).toHaveText("3")
     await expect(progress).toBeFocused()
-    expect(await projects.tabStops(), "one tab stop for the whole tree").toHaveLength(1)
   })
 })

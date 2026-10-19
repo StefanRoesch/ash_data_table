@@ -70,12 +70,13 @@ test.describe("the editor of a number cell", () => {
     await expect(specimens.editor(optional)).not.toHaveAttribute("aria-required")
   })
 
-  test("the arrow keys stop at the limit", async ({ page }) => {
+  test("the number field's own Up and Down stop at the limit", async ({ page }) => {
     const integer = specimens.cell(FIRST, "an_integer")
     await integer.focus()
     await specimens.press("Enter")
     const editor = specimens.editor(integer)
 
+    // the number field's own keys
     await editor.fill("999")
     await page.keyboard.press("ArrowUp")
     await expect(editor).toHaveValue("1000")
@@ -110,7 +111,7 @@ test.describe("the editor of a number cell", () => {
       await specimens.saves(integer, () => specimens.press("Enter"))
 
       expect(await pushed.count("save")).toBe(1)
-      await expect(integer).toHaveAttribute("aria-invalid", "true")
+      await expect(integer).toHaveAttribute("data-failed")
       await expect(specimens.failure(integer)).toHaveText("must be less than or equal to 1000")
       await expect(integer).toContainText("5000")
       await expectNoAxeViolations(page)
@@ -129,7 +130,7 @@ test.describe("the editor of a number cell", () => {
     await specimens.saves(integer, () => specimens.press("Enter"))
 
     expect(await pushed.count("save")).toBe(1)
-    await expect(integer).toHaveAttribute("aria-invalid", "true")
+    await expect(integer).toHaveAttribute("data-failed")
     await expect(specimens.failure(integer)).not.toBeEmpty()
   })
 })
@@ -154,7 +155,7 @@ test.describe("the editor of a text cell", () => {
     await expect(editor, "nothing stops the typing").toHaveValue(long)
     await specimens.saves(text, () => specimens.press("Enter"))
 
-    await expect(text).toHaveAttribute("aria-invalid", "true")
+    await expect(text).toHaveAttribute("data-failed")
     await expect(specimens.failure(text)).toHaveText("length must be less than or equal to 50")
   })
 
@@ -174,7 +175,7 @@ test.describe("the editor of a text cell", () => {
     await editor.fill(fifty)
     await specimens.saves(text, () => specimens.press("Enter"))
 
-    await expect(text).not.toHaveAttribute("aria-invalid")
+    await expect(text).not.toHaveAttribute("data-failed")
     await expect(text).toHaveText(fifty)
   })
 })
@@ -269,8 +270,9 @@ test.describe("a number of the argument line", () => {
     await expect(tasks.argument("search")).not.toHaveAttribute("maxlength")
   })
 
-  test("the arrow keys stop at the limit", async ({ page, tasks }) => {
+  test("the number field's own Up and Down stop at the limit", async ({ page, tasks }) => {
     const days = tasks.argument("due_within-days")
+    // the number field's own keys
     await days.fill("1")
     await page.keyboard.press("ArrowDown")
     await expect(days).toHaveValue("0")
