@@ -50,6 +50,20 @@ async function expectFocusRing(cell: Locator, name: string): Promise<void> {
   ).toEqual({ "outline-style": "solid", "outline-width": "2px", "outline-offset": "-2px" })
 }
 
+/**
+ * The focus ring of one of the table's own buttons (a sort button, an
+ * expander, a line's button): as daisyUI draws its own, a solid line of 2px
+ * in the text colour, outside the button (#46).
+ */
+async function expectButtonRing(button: Locator, name: string): Promise<void> {
+  const ring = await style(button, ["outline-style", "outline-width", "outline-offset", "outline-color", "color"])
+  expect(
+    { style: ring["outline-style"], width: ring["outline-width"], offset: ring["outline-offset"] },
+    `the focus ring of ${name}`,
+  ).toEqual({ style: "solid", width: "2px", offset: "2px" })
+  expect(ring["outline-color"], `the focus ring of ${name} is in the text colour`).toBe(ring["color"])
+}
+
 /** The ring of a cell that failed: a solid border of 2px on the cell's `::before`. */
 async function expectFailedRing(cell: Locator): Promise<void> {
   expect(await style(cell, ["border-top-style", "border-top-width"], "::before")).toEqual({
@@ -74,7 +88,7 @@ async function failTitle(page: Page, tasks: Table): Promise<Locator> {
   await tasks.press("Enter")
   await tasks.retype("ab")
   await tasks.saves(title, () => tasks.press("Enter"))
-  await expect(title).toHaveAttribute("aria-invalid", "true")
+  await expect(title).toHaveAttribute("data-failed", "")
   await page.mouse.move(5, 5)
   return title
 }
@@ -156,41 +170,37 @@ for (const theme of ["light", "dark"] as const) {
     })
 
     test.describe("the focus ring", () => {
-      test("of a cell, a header, a filter cell, an expander and an actions cell", async ({ tasks }) => {
-        const cells = {
-          "a data cell": tasks.cell(FIRST, "title"),
-          "a header": tasks.header("title"),
-          "a filter cell": tasks.filterCell("title"),
-          "an expander's cell": tasks.expanderCell(FIRST),
-          "an actions cell": tasks.actionsCell(FIRST),
-          "the header of the actions": tasks.actionsHeader,
+      test("of an editable cell, and of the table's own buttons: a sort button and an expander", async ({ tasks }) => {
+        const title = tasks.cell(FIRST, "title")
+        await title.focus()
+        await expectFocusRing(title, "an editable cell")
+        expect(await contrastOf(title, "outline"), "an editable cell").toBeGreaterThanOrEqual(MARK)
+        // in the text colour, as daisyUI's own rings (#46)
+        const ring = await style(title, ["outline-color", "color"])
+        expect(ring["outline-color"]).toBe(ring["color"])
+
+        const buttons = {
+          "a sort button": tasks.header("title").locator("button"),
+          "an expander": tasks.expanderCell(FIRST).locator("button"),
         }
-        for (const [name, cell] of Object.entries(cells)) {
-          await cell.focus()
-          await expectFocusRing(cell, name)
-          expect(await contrastOf(cell, "outline"), name).toBeGreaterThanOrEqual(MARK)
+        for (const [name, button] of Object.entries(buttons)) {
+          await button.focus()
+          await expectButtonRing(button, name)
+          expect(await contrastOf(button, "outline"), name).toBeGreaterThanOrEqual(MARK)
         }
       })
 
-      test("of an editable cell in the primary colour, of a read-only one dashed; the pointer shows which can be edited", async ({
+      test("of an editable cell only: a read-only cell is no stop; the pointer shows which can be edited", async ({
         page,
         tasks,
       }) => {
         const title = tasks.cell(FIRST, "title")
         const reporter = tasks.cell(FIRST, "reporter")
-        await expect(reporter).toHaveAttribute("aria-readonly", "true")
-
-        await title.focus()
-        await expectFocusRing(title, "an editable cell")
-        expect(await contrastOf(title, "outline")).toBeGreaterThanOrEqual(MARK)
-        await reporter.focus()
-        const ring = await style(reporter, ["outline-style", "outline-width"])
-        expect(ring["outline-style"]).toBe("dashed")
-        expect(parseFloat(ring["outline-width"])).toBeGreaterThanOrEqual(1)
-        expect(await contrastOf(reporter, "outline")).toBeGreaterThanOrEqual(MARK)
+        await expect(title).toHaveAttribute("tabindex", "0")
+        await expect(reporter).not.toHaveAttribute("tabindex")
 
         // with the pointer: a text cursor and a pencil on an editable cell, nothing on a read-only one
-        await page.keyboard.press("Tab")
+        await page.mouse.move(5, 5)
         await title.hover()
         expect(await style(title, ["cursor"])).toEqual({ cursor: "text" })
         expect((await style(title, ["content"], "::after")).content).toContain("✎")
@@ -208,62 +218,46 @@ for (const theme of ["light", "dark"] as const) {
         expect(await contrastOf(title, "outline")).toBeGreaterThanOrEqual(MARK)
       })
 
-      test("of a relationship line, of the cell a nested table is in, and of a nested table's cell", async ({
+      test("of a relationship line's button, and of a nested table's editable cell and sort button", async ({
+        page,
         tasks,
       }) => {
         const comments = await tasks.openLine(FIRST, "comments")
         const grid = (await tasks.hookRoot.boundingBox())!
+        // the line was opened with the pointer: a key makes the next focus the
+        // keyboard's, which shows the buttons' ring (`:focus-visible`)
+        await page.keyboard.press("Shift")
 
-        // A line and the cell of a nested table span the whole table: the ring
-        // is on what stays in view of them, within what is seen of the grid,
-        // and no header covers its top edge.
+        // A line and the cell of a nested table span the whole table and are
+        // no stops: the ring is on the line's button, within what is seen of
+        // the grid, and neither cell draws one.
         const line = tasks.lineCell(FIRST, "comments")
-        await line.focus()
-        const lineRing = line.locator(":scope > div")
-        await expectFocusRing(lineRing, "a relationship line")
-        expect(await contrastOf(lineRing, "outline")).toBeGreaterThanOrEqual(MARK)
+        const button = line.locator("button[aria-expanded]")
+        await button.focus()
+        await expectButtonRing(button, "a relationship line's button")
+        expect(await contrastOf(button, "outline")).toBeGreaterThanOrEqual(MARK)
         expect(await style(line, ["outline-style"])).toEqual({ "outline-style": "none" })
+        const box = (await button.boundingBox())!
+        expect(box.x).toBeGreaterThanOrEqual(grid.x - 1)
+        expect(box.x + box.width).toBeLessThanOrEqual(grid.x + grid.width + 1)
 
-        const holder = tasks.nestedCell(FIRST, "comments")
-        await holder.focus()
-        const view = holder.locator("[data-ash-data-table-view]").first()
-        // drawn above the nested table's header (z-index), so that it covers no edge of it
-        expect(await style(view, ["border-top-style", "border-top-width", "z-index"], "::after")).toEqual({
-          "border-top-style": "solid",
-          "border-top-width": "2px",
-          "z-index": "20",
-        })
-        expect(await contrastOf(view, "border", "::after")).toBeGreaterThanOrEqual(MARK)
-        expect(await style(holder, ["outline-style"])).toEqual({ "outline-style": "none" })
-        for (const ring of [lineRing, view]) {
-          const box = (await ring.boundingBox())!
-          expect(box.x).toBeGreaterThanOrEqual(grid.x - 1)
-          expect(box.x + box.width).toBeLessThanOrEqual(grid.x + grid.width + 1)
-        }
-
-        const cells = {
-          "a cell of a nested table": comments.cell(await comments.rowKey(1), "body"),
-          "a header of a nested table": comments.header("body"),
-        }
-        for (const [name, cell] of Object.entries(cells)) {
-          await cell.focus()
-          await expectFocusRing(cell, name)
-          expect(await contrastOf(cell, "outline"), name).toBeGreaterThanOrEqual(MARK)
-        }
+        const cell = comments.cell(await comments.rowKey(1), "body")
+        await cell.focus()
+        await expectFocusRing(cell, "an editable cell of a nested table")
+        expect(await contrastOf(cell, "outline")).toBeGreaterThanOrEqual(MARK)
+        const sort = comments.header("body").locator("button")
+        await sort.focus()
+        await expectButtonRing(sort, "a nested table's sort button")
+        expect(await contrastOf(sort, "outline")).toBeGreaterThanOrEqual(MARK)
       })
 
       // These the table leaves as daisyUI draws them.
       test("of the controls in a cell: a filter's input and a row's button", async ({ tasks }) => {
-        await tasks.filterCell("title").focus()
-        await tasks.press("Enter")
-        await expect(tasks.filterValue("title")).toBeFocused()
+        await tasks.filterValue("title").focus()
         expect(await contrastOf(tasks.filterValue("title"), "outline")).toBeGreaterThanOrEqual(MARK)
-        await tasks.press("Escape")
 
-        await tasks.actionsCell(FIRST).focus()
-        await tasks.press("Enter")
         const button = tasks.actions(FIRST).first()
-        await expect(button).toBeFocused()
+        await button.focus()
         expect((await style(button, ["outline-style"]))["outline-style"]).toBe("solid")
         expect(await contrastOf(button, "outline")).toBeGreaterThanOrEqual(MARK)
       })
@@ -280,7 +274,7 @@ for (const theme of ["light", "dark"] as const) {
         expect(await contrastOf(title, "border", "::before")).toBeGreaterThanOrEqual(MARK)
         await expectFailedMark(title)
         expect(await contrastOf(title, "text", "::after")).toBeGreaterThanOrEqual(TEXT)
-        // the mark is for the eye: the cell is announced through `aria-invalid`.
+        // the mark is for the eye: the cell is described by its message.
         // Its name is its text, then the message in it.
         await expect(title).toHaveAccessibleName(/^ab\b/)
         await expect(title).not.toHaveAccessibleName(/!/)
@@ -295,7 +289,7 @@ for (const theme of ["light", "dark"] as const) {
 
         // the same text in the cell without the failure
         await title.evaluate((cell) => {
-          cell.removeAttribute("aria-invalid")
+          cell.removeAttribute("data-failed")
         })
         // (its end may hold the pencil of an editable cell with focus, but no mark)
         expect((await style(title, ["content"], "::after")).content).not.toContain('"!"')
@@ -343,12 +337,10 @@ for (const theme of ["light", "dark"] as const) {
         const before = await placeOf(cell)
 
         await tasks.acts(FIRST, () => tasks.action(FIRST, "archive").click())
-        await expect(cell).toHaveAttribute("aria-invalid", "true")
+        await expect(cell).toHaveAttribute("data-failed", "")
         await page.mouse.move(5, 5)
-        await tasks.press("Escape")
-        await expect(cell).toBeFocused()
 
-        await expectFocusRing(cell, "a failed actions cell")
+        // the cell is no stop: its buttons are, with daisyUI's ring
         await expectFailedRing(cell)
         expect(await contrastOf(cell, "border", "::before")).toBeGreaterThanOrEqual(MARK)
         await expectFailedMark(cell)
@@ -595,11 +587,13 @@ test.describe("in forced colours", () => {
     expect(await page.evaluate(() => matchMedia("(forced-colors: active)").matches)).toBe(true)
   })
 
-  test("a focused cell has its ring", async ({ tasks }) => {
-    for (const cell of [tasks.cell(FIRST, "title"), tasks.header("title"), tasks.filterCell("title")]) {
-      await cell.focus()
-      await expectFocusRing(cell, "a cell")
-    }
+  test("a focused cell has its ring, and so has a sort button", async ({ tasks }) => {
+    const cell = tasks.cell(FIRST, "title")
+    await cell.focus()
+    await expectFocusRing(cell, "a cell")
+    const sort = tasks.header("title").locator("button")
+    await sort.focus()
+    expect(await style(sort, ["outline-style", "outline-width"])).toEqual({ "outline-style": "solid", "outline-width": "2px" })
   })
 
   test("a failed cell has its ring and its mark, at rest and with focus", async ({ page, tasks }) => {

@@ -20,8 +20,9 @@ export async function logIn(context) {
 
 /**
  * Opens a table in a new page and measures the load. "Interactive" is the
- * moment the hook has run: the server renders every cell with tabindex -1,
- * and the hook makes one of them the tab stop, after the LiveView has joined.
+ * moment the LiveView has joined and its hooks are mounted: LiveView marks
+ * its element `phx-connected` (a documented class) once the join's patch,
+ * which mounts the hooks, is in the page.
  */
 export async function open(context, path, id) {
   const page = await context.newPage()
@@ -36,7 +37,7 @@ export async function open(context, path, id) {
   await page.addInitScript(() => {
     window.__interactive = new Promise((resolve) => {
       const check = () => {
-        if (!document.querySelector('[role="grid"] [tabindex="0"]')) return false
+        if (!document.querySelector('.phx-connected [role="table"]')) return false
         resolve(performance.now())
         return true
       }
@@ -45,7 +46,7 @@ export async function open(context, path, id) {
         subtree: true,
         childList: true,
         attributes: true,
-        attributeFilter: ["tabindex"],
+        attributeFilter: ["class"],
       })
     })
   })
@@ -176,7 +177,7 @@ export class Table {
       () => this.page.keyboard.press("Enter"),
     )
 
-    if ((await cell.getAttribute("aria-invalid")) === "true") {
+    if ((await cell.getAttribute("data-failed")) !== null) {
       throw new Error(`the edit of ${column} failed: ${await cell.textContent()}`)
     }
     return { ...result, server: saveOnServer(result.server) }

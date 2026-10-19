@@ -110,7 +110,7 @@ async function save(table, key, column, text) {
     ` return !!window.__wasBusy })()`
   await table.page.evaluate(() => (window.__wasBusy = false))
   const run = await until(table, saved, enter)
-  if ((await cell.getAttribute("aria-invalid")) === "true") throw new Error(`the save of ${column} failed`)
+  if ((await cell.getAttribute("data-failed")) !== null) throw new Error(`the save of ${column} failed`)
   return run
 }
 

@@ -32,11 +32,13 @@ export class Table {
   }
 
   /**
-   * The table is connected and its hook has run: the server renders every
-   * cell with tabindex -1, and the hook makes one of them the tab stop.
+   * The table is connected and its hook has run: LiveView marks its element
+   * `phx-connected` (a documented class) once the join's patch, which mounts
+   * the hooks, is in the page.
    */
   async ready(): Promise<void> {
-    await expect(this.tabStop).toHaveCount(1)
+    await expect(this.page.locator(".phx-connected").first()).toBeAttached()
+    await expect(this.grid).toBeAttached()
   }
 
   /**
@@ -356,7 +358,7 @@ export class Table {
 
   /** The cells of a column, down the page. */
   columnCells(column: string): Locator {
-    return this.grid.locator(`:scope > [role=rowgroup] > [role=row] > [role=gridcell][id$="-c-${column}"]`)
+    return this.grid.locator(`:scope > [role=rowgroup] > [role=row] > :is([role=cell],[role=rowheader])[id$="-c-${column}"]`)
   }
 
   /** The cells of a row, left to right, the expander among them. */
@@ -512,7 +514,7 @@ export class Table {
   /** Every editor open in the grid: one at most. The box that selects a row is no editor. */
   get openEditors(): Locator {
     return this.grid.locator(
-      ":scope > [role=rowgroup] > [role=row] > [role=gridcell]:not([colspan], [data-selector]) :is(textarea, input, select)",
+      ":scope > [role=rowgroup] > [role=row] > :is([role=cell],[role=rowheader]):not([colspan], [data-selector]) :is(textarea, input, select)",
     )
   }
 
@@ -642,7 +644,7 @@ export class Table {
 
   /** The boxes of the rows of the page, top to bottom. */
   get boxes(): Locator {
-    return this.grid.locator(":scope > [role=rowgroup] > [role=row] > [role=gridcell][data-selector] > input[type=checkbox]")
+    return this.grid.locator(":scope > [role=rowgroup] > [role=row] > :is([role=cell],[role=rowheader])[data-selector] > input[type=checkbox]")
   }
 
   /** The cell of the header above the boxes. */
@@ -724,7 +726,7 @@ export class Table {
 
   /** The radio buttons of the rows of the page, top to bottom. */
   get radios(): Locator {
-    return this.grid.locator(":scope > [role=rowgroup] > [role=row] > [role=gridcell][data-selector] > input[type=radio]")
+    return this.grid.locator(":scope > [role=rowgroup] > [role=row] > :is([role=cell],[role=rowheader])[data-selector] > input[type=radio]")
   }
 
   // ---- the picker ---------------------------------------------------------
@@ -885,7 +887,7 @@ export class Table {
 
   /** Every expander of the table. */
   get expanders(): Locator {
-    return this.grid.locator(":scope > [role=rowgroup] > [role=row] > [role=gridcell][data-expander]")
+    return this.grid.locator(":scope > [role=rowgroup] > [role=row] > :is([role=cell],[role=rowheader])[data-expander]")
   }
 
   /** The lines under an expanded row, one per relationship: their cells. */
