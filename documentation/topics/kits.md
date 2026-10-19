@@ -304,6 +304,8 @@ column, with the id `AshDataTable.Ids` makes for it:
   }
   sort={@state.sort}
   resizer={"#{@id}-resize-#{column.name}"}
+  texts={Words.texts(:header_cell, %{column: column, editing?: @editing?})}
+  messages={Words.messages(:header_cell, %{column: column, editing?: @editing?})}
 />
 ```
 
