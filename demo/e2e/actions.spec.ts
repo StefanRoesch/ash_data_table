@@ -1175,6 +1175,8 @@ test.describe("creating a record", () => {
       tasks,
     }) => {
       await tasks.create.click()
+      // the panel is open: focus is in its first field
+      await expect(tasks.field("title")).toBeFocused()
       expect(await tasks.fields()).not.toContain("external_ref")
       expect(await tasks.fields()).toContain("estimate_hours")
       await tasks.field("title").fill("A member's task")
@@ -1183,7 +1185,7 @@ test.describe("creating a record", () => {
 
       await expect(tasks.panel).toHaveCount(0)
       const created = await tasks.rowKey(1)
-      await expect(tasks.cell(created, "title")).toBeFocused()
+      await expect(tasks.box(created), "the first stop of the new row").toBeFocused()
       await expect(tasks.cell(created, "reporter")).toHaveText("Max Member")
 
       for (const [path, id, name] of [
