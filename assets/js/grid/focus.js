@@ -123,16 +123,19 @@ export default {
     this.focused = {target, row, stop, holder, trail: holder ? [holder.dataset.lineCell, holder.dataset.expanderCell] : []}
   },
 
-  // After a patch, when the element that had focus is gone with it and
-  // focus with it: to the element of the same id, if it is back; inside
-  // a nested table that went, to its line's button, else to its row's
-  // expander; to the same stop of the row at the same place, which is
-  // the row after the one that went, else of the row before; else to
-  // the table's first stop. A nested table that is still there sees to
-  // its own rows. The page does not scroll for it.
+  // After a patch that left focus nowhere (the callers ask): to the
+  // element that had it, where the patch took it out and put it back
+  // (a stream that is reset puts back a row's elements, and `headFirst`
+  // moves rows: either way the element is in the page and focus is
+  // not); to the element of the same id, if it is back; inside a nested
+  // table that went, to its line's button, else to its row's expander;
+  // to the same stop of the row at the same place, which is the row
+  // after the one that went, else of the row before; else to the
+  // table's first stop. A nested table that is still there sees to its
+  // own rows. The page does not scroll for it.
   repair() {
     const focused = this.focused
-    if (!focused || focused.target.isConnected) return
+    if (!focused) return
     if (focused.holder && focused.holder.isConnected) return
     this.focused = null
     const take = node => {
@@ -140,6 +143,7 @@ export default {
       node.focus({preventScroll: true})
       return document.activeElement === node
     }
+    if (focused.target.isConnected && take(focused.target)) return
     if (focused.target.id && take(document.getElementById(focused.target.id))) return
     for (const id of focused.trail) {
       const cell = id && document.getElementById(id)
