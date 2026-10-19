@@ -744,7 +744,16 @@ defmodule AshDataTable.Kit do
   (`Attrs.column_header/3` in place of `/5`); the `grid` part draws the
   skip link (`Attrs.skip/1`, `texts.skip_table`), and the `root` part the
   skip link's target (`Attrs.skip_target/1`) after its
-  `inner_block`.
+  `inner_block`. Stage 8a's K2, in the same contract: the `resizer` has
+  no texts and no role (pointer only, `aria-hidden`; `resize_column` and
+  `role="separator"` gone); the `columns` part draws a width field per
+  column (`Attrs.width_field/3`, `texts.width_of`), "Reset widths"
+  (`Attrs.reset_widths/1`, `texts.reset_widths`) and, first, the label
+  column's entry (`label_column`, `texts.label_width`), a width field and
+  no box; `header_cell` writes `aria-label`, and the `grid` part's
+  `texts.show_whole_of` and `texts.show_less_of` go into `Attrs.grid/6`
+  (`data-show-whole-of`, `data-show-less-of`): what the button that shows
+  a cell's whole text is called.
   """
 
   use Phoenix.Component
