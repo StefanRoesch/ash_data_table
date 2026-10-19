@@ -109,10 +109,10 @@ Unchanged: they open over the page (modal) or in it (inline), as the kit says; f
 The rows are replaced when a person sorts, filters or changes page, and a row when a live update changes it.
 
 - A row that is patched in place keeps its elements (same ids), and focus stays where it was. LiveView does this by itself.
-- When the focused element is gone (a sort, a filter, another page, a row taken out), focus goes, in this order: to the element with the same id, if it is back; to the same place (the same stop of the row at the same position); to the row after, else before; to the table's first stop. The page does not scroll for it.
+- When the focused element is gone (a sort, a filter, another page, a row taken out), focus goes, in this order: to the element with the same id, if it is back; to the same place: in the row at the same position (the row after, else the one before), the stop of the same column (at the same place in its cell), else the next stop along the row, else its last; to the table's first stop. The page does not scroll for it.
 - After a destroy: the same stop of the row after, else before (as today).
-- After a create: the first stop of the new row (as today, `ash_data_table:focus`, which names an element that is a stop).
-- After "Clear filters": the first control of the filter row. After one filter's own clear button: that filter's value.
+- After a create: the new row's box, else its first stop.
+- After "Clear filters": the first control of the filter row. After one filter's own clear button: the stop at the same place in the filter, else the one before (a range: its "to" field).
 - Read again: the table's first stop.
 - When a live update takes away the row being edited: the row stays until the edit ends (as today), then the rule above.
 
@@ -419,3 +419,17 @@ What K2 did beyond or apart from sections 5 and 12, for its drift check:
 
 16. **The label column's width from the keyboard.** The note puts a width field beside each column's box; the label column has no box (it cannot be hidden), so it had no field. a) give the list an entry for it with a field and no box; b) leave it to the pointer. **Decided (owner, 2026-10-19): a.** Built in K2's fix-up: the `columns` part is given `label_column` (and `texts.label_width`), and draws its entry first, its name and its width field, no box.
 17. **Markers the hooks no longer read** (`data-pager`, `data-view`, `data-filter`, `data-summaries`, and before K2 `colspan`, `data-lines`): a) keep them in `markers.js` and `Attrs.markers/0` as the kit contract; b) take them out of both lists, the parts writing them still for the look and `KitCase`. **Decided (owner, 2026-10-19): b**, done in K2's fix-up: `PAGER`, `VIEW`, `FILTER`, `LINES`, `SUMMARIES` left `markers.js` and `Attrs.markers/0`, documented as the look's and `KitCase`'s markers in both (`data-lines` is a value the hooks read off a cell, not a marker they find one by). `SPANS` (`[colspan]`) stays: `scrolling.js` and `widths.js` wrote `:not([colspan])` as a literal, and now use it.
+
+## 16. K3 as built (2026-10-19)
+
+What K3 found and fixed in the library while the browser suite moved to the Tab model, for its drift check:
+
+- `cb22b8e`: the name of "Show all" takes the column's label as it is: `String.prototype.replace` read `$&` and `$$` in a label as patterns ("Cost $$" gave "Show all of Cost $").
+- `dbe8529`: after a row goes, a stop's place is its cell's column and its place in that cell (`stopPlace`), not its number among the row's stops, which differs from row to row (a "Show all" only where a text is cut off); repair takes that place in the row after, else the next stop along the row, else its last (2.9).
+- `c58a395`: Tab out of a sensitive cell whose value is shown is not pulled back: a focus move inside the table notes where it goes, so the patch that hides the value on the way does not put focus back on the cell's button.
+- `5834c32`: a filter's clear button, which goes as its filter is cleared: focus goes to the stop at the same place in that filter's cell, else the one before (its value; a range: its "to" field). K3's fix-up (`f0a6382`) narrowed the rule to the cells of the filter row; at first it held for every cell outside the records.
+- `55b2f1c`: after a create the server names the new row, not its first data cell, and the hook focuses the row's first stop (its box), as 2.9 says.
+
+Left open, with tickets: the four `waitForTimeout` of the browser suite from before stage 8a (two in `live_updates.spec.ts`, two in `validation.spec.ts`; #48), and the failure of `pagination.spec.ts:391`, whose sandbox connection is lost while the comments table breaks and mends (#47).
+
+Tab and Shift+Tab out of an editor in a nested table are tested where the stops beside the cell are the nested row's own (`nesting.spec.ts`): every nested table of the demo that has an editable cell has a box and an expander before a row's first editable cell, so no stop just before such a cell belongs to the parent table.
