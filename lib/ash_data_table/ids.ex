@@ -74,8 +74,10 @@ defmodule AshDataTable.Ids do
   def nested_table(row, name), do: "#{row}-t-#{name}"
 
   @doc """
-  The element of the message of a cell or a row's actions cell whose save
-  or action failed, which the cell's `aria-describedby` names: `ELEMENT-error`.
+  The element of the message of an element that failed, which its
+  `aria-describedby` names: of a cell or a row's actions cell whose save or
+  action failed, of a filter, an argument or a field of the panel that
+  holds a value refused: `ELEMENT-error`.
   """
   @spec error(String.t()) :: String.t()
   def error(element), do: "#{element}-error"

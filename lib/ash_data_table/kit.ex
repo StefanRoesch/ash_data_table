@@ -854,7 +854,7 @@ defmodule AshDataTable.Kit do
       <AshDataTable.Kit.part
         part={:failure}
         kit={@kit}
-        id={"\#{@id}-error"}
+        id={AshDataTable.Ids.error(@id)}
         message={AshDataTable.Kit.Words.message(:failure, %{message: @message})}
         text={AshDataTable.Kit.Words.text(:failure, %{message: @message})}
       />
@@ -914,7 +914,7 @@ defmodule AshDataTable.Kit do
   `editor/1`; none for a column edited in the picker or the panel.
 
       <template :for={column <- @model.columns} :if={column.editable?} …>
-        <AshDataTable.Kit.editor kit={@kit} id={"\#{@id}-editor-\#{column.name}"} column={column} />
+        <AshDataTable.Kit.editor kit={@kit} id={AshDataTable.Ids.editor(@id, column.name)} column={column} />
       </template>
   """
   attr :kit, :atom, required: true

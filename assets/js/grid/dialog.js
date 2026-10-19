@@ -3,6 +3,7 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
+import {dialog as dialogId} from "../ids.js"
 import {DESTRUCTIVE, OPENED} from "../markers.js"
 import {ATTRIBUTE, GIVEN_UP} from "./shared.js"
 
@@ -50,14 +51,14 @@ export default {
   // client debug is on.
   ask(question, destructive, from) {
     this.giveUp()
-    const dialog = document.getElementById(`${this.id}-dialog`)
+    const dialog = document.getElementById(dialogId(this.id))
     // in the page, the question's place: the table's own, or its place
     // inside the panel or picker over the page that asks (`placeOf`)
     const shown = dialog && (inline(dialog) ? this.placeOf(dialog, from) : dialog)
-    const text = shown && shown.querySelector(`[id^="${CSS.escape(this.id)}-dialog-question"]`)
+    const text = shown && shown.querySelector(`[id^="${CSS.escape(dialogId(this.id))}-question"]`)
     const confirm = shown && shown.querySelector("button[value='confirm']")
     if (!shown || !text || !confirm || (!inline(dialog) && typeof dialog.showModal !== "function")) {
-      if (this.transport.debug()) console.error(`ash_data_table: the grid ${this.el.id} has no question dialog (a <dialog> with the id ${this.id}-dialog, ${this.id}-dialog-question in it and a button value="confirm"; inside a panel or picker over the page that asks, ${this.id}-dialog-in-panel or -in-picker): nothing runs of what it would ask "${question}"`)
+      if (this.transport.debug()) console.error(`ash_data_table: the grid ${this.el.id} has no question dialog (a <dialog> with the id ${dialogId(this.id)}, ${dialogId(this.id)}-question in it and a button value="confirm"; inside a panel or picker over the page that asks, ${dialogId(this.id)}-in-panel or -in-picker): nothing runs of what it would ask "${question}"`)
       return Promise.resolve(false)
     }
     text.textContent = question
@@ -77,7 +78,7 @@ export default {
   placeOf(dialog, from) {
     const over = overPage(from) || document.querySelector(":modal")
     if (!over || over.contains(dialog)) return dialog
-    const place = over.querySelector(`[id^="${CSS.escape(this.id)}-dialog-in-"][data-presentation]`)
+    const place = over.querySelector(`[id^="${CSS.escape(dialogId(this.id))}-in-"][data-presentation]`)
     return place && place.id.slice(this.id.length).match(/^-dialog-in-(panel|picker)$/) ? place : null
   },
 

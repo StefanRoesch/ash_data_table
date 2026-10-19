@@ -55,6 +55,7 @@ defmodule AshDataTable.KitCase do
   # a test dependency of the host's, as for `AshDataTable.Test`
   @compile {:no_warn_undefined, [LazyHTML]}
 
+  alias AshDataTable.Ids
   alias AshDataTable.Test.Resource
 
   @table "kit"
@@ -450,7 +451,7 @@ defmodule AshDataTable.KitCase do
   defp drive(kit, _view, :links, key) do
     model = AshDataTable.Model.build(Resource, [])
     parts = Enum.find(model.relationships, &(&1.name == :parts))
-    nested = "kit-row-#{key}-t-parts"
+    nested = Ids.nested_table(Ids.row("kit", key), :parts)
 
     related =
       Phoenix.LiveViewTest.render_component(&AshDataTable.Kit.part/1, %{
@@ -496,7 +497,7 @@ defmodule AshDataTable.KitCase do
 
   defp common(page, at, presentation) do
     case state_of(at) do
-      :error -> need(page, "[id='kit-error'][role=alert]", "the read's error")
+      :error -> need(page, "[id='#{Ids.error("kit")}'][role=alert]", "the read's error")
       state when state in [:related, :full_view] -> []
       _state -> grid(page) ++ question(page, presentation)
     end
@@ -512,17 +513,21 @@ defmodule AshDataTable.KitCase do
       :modal ->
         need(
           page,
-          "dialog[id='kit-dialog'][role=dialog][data-presentation='modal'][aria-labelledby='kit-dialog-question']",
+          "dialog[id='#{Ids.dialog("kit")}'][role=dialog][data-presentation='modal'][aria-labelledby='#{Ids.dialog("kit")}-question']",
           "the question, a modal <dialog>"
         )
 
       :inline ->
         need(
           page,
-          "[id='kit-dialog'][role=region][data-presentation='inline'][aria-labelledby='kit-dialog-question'][hidden]",
+          "[id='#{Ids.dialog("kit")}'][role=region][data-presentation='inline'][aria-labelledby='#{Ids.dialog("kit")}-question'][hidden]",
           "the question, in the page and hidden"
         ) ++
-          none(page, "dialog[id='kit-dialog']", "the question as a <dialog> while it is inline")
+          none(
+            page,
+            "dialog[id='#{Ids.dialog("kit")}']",
+            "the question as a <dialog> while it is inline"
+          )
     end
   end
 
@@ -535,10 +540,18 @@ defmodule AshDataTable.KitCase do
       ) ++
         need(page, "[id='kit-sender'][data-sender][data-table='kit'][phx-hook]", "its sender") ++
         need(page, "[id='kit-table'][role=grid][aria-colcount][data-first-row]", "the grid") ++
-        need(page, "[id='kit-table'] [id='kit-head']", "its header in it") ++
-        need(page, "[id='kit-head'] [id='kit-head-row'][role=row]", "the row of the headers") ++
-        need(page, "[id='kit-head'] [id='kit-filter-row'][role=row]", "the filter row") ++
-        need(page, "form[id='kit-filters']", "the filter row's form") ++
+        need(page, "[id='kit-table'] [id='#{Ids.head("kit")}']", "its header in it") ++
+        need(
+          page,
+          "[id='#{Ids.head("kit")}'] [id='#{Ids.head_row("kit")}'][role=row]",
+          "the row of the headers"
+        ) ++
+        need(
+          page,
+          "[id='#{Ids.head("kit")}'] [id='#{Ids.filter_row("kit")}'][role=row]",
+          "the filter row"
+        ) ++
+        need(page, "form[id='#{Ids.filters("kit")}']", "the filter row's form") ++
         need(page, "[id='kit-table'] [id='kit-foot']", "the footer in the grid") ++
         need(
           page,
@@ -556,9 +569,17 @@ defmodule AshDataTable.KitCase do
           "what the button says that shows a cell's whole text"
         ) ++
         need(page, "[id='kit-status'][role=status]", "the live region") ++
-        need(page, "[id='kit-dialog'] [id='kit-dialog-question']", "where it asks") ++
-        need(page, "[id='kit-dialog'] button[value='cancel']", "its Cancel, the safe answer") ++
-        need(page, "[id='kit-dialog'] button[value='confirm']", "its Confirm") ++
+        need(
+          page,
+          "[id='#{Ids.dialog("kit")}'] [id='#{Ids.dialog("kit")}-question']",
+          "where it asks"
+        ) ++
+        need(
+          page,
+          "[id='#{Ids.dialog("kit")}'] button[value='cancel']",
+          "its Cancel, the safe answer"
+        ) ++
+        need(page, "[id='#{Ids.dialog("kit")}'] button[value='confirm']", "its Confirm") ++
         need(
           page,
           "[id='kit-selection'][data-selection]",
@@ -591,19 +612,23 @@ defmodule AshDataTable.KitCase do
           "[id='kit-select-head'][role=columnheader][data-select-page]",
           "the box of the page"
         ) ++
-        need(page, "[id='kit-head-name'][data-label]", "the label column, kept in view") ++
-        need(page, "[id='kit-head-name'][data-sort]", "a header that sorts")
+        need(
+          page,
+          "[id='#{Ids.header_cell("kit", :name)}'][data-label]",
+          "the label column, kept in view"
+        ) ++
+        need(page, "[id='#{Ids.header_cell("kit", :name)}'][data-sort]", "a header that sorts")
 
     columns =
       Enum.flat_map(@columns, fn field ->
         need(
           page,
-          "[id='kit-head-#{field}'][role=columnheader][aria-colindex][tabindex='-1']",
+          "[id='#{Ids.header_cell("kit", field)}'][role=columnheader][aria-colindex][tabindex='-1']",
           "the header of #{field}"
         ) ++
           need(
             page,
-            "[id='kit-head-#{field}'] [id='kit-resize-#{field}'][data-resize]",
+            "[id='#{Ids.header_cell("kit", field)}'] [id='kit-resize-#{field}'][data-resize]",
             "its handle"
           ) ++
           need(
@@ -619,11 +644,19 @@ defmodule AshDataTable.KitCase do
         &editor(page, &1, "input,textarea,select")
       ) ++
         in_panel(page, "tags", "list") ++
-        need(page, "template[id='kit-editor-note'][data-confirm]", "the question of note") ++
-        need(page, "template[id='kit-editor-secret'][data-editor='secret']", "a secret editor") ++
+        need(
+          page,
+          "template[id='#{Ids.editor("kit", :note)}'][data-confirm]",
+          "the question of note"
+        ) ++
+        need(
+          page,
+          "template[id='#{Ids.editor("kit", :secret)}'][data-editor='secret']",
+          "a secret editor"
+        ) ++
         in_template(
           page,
-          "kit-editor-name",
+          Ids.editor("kit", :name),
           "[data-count][data-max]",
           "the counter of name in its editor"
         )
@@ -638,7 +671,7 @@ defmodule AshDataTable.KitCase do
       none(page, "[role=columnheader]:not([aria-colindex])", "a header without its place") ++
       none(page, "[role=columnheader]:not([tabindex='-1'])", "a header that is a tab stop") ++
       none(page, "[id='kit-table'] [tabindex='0']", "a tab stop in the grid") ++
-      Enum.flat_map(LazyHTML.query(page, "[id^='kit-row-'][id$='-r']"), fn row ->
+      Enum.flat_map(LazyHTML.query(page, "[id^='#{Ids.row("kit", "")}'][id$='-r']"), fn row ->
         if LazyHTML.attribute(row, "role") == ["row"] and
              LazyHTML.attribute(row, "aria-rowindex") != [nil],
            do: [],
@@ -648,46 +681,54 @@ defmodule AshDataTable.KitCase do
 
   # A record's row group, its row, its cells and its actions.
   defp record(page, key) do
-    row = "kit-row-#{key}"
+    row = Ids.row("kit", key)
 
     need(page, "[id='#{row}'][role=rowgroup]", "the row group of the record") ++
       need(page, "[id='#{row}'] [id='#{row}-r'][role=row][aria-rowindex]", "its row") ++
-      need(page, "[id='#{row}-s'][role=gridcell][data-selector] input", "its box") ++
+      need(page, "[id='#{Ids.selector(row)}'][role=gridcell][data-selector] input", "its box") ++
       need(
         page,
-        "[id='#{row}-e'][role=gridcell][data-expander] button[aria-expanded]",
+        "[id='#{Ids.expander(row)}'][role=gridcell][data-expander] button[aria-expanded]",
         "its expander"
       ) ++
-      need(page, "[id='#{row}-a'][role=gridcell][data-actions]", "its actions cell") ++
       need(
         page,
-        "[id='#{row}-a'] [data-action='stamp'][tabindex='-1']",
+        "[id='#{Ids.actions_cell(row)}'][role=gridcell][data-actions]",
+        "its actions cell"
+      ) ++
+      need(
+        page,
+        "[id='#{Ids.actions_cell(row)}'] [data-action='stamp'][tabindex='-1']",
         "the button of an action"
       ) ++
       need(
         page,
-        "[id='#{row}-a'] [data-action='destroy'][data-question][data-destructive]",
+        "[id='#{Ids.actions_cell(row)}'] [data-action='destroy'][data-question][data-destructive]",
         "one that asks"
       ) ++
       Enum.flat_map(@columns, fn field ->
         need(
           page,
-          "[id='#{row}-c-#{field}'][role=gridcell][aria-colindex][tabindex='-1']",
+          "[id='#{Ids.cell(row, field)}'][role=gridcell][aria-colindex][tabindex='-1']",
           "its cell #{field}"
         )
       end) ++
-      need(page, "[id='#{row}-c-note'][data-lines='2']", "the lines of a cell of note") ++
+      need(page, "[id='#{Ids.cell(row, :note)}'][data-lines='2']", "the lines of a cell of note") ++
       none(
         page,
-        "[id='#{row}-c-tags'][data-value]",
+        "[id='#{Ids.cell(row, :tags)}'][data-value]",
         "editor's value on a cell of a list, which is edited in the panel"
       ) ++
-      need(page, "[id='#{row}-c-secret'] [data-mask]", "the mask of the sensitive cell") ++
-      need(page, "[id='#{row}-c-secret'] [data-masked]", "what a screen reader hears of it") ++
-      need(page, "[id='#{row}-c-secret'] [data-secret]", "where its value goes") ++
+      need(page, "[id='#{Ids.cell(row, :secret)}'] [data-mask]", "the mask of the sensitive cell") ++
       need(
         page,
-        "[id='#{row}-c-secret'] button[data-reveal][data-show][data-hide][data-show-label][data-hide-label]",
+        "[id='#{Ids.cell(row, :secret)}'] [data-masked]",
+        "what a screen reader hears of it"
+      ) ++
+      need(page, "[id='#{Ids.cell(row, :secret)}'] [data-secret]", "where its value goes") ++
+      need(
+        page,
+        "[id='#{Ids.cell(row, :secret)}'] button[data-reveal][data-show][data-hide][data-show-label][data-hide-label]",
         "its Show, with what it says either way"
       )
   end
@@ -695,10 +736,10 @@ defmodule AshDataTable.KitCase do
   # The editor of a column: its template, and in it one control, or one
   # that says it is the control (`controls` finds them).
   defp editor(page, field, controls) do
-    case LazyHTML.query(page, "template[id='kit-editor-#{field}'][data-editor]")
+    case LazyHTML.query(page, "template[id='#{Ids.editor("kit", field)}'][data-editor]")
          |> Enum.to_list() do
       [] ->
-        ["the editor of #{field} (template[id='kit-editor-#{field}'][data-editor])"]
+        ["the editor of #{field} (template[id='#{Ids.editor("kit", field)}'][data-editor])"]
 
       [template] ->
         inside = inside(template)
@@ -720,7 +761,7 @@ defmodule AshDataTable.KitCase do
   # The template of a column edited in the side panel: its kind, and no
   # control, as nothing is edited in the cell.
   defp in_panel(page, field, kind) do
-    case Enum.to_list(LazyHTML.query(page, "template[id='kit-editor-#{field}']")) do
+    case Enum.to_list(LazyHTML.query(page, "template[id='#{Ids.editor("kit", field)}']")) do
       [template] ->
         if LazyHTML.attribute(template, "data-editor") == [kind] and
              count(inside(template), "input,select,textarea,button,[data-control]") == 0,
@@ -728,7 +769,7 @@ defmodule AshDataTable.KitCase do
            else: ["the editor of #{field}, of the kind #{kind} and without a control"]
 
       _none ->
-        ["the editor of #{field} (template[id='kit-editor-#{field}'])"]
+        ["the editor of #{field} (template[id='#{Ids.editor("kit", field)}'])"]
     end
   end
 
@@ -768,7 +809,7 @@ defmodule AshDataTable.KitCase do
       ) ++
         need(
           page,
-          "[id='kit-filter-tier'] input[type=hidden][name='filter[tier][in][]'][value='low'][form='kit-filters']",
+          "[id='kit-filter-tier'] input[type=hidden][name='filter[tier][in][]'][value='low'][form='#{Ids.filters("kit")}']",
           "the value that applies, in the filter row's form"
         ) ++
         need(page, "[id='kit-columns'] input[data-filtered]", "the column that filters") ++
@@ -782,25 +823,33 @@ defmodule AshDataTable.KitCase do
   defp special(page, :loading, key, _presentation),
     do:
       lines(page, key) ++
-        need(page, "[id='kit-row-#{key}-t-parts-loading']", "the nested table's Loading")
+        need(
+          page,
+          "[id='#{Ids.nested_table(Ids.row("kit", key), :parts)}-loading']",
+          "the nested table's Loading"
+        )
 
   defp special(page, :nested, key, _presentation) do
-    nested = "kit-row-#{key}-t-parts"
+    nested = Ids.nested_table(Ids.row("kit", key), :parts)
 
     lines(page, key) ++
       need(
         page,
-        "[id='kit-row-#{key}-n-parts-c'] [id='#{nested}-grid'][data-ash-data-table]",
+        "[id='#{Ids.nested_cell(Ids.row("kit", key), :parts)}'] [id='#{nested}-grid'][data-ash-data-table]",
         "the nested grid in its cell"
       ) ++
       need(page, "[id='#{nested}-table'][role=grid]", "the nested grid") ++
       need(
         page,
-        "[id='#{nested}-table'][aria-labelledby~='#{AshDataTable.Ids.line_button(AshDataTable.Ids.row("kit", key), :parts)}']",
+        "[id='#{nested}-table'][aria-labelledby~='#{Ids.line_button(Ids.row("kit", key), :parts)}']",
         "the nested grid named by its line's button, which is on the page"
       ) ++
-      need(page, "[id='#{nested}-head-title'][role=columnheader]", "its header") ++
-      need(page, "[id='#{nested}-head-secret'][role=columnheader]", "its sensitive column") ++
+      need(page, "[id='#{Ids.header_cell(nested, :title)}'][role=columnheader]", "its header") ++
+      need(
+        page,
+        "[id='#{Ids.header_cell(nested, :secret)}'][role=columnheader]",
+        "its sensitive column"
+      ) ++
       need(
         page,
         "[id='#{nested}-columns'][data-keeps-one]",
@@ -808,31 +857,31 @@ defmodule AshDataTable.KitCase do
       ) ++
       need(
         page,
-        "[id='kit-row-#{key}-l-parts-c'] [id='#{AshDataTable.Ids.line_heading(AshDataTable.Ids.row("kit", key), :parts)}'] [id='#{nested}-columns-button']",
-        "the nested table's heading line on its line (`AshDataTable.Ids.line_heading/2`)"
+        "[id='#{Ids.line_cell(Ids.row("kit", key), :parts)}'] [id='#{Ids.line_heading(Ids.row("kit", key), :parts)}'] [id='#{nested}-columns-button']",
+        "the nested table's heading line on its line (`Ids.line_heading/2`)"
       )
   end
 
   defp special(page, :failed, key, _presentation) do
-    cell = "kit-row-#{key}-c-name"
+    cell = Ids.cell(Ids.row("kit", key), :name)
 
     need(
       page,
-      "[id='#{cell}'][aria-invalid][aria-describedby='#{cell}-error'][data-value][data-saved]",
+      "[id='#{cell}'][aria-invalid][aria-describedby='#{Ids.error(cell)}'][data-value][data-saved]",
       "the failed cell, with what was typed and what is saved"
     ) ++
-      need(page, "[id='#{cell}'] [id='#{cell}-error']", "its message, in the cell")
+      need(page, "[id='#{cell}'] [id='#{Ids.error(cell)}']", "its message, in the cell")
   end
 
   defp special(page, :secret_failed, key, _presentation) do
-    cell = "kit-row-#{key}-c-secret"
+    cell = Ids.cell(Ids.row("kit", key), :secret)
 
     need(
       page,
-      "[id='#{cell}'][aria-invalid][aria-describedby='#{cell}-error']",
+      "[id='#{cell}'][aria-invalid][aria-describedby='#{Ids.error(cell)}']",
       "the failed cell"
     ) ++
-      need(page, "[id='#{cell}'] [id='#{cell}-error']", "its message, in the cell")
+      need(page, "[id='#{cell}'] [id='#{Ids.error(cell)}']", "its message, in the cell")
   end
 
   defp special(page, :panel, _key, presentation),
@@ -965,25 +1014,29 @@ defmodule AshDataTable.KitCase do
     do:
       need(
         page,
-        "[id='kit-row-#{key}-t-parts-view'][role=gridcell][data-view] a[id='kit-row-#{key}-t-parts-full-view']",
+        "[id='#{Ids.nested_table(Ids.row("kit", key), :parts)}-view'][role=gridcell][data-view] a[id='#{Ids.nested_table(Ids.row("kit", key), :parts)}-full-view']",
         "the link to the full view"
       )
 
   defp lines(page, key) do
     need(
       page,
-      "[id='kit-row-#{key}-x'][role=rowgroup][data-detail][data-row]",
+      "[id='#{Ids.detail(Ids.row("kit", key))}'][role=rowgroup][data-detail][data-row]",
       "the detail of the row"
     ) ++
-      need(page, "[id='kit-row-#{key}-l-parts-c'][role=gridcell][data-line='parts']", "the line") ++
       need(
         page,
-        "[id='kit-row-#{key}-l-parts-c'] button[id='#{AshDataTable.Ids.line_button(AshDataTable.Ids.row("kit", key), :parts)}'][aria-expanded='true']",
-        "its button (`AshDataTable.Ids.line_button/2`), open"
+        "[id='#{Ids.line_cell(Ids.row("kit", key), :parts)}'][role=gridcell][data-line='parts']",
+        "the line"
       ) ++
       need(
         page,
-        "[id='kit-row-#{key}-n-parts-c'][role=gridcell][data-nested][data-line-cell][data-expander-cell]",
+        "[id='#{Ids.line_cell(Ids.row("kit", key), :parts)}'] button[id='#{Ids.line_button(Ids.row("kit", key), :parts)}'][aria-expanded='true']",
+        "its button (`Ids.line_button/2`), open"
+      ) ++
+      need(
+        page,
+        "[id='#{Ids.nested_cell(Ids.row("kit", key), :parts)}'][role=gridcell][data-nested][data-line-cell][data-expander-cell]",
         "the cell of the nested table, with the cells it is reached from"
       )
   end
@@ -1024,19 +1077,23 @@ defmodule AshDataTable.KitCase do
         ) ++
           need(
             page,
-            "[id='#{id}'] [id='kit-dialog#{suffix}'][role=region][data-presentation='inline'][aria-labelledby='kit-dialog-question#{suffix}'][hidden]",
+            "[id='#{id}'] [id='#{Ids.dialog("kit")}#{suffix}'][role=region][data-presentation='inline'][aria-labelledby='#{Ids.dialog("kit")}-question#{suffix}'][hidden]",
             "the question in #{id}, hidden"
           ) ++
           need(
             page,
-            "[id='kit-dialog#{suffix}'] [id='kit-dialog-question#{suffix}']",
+            "[id='#{Ids.dialog("kit")}#{suffix}'] [id='#{Ids.dialog("kit")}-question#{suffix}']",
             "where it asks"
           ) ++
-          need(page, "[id='kit-dialog#{suffix}'] button[value='confirm']", "its Confirm"),
+          need(
+            page,
+            "[id='#{Ids.dialog("kit")}#{suffix}'] button[value='confirm']",
+            "its Confirm"
+          ),
       else:
         none(
           page,
-          "[id='#{id}'] [id^='kit-dialog-in']",
+          "[id='#{id}'] [id^='#{Ids.dialog("kit")}-in']",
           "copy of the question in #{id}, which is not over the page"
         )
   end

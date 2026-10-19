@@ -1247,7 +1247,7 @@ defmodule AshDataTable.Attrs do
   """
   def editor_template(id, column, asks?) do
     %{
-      "id" => "#{id}-editor-#{column.name}",
+      "id" => Ids.editor(id, column.name),
       "data-editor" => editor_kind(column),
       "data-commit" => column.editor == :component && column.component.commit,
       "data-confirm" => asks? && column.confirm
@@ -1370,7 +1370,7 @@ defmodule AshDataTable.Attrs do
   """
   def filters(id, target) do
     %{
-      "id" => "#{id}-filters",
+      "id" => Ids.filters(id),
       "phx-change" => event(id, "filter"),
       "phx-submit" => event(id, "filter"),
       "phx-target" => target
@@ -1518,8 +1518,8 @@ defmodule AshDataTable.Attrs do
     suffix = asked_in(place)
 
     Map.merge(opened(presentation), %{
-      "id" => "#{id}-dialog#{suffix}",
-      "aria-labelledby" => "#{id}-dialog-question#{suffix}",
+      "id" => Ids.dialog(id) <> suffix,
+      "aria-labelledby" => "#{Ids.dialog(id)}-question#{suffix}",
       "hidden" => presentation == :inline
     })
   end

@@ -27,6 +27,7 @@ defmodule AshDataTable.Live.Hooks do
   import Phoenix.LiveView
   import Phoenix.Component, only: [assign: 3]
 
+  alias AshDataTable.Ids
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Registry
   alias AshDataTable.Table
@@ -172,7 +173,7 @@ defmodule AshDataTable.Live.Hooks do
   end
 
   defp inside?(id, top),
-    do: String.starts_with?(id, top <> "-row-") or String.starts_with?(id, top <> "-pick-")
+    do: String.starts_with?(id, Ids.row(top, "")) or String.starts_with?(id, top <> "-pick-")
 
   # What the socket keeps of its tables.
   defp private(socket),

@@ -5,6 +5,7 @@ defmodule AshDataTable.Parts.Picker do
   use Phoenix.Component
 
   alias AshDataTable.Attrs
+  alias AshDataTable.Ids
   alias AshDataTable.Present
 
   # The picker: where a person chooses the related record of a reference
@@ -40,7 +41,7 @@ defmodule AshDataTable.Parts.Picker do
       <%!-- the row that was chosen names no record this person may read --%>
       <p
         :if={@picker.error}
-        id={"#{@id}-picker-error"}
+        id={Ids.error("#{@id}-picker")}
         role="alert"
         class="mb-4 text-sm font-medium"
       >

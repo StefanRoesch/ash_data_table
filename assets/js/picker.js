@@ -10,6 +10,7 @@
 // Cancel ask the server to take the picker away; when it is gone,
 // focus goes back to the cell, or to the button of the panel, that
 // opened it.
+import {error as errorId} from "./ids.js"
 import {cellsOf} from "./grid/shared.js"
 import {ARGUMENTS, CANCEL, GRID, GRIDCELL, HEADER, NONE, OF, TAKE} from "./markers.js"
 import {opened} from "./panel.js"
@@ -119,7 +120,7 @@ export default {
       const cell = opener && opener.closest(`${GRIDCELL},${HEADER}`)
       if (failed && cell && cell === opener && this.grid) {
         this.grid.fail(cell, failed, () => {
-          const message = document.getElementById(`${cell.id}-error`)
+          const message = document.getElementById(errorId(cell.id))
           if (message) message.remove()
         })
       }

@@ -3,6 +3,7 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
+import {editor as editorId, error as errorId} from "../ids.js"
 import {CLEAR, EXPANDER, GRIDCELL, ROWGROUP} from "../markers.js"
 import {CONTROL_IN, is} from "./shared.js"
 
@@ -12,7 +13,7 @@ export default {
   rowKey(cell) { return cell.closest(ROWGROUP).id.slice(this.id.length + 5) },
   columnOf(cell) { return cell.id.slice(cell.closest(ROWGROUP).id.length + 3) },
 
-  editorOf(cell) { return document.getElementById(`${this.id}-editor-${this.columnOf(cell)}`) },
+  editorOf(cell) { return document.getElementById(editorId(this.id, this.columnOf(cell))) },
 
   // A data cell of an editable column that the server has not marked
   // as read-only for this person, and whose last save has been answered.
@@ -184,7 +185,7 @@ export default {
       this.picking = false
       if (!reply || !reply.error || !cell.isConnected) return
       this.fail(cell, reply.error, () => {
-        const message = document.getElementById(`${cell.id}-error`)
+        const message = document.getElementById(errorId(cell.id))
         if (message) message.remove()
       })
     })
@@ -202,7 +203,7 @@ export default {
       this.picking = false
       if (!reply || !reply.error || !cell.isConnected) return
       this.fail(cell, reply.error, () => {
-        const message = document.getElementById(`${cell.id}-error`)
+        const message = document.getElementById(errorId(cell.id))
         if (message) message.remove()
       })
     })

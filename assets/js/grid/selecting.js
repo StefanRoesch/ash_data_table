@@ -3,6 +3,7 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
+import {head as headId, row as rowId} from "../ids.js"
 import {BULK, CLEAR, CURRENT, DESTRUCTIVE, DETAIL, ROWGROUP, SELECT_ALL, SELECTION, SELECTOR, TABLE} from "../markers.js"
 import {LISTED, cellsOf, firstRow, groupsOf, is, place} from "./shared.js"
 
@@ -31,7 +32,7 @@ export default {
   // (`ID-head`, `ID-foot`, which a kit may make row groups too), nor the
   // detail under a record (`DETAIL`).
   isRecord(group) {
-    return !!group && is(group, ROWGROUP) && group !== this.part("head") && group !== this.part("foot") && !is(group, DETAIL)
+    return !!group && is(group, ROWGROUP) && group !== document.getElementById(headId(this.id)) && group !== this.part("foot") && !is(group, DETAIL)
   },
 
   // The row of records a cell is in, if it is in one: not the header
@@ -64,7 +65,7 @@ export default {
   selected() {
     const {keys, all} = this.selection
     const held = this.chooses() && this.selects() === "single"
-      ? Array.from(keys).filter(([key]) => document.getElementById(`${this.id}-row-${key}`))
+      ? Array.from(keys).filter(([key]) => document.getElementById(rowId(this.id, key)))
       : Array.from(keys)
     return {
       table: this.id,

@@ -3,6 +3,7 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
+import {filterRow as filterRowId, head as headId, headRow as headRowId} from "../ids.js"
 import {GRIDCELL, HANDLE, HEADER, ROW, ROWGROUP} from "../markers.js"
 import {STEP, cellsOf} from "./shared.js"
 
@@ -32,7 +33,7 @@ export default {
   // written again after every patch.
 
   // The cells of the header row, left to right.
-  headCells() { return cellsOf(this.part("head-row")) },
+  headCells() { return cellsOf(document.getElementById(headRowId(this.id))) },
 
   // A rule's selector of the cells under a column, which stands at
   // `place` (`aria-colindex`): of the records and the lines under
@@ -76,7 +77,7 @@ export default {
   // them out of what a screen reader is told as well.
   restyle() {
     const table = this.table()
-    if (!table || !this.part("head")) return
+    if (!table || !document.getElementById(headId(this.id))) return
     const heads = this.headCells()
     this.styled = this.headed(heads)
     this.goneAt = new Set()
@@ -85,7 +86,7 @@ export default {
       return
     }
     const at = `#${CSS.escape(table.id)}`
-    const filters = cellsOf(this.part("filter-row"))
+    const filters = cellsOf(document.getElementById(filterRowId(this.id)))
     let css = this.widths ? `${at}{width:auto;min-width:0;max-width:none}` : ""
     for (const th of heads) {
       const gone = this.hidden.has(th.id)

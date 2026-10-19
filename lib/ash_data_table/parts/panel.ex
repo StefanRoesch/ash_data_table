@@ -167,7 +167,7 @@ defmodule AshDataTable.Parts.Panel do
       assign(assigns,
         described:
           Parts.Editors.described([
-            assigns.errors != [] && "#{assigns.id}-error",
+            assigns.errors != [] && Ids.error(assigns.id),
             counted && assigns.input.editor == :text && "#{assigns.id}-count"
           ]),
         counted: counted,
@@ -492,7 +492,7 @@ defmodule AshDataTable.Parts.Panel do
         class="justify-self-end"
       />
       <%!-- in the text colour: the error colour is too faint for small text --%>
-      <div :if={@errors != [] and not @group?} id={"#{@id}-error"} class="mt-1 text-sm">
+      <div :if={@errors != [] and not @group?} id={Ids.error(@id)} class="mt-1 text-sm">
         <p :for={message <- @texts.errors} data-error>{message}</p>
       </div>
     </div>
@@ -619,7 +619,7 @@ defmodule AshDataTable.Parts.Panel do
       id={@id}
       role="group"
       aria-labelledby={"#{@id}-label"}
-      aria-describedby={@errors != [] && "#{@id}-error"}
+      aria-describedby={@errors != [] && Ids.error(@id)}
       data-group
     >
       <div class="flex items-center gap-1">
@@ -639,7 +639,7 @@ defmodule AshDataTable.Parts.Panel do
           <span aria-hidden="true">✕</span>
         </button>
       </div>
-      <div :if={@errors != []} id={"#{@id}-error"} class="mb-1 text-sm">
+      <div :if={@errors != []} id={Ids.error(@id)} class="mb-1 text-sm">
         <p :for={message <- @texts.errors} data-error>{message}</p>
       </div>
       <div :if={is_map(@held)} class="ps-4">
@@ -693,13 +693,13 @@ defmodule AshDataTable.Parts.Panel do
       id={@id}
       role="group"
       aria-labelledby={"#{@id}-label"}
-      aria-describedby={@errors != [] && "#{@id}-error"}
+      aria-describedby={@errors != [] && Ids.error(@id)}
       data-groups
     >
       <span id={"#{@id}-label"} class="label mb-1 text-base-content">
         <span data-label>{@field.label}</span>
       </span>
-      <div :if={@errors != []} id={"#{@id}-error"} class="mb-1 text-sm">
+      <div :if={@errors != []} id={Ids.error(@id)} class="mb-1 text-sm">
         <p :for={message <- @texts.errors} data-error>{message}</p>
       </div>
       <input type="hidden" name={"#{@name}[_present]"} value="" />
@@ -708,7 +708,7 @@ defmodule AshDataTable.Parts.Panel do
         id={"#{@id}-#{key}"}
         role="group"
         aria-labelledby={"#{@id}-#{key}-label"}
-        aria-describedby={Enum.at(@texts.item_errors, index) != [] && "#{@id}-#{key}-error"}
+        aria-describedby={Enum.at(@texts.item_errors, index) != [] && Ids.error("#{@id}-#{key}")}
         data-group-item
         class="mb-2"
       >
@@ -728,7 +728,7 @@ defmodule AshDataTable.Parts.Panel do
         </div>
         <div
           :if={Enum.at(@texts.item_errors, index) != []}
-          id={"#{@id}-#{key}-error"}
+          id={Ids.error("#{@id}-#{key}")}
           class="mb-1 text-sm"
         >
           <p :for={message <- Enum.at(@texts.item_errors, index)} data-error>{message}</p>
@@ -817,7 +817,7 @@ defmodule AshDataTable.Parts.Panel do
       id={@id}
       role="group"
       aria-labelledby={"#{@id}-label"}
-      aria-describedby={@own_errors != [] && "#{@id}-error"}
+      aria-describedby={@own_errors != [] && Ids.error(@id)}
       data-union
     >
       <span id={"#{@id}-label"} class="label mb-1 text-base-content">
@@ -825,7 +825,7 @@ defmodule AshDataTable.Parts.Panel do
         <span :if={@field.required?} aria-hidden="true">*</span>
         <span :if={@field.required?} class="sr-only">{@texts.required}</span>
       </span>
-      <div :if={@own_errors != []} id={"#{@id}-error"} class="mb-1 text-sm">
+      <div :if={@own_errors != []} id={Ids.error(@id)} class="mb-1 text-sm">
         <p :for={message <- @own_errors} data-error>{message}</p>
       </div>
       <div class="ps-4">

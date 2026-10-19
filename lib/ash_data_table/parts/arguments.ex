@@ -37,7 +37,7 @@ defmodule AshDataTable.Parts.Arguments do
   def argument(assigns) do
     assigns =
       assign(assigns,
-        described: assigns.errors != [] && "#{assigns.id}-error",
+        described: assigns.errors != [] && Ids.error(assigns.id),
         array?: assigns.argument.editor in [:choices, :list],
         # as for a field of the action panel
         limits: Limits.of(assigns.argument)
@@ -210,7 +210,7 @@ defmodule AshDataTable.Parts.Arguments do
         </div>
       </div>
       <%!-- in the text colour: the error colour is too faint for small text --%>
-      <div :if={@errors != []} id={"#{@id}-error"} class="mt-1 text-xs">
+      <div :if={@errors != []} id={Ids.error(@id)} class="mt-1 text-xs">
         <p :for={message <- @texts.errors} data-error>{message}</p>
       </div>
     </div>

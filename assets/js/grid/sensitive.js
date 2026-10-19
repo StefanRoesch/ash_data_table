@@ -3,6 +3,7 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
+import {error as errorId} from "../ids.js"
 import {ACTIONS, MASK, MASKED, REVEAL, SECRET} from "../markers.js"
 import {is} from "./shared.js"
 
@@ -52,7 +53,7 @@ export default {
         // when the picker cannot be opened for it
         if (reply && reply.error) {
           this.fail(cell, reply.error, () => {
-            const message = document.getElementById(`${cell.id}-error`)
+            const message = document.getElementById(errorId(cell.id))
             if (message) message.remove()
           })
         }
@@ -87,7 +88,7 @@ export default {
   fail(cell, message, restore) {
     const template = document.getElementById(`${this.id}-failure`)
     const error = template.content.firstElementChild.cloneNode(true)
-    error.id = `${cell.id}-error`
+    error.id = errorId(cell.id)
     error.textContent = message
     if (!this.marked.has(cell)) this.marked.set(cell, restore)
     const stale = document.getElementById(error.id)
@@ -103,7 +104,7 @@ export default {
     const restore = this.marked.get(cell)
     if (restore) {
       this.marked.delete(cell)
-      const error = document.getElementById(`${cell.id}-error`)
+      const error = document.getElementById(errorId(cell.id))
       if (error && is(cell, ACTIONS)) error.remove()
       cell.removeAttribute("aria-invalid")
       cell.removeAttribute("aria-describedby")

@@ -33,8 +33,8 @@ defmodule DemoWeb.DivKit do
         class="table w-full border-collapse text-sm"
         data-kit="div"
       >
-        <div id={"#{@id}-head"} role="rowgroup" class="table-header-group font-semibold">
-          <div {Attrs.row("#{@id}-head-row", "1")} class="table-row">
+        <div id={Ids.head(@id)} role="rowgroup" class="table-header-group font-semibold">
+          <div {Attrs.row(Ids.head_row(@id), "1")} class="table-row">
             <div
               :if={@selecting}
               {Attrs.header("#{@id}-select-head", "1", %{"data-select-page" => @selecting == :multi})}
@@ -60,7 +60,7 @@ defmodule DemoWeb.DivKit do
               :for={{column, index} <- Enum.with_index(@model.columns)}
               part={:header_cell}
               kit={@kit}
-              id={"#{@id}-head-#{column.name}"}
+              id={Ids.header_cell(@id, column.name)}
               column={column}
               colindex={@lead + index + 1}
               attrs={
@@ -83,7 +83,7 @@ defmodule DemoWeb.DivKit do
               {@texts.actions}
             </div>
           </div>
-          <div {Attrs.row("#{@id}-filter-row", "2")} class="table-row">
+          <div {Attrs.row(Ids.filter_row(@id), "2")} class="table-row">
             <div :if={@selecting} {Attrs.gridcell("#{@id}-select-filter", "1")} class="table-cell">
             </div>
             <div
@@ -100,7 +100,7 @@ defmodule DemoWeb.DivKit do
               column={column}
               colindex={@lead + index + 1}
               table={@id}
-              form={"#{@id}-filters"}
+              form={Ids.filters(@id)}
               filter={@filters[column.name].filter}
               rejected?={@filters[column.name].rejected?}
               applied?={@filters[column.name].applied?}
@@ -182,7 +182,7 @@ defmodule DemoWeb.DivKit do
       >
         <Kit.editor
           kit={@kit}
-          id={"#{@id}-editor-#{column.name}"}
+          id={Ids.editor(@id, column.name)}
           column={column}
         />
       </template>

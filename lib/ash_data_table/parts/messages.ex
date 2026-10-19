@@ -7,6 +7,7 @@ defmodule AshDataTable.Parts.Messages do
   use Phoenix.Component
 
   alias AshDataTable.Attrs
+  alias AshDataTable.Ids
   alias Phoenix.LiveView.JS
 
   # Whether anything of the table asks a question before it runs: a column,
@@ -100,7 +101,7 @@ defmodule AshDataTable.Parts.Messages do
         class={@kit.class(:confirm, %{presentation: @presentation})}
       >
         <form method="dialog">
-          <p id={"#{@id}-dialog-question#{@suffix}"}></p>
+          <p id={"#{Ids.dialog(@id)}-question#{@suffix}"}></p>
           <div class="mt-6 flex justify-end gap-2">
             <button value="cancel" class="btn">{@texts.cancel}</button>
             <button value="confirm" class="btn btn-primary data-destructive:btn-error">

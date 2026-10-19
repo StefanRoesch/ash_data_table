@@ -5,6 +5,7 @@ defmodule AshDataTable.Parts.Filter do
   use Phoenix.Component
 
   alias AshDataTable.Attrs
+  alias AshDataTable.Ids
   alias AshDataTable.Parts
   alias AshDataTable.State
 
@@ -118,7 +119,7 @@ defmodule AshDataTable.Parts.Filter do
         tabindex="-1"
         aria-label={@texts.filter}
         aria-invalid={@rejected? && "true"}
-        aria-describedby={@rejected? && "#{@id}-error"}
+        aria-describedby={@rejected? && Ids.error(@id)}
         class={["input input-xs w-32", Parts.Editors.control_edge()]}
       />
       <%!-- The two ends of a range, one above the other, each with the word
@@ -149,7 +150,7 @@ defmodule AshDataTable.Parts.Filter do
             aria-invalid={
               @rejected? && not is_nil(typed) && not State.value?(@column, typed) && "true"
             }
-            aria-describedby={@rejected? && "#{@id}-error"}
+            aria-describedby={@rejected? && Ids.error(@id)}
             class={["input input-xs w-32", Parts.Editors.control_edge()]}
           />
         </div>
@@ -169,7 +170,7 @@ defmodule AshDataTable.Parts.Filter do
       </button>
     </div>
     <%!-- in the text colour: the error colour is too faint for small text --%>
-    <p :if={@rejected?} id={"#{@id}-error"} class="mt-1 text-xs">
+    <p :if={@rejected?} id={Ids.error(@id)} class="mt-1 text-xs">
       {@texts.invalid_filter}
     </p>
     """

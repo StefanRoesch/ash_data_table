@@ -6,6 +6,8 @@ defmodule DemoWeb.TablePage do
   `id` is the table's id, the last part of its resource's name: `"task"`.
   """
 
+  alias AshDataTable.Ids
+
   import ExUnit.Assertions, only: [assert_receive: 2]
   import Phoenix.LiveViewTest, only: [assert_reply: 2, render_async: 2]
 
@@ -20,7 +22,7 @@ defmodule DemoWeb.TablePage do
   def filter(view, id, field, entry) do
     entry = Map.new(entry, fn {key, value} -> {Atom.to_string(key), value} end)
 
-    send_form(view, "[id='#{id}-filters']", :change, %{"filter" => %{field => entry}})
+    send_form(view, "[id='#{Ids.filters(id)}']", :change, %{"filter" => %{field => entry}})
     render_async(view, 10_000)
   end
 
@@ -112,7 +114,7 @@ defmodule DemoWeb.TablePage do
       [_line] ->
         for argument <- query(html, "[id='#{id}-arguments'] > [data-argument]") do
           [named] = LazyHTML.attribute(argument, "data-argument")
-          control_id = "#{id}-arg-#{named}"
+          control_id = Ids.argument(id, named)
           {control, value, required?} = argument_control(argument, control_id)
 
           %{
@@ -211,10 +213,10 @@ defmodule DemoWeb.TablePage do
     true =
       has?(
         view,
-        "[id='#{id}-panel-f-#{name}-clear'][phx-click='ash_data_table:#{id}:panel_clear'][phx-value-input='#{name}']"
+        "[id='#{Ids.clear(Ids.field(id, [name]))}'][phx-click='ash_data_table:#{id}:panel_clear'][phx-value-input='#{name}']"
       )
 
-    click(view, "[id='#{id}-panel-f-#{name}-clear']")
+    click(view, "[id='#{Ids.clear(Ids.field(id, [name]))}']")
   end
 
   @doc """
@@ -253,12 +255,15 @@ defmodule DemoWeb.TablePage do
   `id`, for the relationship `relationship`. It is a table's id like any
   other: every function here takes it.
   """
-  def nested(id \\ "task", key, relationship), do: "#{id}-row-#{key}-t-#{relationship}"
+  def nested(id \\ "task", key, relationship),
+    do: Ids.nested_table(Ids.row(id, key), relationship)
 
   @doc "What the lines under a row say, top to bottom; none while the row is not expanded."
   def lines(html, id \\ "task", key) do
     html
-    |> query("[id='#{id}-row-#{key}-x'] > [role=row] > [data-line] > div > button[aria-expanded]")
+    |> query(
+      "[id='#{Ids.detail(Ids.row(id, key))}'] > [role=row] > [data-line] > div > button[aria-expanded]"
+    )
     |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
   end
 
@@ -279,7 +284,7 @@ defmodule DemoWeb.TablePage do
   a related record: the picker opens on top of the panel. Returns the page.
   """
   def pick_input(view, id \\ "task", name) do
-    click(view, "[id='#{id}-panel-f-#{name}-choose']")
+    click(view, "[id='#{Ids.choose(Ids.field(id, [name]))}']")
   end
 
   @doc """
@@ -399,7 +404,7 @@ defmodule DemoWeb.TablePage do
   is chosen now: what follows `ID-row-` in the row's id.
   """
   def current(html, id) do
-    prefix = "#{id}-row-"
+    prefix = Ids.row(id, "")
 
     html
     |> attribute("[id='#{id}-table'] > [role=rowgroup][data-current]", "id")
@@ -409,7 +414,7 @@ defmodule DemoWeb.TablePage do
   @doc "The header labels of the table's columns, left to right, without the sort marks."
   def headers(html, id) do
     html
-    |> query("[id='#{id}-head'] [role=columnheader][id^='#{id}-head-']")
+    |> query("[id='#{Ids.head(id)}'] [role=columnheader][id^='#{Ids.header_cell(id, "")}']")
     |> Enum.map(fn th -> th |> LazyHTML.text() |> String.replace(~r/ [▲▼]\z/u, "") end)
   end
 
@@ -426,7 +431,7 @@ defmodule DemoWeb.TablePage do
   The selector of the cell of the record with primary key `key` in the column
   `field` of the table `id`. The table's id defaults to `"task"`.
   """
-  def cell(id \\ "task", key, field), do: "[id='#{id}-row-#{key}-c-#{field}']"
+  def cell(id \\ "task", key, field), do: "[id='#{Ids.cell(Ids.row(id, key), field)}']"
 
   @doc """
   Opens the editor of a map cell (an embedded resource, a map, an array of
@@ -493,7 +498,9 @@ defmodule DemoWeb.TablePage do
   """
   def line_buttons(html, id \\ "task", key, relationship) do
     html
-    |> query("[id='#{id}-row-#{key}-l-#{relationship}-h'] button:not([data-columns-button])")
+    |> query(
+      "[id='#{Ids.line_heading(Ids.row(id, key), relationship)}'] button:not([data-columns-button])"
+    )
     |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
   end
 
@@ -651,7 +658,7 @@ defmodule DemoWeb.TablePage do
   server: what a row says in `data-key`, else the key in its id.
   """
   def page_rows(html, id \\ "task") do
-    prefix = "#{id}-row-"
+    prefix = Ids.row(id, "")
 
     for group <-
           query(html, "[id='#{id}-table'] > [role=rowgroup][id^='#{prefix}']:not([data-detail])") do
@@ -693,10 +700,11 @@ defmodule DemoWeb.TablePage do
   end
 
   @doc "The selector of the box of the record with primary key `key` in the table `id`."
-  def box(id \\ "task", key), do: "[id='#{id}-row-#{key}-s'] > input[type=checkbox]"
+  def box(id \\ "task", key),
+    do: "[id='#{Ids.selector(Ids.row(id, key))}'] > input[type=checkbox]"
 
   @doc "The same where one row at a time is selected: a radio button."
-  def radio(id, key), do: "[id='#{id}-row-#{key}-s'] > input[type=radio]"
+  def radio(id, key), do: "[id='#{Ids.selector(Ids.row(id, key))}'] > input[type=radio]"
 
   @doc """
   Gives up the failure of a row's actions cell, as the table's hook does
@@ -1018,7 +1026,7 @@ defmodule DemoWeb.TablePage do
   end
 
   @doc "The selector of the actions cell of the record with primary key `key` in the table `id`."
-  def actions_cell(id \\ "task", key), do: "[id='#{id}-row-#{key}-a']"
+  def actions_cell(id \\ "task", key), do: "[id='#{Ids.actions_cell(Ids.row(id, key))}']"
 
   @doc "What the buttons of a row's actions cell say, left to right."
   def actions(html, id \\ "task", key) do
@@ -1029,7 +1037,7 @@ defmodule DemoWeb.TablePage do
 
   @doc "The columns of the table `id` that have an editor, left to right."
   def editors(html, id) do
-    prefix = "#{id}-editor-"
+    prefix = Ids.editor(id, "")
 
     html
     |> attribute("##{id} template[id^='#{prefix}']", "id")
@@ -1045,7 +1053,7 @@ defmodule DemoWeb.TablePage do
   has an array, a map cell or a union: `"panel"`, for the side panel.
   """
   def editor(html, id, field) do
-    case html |> query("template[id='#{id}-editor-#{field}']") |> LazyHTML.to_tree() do
+    case html |> query("template[id='#{Ids.editor(id, field)}']") |> LazyHTML.to_tree() do
       [] ->
         nil
 

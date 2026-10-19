@@ -3,6 +3,7 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
+import {filterRow as filterRowId, headRow as headRowId} from "../ids.js"
 import {GRIDCELL, ROW, ROWGROUP} from "../markers.js"
 import {PLACE, BAR, SEEN} from "./shared.js"
 
@@ -96,7 +97,7 @@ export default {
     const body = place => `${at}>${ROWGROUP}>${ROW}>${GRIDCELL}[aria-colindex="${place}"]:not([colspan])`
     const cells = th => {
       const place = th.getAttribute("aria-colindex")
-      const head = ["head-row", "filter-row"].map(row => `#${CSS.escape(`${this.id}-${row}`)}>[aria-colindex="${place}"]`)
+      const head = [headRowId(this.id), filterRowId(this.id)].map(row => `#${CSS.escape(row)}>[aria-colindex="${place}"]`)
       return `${head.join(",")},${body(place)}`
     }
     let css = `#${CSS.escape(this.el.id)}{--ash-data-table-view:${view}px}`

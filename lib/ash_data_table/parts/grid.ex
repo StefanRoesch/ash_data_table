@@ -165,7 +165,7 @@ defmodule AshDataTable.Parts.Grid do
             type="checkbox"
             id={"#{@id}-column-#{column.name}"}
             checked
-            data-head={"#{@id}-head-#{column.name}"}
+            data-head={Ids.header_cell(@id, column.name)}
             data-say-hidden={hidden}
             data-say-shown={shown}
             data-filtered={is_map_key(@state.filters, column.name)}
@@ -723,8 +723,8 @@ defmodule AshDataTable.Parts.Grid do
         {Attrs.table(@id, @label, @labelledby, @page, @summarised?, Attrs.colcount(@model, @lead, @acting?), @selecting, @busy? or not is_nil(@running))}
         class={["table", @nested? && "w-auto"]}
       >
-        <thead id={"#{@id}-head"}>
-          <tr {Attrs.row("#{@id}-head-row", "1")}>
+        <thead id={Ids.head(@id)}>
+          <tr {Attrs.row(Ids.head_row(@id), "1")}>
             <%!-- The first column, where rows can be selected: a box per row,
               and here the one that stands for the rows of the page. Its state
               is the hook's, as is that of every box under it. Where one row at a
@@ -755,7 +755,7 @@ defmodule AshDataTable.Parts.Grid do
               :for={{column, index} <- Enum.with_index(@model.columns)}
               part={:header_cell}
               kit={@kit}
-              id={"#{@id}-head-#{column.name}"}
+              id={Ids.header_cell(@id, column.name)}
               column={column}
               colindex={Common.colindex(index, @lead)}
               attrs={
@@ -778,7 +778,7 @@ defmodule AshDataTable.Parts.Grid do
               {@texts.actions}
             </th>
           </tr>
-          <tr {Attrs.row("#{@id}-filter-row", "2")}>
+          <tr {Attrs.row(Ids.filter_row(@id), "2")}>
             <td :if={@selecting} {Attrs.gridcell("#{@id}-select-filter", "1")}></td>
             <td :if={@expandable?} {Attrs.gridcell("#{@id}-expander-filter", @lead)}></td>
             <Kit.part
@@ -789,7 +789,7 @@ defmodule AshDataTable.Parts.Grid do
               column={column}
               colindex={Common.colindex(index, @lead)}
               table={@id}
-              form={"#{@id}-filters"}
+              form={Ids.filters(@id)}
               filter={@filters[column.name].filter}
               rejected?={@filters[column.name].rejected?}
               applied?={@filters[column.name].applied?}
@@ -878,7 +878,7 @@ defmodule AshDataTable.Parts.Grid do
       >
         <Kit.editor
           kit={@kit}
-          id={"#{@id}-editor-#{column.name}"}
+          id={Ids.editor(@id, column.name)}
           column={column}
         />
       </template>

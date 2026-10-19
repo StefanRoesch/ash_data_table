@@ -3,6 +3,7 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
+import {filters as filtersId, head as headId} from "../ids.js"
 import {ACTION, ACTIONS, EXPANDER, GRID, HANDLE, LINE, NESTED, OPEN, PAGER, REVEAL, ROW, ROWGROUP, SELECTOR, SELECT_PAGE, SUMMARIES, TABLE, WHOLE} from "../markers.js"
 import {AROUND, CELL, SPANNING, cellsOf, firstRow, is, page, place, rowsOf} from "./shared.js"
 
@@ -64,7 +65,7 @@ export default {
   // rows last.
   rows() {
     const rows = rowsOf(this.table())
-    const head = this.part("head")
+    const head = document.getElementById(headId(this.id))
     const foot = this.part("foot")
     const of = part => part ? rows.filter(row => part.contains(row)) : []
     const rest = rows.filter(row => !(head && head.contains(row)) && !(foot && foot.contains(row)))
@@ -76,7 +77,7 @@ export default {
 
   // The rows above the data rows: the header and the filter row.
   headRows() {
-    const head = this.part("head")
+    const head = document.getElementById(headId(this.id))
     return head ? head.querySelectorAll(ROW).length : 1
   },
 
@@ -376,7 +377,7 @@ export default {
       // this table's filters only: the argument line of a nested table
       // on a line is that table's (its hook sends it)
       case "Enter":
-        if (input && control.form && control.form.id === `${this.id}-filters`) {
+        if (input && control.form && control.form.id === filtersId(this.id)) {
           e.preventDefault()
           if (control.form.reportValidity()) {
             control.defaultValue = control.value
