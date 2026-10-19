@@ -270,7 +270,7 @@ defmodule AshDataTable.Attrs do
   # What the server tells the hooks (`push_event`), each with `table`.
   @pushes [
     {"ash_data_table:focus", "{table, cell}",
-     "the id to focus: in the grid, the argument line or the panel"},
+     "the id to focus: in the grid (a row: its first stop), the argument line or the panel"},
     {"ash_data_table:ask", "{table, action, question}",
      "a table action asks first; answered with `table_run`"},
     {"ash_data_table:select", "{table, all, rows}",

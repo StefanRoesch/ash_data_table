@@ -200,9 +200,9 @@ const core = {
       if (answer.table === this.id) this.answered(answer)
     })
     // the server says where focus goes after something it did: to
-    // the first cell of a row that was created (the row's first stop,
-    // where that cell is none), and into a row of the argument line that
-    // was added, or to what stands where one that was taken away stood
+    // the first stop of a row that was created (it names the row), and
+    // into a row of the argument line that was added, or to what stands
+    // where one that was taken away stood
     this.transport.on("ash_data_table:focus", ({table, cell}) => {
       if (table !== this.id) return
       const target = document.getElementById(cell)

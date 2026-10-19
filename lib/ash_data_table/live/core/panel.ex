@@ -761,14 +761,11 @@ defmodule AshDataTable.Live.Core.Panel do
         }),
         at: 0
       )
-      |> push_event("ash_data_table:focus", %{table: id, cell: first_cell(id, key, model)})
+      # focus goes to the first stop of the row that was created: the
+      # hook focuses the first stop of the row group it is named
+      |> push_event("ash_data_table:focus", %{table: id, cell: Ids.row(id, key)})
     end
   end
-
-  # The first data cell of a row, where focus goes when the row was created.
-  defp first_cell(id, key, %{columns: [column | _]}), do: Ids.cell(Ids.row(id, key), column.name)
-
-  defp first_cell(id, key, _model), do: Ids.actions_cell(Ids.row(id, key))
 
   # The panel stays open with what the action said: at the fields, and above
   # them what is about no field of the panel. All of it is read out.
