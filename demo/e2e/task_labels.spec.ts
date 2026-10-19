@@ -82,7 +82,7 @@ test.describe("reading", () => {
       await expect(table.header(column)).toHaveAttribute("aria-sort", "none")
     }
 
-    await table.reads(() => table.header("label_id").click())
+    await table.sortBy("label_id")
     await expect(table.header("label_id")).toHaveAttribute("aria-sort", "ascending")
     expect(params(page)).toEqual({ "task_label[sort]": "label_id" })
     const ascending = await table.columnTexts("label_id")
@@ -94,43 +94,34 @@ test.describe("reading", () => {
       await expect(table.cell(key, "label_id")).toHaveText(parts(key).label)
     }
 
-    await table.reads(() => table.header("label_id").click())
+    await table.sortBy("label_id")
     await expect(table.header("label_id")).toHaveAttribute("aria-sort", "descending")
     expect(params(page)).toEqual({ "task_label[sort]": "-label_id" })
     const descending = await table.columnTexts("label_id")
     expect(descending).toEqual([...descending].sort().reverse())
     expect(descending[0] > ascending[0]).toBe(true)
 
-    await table.reads(() => table.header("label_id").click())
+    await table.sortBy("label_id")
     await expect(table.header("label_id")).toHaveAttribute("aria-sort", "none")
     expect(params(page)).toEqual({})
     expect(await table.rowKeys()).toEqual(unsorted)
 
     // by keyboard, and by the other part of the key
-    await table.header("task_id").focus()
+    await table.sortButton("task_id").focus()
     await table.reads(() => table.press("Enter"))
     await table.reads(() => table.press("Enter"))
     await expect(table.header("task_id")).toHaveAttribute("aria-sort", "descending")
-    await expect(table.header("task_id")).toBeFocused()
+    await expect(table.sortButton("task_id")).toBeFocused()
     const tasks = await table.columnTexts("task_id")
     expect(tasks).toEqual([...tasks].sort().reverse())
     expect(tasks[0] > parts(FIRST).task).toBe(true)
   })
 
-  test("the grid is one tab stop, and the arrow keys walk its three columns and its actions", async () => {
+  test("Tab walks a row: its box, its expander, the note, its actions; the parts of the key are no stops", async () => {
     expect(await table.columns()).toEqual(["note", "task_id", "label_id"])
-    expect(await table.tabStops()).toEqual([`task_label-row-${FIRST}-c-note`])
-
-    await table.tabStop.focus()
-    await table.press("ArrowRight", "ArrowRight")
-    await expect(table.cell(FIRST, "label_id")).toBeFocused()
-    // after the last column is the cell of the row's actions (actions.spec.ts)
-    await table.press("ArrowRight", "ArrowRight")
-    await expect(table.actionsCell(FIRST), "the last cell of a row is where Right ends").toBeFocused()
-    // Home is the first cell of the row: its box, two to the left of the note
-    await table.press("ArrowDown", "ArrowDown", "Home")
-    await expect(table.boxCell(THIRD)).toBeFocused()
-    expect(await table.tabStops()).toEqual([`task_label-row-${THIRD}-s`])
+    await table.box(FIRST).focus()
+    const first = await table.actions(FIRST).first().getAttribute("id")
+    expect(await table.walk(3)).toEqual([`task_label-row-${FIRST}-e>button`, `task_label-row-${FIRST}-c-note`, first])
   })
 })
 
@@ -140,18 +131,17 @@ test.describe("the note", () => {
   }) => {
     await expect(table.editorTemplates).toHaveCount(1)
     await expect(table.editorTemplates).toHaveId("task_label-editor-note")
-    await expect(table.cell(FIRST, "note")).not.toHaveAttribute("aria-readonly")
-    await expect(table.grid.locator("[aria-readonly]")).toHaveCount(2 * 25)
+    // the note is a Tab stop in every row, and no other cell is
+    await expect(table.cell(FIRST, "note")).toHaveAttribute("tabindex", "0")
+    await expect(table.rows.locator("[role=cell][tabindex], [role=rowheader][tabindex]")).toHaveCount(25)
 
     for (const column of ["task_id", "label_id"]) {
       const cell = table.cell(FIRST, column)
-      await expect(cell).toHaveAttribute("aria-readonly", "true")
-      await cell.focus()
+      await expect(cell).not.toHaveAttribute("tabindex")
       await pushed.clear()
-      await table.press("Enter", "F2", "x")
       await cell.dblclick()
       await expect(table.openEditors).toHaveCount(0)
-      await expect(cell).toBeFocused()
+      await expect(cell).not.toBeFocused()
       expect(await pushed.all()).toEqual([])
     }
   })
@@ -195,7 +185,7 @@ test.describe("the note", () => {
       const note = table.cell(SECOND, "note")
       await expect(note).toHaveText("Because the docs are wrong")
       await expect(note).toBeFocused()
-      await expect(note).not.toHaveAttribute("aria-invalid")
+      await expect(note).not.toHaveAttribute("data-failed")
       expect(await pushed.count("save")).toBe(1)
       // the event names the row by both parts of its key
       const [save] = (await pushed.all()).filter((one) => one.event === "save")
@@ -224,8 +214,8 @@ test.describe("the note", () => {
     test("a row found by another sort, on another page, is the row that is saved", async ({
       page,
     }) => {
-      await table.reads(() => table.header("label_id").click())
-      await table.reads(() => table.header("label_id").click())
+      await table.sortBy("label_id")
+      await table.sortBy("label_id")
       await table.reads(() => table.next.click())
       expect(params(page)).toEqual({ "task_label[sort]": "-label_id", "task_label[page]": "2" })
 
@@ -255,14 +245,14 @@ test.describe("the note", () => {
       await expect(table.status).toHaveText("2 results")
       expect(await table.rowKeys(), "by task, then by label").toEqual([SECOND, THIRD])
 
-      await table.reads(() => table.header("note").click())
+      await table.sortBy("note")
       await expect(table.header("note")).toHaveAttribute("aria-sort", "ascending")
       expect(await table.columnTexts("note")).toEqual([
         "Because it was asked for",
         "Because the docs are wrong",
       ])
       expect(await table.rowKeys()).toEqual([THIRD, SECOND])
-      await table.reads(() => table.header("note").click())
+      await table.sortBy("note")
       expect(await table.rowKeys()).toEqual([SECOND, THIRD])
 
       await table.reads(() => table.filterOperator("note").selectOption("starts with"))
@@ -295,10 +285,10 @@ test.describe("the note", () => {
   test.describe("for the viewer", () => {
     test.use({ actor: "viewer" })
 
-    test("who may change nothing: no editor, and nothing marked read-only", async () => {
+    test("who may change nothing: no editor, and no cell a Tab stop", async () => {
       await expect(table.rows).toHaveCount(25)
       await expect(table.editorTemplates).toHaveCount(0)
-      await expect(table.grid.locator("[aria-readonly]")).toHaveCount(0)
+      await expect(table.rows.locator("[role=cell][tabindex], [role=rowheader][tabindex]")).toHaveCount(0)
     })
   })
 })

@@ -77,25 +77,23 @@ test.describe("the line of /tasks", () => {
     await expectNoAxeViolations(page)
   })
 
-  test("its inputs are ordinary tab stops before the grid", async ({ page, tasks }) => {
+  test("its inputs are ordinary tab stops before the table", async ({ page, tasks }) => {
     // after "Columns" (hiding.spec.ts) on the heading line
     await tasks.columnsButton.focus()
     await page.keyboard.press("Tab")
     await expect(tasks.argument("search")).toBeFocused()
     await page.keyboard.press("Tab")
     await expect(tasks.argument("due_within-days")).toBeFocused()
-    // between them and the grid: the create button at the line's end
+    // between them and the table: the create button at the line's end,
+    // then the table's "Skip table"
     await page.keyboard.press("Tab")
     await expect(tasks.create).toBeFocused()
     await page.keyboard.press("Tab")
-    await expect(tasks.cell(FIRST, "title")).toBeFocused()
+    await expect(tasks.skip).toBeFocused()
     // and back
     await page.keyboard.press("Shift+Tab")
     await page.keyboard.press("Shift+Tab")
     await expect(tasks.argument("due_within-days")).toBeFocused()
-
-    // the grid is one tab stop, as it was
-    expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-c-title`])
   })
 
   test("what is typed is sent when Enter is used, not at every key, and is in the URL", async ({
@@ -167,16 +165,6 @@ test.describe("the line of /tasks", () => {
     await tasks.reads(() => page.goForward())
     await expect(tasks.argument("search")).toHaveValue("login")
     expect(await total(tasks)).toBe(found)
-  })
-
-  test("the arrow keys in the grid still send nothing", async ({ tasks, pushed }) => {
-    await tasks.argument("search").fill("the")
-    await tasks.reads(() => tasks.argument("search").press("Enter"))
-
-    await tasks.cell(await tasks.rowKey(1), "title").focus()
-    await pushed.clear()
-    await tasks.press("ArrowDown", "ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp", "End", "Home")
-    expect(await pushed.all()).toEqual([])
   })
 
   test("the line of the selection under it takes one line once it fills, and none again when it empties", async ({
@@ -253,7 +241,7 @@ test.describe("the argument a column of /tasks asks for", () => {
     for (const text of await tasks.columnTexts("due_within?")) expect(text).toContain("No")
     for (const text of await tasks.columnTexts("due_within")) expect(text).toContain("Yes")
 
-    await tasks.reads(() => tasks.header("due_within").click())
+    await tasks.sortBy("due_within")
     await expect(tasks.header("due_within")).toHaveAttribute("aria-sort", "ascending")
     await expect(tasks.error).toHaveCount(0)
   })
@@ -334,7 +322,7 @@ test.describe("/deadlines: a read action that requires an argument", () => {
     })
   }
 
-  test("the grid is reached with Tab from the line while it has no rows", async ({ page }) => {
+  test("the table is reached with Tab from the line while it has no rows", async ({ page }) => {
     await deadlines.open()
 
     // (a date input is several tab stops of the browser's own)
@@ -342,9 +330,12 @@ test.describe("/deadlines: a read action that requires an argument", () => {
     await page.keyboard.press("Tab")
     await expect(page.locator("#deadline-arg-tags-add")).toBeFocused()
     // the line is the last of the heading line ("Columns" comes before it,
-    // hiding.spec.ts), and the table creates nothing
+    // hiding.spec.ts), and the table creates nothing: then "Skip table", and
+    // the table's header
     await page.keyboard.press("Tab")
-    expect(await deadlines.hasFocus()).toBe(true)
+    await expect(deadlines.skip).toBeFocused()
+    await page.keyboard.press("Tab")
+    expect(await deadlines.grid.evaluate((table) => table.contains(document.activeElement))).toBe(true)
   })
 
   test("a box is applied when it is ticked, and its default is not in the URL", async ({ page }) => {
@@ -433,10 +424,10 @@ test.describe("a nested table", () => {
     await expect(tasks.argumentLine.locator("input")).toHaveCount(2)
     await expect(tasks.range).toHaveText("1–25 of 57")
 
-    // from the line that opened it, Tab goes on into the nested line
-    await projects.lineCell(SEED.project.mobileApp, "tasks").focus()
-    await page.keyboard.press("Tab")
-    await expect(tasks.argument("search")).toBeFocused()
+    // from the line's button, Tab goes on into the nested table's heading line:
+    // its "Columns", then its inputs
+    await projects.line(SEED.project.mobileApp, "tasks").focus()
+    expect(await tasks.walk(2)).toEqual([`${tasks.id}-columns-button`, `${tasks.id}-arg-search`])
 
     await page.keyboard.type("Fix")
     await tasks.reads(() => page.keyboard.press("Enter"))
@@ -444,8 +435,6 @@ test.describe("a nested table", () => {
     await expect(tasks.range).toHaveText("1–7 of 7")
     await expect(tasks.argument("search")).toBeFocused()
     expect(params(page)).toEqual({})
-    // the grids are one tab stop still
-    expect(await projects.tabStops()).toHaveLength(1)
     await expectNoAxeViolations(page)
   })
 })

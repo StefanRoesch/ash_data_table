@@ -50,7 +50,7 @@ test("a time typed in the cell is shown back as typed, and stored as the instant
   await tasks.editor(completed).fill("2031-07-15T16:30:15")
   await tasks.saves(completed, () => tasks.press("Enter"))
   await expect(completed).toHaveText("2031-07-15T16:30:15")
-  await expect(completed).not.toHaveAttribute("aria-invalid", "true")
+  await expect(completed).not.toHaveAttribute("data-failed")
 
   // the editor opens again on the time it was given
   await tasks.press("Enter")

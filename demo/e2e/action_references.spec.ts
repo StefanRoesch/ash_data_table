@@ -81,6 +81,7 @@ test.describe("\"Merge\" at /labels: a table action with a key and a list of key
     await expect(labels.picker).toBeVisible()
     await labels.pickerTable("into").ready()
     await expect(labels.pickerTable("into").radio(first.key)).toBeChecked()
+    // the radio group's own key (the picker's rows, one record at a time)
     await page.keyboard.press("ArrowDown")
     await page.keyboard.press("Enter")
     await expect(labels.picker).toHaveCount(0)
