@@ -146,7 +146,7 @@ defmodule AshDataTable.Item do
   `selecting` (`:single`, `:multi` or nil). Its texts are said in the
   locale of this process.
   """
-  @spec row(map, Present.Row.t(), map) :: t
+  @spec row(map, struct, map) :: t
   def row(model, %Present.Row{} = row, %{
         time_zone: zone,
         editing?: editing?,
