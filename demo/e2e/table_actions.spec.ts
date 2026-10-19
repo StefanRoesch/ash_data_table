@@ -44,7 +44,7 @@ test.describe("the buttons", () => {
     await expect(labels.tableActions).toHaveText(["Count unused", "Recolour", "Remove unused", "Merge", "Import"])
     // after "Columns" (hiding.spec.ts)
     await expect(labels.headerLine.getByRole("button").first()).toHaveAccessibleName("Columns")
-    await expect(labels.headerLine.locator("button:not([data-columns-button])")).toHaveText([
+    await expect(labels.headerLine.locator("button:not([data-columns-button], [data-reset-widths])")).toHaveText([
       "New label",
       "Count unused",
       "Recolour",
@@ -69,7 +69,7 @@ test.describe("the buttons", () => {
     }
 
     // Tab goes through them in that order, after "Columns" (hiding.spec.ts),
-    // and then into the grid
+    // and then to the table's "Skip table"
     await labels.columnsButton.focus()
     await page.keyboard.press("Tab")
     await expect(labels.create).toBeFocused()
@@ -78,7 +78,7 @@ test.describe("the buttons", () => {
       await expect(labels.tableAction(name)).toBeFocused()
     }
     await page.keyboard.press("Tab")
-    expect(await labels.hasFocus()).toBe(true)
+    await expect(labels.skip).toBeFocused()
   })
 
   for (const actor of ["member", "viewer"] as const) {
@@ -313,12 +313,12 @@ test.describe("in a nested table", () => {
     for (const name of names) {
       const button = tasks.lineAction(FIRST, "labels", name)
       await expect(button).toBeVisible()
-      await expect(button).toHaveAttribute("tabindex", "-1")
+      await expect(button, "a Tab stop as any button").not.toHaveAttribute("tabindex")
       await expect(button).toHaveAttribute("class", (await create.getAttribute("class"))!)
       expect((await button.boundingBox())!.height).toBe((await create.boundingBox())!.height)
     }
     // beside "Columns", which is the nested table's as well
-    await expect(tasks.lineCell(FIRST, "labels").locator("button:not([data-columns-button])")).toHaveText([
+    await expect(tasks.lineCell(FIRST, "labels").locator("button:not([data-columns-button], [data-reset-widths])")).toHaveText([
       "Labels",
       "Count unused",
       "Recolour",
@@ -331,21 +331,15 @@ test.describe("in a nested table", () => {
     await expect(tasks.lineCell(FIRST, "labels").locator(`[id="${nested.id}-header"]`)).toHaveCount(1)
     await expect(nested.tableActions).toHaveCount(0)
     // a table without table actions has none on its line
-    await expect(tasks.lineCell(FIRST, "comments").locator("button:not([data-columns-button])")).toHaveText([
+    await expect(tasks.lineCell(FIRST, "comments").locator("button:not([data-columns-button], [data-reset-widths])")).toHaveText([
       "Comments",
       "New comment",
     ])
     await expect(comments.grid).toBeVisible()
-    expect(await tasks.tabStops(), "the tree is one tab stop still").toHaveLength(1)
 
-    // from the keyboard: F2 on the line goes into its controls, Right to the next
-    await tasks.lineCell(FIRST, "labels").focus()
-    await page.keyboard.press("F2")
-    await expect(tasks.line(FIRST, "labels")).toBeFocused()
-    await page.keyboard.press("ArrowRight")
-    await expect(nested.columnsButton).toBeFocused()
-    await page.keyboard.press("ArrowRight")
-    await expect(tasks.lineAction(FIRST, "labels", "count_unused")).toBeFocused()
+    // from the keyboard: Tab from the line's button to "Columns", then the actions
+    await tasks.line(FIRST, "labels").focus()
+    expect(await tasks.walk(2)).toEqual([`${nested.id}-columns-button`, `${nested.id}-do-count_unused`])
     await page.keyboard.press("Enter")
 
     // the nested table says it, and the table around it says nothing
@@ -354,11 +348,6 @@ test.describe("in a nested table", () => {
     await expect(tasks.result).toHaveCount(0)
     await expect(tasks.line(FIRST, "labels"), "the line stays open").toHaveAttribute("aria-expanded", "true")
     await expectNoAxeViolations(page)
-
-    // Escape goes back to the line
-    await tasks.lineAction(FIRST, "labels", "count_unused").focus()
-    await page.keyboard.press("Escape")
-    await expect(tasks.lineCell(FIRST, "labels")).toBeFocused()
   })
 
   test("an action that asks first asks in the nested table's own dialog, and one with arguments opens its own panel", async ({

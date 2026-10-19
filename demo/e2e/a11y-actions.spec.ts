@@ -16,15 +16,11 @@ test.describe("row actions and the action panel", () => {
   const FIRST = SEED.task.first
 
   test.describe("the actions column", () => {
-    test("with focus on its header, on a cell of it, and on a button in the cell", async ({ page, tasks }) => {
+    test("as the page opens, and with focus on a button in a cell", async ({ page, tasks }) => {
       await tasks.open()
-      await tasks.actionsHeader.focus()
       await expectNoAxeViolations(page)
 
-      await tasks.actionsCell(FIRST).focus()
-      await expectNoAxeViolations(page)
-
-      await tasks.press("Enter", "ArrowRight")
+      await tasks.action(FIRST, "reassign").focus()
       await expect(tasks.action(FIRST, "reassign")).toBeFocused()
       await expectNoAxeViolations(page)
     })
@@ -46,8 +42,7 @@ test.describe("row actions and the action panel", () => {
       test(`${path}: focus on a button of its first row`, async ({ page }) => {
         const table = new Table(page, id, path)
         await table.open()
-        await table.actionsCell(await table.rowKey(1)).focus()
-        await table.press("Enter")
+        await table.actions(await table.rowKey(1)).first().focus()
         expect(await table.focused()).toMatch(/-a-[a-z_]+$/)
         await expectNoAxeViolations(page)
       })
@@ -59,26 +54,21 @@ test.describe("row actions and the action panel", () => {
       test.beforeEach(async ({ page, tasks }) => {
         await tasks.open()
         await tasks.acts(FIRST, () => tasks.action(FIRST, "archive").click())
-        await expect(tasks.actionsCell(FIRST)).toHaveAttribute("aria-invalid", "true")
+        await expect(tasks.actionsCell(FIRST)).toHaveAttribute("data-failed")
         await page.mouse.move(5, 5)
       })
 
-      test("a cell whose action was refused, with focus: its message showing", async ({ page, tasks }) => {
-        await expect(tasks.failure(tasks.actionsCell(FIRST))).toBeVisible()
-        await expectNoAxeViolations(page)
-
-        // and with focus on the cell itself
-        await tasks.press("Escape")
-        await expect(tasks.actionsCell(FIRST)).toBeFocused()
+      test("a cell whose action was refused, with focus on its button: its message showing", async ({ page, tasks }) => {
+        await expect(tasks.action(FIRST, "archive")).toBeFocused()
         await expect(tasks.failure(tasks.actionsCell(FIRST))).toBeVisible()
         await expectNoAxeViolations(page)
       })
 
       test("a cell whose action was refused, without focus: its message still showing in the cell", async ({ page, tasks }) => {
-        await tasks.press("Escape", "ArrowDown")
-        await expect(tasks.actionsCell(FIRST)).not.toBeFocused()
+        await tasks.boxCell(SECOND).locator("input").focus()
+        expect(await tasks.actionsCell(FIRST).evaluate((cell) => cell.contains(document.activeElement))).toBe(false)
         await expect(tasks.failure(tasks.actionsCell(FIRST))).toBeVisible()
-        await expect(tasks.actionsCell(FIRST)).toHaveAttribute("aria-invalid", "true")
+        await expect(tasks.actionsCell(FIRST)).toHaveAttribute("data-failed")
         await expectNoAxeViolations(page)
       })
     })
@@ -225,9 +215,9 @@ test.describe("row actions and the action panel", () => {
           await expect(tasks.lineCreate(FIRST, "comments")).toBeVisible()
           await expectNoAxeViolations(page)
 
-          await tasks.lineCell(FIRST, "comments").focus()
-          // after the nested table's "Columns" on the line
-          await tasks.press("F2", "ArrowRight", "ArrowRight")
+          // from the line's button, after the nested table's "Columns" on the line
+          await tasks.line(FIRST, "comments").focus()
+          await tasks.press("Tab", "Tab")
           await expect(tasks.lineCreate(FIRST, "comments")).toBeFocused()
           await expectNoAxeViolations(page)
 
@@ -249,8 +239,7 @@ test.describe("row actions and the action panel", () => {
       const key = await nested.rowKey(1)
       await expect(projects.lineCreate(SEED.project.mobileApp, "tasks")).toBeVisible()
 
-      await nested.actionsCell(key).focus()
-      await projects.press("Enter")
+      await nested.action(key, "archive").focus()
       await expect(nested.action(key, "archive")).toBeFocused()
       await expectNoAxeViolations(page)
 

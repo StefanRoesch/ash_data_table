@@ -81,17 +81,18 @@ test.describe("the actions column", () => {
     await expect(tasks.actionsFilter).toHaveAttribute("aria-colindex", "25")
 
     await expect(tasks.rowCells(FIRST).last()).toHaveId(`task-row-${FIRST}-a`)
-    await expect(tasks.actionsCell(FIRST)).toHaveRole("gridcell")
+    await expect(tasks.actionsCell(FIRST)).toHaveRole("cell")
     await expect(tasks.actionsCell(FIRST)).toHaveAttribute("aria-colindex", "25")
     await expect(tasks.actions(FIRST)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
-    await expect(tasks.grid.locator(":scope > [role=rowgroup] > [role=row] > [role=gridcell][data-actions] > button")).toHaveCount(125)
+    await expect(tasks.grid.locator(":scope > [role=rowgroup] > [role=row] > [role=cell][data-actions] > button")).toHaveCount(125)
 
-    // the buttons are no tab stops: the grid is one, as it was
+    // the buttons are Tab stops, as any button; the cell that holds them is none
     for (const button of await tasks.actions(FIRST).all()) {
-      await expect(button).toHaveAttribute("tabindex", "-1")
+      await expect(button).not.toHaveAttribute("tabindex")
       await expect(button).toHaveAttribute("type", "button")
     }
-    expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-c-title`])
+    await expect(tasks.actionsCell(FIRST)).not.toHaveAttribute("tabindex")
+    await expect(tasks.actionsHeader, "a header that sorts nothing is no stop").not.toHaveAttribute("tabindex")
 
     // only the action that deletes asks first
     await expect(tasks.action(FIRST, "destroy")).toHaveAttribute("data-question", QUESTION)
@@ -147,120 +148,33 @@ test.describe("the actions column", () => {
 })
 
 test.describe("with the keyboard", () => {
-  test("the actions cell is a cell the arrow keys stop at, under a header of its own and past an empty filter cell", async ({
+  test("Tab goes through the buttons of a row, left to right, then on to the next row; the cell is no stop", async ({
     tasks,
     pushed,
   }) => {
-    await tasks.cell(FIRST, "reporter").focus()
+    const stops = await tasks.tabStops()
+    const beforeButtons = stops[stops.indexOf(`task-row-${FIRST}-a-archive`) - 1]
+    await tasks.action(FIRST, "archive").focus()
     await pushed.clear()
-
-    await tasks.press("ArrowRight")
-    await expect(tasks.actionsCell(FIRST)).toBeFocused()
-    await tasks.press("ArrowRight")
-    await expect(tasks.actionsCell(FIRST), "the last cell of a row is where Right ends").toBeFocused()
-    expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-a`])
-
-    await tasks.press("ArrowDown")
-    await expect(tasks.actionsCell(SECOND)).toBeFocused()
-    await tasks.press("ArrowUp", "ArrowUp")
-    // its filter cell holds no filter, and is no stop of the arrow keys
-    await expect(tasks.actionsHeader).toBeFocused()
-
-    // nothing to sort by: Enter, F2 and a character do nothing there
-    await tasks.press("Enter", "F2", "x")
-    await expect(tasks.actionsHeader).toBeFocused()
-    await expect(tasks.grid.locator('[aria-sort]:not([aria-sort="none"])')).toHaveCount(0)
-
-    await tasks.press("ArrowDown", "ArrowLeft")
-    await expect(tasks.cell(FIRST, "reporter")).toBeFocused()
-    await tasks.press("Home", "End")
-    await expect(tasks.actionsCell(FIRST), "End is the last cell of the row").toBeFocused()
-    await tasks.press("Control+End")
-    await expect(tasks.actionsCell((await tasks.rowKeys()).at(-1)!)).toBeFocused()
-
+    expect(await tasks.walk(4)).toEqual(
+      ["reassign", "set_progress", "destroy", "set_labels"].map((name) => `task-row-${FIRST}-a-${name}`),
+    )
+    // after the last button: the next row's first stop, its box
+    expect(await tasks.walk(1)).toEqual([`task-row-${SECOND}-s>input`])
+    expect(await tasks.walk(6, true)).toEqual([
+      ...["set_labels", "destroy", "set_progress", "reassign", "archive"].map((name) => `task-row-${FIRST}-a-${name}`),
+      // before the first button: the stop before it in the row, never the cell
+      beforeButtons,
+    ])
     expect(await pushed.all(), "moving about asks the server nothing").toEqual([])
-    expect(await tasks.tabStops()).toHaveLength(1)
-  })
-
-  test("Enter and F2 go to the first button; Left and Right move between the buttons, and Escape comes back to the cell", async ({
-    tasks,
-    pushed,
-  }) => {
-    const cell = tasks.actionsCell(FIRST)
-    await cell.focus()
-    await pushed.clear()
-
-    // Space and a character are nothing on the cell
-    await tasks.press("Space", "x")
-    await expect(cell).toBeFocused()
-
-    await tasks.press("Enter")
-    await expect(tasks.action(FIRST, "archive")).toBeFocused()
-    // the cell stays the one tab stop while a button of it has the focus
-    expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-a`])
-
-    await tasks.press("ArrowRight")
-    await expect(tasks.action(FIRST, "reassign")).toBeFocused()
-    await tasks.press("ArrowRight")
-    await expect(tasks.action(FIRST, "set_progress")).toBeFocused()
-    await tasks.press("ArrowRight")
-    await expect(tasks.action(FIRST, "destroy")).toBeFocused()
-    await tasks.press("ArrowRight")
-    await expect(tasks.action(FIRST, "set_labels")).toBeFocused()
-    await tasks.press("ArrowRight")
-    await expect(tasks.action(FIRST, "set_labels"), "Right ends at the last button").toBeFocused()
-
-    await tasks.press("ArrowLeft", "ArrowLeft", "ArrowLeft", "ArrowLeft")
-    await expect(tasks.action(FIRST, "archive")).toBeFocused()
-    await tasks.press("ArrowLeft")
-    await expect(tasks.action(FIRST, "archive"), "and Left at the first").toBeFocused()
-
-    // up and down belong to no button: focus stays where it is
-    await tasks.press("ArrowDown", "ArrowUp")
-    await expect(tasks.action(FIRST, "archive")).toBeFocused()
-
-    await tasks.press("Escape")
-    await expect(cell).toBeFocused()
-    await tasks.press("F2")
-    await expect(tasks.action(FIRST, "archive")).toBeFocused()
-    await tasks.press("Escape", "ArrowDown")
-    await expect(tasks.actionsCell(SECOND), "back on the cell, the arrow keys move again").toBeFocused()
-
-    await pushed.expectSelected(tasks)
-    expect(await pushed.besides("select"), "none of it asks the server anything but to say what is selected").toEqual([])
-    expect(await tasks.tabStops()).toEqual([`task-row-${SECOND}-a`])
-  })
-
-  test("Tab walks the buttons of the cell, then leaves the grid; before the first button is the cell", async ({
-    tasks,
-  }) => {
-    await tasks.actionsCell(FIRST).focus()
-    await tasks.press("Enter", "Tab")
-    await expect(tasks.action(FIRST, "reassign")).toBeFocused()
-    await tasks.press("Shift+Tab")
-    await expect(tasks.action(FIRST, "archive")).toBeFocused()
-    await tasks.press("Shift+Tab")
-    await expect(tasks.actionsCell(FIRST), "as in a filter").toBeFocused()
-
-    await tasks.press("Enter", "Tab", "Tab", "Tab")
-    await expect(tasks.action(FIRST, "destroy")).toBeFocused()
-    await tasks.press("Tab")
-    await expect(tasks.action(FIRST, "set_labels")).toBeFocused()
-    await tasks.press("Tab")
-    expect(await tasks.hasFocus(), "after the last button Tab leaves the grid").toBe(false)
-    await expect(tasks.pageButton(1)).toBeFocused()
-
-    await tasks.press("Shift+Tab")
-    await expect(tasks.actionsCell(FIRST), "the grid's one tab stop").toBeFocused()
   })
 
   test("Enter on a button runs its action, and so does Space; focus stays on the button", async ({
     tasks,
     pushed,
   }) => {
-    await tasks.actionsCell(FIRST).focus()
+    await tasks.action(FIRST, "archive").focus()
     await pushed.clear()
-    await tasks.press("Enter")
     await tasks.acts(FIRST, () => tasks.press("Enter"))
 
     await expect(tasks.cell(FIRST, "status")).toHaveText("Archived")
@@ -268,13 +182,11 @@ test.describe("with the keyboard", () => {
     expect(await pushed.count("act")).toBe(1)
     expect(await pushed.all()).toHaveLength(1)
 
-    await tasks.press("Escape", "ArrowDown", "F2")
-    await expect(tasks.action(SECOND, "archive")).toBeFocused()
+    await tasks.action(SECOND, "archive").focus()
     await tasks.acts(SECOND, () => tasks.press("Space"))
     await expect(tasks.cell(SECOND, "status")).toHaveText("Archived")
     await expect(tasks.action(SECOND, "archive")).toBeFocused()
     expect(await pushed.count("act")).toBe(2)
-    expect(await tasks.tabStops()).toEqual([`task-row-${SECOND}-a`])
   })
 })
 
@@ -291,13 +203,12 @@ test.describe("an action that runs straight away", () => {
     await expect(tasks.cell(SECOND, "status"), "and no other row").toHaveText("To do")
     await expect(tasks.action(FIRST, "archive")).toBeFocused()
     await expect(tasks.actionsCell(FIRST)).not.toHaveAttribute("aria-busy")
-    await expect(tasks.actionsCell(FIRST)).not.toHaveAttribute("aria-invalid")
+    await expect(tasks.actionsCell(FIRST)).not.toHaveAttribute("data-failed")
     await expect(tasks.status, "it is read out").toHaveText("Archive: done")
     expect(await pushed.count("act")).toBe(1)
     expect(await pushed.all()).toHaveLength(1)
 
-    // the cell of the button is the grid's tab stop now, and the row is as high as it was
-    expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-a`])
+    // the row is as high as it was
     expect(await rowHeight(tasks, FIRST)).toBeCloseTo(height, 0)
     await expect(tasks.actions(FIRST)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
 
@@ -306,7 +217,7 @@ test.describe("an action that runs straight away", () => {
     await expect(tasks.cell(FIRST, "status")).toHaveText("Archived")
   })
 
-  test("a click beside the buttons is a click on the cell: nothing runs", async ({ tasks, pushed }) => {
+  test("a click beside the buttons is a click on the cell, which is no stop: nothing runs, nothing takes the focus", async ({ tasks, pushed }) => {
     const cell = tasks.actionsCell(FIRST)
     await cell.scrollIntoViewIfNeeded()
     const box = (await cell.boundingBox())!
@@ -314,7 +225,8 @@ test.describe("an action that runs straight away", () => {
     // the right end of the cell, after its last button
     await tasks.page.mouse.click(box.x + box.width - 3, box.y + box.height / 2)
 
-    await expect(cell).toBeFocused()
+    await expect(cell).not.toBeFocused()
+    await expect(tasks.actionsCell(FIRST).locator(":focus")).toHaveCount(0)
     expect(await pushed.all()).toEqual([])
   })
 
@@ -339,7 +251,7 @@ test.describe("an action that runs straight away", () => {
       await expect(taskLabels.row(second)).toHaveCount(0)
       expect((await taskLabels.rowKeys()).slice(0, 2)).toEqual([first, third])
       expect(await pushed.count("act")).toBe(1)
-      await expect(taskLabels.actionsCell(third), "the row after it").toBeFocused()
+      await expect(taskLabels.action(third, "destroy"), "the same stop of the row after it").toBeFocused()
       await expect(taskLabels.range).toHaveText(`1–24 of ${total - 1}`)
       await expect(taskLabels.status).toHaveText("Remove: done")
     })
@@ -404,7 +316,6 @@ test.describe("an action that asks first", () => {
     await expect(tasks.row(SECOND)).toBeVisible()
     await expect(tasks.actionsCell(SECOND)).not.toHaveAttribute("aria-busy")
     expect(await pushed.all()).toEqual([])
-    expect(await tasks.tabStops()).toEqual([`task-row-${SECOND}-a`])
   })
 
   test("the answer of a question that deletes nothing is not in the colour of one that does", async ({
@@ -428,7 +339,7 @@ test.describe("an action that asks first", () => {
     await expect.poll(() => ground(confirm)).not.toBe(deleting)
   })
 
-  test("Confirm takes the row out of the page, counts it out, and puts focus on the same cell of the row after it", async ({
+  test("Confirm takes the row out of the page, counts it out, and puts focus on the same stop of the row after it", async ({
     page,
     tasks,
     pushed,
@@ -447,8 +358,7 @@ test.describe("an action that asks first", () => {
     await expect(tasks.question).toBeHidden()
     await expect(tasks.rows).toHaveCount(24)
     expect((await tasks.rowKeys()).slice(0, 2)).toEqual([FIRST, THIRD])
-    await expect(tasks.actionsCell(THIRD)).toBeFocused()
-    expect(await tasks.tabStops()).toEqual([`task-row-${THIRD}-a`])
+    await expect(tasks.action(THIRD, "destroy")).toBeFocused()
     expect(await pushed.count("act")).toBe(1)
 
     await expect(tasks.range).toHaveText(`1–24 of ${total - 1}`)
@@ -457,9 +367,8 @@ test.describe("an action that asks first", () => {
     // every row says where it stands now, those that were not sent again too
     expect(await tasks.rowIndexes()).toEqual(Array.from({ length: 24 }, (_, index) => index + 3))
 
-    // the arrow keys go on from there
-    await tasks.press("ArrowUp")
-    await expect(tasks.actionsCell(FIRST)).toBeFocused()
+    // Tab goes on from there
+    expect(await tasks.walk(1)).toEqual([`task-row-${THIRD}-a-set_labels`])
 
     await page.reload()
     await tasks.ready()
@@ -468,16 +377,15 @@ test.describe("an action that asks first", () => {
   })
 
   test("by keyboard all the way: Enter on the button, Tab to Confirm, Enter", async ({ tasks }) => {
-    await tasks.actionsCell(SECOND).focus()
-    await tasks.press("Enter", "ArrowRight", "ArrowRight", "ArrowRight")
+    await tasks.action(SECOND, "set_progress").focus()
+    await tasks.press("Tab")
     await expect(tasks.action(SECOND, "destroy")).toBeFocused()
     await tasks.press("Enter")
     await expect(cancel).toBeFocused()
     await tasks.press("Tab", "Enter")
 
     await expect(tasks.row(SECOND)).toHaveCount(0)
-    await expect(tasks.actionsCell(THIRD)).toBeFocused()
-    expect(await tasks.tabStops()).toEqual([`task-row-${THIRD}-a`])
+    await expect(tasks.action(THIRD, "destroy")).toBeFocused()
   })
 
   test("the last row of the page: focus goes to the row before it; and what was open under the row goes with it", async ({
@@ -494,12 +402,11 @@ test.describe("an action that asks first", () => {
     await expect(tasks.row(last)).toHaveCount(0)
     await expect(tasks.lines(last)).toHaveCount(0)
     await expect(tasks.nested(last, "comments").root).toHaveCount(0)
-    await expect(tasks.actionsCell(before)).toBeFocused()
-    expect(await tasks.tabStops()).toEqual([`task-row-${before}-a`])
+    await expect(tasks.action(before, "destroy")).toBeFocused()
     expect(await tasks.rowIndexes()).toEqual(Array.from({ length: 24 }, (_, index) => index + 3))
   })
 
-  test("the only row of the page: the table reads again, and focus stays in the grid", async ({
+  test("the only row of the page: the table reads again, and focus goes to the table's first stop", async ({
     tasks,
   }) => {
     await tasks.open("/tasks?task[f][title]=Rename the onboarding email")
@@ -511,9 +418,8 @@ test.describe("an action that asks first", () => {
 
     await expect(tasks.rows).toHaveCount(0)
     await expect(tasks.empty).toHaveText("No records")
-    // no row is left to go to: the cell above where the first one was
-    await expect(tasks.filterCell("title")).toBeFocused()
-    expect(await tasks.tabStops()).toEqual(["task-filter-title"])
+    // no row is left to go to: the first stop of the table, the box of the page
+    await expect(tasks.pageBox).toBeFocused()
     // the two header rows and the footer row of the summaries
     await expect(tasks.grid).toHaveAttribute("aria-rowcount", "3")
   })
@@ -537,7 +443,7 @@ test.describe("an action that failed", () => {
       await tasks.acts(FIRST, () => archive.click())
 
       await expect(archive, "focus stays on the button").toBeFocused()
-      await expect(cell).toHaveAttribute("aria-invalid", "true")
+      await expect(cell).toHaveAttribute("data-failed")
       await expect(cell).toHaveAttribute("aria-describedby", `task-row-${FIRST}-a-error`)
       await expect(message).toHaveText(REFUSED)
       await expect(message).toHaveId(`task-row-${FIRST}-a-error`)
@@ -562,52 +468,44 @@ test.describe("an action that failed", () => {
       expect(below.x + below.width).toBeLessThanOrEqual(box.x + box.width + 1)
       expect(below.x + below.width).toBeLessThanOrEqual(page.viewportSize()!.width)
 
-      await tasks.press("Escape")
-      await expect(cell).toBeFocused()
-      await expect(message, "the cell itself has it").toBeVisible()
-      await tasks.press("ArrowDown")
+      await tasks.press("Tab")
+      await expect(archive).not.toBeFocused()
       await expect(message, "without focus or pointer").toBeVisible()
-      await expect(cell).toHaveAttribute("aria-invalid", "true")
+      await expect(cell).toHaveAttribute("data-failed")
     })
 
-    test("Escape on a button goes back to the cell, and Escape on the cell gives the failure up", async ({
+    test("Escape on a button of the failed cell gives the failure up; focus stays on the button", async ({
       tasks,
       pushed,
     }) => {
       const cell = tasks.actionsCell(FIRST)
-      await cell.focus()
-      await tasks.press("Enter")
+      const archive = tasks.action(FIRST, "archive")
+      await archive.focus()
       await tasks.acts(FIRST, () => tasks.press("Enter"))
-      await expect(cell).toHaveAttribute("aria-invalid", "true")
-      await expect(tasks.action(FIRST, "archive")).toBeFocused()
+      await expect(cell).toHaveAttribute("data-failed")
+      await expect(archive).toBeFocused()
 
       await pushed.clear()
       await tasks.press("Escape")
-      await expect(cell).toBeFocused()
-      await expect(cell, "the first Escape leaves the button").toHaveAttribute("aria-invalid", "true")
-      expect(await pushed.all()).toEqual([])
-
-      await tasks.press("Escape")
-      await expect(cell).not.toHaveAttribute("aria-invalid")
+      await expect(cell).not.toHaveAttribute("data-failed")
       await expect(cell).not.toHaveAttribute("aria-describedby")
       await expect(tasks.failure(cell)).toHaveCount(0)
-      await expect(cell).toBeFocused()
+      await expect(archive).toBeFocused()
       expect(await pushed.count("dismiss")).toBe(1)
-      expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-a`])
       await expect(tasks.actions(FIRST)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
     })
 
     test("the next action that runs in the row clears it; one on their own task runs", async ({ tasks }) => {
       const own = SEED.task.membersOwn
       await tasks.acts(FIRST, () => tasks.action(FIRST, "archive").click())
-      await expect(tasks.actionsCell(FIRST)).toHaveAttribute("aria-invalid", "true")
+      await expect(tasks.actionsCell(FIRST)).toHaveAttribute("data-failed")
 
       await tasks.acts(own, () => tasks.action(own, "archive").click())
       await expect(tasks.cell(own, "status")).toHaveText("Archived")
-      await expect(tasks.actionsCell(own)).not.toHaveAttribute("aria-invalid")
+      await expect(tasks.actionsCell(own)).not.toHaveAttribute("data-failed")
       await expect(tasks.action(own, "archive")).toBeFocused()
       // the other row's failure is that row's, and stays
-      await expect(tasks.actionsCell(FIRST)).toHaveAttribute("aria-invalid", "true")
+      await expect(tasks.actionsCell(FIRST)).toHaveAttribute("data-failed")
       await expect(tasks.failure(tasks.actionsCell(FIRST)), "without focus or pointer").toBeVisible()
     })
 
@@ -618,7 +516,7 @@ test.describe("an action that failed", () => {
       await tasks.acts(FIRST, () => tasks.question.getByRole("button", { name: "Confirm" }).click())
 
       await expect(tasks.rows).toHaveCount(25)
-      await expect(tasks.actionsCell(FIRST)).toHaveAttribute("aria-invalid", "true")
+      await expect(tasks.actionsCell(FIRST)).toHaveAttribute("data-failed")
       await expect(tasks.failure(tasks.actionsCell(FIRST))).toHaveText(REFUSED)
       await expect(tasks.action(FIRST, "destroy"), "the dialog gave the focus back").toBeFocused()
       await expect(tasks.range).toHaveText(`1–25 of ${SEED.tasks.acme}`)
@@ -626,7 +524,7 @@ test.describe("an action that failed", () => {
   })
 
   test.describe("a record that is gone", () => {
-    test("the hook marks the actions cell itself, and Escape on the cell takes the mark away", async ({
+    test("the hook marks the actions cell itself, and Escape on its button takes the mark away", async ({
       request,
       tasks,
       pushed,
@@ -638,7 +536,7 @@ test.describe("an action that failed", () => {
 
       await tasks.acts(key, () => tasks.action(key, "archive").click())
 
-      await expect(cell).toHaveAttribute("aria-invalid", "true")
+      await expect(cell).toHaveAttribute("data-failed")
       await expect(cell).toHaveAttribute("aria-describedby", `task-row-${key}-a-error`)
       await expect(tasks.failure(cell)).toHaveText(GONE)
       await expect(tasks.failure(cell), "focus is on a button of the cell").toBeVisible()
@@ -652,11 +550,11 @@ test.describe("an action that failed", () => {
       await expect.poll(() => rowHeight(tasks, key)).toBeGreaterThan(height)
 
       await pushed.clear()
-      await tasks.press("Escape", "Escape")
-      await expect(cell).not.toHaveAttribute("aria-invalid")
+      await tasks.press("Escape")
+      await expect(cell).not.toHaveAttribute("data-failed")
       await expect(cell).not.toHaveAttribute("aria-describedby")
       await expect(tasks.failure(cell)).toHaveCount(0)
-      await expect(cell).toBeFocused()
+      await expect(tasks.action(key, "archive")).toBeFocused()
       await expect(tasks.actions(key)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
       await expect.poll(() => rowHeight(tasks, key), "the row is as high as before").toBeCloseTo(height, 0)
       expect(await pushed.all(), "the mark was the hook's: the server is not asked").toEqual([])
@@ -760,7 +658,6 @@ test.describe("the action panel", () => {
     await expect(reassign).toBeFocused()
     expect(await pushed.count("panel_cancel")).toBe(1)
     expect(await pushed.count("panel_submit")).toBe(0)
-    expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-a`])
 
     // from the keyboard, and with Cancel
     await tasks.acts(FIRST, () => tasks.press("Enter"))
@@ -778,9 +675,8 @@ test.describe("the action panel", () => {
     await expect(reassign).toBeFocused()
     await expect(tasks.status, "nothing ran").toHaveText("")
 
-    // the grid is as it was: the arrow keys go on from the cell
-    await tasks.press("Escape", "ArrowDown")
-    await expect(tasks.actionsCell(SECOND)).toBeFocused()
+    // the table is as it was: Tab goes on from the button
+    expect(await tasks.walk(1)).toEqual([`task-row-${FIRST}-a-set_progress`])
   })
 
   test("Run runs the action with what the fields hold: the row comes back changed, and focus is on its button again", async ({
@@ -810,7 +706,6 @@ test.describe("the action panel", () => {
     await expect(progress).toBeFocused()
     await expect(tasks.status).toHaveText("Set progress: done")
     expect(await pushed.count("panel_submit")).toBe(1)
-    expect(await tasks.tabStops()).toEqual([`task-row-${SECOND}-a`])
 
     // an argument and an attribute, with the button
     const reassign = tasks.action(SECOND, "reassign")
@@ -904,7 +799,7 @@ test.describe("the action panel", () => {
       const field = (await tasks.field("assignee_id").boundingBox())!
       expect(alert.y + alert.height).toBeLessThanOrEqual(field.y)
       // the row is not marked: the panel has said it
-      await expect(tasks.actionsCell(FIRST)).not.toHaveAttribute("aria-invalid")
+      await expect(tasks.actionsCell(FIRST)).not.toHaveAttribute("data-failed")
 
       await tasks.press("Escape")
       await expect(tasks.panel).toHaveCount(0)
@@ -1034,14 +929,14 @@ test.describe("creating a record", () => {
     expect(grid.y).toBeCloseTo(viewers.grid, 0)
   })
 
-  test("it is a tab stop before the grid, opens the panel with the create action's inputs, and gets the focus back", async ({
+  test("it is a Tab stop of the heading line before the table, opens the panel with the create action's inputs, and gets the focus back", async ({
     page,
     tasks,
     pushed,
   }) => {
-    // right before the grid, at the far end of the heading line, after
-    // "Columns" (hiding.spec.ts) and the inputs of the argument line
-    await tasks.cell(FIRST, "title").focus()
+    // at the far end of the heading line, after "Columns" (hiding.spec.ts)
+    // and the inputs of the argument line, right before "Skip table"
+    await tasks.skip.focus()
     await page.keyboard.press("Shift+Tab")
     await expect(tasks.create).toBeFocused()
     await page.keyboard.press("Shift+Tab")
@@ -1111,12 +1006,12 @@ test.describe("creating a record", () => {
     await tasks.press("Escape")
     await expect(tasks.panel).toHaveCount(0)
     await expect(tasks.create).toBeFocused()
-    // the grid behind it is as it was, right after it
+    // the table behind it is as it was, its "Skip table" right after it
     await page.keyboard.press("Tab")
-    await expect(tasks.cell(FIRST, "title")).toBeFocused()
+    await expect(tasks.skip).toBeFocused()
   })
 
-  test("a field of every type is filled in, and the new record is the first row of the page, with the focus on its first cell", async ({
+  test("a field of every type is filled in, and the new record is the first row of the page, with the focus on its first stop", async ({
     page,
     tasks,
     pushed,
@@ -1180,9 +1075,8 @@ test.describe("creating a record", () => {
     await expect(tasks.actions(created)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
     await expect(tasks.expander(created)).toHaveAttribute("aria-expanded", "false")
 
-    // focus is on its first data cell, which is the grid's tab stop
-    await expect(tasks.cell(created, "title")).toBeFocused()
-    expect(await tasks.tabStops()).toEqual([`task-row-${created}-c-title`])
+    // focus is on its first stop, the row's box
+    await expect(tasks.box(created)).toBeFocused()
 
     // counted in, and every row says where it stands now
     await expect(tasks.range).toHaveText(`1–26 of ${total + 1}`)
@@ -1191,10 +1085,9 @@ test.describe("creating a record", () => {
     expect(await tasks.rowIndexes()).toEqual(Array.from({ length: 26 }, (_, index) => index + 3))
     await expect(tasks.status).toHaveText("Task created")
 
-    // a row like the others: the arrow keys, an edit, an action, and what it expands into
-    await tasks.press("ArrowDown")
-    await expect(tasks.cell(FIRST, "title")).toBeFocused()
-    await tasks.press("ArrowUp", "Enter")
+    // a row like the others: Tab, an edit, an action, and what it expands into
+    expect(await tasks.walk(2)).toEqual([`task-row-${created}-e>button`, `task-row-${created}-c-title`])
+    await tasks.press("Enter")
     await tasks.retype("Made and renamed")
     await tasks.saves(tasks.cell(created, "title"), () => tasks.press("Enter"))
     await expect(tasks.cell(created, "title")).toHaveText("Made and renamed")
@@ -1205,7 +1098,7 @@ test.describe("creating a record", () => {
     await tasks.action(created, "destroy").click()
     await tasks.question.getByRole("button", { name: "Confirm" }).click()
     await expect(tasks.row(created)).toHaveCount(0)
-    await expect(tasks.actionsCell(FIRST)).toBeFocused()
+    await expect(tasks.action(FIRST, "destroy"), "the same stop of the row after it").toBeFocused()
     expect(await tasks.rowKeys()).toEqual(before)
     expect(await tasks.rowIndexes()).toEqual(Array.from({ length: 25 }, (_, index) => index + 3))
     await expect(tasks.range).toHaveText(`1–25 of ${total}`)
@@ -1229,7 +1122,7 @@ test.describe("creating a record", () => {
     await expect(tasks.rows).toHaveCount(26)
     const created = await tasks.rowKey(1)
     await expect(tasks.cell(created, "title")).toHaveText("Made on page two")
-    await expect(tasks.cell(created, "title")).toBeFocused()
+    await expect(tasks.box(created)).toBeFocused()
     expect(await tasks.rowIndexes()).toEqual(Array.from({ length: 26 }, (_, index) => index + 28))
     await expect(tasks.range).toHaveText(`26–51 of ${total + 1}`)
 
@@ -1344,9 +1237,8 @@ test.describe("creating in a nested table", () => {
 
     await expect(create).toBeVisible()
     await expect(create).toHaveText("New comment")
-    await expect(create).toHaveAttribute("tabindex", "-1")
+    await expect(create, "a Tab stop as any button").not.toHaveAttribute("tabindex")
     await expect(tasks.line(FIRST, "comments"), "the line's own button says what it said").toHaveText("Comments")
-    expect(await tasks.tabStops(), "the tree is one tab stop still").toHaveLength(1)
 
     // on the line, which is the nested table's heading line: at its far
     // end, as a table's create button is on its own, inside what is seen
@@ -1404,11 +1296,10 @@ test.describe("creating in a nested table", () => {
     expect(await pushed.count("create")).toBe(1)
     expect(await pushed.count("toggle")).toBe(0)
 
-    // given up, focus is back on the line's button
+    // given up, focus is back on the create button
     await tasks.press("Escape")
     await expect(comments.panel).toHaveCount(0)
     await expect(create).toBeFocused()
-    expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-l-comments-c`])
 
     await create.click()
     await comments.field("body").fill("Said in the browser")
@@ -1420,8 +1311,8 @@ test.describe("creating in a nested table", () => {
     const created = keys[0]
     expect(keys.slice(1)).toEqual(before)
     await expect(comments.cell(created, "body")).toHaveText("Said in the browser")
-    await expect(comments.cell(created, first), "its first data cell").toBeFocused()
-    expect(await tasks.tabStops()).toEqual([`${comments.id}-row-${created}-c-${first}`])
+    await expect(comments.cell(created, first)).toBeVisible()
+    await expect.poll(() => comments.focusedStop(), "the first stop of the new row").toBe((await comments.rowStops(created))[0])
     expect(await comments.rowIndexes()).toEqual(keys.map((_, index) => index + 3))
     await expect(comments.status).toHaveText("Comment created")
     await expect(tasks.status, "the table around it says nothing").toHaveText("")
@@ -1430,44 +1321,29 @@ test.describe("creating in a nested table", () => {
     await expect(tasks.cell(FIRST, "comment_count")).toHaveText(count!)
     await expect(tasks.line(FIRST, "comments")).toHaveAttribute("aria-expanded", "true")
     await expect(create).toBeVisible()
-
-    // Escape comes back out of the nested table, as from any of its cells
-    await tasks.press("Escape")
-    await expect(tasks.nestedCell(FIRST, "comments")).toBeFocused()
   })
 
-  test("with the keyboard: F2 on the line goes into its controls, the arrow keys move between them, Enter uses one", async ({
+  test("with the keyboard: Tab goes from the line's button to the nested table's heading line, Columns and create; Enter or Space uses one", async ({
     tasks,
     pushed,
   }) => {
     const comments = await tasks.openLine(FIRST, "comments")
-    const line = tasks.lineCell(FIRST, "comments")
     const toggle = tasks.line(FIRST, "comments")
     const create = tasks.lineCreate(FIRST, "comments")
-    await line.focus()
+    await toggle.focus()
     await pushed.clear()
 
-    await tasks.press("F2")
-    await expect(toggle, "first the button that opens the line").toBeFocused()
-    await tasks.press("ArrowLeft")
-    await expect(toggle, "Left ends at the first control").toBeFocused()
-    // then the nested table's heading line: "Columns", and create at its end
-    await tasks.press("ArrowRight")
-    await expect(comments.columnsButton).toBeFocused()
-    await tasks.press("ArrowRight")
-    await expect(create).toBeFocused()
-    await tasks.press("ArrowRight")
-    await expect(create, "Right ends at the last").toBeFocused()
-    await tasks.press("ArrowLeft", "ArrowLeft")
-    await expect(toggle).toBeFocused()
-    await tasks.press("Escape")
-    await expect(line).toBeFocused()
+    // the line's button, then the nested table's heading line on the line:
+    // "Columns", and create at its end; then its "Skip table"
+    const [columns, creates, skip] = [`${comments.id}-columns-button`, `${comments.id}-create`, `${comments.id}-skip`]
+    expect(await tasks.walk(3)).toEqual([columns, creates, skip])
+    expect(await tasks.walk(3, true)).toEqual([creates, columns, `task-row-${FIRST}-l-comments-b`])
     expect(await pushed.all(), "none of it asks the server anything").toEqual([])
-    expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-l-comments-c`])
     await expect(toggle).toHaveAttribute("aria-expanded", "true")
 
     // Enter on the create button opens the panel; Escape gives the focus back to it
-    await tasks.press("F2", "ArrowRight", "ArrowRight", "Enter")
+    await create.focus()
+    await tasks.press("Enter")
     await expect(comments.panel).toBeVisible()
     await expect(comments.field("body")).toBeFocused()
     expect(await pushed.count("create")).toBe(1)
@@ -1486,47 +1362,26 @@ test.describe("creating in a nested table", () => {
     await expect(comments.panel).toHaveCount(0)
     const created = await comments.rowKey(1)
     await expect(comments.cell(created, "body")).toHaveText("Typed, not clicked")
-    expect(await comments.hasFocus()).toBe(true)
-    expect(await tasks.tabStops()).toHaveLength(1)
+    await expect.poll(() => comments.focusedStop(), "the first stop of the new row").toBe((await comments.rowStops(created))[0])
   })
 
-  test("the line itself is used as before: Enter opens and closes it, Right opens and Left closes; and its own button can be used from the keyboard", async ({
-    tasks,
-  }) => {
+  test("the line's button opens and closes it with Enter, and keeps the focus", async ({ tasks, pushed }) => {
     await tasks.expand(FIRST)
-    const line = tasks.lineCell(FIRST, "comments")
     const toggle = tasks.line(FIRST, "comments")
     const comments = tasks.nested(FIRST, "comments")
-    await line.focus()
-
-    // closed, the line has one control, and F2 has nothing to go into
-    await tasks.press("F2")
-    await expect(line).toBeFocused()
+    await toggle.focus()
+    await pushed.clear()
 
     await tasks.press("Enter")
     await comments.loaded()
-    await expect(line).toBeFocused()
-    await tasks.press("Enter")
-    await expect(comments.root).toHaveCount(0)
-    await tasks.press("ArrowRight")
-    await comments.loaded()
-    await expect(tasks.lineCreate(FIRST, "comments")).toBeVisible()
-    await tasks.press("ArrowRight")
-    await expect(line, "open already: Right has nowhere to go on a line").toBeFocused()
-    await tasks.press("ArrowLeft")
-    await expect(comments.root).toHaveCount(0)
-    await expect(line).toBeFocused()
-
-    // from inside: Enter on the line's own button closes the line, and focus is not lost
-    await tasks.press("ArrowRight")
-    await comments.loaded()
-    await tasks.press("F2")
     await expect(toggle).toBeFocused()
+    await expect(toggle).toHaveAttribute("aria-expanded", "true")
+    await expect(tasks.lineCreate(FIRST, "comments")).toBeVisible()
     await tasks.press("Enter")
-    await expect(toggle).toHaveAttribute("aria-expanded", "false")
     await expect(comments.root).toHaveCount(0)
-    expect(await tasks.hasFocus()).toBe(true)
-    expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-l-comments-c`])
+    await expect(toggle).toHaveAttribute("aria-expanded", "false")
+    await expect(toggle).toBeFocused()
+    expect(await pushed.count("toggle")).toBe(2)
   })
 
   test("under a project, its tasks are created with every field but the one that joins them to it", async ({
@@ -1550,10 +1405,9 @@ test.describe("creating in a nested table", () => {
 
     const created = await nested.rowKey(1)
     await expect(nested.cell(created, "title")).toHaveText("Made under its project")
-    await expect(nested.cell(created, "title")).toBeFocused()
+    await expect.poll(() => nested.focusedStop(), "the first stop of the new row").toBe((await nested.rowStops(created))[0])
     await expect(nested.range).toHaveText("1–26 of 58")
     expect(await nested.rowIndexes()).toEqual(Array.from({ length: 26 }, (_, index) => index + 3))
-    expect(await projects.tabStops()).toEqual([`${nested.id}-row-${created}-c-title`])
 
     // its own row actions run in the nested table: the panel is that table's
     await nested.acts(created, () => nested.action(created, "set_progress").click())
@@ -1571,7 +1425,7 @@ test.describe("creating in a nested table", () => {
     await expect(projects.question, "the question is the nested table's own").toBeHidden()
     await nested.question.getByRole("button", { name: "Confirm" }).click()
     await expect(nested.row(created)).toHaveCount(0)
-    await expect(nested.actionsCell(await nested.rowKey(1))).toBeFocused()
+    await expect(nested.action(await nested.rowKey(1), "destroy"), "the same stop of the row after").toBeFocused()
     await expect(nested.range).toHaveText("1–25 of 57")
     await expect(projects.line(SEED.project.mobileApp, "tasks")).toHaveAttribute("aria-expanded", "true")
   })
@@ -1583,10 +1437,9 @@ test.describe("creating in a nested table", () => {
       const comments = await tasks.openLine(FIRST, "comments")
       await expect(comments.rows.first()).toBeVisible()
       await expect(tasks.lineCreate(FIRST, "comments")).toHaveCount(0)
-      // F2 on the line goes into it, where "Columns" is the last control
-      await tasks.lineCell(FIRST, "comments").focus()
-      await tasks.press("F2", "ArrowRight", "ArrowRight")
-      await expect(comments.columnsButton).toBeFocused()
+      // Tab from the line's button: "Columns" is the heading line's last control, "Skip table" after it
+      await tasks.line(FIRST, "comments").focus()
+      expect(await tasks.walk(2)).toEqual([`${comments.id}-columns-button`, `${comments.id}-skip`])
     })
   })
 })
@@ -1613,7 +1466,7 @@ test.describe("creating in the full view", () => {
     expect(Math.abs(create.y + create.height / 2 - (clear.y + clear.height / 2))).toBeLessThanOrEqual(1)
     expect(create.height, "as high as the control beside it").toBeCloseTo(clear.height, 0)
 
-    // tab stops in that order, before the grid
+    // Tab stops in that order, before the table
     await comments.create.focus()
     await page.keyboard.press("Tab")
     await expect(comments.relatedClear).toBeFocused()
@@ -1629,8 +1482,7 @@ test.describe("creating in the full view", () => {
     const keys = await comments.rowKeys()
     expect(keys.slice(1)).toEqual(before)
     await expect(comments.cell(keys[0], "body")).toHaveText("Said in the full view")
-    const [first] = await comments.columns()
-    await expect(comments.cell(keys[0], first)).toBeFocused()
+    await expect.poll(() => comments.focusedStop(), "the first stop of the new row").toBe((await comments.rowStops(keys[0]))[0])
     await expect(comments.range).toHaveText(`${keys.length} records`)
     await expect(comments.relatedHeading).toHaveText("Rename the onboarding email: Comments")
 
@@ -1732,13 +1584,10 @@ test.describe("the two tables of /dashboard", () => {
 
     const created = await tasks.rowKey(1)
     await expect(tasks.cell(created, "title")).toHaveText("Made on the dashboard")
-    await expect(tasks.cell(created, "title")).toBeFocused()
+    await expect(tasks.box(created), "the first stop of the new row").toBeFocused()
     await expect(tasks.range).toHaveText(`1–26 of ${SEED.tasks.acme + 1}`)
     expect(await projects.rowKeys()).toEqual(projectKeys)
     await expect(projects.range).toHaveText("1–6 of 6")
-    // each grid keeps its own tab stop
-    expect(await tasks.tabStops()).toEqual([`dashboard-tasks-row-${created}-c-title`])
-    expect(await projects.tabStops()).toHaveLength(1)
     expect(page.url()).toBe(url)
   })
 })

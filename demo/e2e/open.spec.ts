@@ -7,16 +7,19 @@ import { Table } from "./support/table"
 
 const FIRST = SEED.task.first
 
-test("the keyboard reaches Open first in the actions cell, and Enter tells the page the row", async ({ page }) => {
+test("Tab reaches Open first in the actions cell, and Enter tells the page the row", async ({ page }) => {
   const tasks = new Table(page, "task", "/e2e/opened")
   await tasks.open()
 
   const cell = tasks.actionsCell(FIRST)
-  await cell.focus()
-  await tasks.press("Enter")
   const open = cell.locator("button[data-open]")
-  await expect(open).toBeFocused()
   await expect(open).toHaveText("Open")
+  // the first button of the cell: the stop before it is the row's last stop before the actions
+  const stops = await tasks.rowStops(FIRST)
+  const before = stops[stops.indexOf(`task-row-${FIRST}-a-open`) - 1]
+  expect(before).not.toMatch(new RegExp(`^task-row-${FIRST}-a-`))
+  await open.focus()
+  await expect(open).toBeFocused()
 
   await tasks.press("Enter")
   await expect(page.locator("#opened")).toHaveText(FIRST)
