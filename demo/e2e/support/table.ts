@@ -10,8 +10,8 @@ import { expect, type Locator, type Page, type Response } from "@playwright/test
  * A nested table is a table like any other, under an id of its own
  * (`ID-row-KEY-t-RELATIONSHIP`): `nested()` gives it. What is asked of a
  * table here is about that table alone, not about the tables nested in it,
- * with two exceptions that are about the whole tree on purpose: `tabStop`
- * and `tabStops()`.
+ * with one exception that is about the whole tree on purpose: `tabStops()`,
+ * the Tab stops in page order, which a nested table is part of.
  */
 export class Table {
   constructor(
@@ -90,7 +90,7 @@ export class Table {
     return this.byId(this.id)
   }
 
-  /** The `<table role="grid">`. */
+  /** The `<table role="table">`. */
   get grid(): Locator {
     return this.byId(`${this.id}-table`)
   }
@@ -166,13 +166,37 @@ export class Table {
     }))
   }
 
-  /** The one cell that Tab stops at, of the grid and of every grid nested in it. */
-  get tabStop(): Locator {
-    return this.grid.locator('[tabindex="0"]')
-  }
-
   header(column: string): Locator {
     return this.byId(`${this.id}-head-${column}`)
+  }
+
+  /**
+   * The button in a sortable column's header: the Tab stop that sorts
+   * (ascending, descending, none). The header says the direction
+   * (`aria-sort`). A header that does not sort has none.
+   */
+  sortButton(column: string): Locator {
+    return this.byId(`${this.id}-sort-${column}`)
+  }
+
+  /** Sorts by a column with the pointer, a click on its header's button, and waits for the rows. */
+  async sortBy(column: string): Promise<void> {
+    await this.reads(() => this.sortButton(column).click())
+  }
+
+  // ---- skipping the table ---------------------------------------------------
+
+  /**
+   * "Skip table …": a link at the start of the table, before its header
+   * row, out of sight until it has focus. It jumps to `skipTarget`.
+   */
+  get skip(): Locator {
+    return this.byId(`${this.id}-skip`)
+  }
+
+  /** Where "Skip table" jumps to: an empty element after the table's pagination (and its full-view link). */
+  get skipTarget(): Locator {
+    return this.byId(`${this.id}-end`)
   }
 
   /** The headers of the table's columns: not the one of the expanders. */
@@ -194,9 +218,35 @@ export class Table {
     )
   }
 
-  /** The handle at the end of a column's header: it changes the column's width. */
+  /** The handle at the end of a column's header: the pointer drags it to change the column's width. No Tab stop. */
   resizer(column: string): Locator {
     return this.byId(`${this.id}-resize-${column}`)
+  }
+
+  /**
+   * The width field of a column in the list of "Columns" ("Width of Title",
+   * in pixels): the keyboard's way to a column's width. The label column has
+   * one too, in an entry of its own first in the list.
+   */
+  widthField(column: string): Locator {
+    return this.byId(`${this.id}-column-${column}-width`)
+  }
+
+  /** "Reset widths", after the columns in that list. */
+  get resetWidths(): Locator {
+    return this.byId(`${this.id}-reset-widths`)
+  }
+
+  /**
+   * Makes a column `width` pixels wide from the keyboard: opens "Columns",
+   * types the number into the column's width field and leaves it with Tab,
+   * which clamps it to what a column may be (48 to 1000).
+   */
+  async typeWidth(column: string, width: number): Promise<void> {
+    await this.openColumns()
+    await this.widthField(column).focus()
+    await this.retype(String(width))
+    await this.page.keyboard.press("Tab")
   }
 
   // ---- hiding columns -----------------------------------------------------
@@ -361,9 +411,9 @@ export class Table {
     return this.grid.locator(`:scope > [role=rowgroup] > [role=row] > :is([role=cell],[role=rowheader])[id$="-c-${column}"]`)
   }
 
-  /** The cells of a row, left to right, the expander among them. */
+  /** The cells of a row, left to right, the expander and the label column's row header among them. */
   rowCells(key: string): Locator {
-    return this.row(key).locator(":scope > tr > td")
+    return this.row(key).locator(":scope > [role=row] > :is([role=cell],[role=rowheader])")
   }
 
   /** What the cells of a column show, down the page. */
@@ -545,9 +595,10 @@ export class Table {
   }
 
   /**
-   * The button the hook puts into a cell that cuts some of its text off,
-   * while the cell has the pointer or the focus: it shows all of the text
-   * in place (`aria-expanded`), and cuts it off again.
+   * "Show all": the button the hook puts into every cell that cuts some of
+   * its text off, read-only or editable, a Tab stop named after its column
+   * ("Show all of Title"): it shows all of the text in place
+   * (`aria-expanded`), and cuts it off again.
    */
   whole(cell: Locator): Locator {
     return cell.locator(":scope > [data-whole]")
@@ -657,13 +708,13 @@ export class Table {
     return this.pageBoxCell.locator("input[type=checkbox]")
   }
 
-  /** The keys of the rows of the page that say they are selected, top to bottom. */
+  /** The keys of the rows of the page whose box (or radio button) is checked, top to bottom. */
   async selectedKeys(): Promise<string[]> {
     const prefix = `${this.id}-row-`
     return this.rows.evaluateAll(
       (rows, prefix) =>
         rows
-          .filter((row) => (row as HTMLTableSectionElement).rows[0].getAttribute("aria-selected") === "true")
+          .filter((row) => row.querySelector<HTMLInputElement>(":scope > [role=row] > [data-selector] > input")?.checked)
           .map((row) => row.id.slice(prefix.length)),
       prefix,
     )
@@ -1006,30 +1057,43 @@ export class Table {
   }
 
   /**
-   * Everything in the grid, and in the tables nested in it, that Tab stops
-   * at. It is one thing: a cell, or the editor open in it.
+   * The Tab stops of the grid, and of the tables nested in it, in page
+   * order: every element Tab can reach there (`tabIndex` 0 or more, shown,
+   * not disabled, not in a closed dialog or popover), by its id, else
+   * `id-of-its-cell>tag`. The controls of a nested table's heading line
+   * stand on its line in the grid around it, and are among them.
    */
   async tabStops(): Promise<string[]> {
     return this.hookRoot.evaluate((root) =>
       Array.from(root.querySelectorAll<HTMLElement>("*"))
-        // The buttons of a nested table's dialog are in the grid around it,
-        // and are nothing Tab can reach while the dialog is closed. Nor are
-        // the buttons of a nested table's line above its grid, which are not
-        // shown while none of its rows is selected. The inputs of a nested
-        // table's argument line are tab stops of their own, on purpose
-        // (arguments.spec.ts), and are no part of the grid's one. Nor is
-        // the "Columns" button of a nested table (hiding.spec.ts).
         .filter(
           (element) =>
             element.tabIndex >= 0 &&
             !(element as HTMLButtonElement).disabled &&
-            !element.closest("dialog:not([open])") &&
-            !element.closest("form[data-arguments]") &&
-            !element.closest("[data-columns-button]") &&
+            !element.closest("dialog:not([open]), [popover]:not(:popover-open)") &&
             element.getClientRects().length > 0,
         )
-        .map((element) => element.id || element.tagName),
+        .map((element) => element.id || `${element.closest("[id]")?.id}>${element.tagName.toLowerCase()}`),
     )
+  }
+
+  /**
+   * Presses Tab (Shift+Tab with `back`) `count` times from where focus is,
+   * and gives what has focus after each press, as `tabStops()` names it.
+   */
+  async walk(count: number, back = false): Promise<string[]> {
+    const seen: string[] = []
+    for (let i = 0; i < count; i++) {
+      await this.page.keyboard.press(back ? "Shift+Tab" : "Tab")
+      seen.push(
+        await this.page.evaluate(() => {
+          const active = document.activeElement as HTMLElement | null
+          if (!active || active === document.body) return "BODY"
+          return active.id || `${active.closest("[id]")?.id}>${active.tagName.toLowerCase()}`
+        }),
+      )
+    }
+    return seen
   }
 
   /** Presses keys one after the other. */

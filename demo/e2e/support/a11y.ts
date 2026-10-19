@@ -3,10 +3,9 @@ import { expect, type Page } from "@playwright/test"
 
 /**
  * axe-core finds nothing wrong with the page as it is now: every rule axe
- * runs by default, on the whole document, with no rule switched off and no
- * impact left out (but for one finding, on the grid of a nested table: see
- * below). `within` is a selector that limits the check to a part
- * of the page.
+ * runs by default, on the whole document, with no rule switched off, no
+ * impact left out and no finding excepted. `within` is a selector that
+ * limits the check to a part of the page.
  */
 export async function expectNoAxeViolations(page: Page, within?: string): Promise<void> {
   // The demo's progress bar (Phoenix's topbar, a <canvas> on the body) shows
@@ -43,35 +42,12 @@ export async function expectNoAxeViolations(page: Page, within?: string): Promis
     .options({ resultTypes: ["violations"] })
   const results = await (within ? builder.include(within) : builder).analyze()
 
-  // One finding of one rule is not held against the page: "Scrollable region
-  // must have keyboard access", for the grid of a nested table. Every table
-  // scrolls sideways in its own area, and axe asks of each such area that Tab
-  // stops in it. A tree of grids has one tab stop on purpose (see the guide
-  // "Keyboard and accessibility"): a nested table is gone into with Enter
-  // and moved through with the arrow keys, and its area scrolls with the
-  // focus, which axe cannot know. The grid on the page, and that of a
-  // picker, holds the tab stop and is checked as everything else is.
-  const ofNestedGrid = async (target: unknown[]): Promise<boolean> =>
-    target.length === 1 &&
-    typeof target[0] === "string" &&
-    (await page
-      .locator(target[0])
-      .evaluateAll(
-        (found) =>
-          found.length === 1 && found[0].matches("[role=gridcell][data-nested] [data-ash-data-table]"),
-      ))
-
-  const violations = []
-  for (const violation of results.violations) {
-    const nodes = []
-    for (const node of violation.nodes) {
-      if (violation.id === "scrollable-region-focusable" && (await ofNestedGrid(node.target))) continue
-      nodes.push(node.target.join(" "))
-    }
-    if (nodes.length > 0) {
-      violations.push({ rule: violation.id, impact: violation.impact, help: violation.help, nodes })
-    }
-  }
+  const violations = results.violations.map((violation) => ({
+    rule: violation.id,
+    impact: violation.impact,
+    help: violation.help,
+    nodes: violation.nodes.map((node) => node.target.join(" ")),
+  }))
 
   expect(violations).toEqual([])
 }
