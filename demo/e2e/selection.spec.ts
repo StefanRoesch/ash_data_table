@@ -75,7 +75,7 @@ test.describe("the boxes", () => {
     // every box is a Tab stop, the browser's own checkbox; its cell is none
     for (const box of [tasks.pageBox, tasks.box(FIRST)]) await expect(box).not.toHaveAttribute("tabindex")
     await expect(tasks.boxCell(FIRST)).not.toHaveAttribute("tabindex")
-    const stops = await tasks.tabStops()
+    const stops = await tasks.stops()
     expect(stops).toContain("task-select-head>input")
     expect(stops).toContain(`task-row-${FIRST}-s>input`)
     expect(stops).not.toContain(`task-row-${FIRST}-s`)

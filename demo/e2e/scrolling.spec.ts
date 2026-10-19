@@ -204,7 +204,7 @@ test.describe("every table scrolls sideways in an area of its own", () => {
     const comments = await tasks.openLine(FIRST, "comments")
     await expect(tasks.hookRoot).toHaveAttribute("tabindex", "-1")
     await expect(comments.hookRoot).toHaveAttribute("tabindex", "-1")
-    const stops = await tasks.tabStops()
+    const stops = await tasks.stops()
     expect(stops).not.toContain(`${tasks.id}-grid`)
     expect(stops).not.toContain(`${comments.id}-grid`)
     // the nested table's area holds stops of its own: its rows' controls and editable cells
@@ -433,7 +433,7 @@ test.describe("with the keyboard", () => {
     const kept = (await box(tasks.cell(FIRST, "title"))).right
     const area = await box(tasks.hookRoot)
     const end = area.left + (await tasks.area()).seen
-    const stops = (await tasks.tabStops()).filter((id) => id.startsWith(`task-row-${FIRST}-`))
+    const stops = (await tasks.stops()).filter((id) => id.startsWith(`task-row-${FIRST}-`))
 
     // to the end of the row, and back stop by stop: none is under the label column
     await page.locator(`[id="${stops.at(-1)}"]`).focus()
@@ -460,7 +460,7 @@ test.describe("with the keyboard", () => {
     await expect(tasks.scrollbar).toBeVisible()
     const keys = await tasks.rowKeys()
     for (let row = 0; row < 14; row++) {
-      const last = (await tasks.tabStops()).filter((id) => id.startsWith(`task-row-${keys[row]}-`)).at(-1)!
+      const last = (await tasks.stops()).filter((id) => id.startsWith(`task-row-${keys[row]}-`)).at(-1)!
       await page.locator(`[id="${last}"]`).focus()
       await page.keyboard.press("Tab")
       await expect(tasks.boxCell(keys[row + 1]).locator("input")).toBeFocused()

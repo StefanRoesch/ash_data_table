@@ -10,7 +10,7 @@ import { expect, type Locator, type Page, type Response } from "@playwright/test
  * A nested table is a table like any other, under an id of its own
  * (`ID-row-KEY-t-RELATIONSHIP`): `nested()` gives it. What is asked of a
  * table here is about that table alone, not about the tables nested in it,
- * with one exception that is about the whole tree on purpose: `tabStops()`,
+ * with one exception that is about the whole tree on purpose: `stops()`,
  * the Tab stops in page order, which a nested table is part of.
  */
 export class Table {
@@ -1063,7 +1063,7 @@ export class Table {
    * `id-of-its-cell>tag`. The controls of a nested table's heading line
    * stand on its line in the grid around it, and are among them.
    */
-  async tabStops(): Promise<string[]> {
+  async stops(): Promise<string[]> {
     return this.hookRoot.evaluate((root) =>
       Array.from(root.querySelectorAll<HTMLElement>("*"))
         .filter(
@@ -1077,7 +1077,7 @@ export class Table {
     )
   }
 
-  /** The Tab stops of a row, left to right, named as `tabStops()` names them: its box, expander, editable cells, buttons. */
+  /** The Tab stops of a row, left to right, named as `stops()` names them: its box, expander, editable cells, buttons. */
   async rowStops(key: string): Promise<string[]> {
     return this.rowLine(key).evaluate((row) =>
       Array.from(row.querySelectorAll<HTMLElement>("*"))
@@ -1089,7 +1089,7 @@ export class Table {
     )
   }
 
-  /** What has focus, named as `tabStops()` names a stop; `BODY` where nothing has. */
+  /** What has focus, named as `stops()` names a stop; `BODY` where nothing has. */
   async focusedStop(): Promise<string> {
     return this.page.evaluate(() => {
       const active = document.activeElement as HTMLElement | null
@@ -1100,7 +1100,7 @@ export class Table {
 
   /**
    * Presses Tab (Shift+Tab with `back`) `count` times from where focus is,
-   * and gives what has focus after each press, as `tabStops()` names it.
+   * and gives what has focus after each press, as `stops()` names it.
    */
   async walk(count: number, back = false): Promise<string[]> {
     const seen: string[] = []

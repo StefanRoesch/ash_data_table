@@ -164,7 +164,7 @@ test.describe("with the keyboard", () => {
     expect(await tasks.walk(1)).toEqual([`task-row-${FIRST}-l-assignee-b`])
     expect(await tasks.walk(1, true)).toEqual([`${project.id}-full-view`])
     // its cells are in it, not around it: the first one that is a stop is its record's
-    expect(await project.tabStops()).toContain(`${project.id}-row-${key}-c-name`)
+    expect(await project.stops()).toContain(`${project.id}-row-${key}-c-name`)
 
     await line.focus()
     await tasks.press(" ")

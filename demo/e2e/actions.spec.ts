@@ -152,7 +152,7 @@ test.describe("with the keyboard", () => {
     tasks,
     pushed,
   }) => {
-    const stops = await tasks.tabStops()
+    const stops = await tasks.stops()
     const beforeButtons = stops[stops.indexOf(`task-row-${FIRST}-a-archive`) - 1]
     await tasks.action(FIRST, "archive").focus()
     await pushed.clear()

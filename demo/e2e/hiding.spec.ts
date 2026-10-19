@@ -368,11 +368,11 @@ test.describe("Tab and hidden columns", () => {
             id === `task-sort-${column}` || id.startsWith(`task-filter-${column}-`) || id.endsWith(`-c-${column}`),
         ),
       )
-    expect(inHidden(await tasks.tabStops()), "shown, they hold stops").not.toEqual([])
+    expect(inHidden(await tasks.stops()), "shown, they hold stops").not.toEqual([])
 
     await tasks.hide(...hidden)
     await page.keyboard.press("Escape")
-    const stops = await tasks.tabStops()
+    const stops = await tasks.stops()
     expect(inHidden(stops)).toEqual([])
 
     // Tab goes from the title to the stop after it that is shown, in the
@@ -971,10 +971,10 @@ test.describe("each table on its own", () => {
     // Tab passes over the nested table's hidden column, as over any table's
     const inBody = (stops: string[]) =>
       stops.filter((id) => id.startsWith(`${comments.id}-`) && (id.endsWith("-c-body") || id.includes("-filter-body-") || id === `${comments.id}-sort-body`))
-    expect(inBody(await tasks.tabStops())).toEqual([])
+    expect(inBody(await tasks.stops())).toEqual([])
     await comments.unhide("body")
     await page.keyboard.press("Escape")
-    expect(inBody(await tasks.tabStops())).not.toEqual([])
+    expect(inBody(await tasks.stops())).not.toEqual([])
   })
 
   test("a nested table that is closed and opened again shows every column", async ({ tasks }) => {

@@ -106,7 +106,7 @@ test.describe("the slider, from the keyboard", () => {
 
   test("Tab saves what the keys chose and goes on to the next stop", async ({ tasks, pushed }) => {
     const progress = tasks.cell(SECOND, "progress")
-    const stops = await tasks.tabStops()
+    const stops = await tasks.stops()
     const next = stops[stops.indexOf(`task-row-${SECOND}-c-progress`) + 1]
 
     await progress.focus()

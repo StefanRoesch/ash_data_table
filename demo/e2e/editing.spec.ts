@@ -19,11 +19,11 @@ test.beforeEach(async ({ tasks }) => {
 
 /**
  * The stop after `cell` (`by` 1), or before it (`by` -1), in page
- * order, named as `Table.tabStops()` names it: the next control or editable cell.
+ * order, named as `Table.stops()` names it: the next control or editable cell.
  */
 async function stopBeside(tasks: Table, cell: Locator, by: 1 | -1): Promise<string> {
   const id = (await cell.getAttribute("id"))!
-  const stops = await tasks.tabStops()
+  const stops = await tasks.stops()
   const beside = stops[stops.indexOf(id) + by]
   expect(beside, `a stop beside ${id}`).toBeTruthy()
   return beside

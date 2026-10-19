@@ -74,7 +74,7 @@ test.describe("the footer row", () => {
     await summed(tasks)
 
     await expect(tasks.summaries.locator("[tabindex], button, input, select, a")).toHaveCount(0)
-    const last = (await tasks.tabStops()).at(-1)!
+    const last = (await tasks.stops()).at(-1)!
     expect(last.startsWith(`task-row-${(await tasks.rowKeys()).at(-1)}`), "the last stop of the grid is the last record's").toBe(true)
     await page.locator(`[id="${last}"]`).focus()
     await tasks.press("Tab")

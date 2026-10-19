@@ -63,7 +63,7 @@ test.describe("offset pages: /tasks", () => {
     page,
     tasks,
   }) => {
-    const last = (await tasks.tabStops()).at(-1)!
+    const last = (await tasks.stops()).at(-1)!
     await page.locator(`[id="${last}"]`).focus()
     await tasks.press("Tab")
     await expect(tasks.pageButton(1)).toBeFocused()
@@ -396,7 +396,7 @@ test.describe("keyset pages: /comments", () => {
         await expect(comments.error).toHaveText("The records could not be loaded.")
         await expect(comments.pagination).toHaveCount(0)
         // the table's first stop: the box of its page, in its header
-        expect((await comments.tabStops())[0]).toBe(`${comments.id}-select-head>input`)
+        expect((await comments.stops())[0]).toBe(`${comments.id}-select-head>input`)
         await expect(comments.pageBox).toBeFocused()
       })
     })

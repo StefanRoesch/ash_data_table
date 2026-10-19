@@ -85,7 +85,7 @@ test.describe("a named table as a page of its own", () => {
     // Tab goes along a row's stops, as on any table, its Archive button
     // last, and on to the next row
     const row = `task_board-row-${FIRST}-`
-    const stops = (await table.tabStops()).filter((id) => id.startsWith(row))
+    const stops = (await table.stops()).filter((id) => id.startsWith(row))
     expect(stops.at(-1)).toBe(`${row}a-archive`)
     // the first is the row's box, which has no id of its own: `ID-s>input`
     const [holder, tag] = stops[0].split(">")
