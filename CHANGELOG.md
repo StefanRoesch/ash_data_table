@@ -128,6 +128,15 @@ declared in the resource and mounted with one line in the router.
   `header_cell/2`, `filter_row/1`, `filters/1`, `selector/1`, `editor/2`,
   `error/1`, `dialog/1`, …). `Kit`'s moduledoc says where a nested table is
   moved into (drawn before it opens) and where the grid's sender is drawn.
+  A host imports the JS entries by the package's name,
+  `import {mountGrid, liveViewTransport} from "ash_data_table"`, which
+  Phoenix's esbuild finds in `deps/` (its `NODE_PATH`); the library itself
+  still has no npm dependency.
+- The demo has the tooling a React kit is built on, in the demo only:
+  `live_react` 2.0 with server rendering off, npm in `demo/assets` (React and
+  the packages of shadcn/ui's sources), TSX bundled by the Hex esbuild and
+  scanned by the Hex Tailwind (no Vite), and shadcn/ui's colours scoped
+  under `.shadcn` beside daisyUI. `/react` shows one island.
 
 ### Editing several values in the side panel
 

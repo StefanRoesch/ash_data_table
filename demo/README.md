@@ -7,7 +7,9 @@ kitchen-sink resource with one attribute per built-in Ash type.
 
 Phoenix 1.8, LiveView 1.2.12, Ash 3.36.1 (`~> 3.36 and >= 3.36.1`, as the
 library asks), `ash_postgres`, `ash_phoenix`; Tailwind
-and daisyUI through the `tailwind` and `esbuild` Hex packages, no npm.
+and daisyUI through the `tailwind` and `esbuild` Hex packages. npm only for
+the React islands (`assets/package.json`, see "React islands" below), no
+Vite; the library itself has no npm dependency.
 
 ## Start
 
@@ -20,9 +22,14 @@ docker compose up -d postgres
 Then, in `demo/`:
 
 ```sh
-mix setup        # deps, create and migrate the database, build assets, seed
+mix setup        # deps, create and migrate the database, npm packages, build assets, seed
 mix phx.server   # http://localhost:4478
 ```
+
+`mix setup` runs `mix assets.setup`, which installs the npm packages of
+`assets/package.json` with `npm ci`: it needs Node, the version of
+`assets/.tool-versions` (24; asdf takes it from there). After a change of
+`assets/package.json` or `package-lock.json`, run `mix assets.setup` again.
 
 `mix test` runs the tests against the database `demo_test` on the same
 Postgres, in the Ecto sandbox.
@@ -696,6 +703,58 @@ page. As the member, filter `Estimate hours` by "greater than 10": only their
 own tasks are found; by "is empty": every task whose estimate is hidden from
 them comes back too, whatever it holds.
 
+### React islands
+
+http://localhost:4478/react is a LiveView of the demo's own
+(`DemoWeb.ReactLive`) with one React component in it, drawn with shadcn/ui:
+the tooling the React kit is built on (stage 8 of the refactor,
+`docs/architecture/react-kit-design.md`). "Count" sends an event to the
+LiveView, which answers it and gives the component its new count as a prop.
+`e2e/react.spec.ts` checks it.
+
+How it is put together, as a recipe:
+
+- **live_react 2.0** (`mix.exs`) renders a component with
+  `<LiveReact.react name="Sample" class="shadcn" count={@count} />`: every
+  other attribute becomes a prop. `config :live_react, ssr: false`: the
+  component renders in the browser only, so there is no Node at runtime,
+  and the first render of a page shows nothing in its place until the
+  socket connects. `assets/js/app.js` adds `getHooks(islands)` to the
+  LiveSocket's hooks.
+- **npm** in `assets/` only: `react`, `react-dom` and the packages the
+  shadcn sources import (`@radix-ui/react-slot`, `class-variance-authority`,
+  `clsx`, `tailwind-merge`). live_react's own JS is not an npm package
+  here: esbuild finds it in `deps/`, as it finds `phoenix_live_view`.
+- **esbuild** (the Hex package, `config/config.exs`): `--jsx=automatic`,
+  and `NODE_PATH` holds `deps/`, the build's colocated hooks and
+  `assets/node_modules`, where live_react's files in `deps/` find `react`.
+- **The folder is `assets/islands/`**, the components by name in
+  `islands/index.ts`. Not `assets/react/`: `assets/tsconfig.json` has
+  `baseUrl: "."`, which esbuild honours, so that folder would be what
+  `import … from "react"` finds.
+- **Tailwind** (the Hex package) scans the TSX: `@source "../islands"` in
+  `assets/css/app.css`.
+- **shadcn/ui** components are copied in as source (`islands/ui/`, from
+  shadcn's new-york style for Tailwind 4), not with its CLI, which rewrites
+  the CSS entry. A new component brings its Radix package into
+  `assets/package.json`.
+- **shadcn beside daisyUI**, in `assets/css/app.css`: shadcn's colour names
+  (`background`, `foreground`, `muted`, `border`, `input`, `ring`, …) are
+  theme colours that point at variables renamed `--sh-*`, set only under
+  the class `shadcn`; outside it nothing of daisyUI changes. `primary`,
+  `secondary` and `accent`, names of both, are shadcn's inside `.shadcn`
+  only. The rename is needed: daisyUI's `--border` is a width, shadcn's a
+  colour. Dark mode follows daisyUI's (`data-theme="dark"`, or the
+  system's while no theme is chosen). A Radix primitive that portals its
+  content to `document.body` (Dialog, Popover, Select, Tooltip) leaves the
+  scope: its portalled element carries `shadcn` itself.
+- **The library's JS** by its package name: the demo's test hook
+  (`assets/js/mounted_grid.js`) imports `mountGrid` from `"ash_data_table"`,
+  which `assets/package.json` links to the repository root
+  (`"file:../.."`); a host has it in `deps/`.
+
+All pages load one bundle, React included (+81 KB of JS gzipped).
+
 ## Who you are: the five actors
 
 There is no login. The switcher at the top right of every page posts to
@@ -901,8 +960,11 @@ after a patch, the editors and the dialog, what each actor's page contains,
 and axe-core on every table in every state. They are written with Playwright
 and `@axe-core/playwright` and run in headless Chromium.
 
-Node is a tool for developing `ash_data_table` here, nothing more: the library
-puts no npm package into a host app, and neither does the demo itself.
+Node is a tool for developing `ash_data_table` here: the library puts no npm
+package into a host app. The demo's own npm packages are those of its React
+islands (`assets/package.json`); the browser tests' global setup installs
+them with the rest of the assets (`mix assets.setup`, `npm ci`), so a run
+builds the islands too.
 
 ```sh
 docker compose up -d postgres   # in the repository root, if it is not running
