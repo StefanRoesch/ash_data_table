@@ -580,7 +580,7 @@ defmodule AshDataTable.KitCase do
         need(page, "[id='kit-create']", "the create button") ++
         need(
           page,
-          "[id='kit-grid'][data-show-whole][data-show-less]",
+          "[id='kit-grid'][data-show-whole][data-show-less][data-show-whole-of*='{column}'][data-show-less-of*='{column}']",
           "what the button says that shows a cell's whole text"
         ) ++
         need(page, "[id='kit-status'][role=status]", "the live region") ++
@@ -649,7 +649,7 @@ defmodule AshDataTable.KitCase do
       Enum.flat_map(@columns, fn field ->
         need(
           page,
-          "[id='#{Ids.header_cell("kit", field)}'][role=columnheader][aria-colindex]",
+          "[id='#{Ids.header_cell("kit", field)}'][role=columnheader][aria-colindex][aria-label]",
           "the header of #{field}"
         ) ++
           need(

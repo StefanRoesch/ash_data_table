@@ -832,5 +832,11 @@ msgstr "Alles zeigen"
 msgid "Show less"
 msgstr "Weniger zeigen"
 
+msgid "Show all of %{column}"
+msgstr "Alles zeigen: %{column}"
+
+msgid "Show less of %{column}"
+msgstr "Weniger zeigen: %{column}"
+
 msgid "Apply"
 msgstr "Anwenden"

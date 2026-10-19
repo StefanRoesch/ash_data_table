@@ -165,7 +165,6 @@ export default {
     if (!this.owns(e.target)) return
     const cell = this.cellOf(e.target)
     if (!cell) return
-    this.offerWhole()
     // a cell that Tab comes to is brought out from under what stays in view
     if (page.tabbing) this.intoView(cell)
   },
@@ -184,7 +183,6 @@ export default {
     else if (!to) setTimeout(() => {
       if (target.isConnected && document.activeElement === document.body && this.focused && this.focused.target === target) this.focused = null
     }, 0)
-    setTimeout(() => this.offerWhole(), 0)
   },
 
   onClick(e) {
@@ -216,11 +214,10 @@ export default {
       const button = e.target.closest(ACTION)
       if (button) return this.act(button)
     }
-    // the button of a cell that cuts its text off: shows all of it, or
-    // cuts it off again
+    // the button of a cell that cuts its text off (a click, Enter or
+    // Space): shows all of it, or cuts it off again; focus stays on it
     if (e.target.closest(WHOLE)) {
       this.toggleWhole(cell)
-      if (cell.matches(FOCUSABLE) && document.activeElement !== cell) cell.focus()
       return
     }
     // the button of a sensitive cell: shows the value, or hides it

@@ -25,7 +25,14 @@ defmodule AshDataTable.AttrsTest do
 
   test "a bundle of the table turns into props of text alone" do
     props =
-      Attrs.props(Attrs.grid("t", nil, 1, :multi, nil, %{show_whole: "All", show_less: "Less"}))
+      Attrs.props(
+        Attrs.grid("t", nil, 1, :multi, nil, %{
+          show_whole: "All",
+          show_less: "Less",
+          show_whole_of: "All of {column}",
+          show_less_of: "Less of {column}"
+        })
+      )
 
     assert Enum.all?(props, fn {name, value} -> is_binary(name) and is_binary(value) end)
     assert props["data-table"] == "t"

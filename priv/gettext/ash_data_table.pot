@@ -588,3 +588,11 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Width of %{column}"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Show all of %{column}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Show less of %{column}"
+msgstr ""

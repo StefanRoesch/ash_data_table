@@ -173,10 +173,11 @@ defmodule AshDataTable.Kit do
       described by its message, a selected row by its box.
 
   The only `tabindex="-1"` are the grid's scroll area (`Attrs.grid/6`),
-  the skip link's target (`Attrs.skip_target/1`), the scrollbar at the
-  bottom edge of the window (`Attrs.scrollbar/1`, for the pointer alone)
-  and the button the hook puts into a cell to show its whole text, which
-  take no Tab.
+  the skip link's target (`Attrs.skip_target/1`) and the scrollbar at the
+  bottom edge of the window (`Attrs.scrollbar/1`, for the pointer alone),
+  which take no Tab. The button the hook puts into a cell that cuts its
+  text off, read-only or editable, is a Tab stop of its own ("Show all of
+  Title", named after the header's `aria-label`).
 
   A part of one's own is called with `apply/3` (`part/1`): the defaults of
   its `attr`s are not applied. It is given every assign named below, and
@@ -308,7 +309,9 @@ defmodule AshDataTable.Kit do
       (`Attrs.column_header/3`: `aria-sort`, `data-sort`, `data-label`, …),
       `button` (the sort button's bundle, `Attrs.sort/3`, false where the
       column does not sort), `sort`: writes `role="columnheader"`,
-      `aria-colindex`, and no `tabindex`; where it sorts, a `<button>` with
+      `aria-colindex`, `aria-label` (the column's label: the header's name,
+      and what the hook names the button that shows a cell's whole text
+      after), and no `tabindex`; where it sorts, a `<button>` with
       `button` holds the label (the header's Tab stop); draws the
       `resizer`, and after the label a lock where its `texts` give
       `read_only` (its accessible name).
@@ -448,7 +451,9 @@ defmodule AshDataTable.Kit do
     * `status` - `announcement`, `summary` and `failures` of a run's result;
     * `grid` - `skip_table` (the skip link, with the table's name),
       `select_page`, `select_row`, `related_records`, `actions`,
-      `show_whole`, `show_less` (for `Attrs.grid/6`);
+      `show_whole`, `show_less`, `show_whole_of`, `show_less_of` (for
+      `Attrs.grid/6`; the last two with `{column}` where the hook puts the
+      column's label);
     * `row` - `select_row`, `related_records`;
     * `cell` - `locale`; masked: `hidden_value`, `show`, `hide`,
       `show_value`, `hide_value`; forbidden, and of a union:

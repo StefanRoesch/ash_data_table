@@ -566,7 +566,7 @@ page and keeps the focus.
 | The button that empties a sensitive value | Named with the column or the field: "Clear Budget". In the action panel it says "Keep" once it was used, named "Keep Budget" and described by "Will be cleared.". |
 | A save in progress | `aria-busy` on the cell. |
 | A failed save | The cell is described by the action's message, which stands in the cell under the value, and the same live region says it: "Title was not saved: …". |
-| A cell that cuts its text off | The whole text is in the cell, and is read from there. The button "Show all" / "Show less" that the cell gets while it has the pointer or the focus is for the eye: hidden from assistive technology, and no tab stop. |
+| A cell that cuts its text off | The whole text is in the cell, and is read from there. The cell holds a button "Show all" / "Show less", a Tab stop named after its column ("Show all of Title"), which says whether the text shows whole (`aria-expanded`). |
 | The column of the row actions | A column of the grid, the last one, with the heading "Actions". It is counted in `aria-colcount` and `aria-colindex`. Each button is named by its action. |
 | That rows can be selected | The boxes: a row is selected when its box is ticked. In the picker, where one row is selected at a time, they are radio buttons of one group. |
 | The box of a row, and the one in the header | Checkboxes named "Select row" and "Select all rows of this page", in a first column of the grid that is counted in `aria-colcount` and `aria-colindex`. The one in the header is mixed when some rows of the page are selected. |

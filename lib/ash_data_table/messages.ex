@@ -101,9 +101,13 @@ defmodule AshDataTable.Messages do
     # the control that takes the limit away
     show_all_records: {[], dgettext_noop("ash_data_table", "Show all records")},
     # On a cell that cuts off some of its text: the button that shows all of
-    # it in place, and the one that cuts it off again.
+    # it in place, and the one that cuts it off again; and what each is
+    # called, with the column (the hook puts the column's label in place of
+    # `{column}`).
     show_whole: {[], dgettext_noop("ash_data_table", "Show all")},
     show_less: {[], dgettext_noop("ash_data_table", "Show less")},
+    show_whole_of: {[:column], dgettext_noop("ash_data_table", "Show all of %{column}")},
+    show_less_of: {[:column], dgettext_noop("ash_data_table", "Show less of %{column}")},
     # the header of the column that holds the row actions
     actions: {[], dgettext_noop("ash_data_table", "Actions")},
     # The link at the start of each table, seen only while it has the focus,

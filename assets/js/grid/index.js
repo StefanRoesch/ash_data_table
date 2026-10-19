@@ -119,9 +119,8 @@ const core = {
     this.revealed = null
     // cells this hook has marked as failed itself, with what they showed before
     this.marked = new WeakMap()
-    // the cell under the pointer, and the cells whose whole text shows,
-    // by id (see "the whole text of a cell")
-    this.pointed = null
+    // the cells whose whole text shows, by id (see "the whole text of a
+    // cell")
     this.expanded = new Set()
     // the widths of the columns, by the id of their header, once a
     // person has changed one: {width, original}. And the style
@@ -236,8 +235,6 @@ const core = {
     this.el.addEventListener("mousedown", own(e => this.onMousedown(e)), until)
     this.el.addEventListener("dblclick", own(e => this.onDblclick(e)), until)
     this.el.addEventListener("pointerdown", own(e => this.onResizeStart(e)), until)
-    this.el.addEventListener("mouseover", e => this.onPointer(this.cellOf(e.target)), until)
-    this.el.addEventListener("mouseleave", () => this.onPointer(null), until)
     // The window scrolls, or is another size: the scrollbar at its
     // bottom edge follows (`PLACE`). Nothing else is placed by hand.
     this.onScroll = () => PLACE()
@@ -288,18 +285,18 @@ const core = {
     this.paint()
     this.watchColumns()
     this.fitColumns()
-    this.measure()
     // a patch has brought the cell whose value was shown as the
     // server renders it, or taken it away: nothing is shown any more
     if (this.revealed && !this.shows(this.revealed.cell)) this.revealed = null
     // or a cell that waits for the host's answer: it waits still
     if (this.holds && this.holds.size) this.rehold()
     this.renumber()
+    // the sizes, and with them the cells that cut text off (before focus
+    // is put back: a button that went with its cell is back)
+    this.measure()
     // while the dialog asks, focus is in the dialog and stays there
     const asking = this.editing && this.editing.asking
     if (!asking && (!document.activeElement || document.activeElement === document.body)) this.repair()
-    // a patch may have brought a cell whose whole text showed, or cut off
-    this.offerWhole()
   },
 
   // A cell that is being edited is left alone by patches, so that

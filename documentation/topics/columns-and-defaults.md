@@ -487,9 +487,10 @@ rows one line high. Two things help with a text that is longer.
 **The whole text, in the row.** When a cell cuts some of its text off, it
 can show all of it in place: the row grows as high as the text needs.
 
-- While the cell has the pointer or the focus, a small button "Show all"
-  is in the cell. A click on it, or Shift+Enter on the cell, shows the
-  whole text.
+- A small button "Show all" is in every cell that cuts its text off,
+  read-only or editable. It is a Tab stop, named after its column ("Show
+  all of Title"). A click on it, Enter or Space on it, or Shift+Enter on an
+  editable cell shows the whole text; focus stays where it is.
 - The button then says "Show less". It, Shift+Enter again, or Escape on the
   cell cuts the text off again. Escape does nothing else then: the focus
   stays where it is.
@@ -538,8 +539,8 @@ What to know about the whole text:
   server sends nothing for it.
 - **A sensitive cell has none**, masked or shown. Nor has a cell of a field
   the person may not see.
-- **A screen reader is not told of the button.** It is for the eye, and no
-  tab stop: the whole text is in the cell already, and is read from there.
+- **A screen reader reads the whole text in the cell** whatever the eye is
+  shown. The button says whether the text shows whole (`aria-expanded`).
 - **A live update of the row** brings the new text, shown whole again if it
   was.
 - **A column header that is cut off has none.**

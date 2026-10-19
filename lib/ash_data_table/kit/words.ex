@@ -234,7 +234,9 @@ defmodule AshDataTable.Kit.Words do
       related_records: t(:related_records),
       actions: t(:actions),
       show_whole: t(:show_whole),
-      show_less: t(:show_less)
+      show_less: t(:show_less),
+      show_whole_of: t(:show_whole_of, column: "{column}"),
+      show_less_of: t(:show_less_of, column: "{column}")
     ]
   end
 

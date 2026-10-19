@@ -7,10 +7,12 @@ import { Table } from "./support/table"
 // Long text, in a browser. A cell is one line, or as many as its column says
 // with `max_lines`: "Body" of the compact comments (/comments/compact) shows
 // up to three. A cell that cuts some of its text off, in whichever column,
-// shows all of it in place: while the cell has the focus or the pointer, the
-// hook puts a button into it (`Table.whole`, "Show all"), and the button, or
-// Shift+Enter on the cell, shows the whole text in the cell, the row as high
-// as it needs, and cuts it off again. Escape cuts it off too. Nothing of the
+// shows all of it in place: the hook puts a button into it (`Table.whole`,
+// "Show all", a Tab stop named after its column), and the button, or
+// Shift+Enter on an editable cell, shows the whole text in the cell, the row
+// as high as it needs, and cuts it off again. (Several tests below still
+// assume the button came with the focus or the pointer alone, before K2's
+// fix-up: K3 rewrites them.) Escape cuts it off too. Nothing of the
 // text is put anywhere but in the cell: the server renders nothing for it.
 //
 // One comment in ten of the seed is long, of three paragraphs: it starts
@@ -162,6 +164,47 @@ test.describe("a cell with several lines whose save is on its way (/e2e/held)", 
 
 
 test.describe("the whole text of a cell that cuts some off", () => {
+  // stage 8a, K2's fix-up (the note's risk 9, decided): the button is in
+  // every cell that cuts its text off, read-only too, and a Tab stop
+  test("every cell that cuts its text off has the button, a Tab stop named after its column; Enter and Space show all and cut it off again", async ({
+    page,
+  }) => {
+    const table = compact(page)
+    await table.open()
+    const keys = await keysBy(table, "body", LONG)
+    // without the pointer or the focus: in each cell that cuts text off, in no other
+    for (const key of keys.with) await expect(table.whole(table.cell(key, "body"))).toHaveCount(1)
+    for (const key of keys.without) await expect(table.whole(table.cell(key, "body"))).toHaveCount(0)
+
+    const cell = table.cell(keys.with[0], "body")
+    const button = table.whole(cell)
+    await expect(button).toHaveAccessibleName("Show all of Body")
+    await expect(button).toHaveAttribute("aria-expanded", "false")
+    await expect(button).not.toHaveAttribute("aria-hidden")
+    await expect(button).not.toHaveAttribute("tabindex")
+
+    // a stop of the Tab order: Shift+Tab leaves it, Tab comes back to it
+    await button.focus()
+    await page.keyboard.press("Shift+Tab")
+    await expect(button).not.toBeFocused()
+    await page.keyboard.press("Tab")
+    await expect(button).toBeFocused()
+
+    await page.keyboard.press("Enter")
+    await expect(button).toHaveAttribute("aria-expanded", "true")
+    await expect(button).toHaveAttribute("data-whole", "Show less")
+    await expect(button).toHaveAccessibleName("Show less of Body")
+    await expect(button).toBeFocused()
+    expect(await paragraph(cell)).toMatchObject({ cut: false })
+    await expectNoAxeViolations(page)
+
+    await page.keyboard.press("Space")
+    await expect(button).toHaveAttribute("aria-expanded", "false")
+    await expect(button).toHaveAccessibleName("Show all of Body")
+    await expect(button).toBeFocused()
+    expect(await paragraph(cell)).toMatchObject({ lines: 3, cut: true })
+  })
+
   test("a button comes into the cell while it has the focus, which the cell keeps; it is for the eye alone", async ({
     page,
   }) => {

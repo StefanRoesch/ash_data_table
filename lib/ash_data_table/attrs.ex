@@ -942,8 +942,11 @@ defmodule AshDataTable.Attrs do
   time; `data-choose` that the table is one to choose a record from, and
   `data-chosen-rows`, where several are chosen, which rows are selected as
   it opens; `data-show-whole` and `data-show-less` what the button says
-  that shows a cell's whole text and cuts it off again (the `grid` part's
-  `texts.show_whole` and `texts.show_less`). No Tab stop (`tabindex="-1"`),
+  that shows a cell's whole text and cuts it off again, and
+  `data-show-whole-of` and `data-show-less-of` what it is called, with
+  `{column}` where the hook puts the column's label (the `grid` part's
+  `texts.show_whole`, `texts.show_less`, `texts.show_whole_of` and
+  `texts.show_less_of`). No Tab stop (`tabindex="-1"`),
   which a browser may make of an element that scrolls: the stops are the
   controls and the editable cells in it.
   """
@@ -960,6 +963,8 @@ defmodule AshDataTable.Attrs do
       "data-chosen-rows" => choose && selecting == :multi && held(chosen_rows(choose)),
       "data-show-whole" => texts.show_whole,
       "data-show-less" => texts.show_less,
+      "data-show-whole-of" => texts.show_whole_of,
+      "data-show-less-of" => texts.show_less_of,
       "tabindex" => "-1"
     }
   end

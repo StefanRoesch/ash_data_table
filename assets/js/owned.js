@@ -31,7 +31,7 @@
 
 /** @type {AshDataTable.Owned[]} */
 export const OWNED = [
-  {attribute: "tabindex", on: "a cell, put back after an edit as the table gave it last (an editable cell's stop); the button the hook puts into a cell to show its whole text (-1)", kit: "given"},
+  {attribute: "tabindex", on: "a cell, put back after an edit as the table gave it last (an editable cell's stop)", kit: "given"},
   {attribute: "checked", on: "the selection boxes, and the boxes of the Columns list", kit: "never"},
   {attribute: "disabled", on: "the boxes of the Columns list", kit: "never"},
   {attribute: "hidden", on: "a masked cell's mask (`data-mask`, `data-masked`), the question's place in a panel or picker, the scrollbar (`ID-scrollbar`)", kit: "never"},
@@ -44,8 +44,7 @@ export const OWNED = [
   {attribute: "data-saved", on: "a cell, after a save", kit: "given"},
   {attribute: "aria-rowindex", on: "a record's row, numbered again after a row was added or taken out", kit: "once"},
   {attribute: "aria-expanded", on: "the expander's button, and the button the hook puts into a cell to show its whole text", kit: "given"},
-  {attribute: "aria-label", on: "a masked cell's button (Show, Hide), the controls and buttons of a list field", kit: "given"},
-  {attribute: "aria-hidden", on: "the button the hook puts into a cell to show its whole text", kit: "never"},
+  {attribute: "aria-label", on: "a masked cell's button (Show, Hide), the controls and buttons of a list field, the button the hook puts into a cell to show its whole text", kit: "given"},
   {attribute: "data-dragging", on: "a column's handle while it is dragged", kit: "never"},
   {attribute: "data-over", on: "a text's counter (`data-count`) past its most", kit: "never"},
   {attribute: "data-pending", on: "the expander's button while it waits", kit: "never"},

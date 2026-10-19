@@ -62,6 +62,8 @@ export default {
     this.inset = parseFloat(getComputedStyle(this.el).getPropertyValue("--ash-data-table-bottom")) || 0
     this.repin()
     PLACE()
+    // a cell that cuts its text off now, or no more (whole_text.js)
+    this.offerWhole()
   },
 
   // The header cells that stay in view, left to right, each with

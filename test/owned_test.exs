@@ -86,6 +86,19 @@ defmodule AshDataTable.OwnedTest do
     assert listed -- written() == [], "owned.js lists what the hooks do not write"
   end
 
+  # Every element the hooks make that a person uses is a Tab stop (ADR 0003):
+  # no hook takes one out of the Tab order (the button that shows a cell's
+  # whole text was, before stage 8a's K2 fix-up).
+  test "no hook takes an element out of the Tab order" do
+    found =
+      for {path, code} <- sources(),
+          {line, number} <- code |> String.split("\n") |> Enum.with_index(1),
+          line =~ ~r/tabIndex\s*=\s*-1|"tabindex",\s*"-1"/,
+          do: "#{path}:#{number}: #{String.trim(line)}"
+
+    assert found == []
+  end
+
   test "each entry says what a kit may render of it" do
     code = File.read!("#{@js}/owned.js")
 
