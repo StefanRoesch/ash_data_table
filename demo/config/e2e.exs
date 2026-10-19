@@ -28,6 +28,15 @@ config :demo, Demo.Repo,
   queue_target: 5_000,
   queue_interval: 10_000
 
+# Ash spawns no tasks, as its testing guide says for transactional tests
+# ("Async tests"), and as config/test.exs has it. Otherwise a read with a
+# count runs the count in a task of its own, which the read kills
+# (`Task.shutdown(task, :brutal_kill)`) when its own query fails first; a
+# process killed while it holds the test's one connection ends the test's
+# transaction ("client #PID exited", then `DBConnection.OwnershipError` for
+# everything after it).
+config :ash, :disable_async?, true
+
 # The endpoint has the plug `Phoenix.Ecto.SQL.Sandbox` (with `POST` and
 # `DELETE /sandbox`), and the live socket the user agent the plug's metadata
 # comes in, which `DemoWeb.E2E.Sandbox` allows each LiveView with.
