@@ -32,8 +32,8 @@ defmodule AshDataTable.Components.Slider do
     * It saves when its value changes (`commit: :change`): on letting go of
       the slider, not while it is dragged. It stays open, so the value can
       be changed again; Enter or leaving the cell closes it.
-    * From the keyboard it is the native control, with its own keys: the
-      arrows, Home, End, Page Up and Page Down. A step with a key is saved by Enter or by
+    * From the keyboard it is the native control: the arrow keys, Home, End,
+      Page Up and Page Down. A step with a key is saved by Enter or by
       leaving the cell, and given up by Escape.
     * It moves in steps of 1 over a whole number, and of a hundredth of the
       way from the minimum to the maximum over a decimal or a float.

@@ -486,7 +486,11 @@ defmodule AshDataTable.Live.Core.Reading do
     # in a table to choose from: whether this is the record chosen now
     current? = current?(Core.table(socket).entry.choose, model, record)
 
-    # a row is put back after something was done with its record
+    # a row is put back after something was done with its record, in its
+    # place. Never `at:` a position past 0, nor `limit:`: the grid's hook
+    # moves the rows LiveView puts before the header after it (`headFirst`),
+    # so LiveView's count of the container's children would count the
+    # header (tab-model-design.md section 15)
     socket
     |> due(:force)
     |> stream_insert(

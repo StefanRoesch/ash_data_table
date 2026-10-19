@@ -135,7 +135,7 @@ defmodule AshDataTable.Component do
   choice is made. Nothing is sent while a slider is dragged. The editor
   stays open, so that the value can be changed again; Enter or leaving the
   cell closes it. As with the table's own menus, a change made by stepping
-  with the control's own keys (the arrows, Home, End, Page Up and Page Down) is
+  with the keyboard (the arrow keys, Home, End, Page Up and Page Down) is
   not yet a choice, and is saved by Enter or by leaving.
 
   Escape closes an editor and gives up what has not been saved. It does not

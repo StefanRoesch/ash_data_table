@@ -736,7 +736,10 @@ defmodule AshDataTable.Live.Core.Panel do
       |> Reading.due(:force)
       |> Core.put(rows: rows, row_count: map_size(rows))
       |> Core.put(page: page && %{page | total: page.total && page.total + 1})
-      # the detail first: each goes to the top, so the row ends up above it
+      # the detail first: each goes to the top, so the row ends up above it.
+      # `at: 0`, or in place, and no `limit:`: the grid's hook moves the
+      # rows LiveView puts before the header after it (`headFirst`), so a
+      # position past 0 would count the header (tab-model-design.md 15)
       |> then(fn socket ->
         if Core.table(socket).entry.expandable?,
           do:
