@@ -51,6 +51,9 @@ defmodule AshDataTable.Errors do
   by. What else Ash gives (`field`, `index`, a custom validation's own,
   which may hold what was typed) goes no further.
 
+  The values kept are plain data: a value that is no string, number or
+  atom is kept as the text it is said as (`inspect/1`).
+
   The message of a `sensitive?` field keeps none of its values: each is
   what is shown in place of a sensitive value (`AshDataTable.Present.mask/0`),
   as a variable may hold what was typed (`%{value}`). Only a whole number
@@ -64,12 +67,21 @@ defmodule AshDataTable.Errors do
       for {name, value} <- List.wrap(if(is_map(vars), do: Map.to_list(vars), else: vars)),
           is_atom(name) or is_binary(name),
           to_string(name) in named or to_string(name) == "count",
-          do: {name, if(sensitive? and not count?(name, value), do: Present.mask(), else: value)}
+          do:
+            {name,
+             if(sensitive? and not count?(name, value), do: Present.mask(), else: plain(value))}
 
     {:ash, message, kept}
   end
 
   defp count?(name, value), do: to_string(name) == "count" and is_integer(value)
+
+  # A variable as plain data (`AshDataTable.Messages`: a message goes to JSON
+  # as it is): a string, a number, an atom (`true`, `nil`, …) as it is;
+  # anything else (a regex, a tuple, a list, a struct) as the text it is said
+  # as (`AshDataTable.Text`), so what is said does not change.
+  defp plain(value) when is_binary(value) or is_number(value) or is_atom(value), do: value
+  defp plain(value), do: inspect(value)
 
   # Whether an error about `field` is of a sensitive one: a column's, an
   # attribute's or a calculation's that says so, else an argument's of that

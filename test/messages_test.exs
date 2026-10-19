@@ -107,6 +107,25 @@ defmodule AshDataTable.MessagesTest do
            }
   end
 
+  test "an action's variables are plain data, said as before; a sensitive field's masked" do
+    error =
+      {"must match %{match} in %{range}, %{count} times",
+       [match: ~r/^a+$/, range: {1, 3}, count: 2, field: :title]}
+
+    message = AshDataTable.Errors.ash(error)
+
+    assert {:ash, _text, [match: "~r/^a+$/", range: "{1, 3}", count: 2]} = message
+    assert Text.say(message) == "must match ~r/^a+$/ in {1, 3}, 2 times"
+
+    assert %{"values" => %{"vars" => %{"match" => "~r/^a+$/", "range" => "{1, 3}", "count" => 2}}} =
+             message |> Messages.of() |> Jason.encode!() |> Jason.decode!()
+
+    assert {:ash, _text, [match: masked, range: masked, count: 2]} =
+             AshDataTable.Errors.ash(error, true)
+
+    assert masked == AshDataTable.Present.mask()
+  end
+
   test "each text once: a message and the words it says are one, given and said" do
     once = {:once, ", ", [{:text, :yes, []}, "Yes", {:text, :no, []}]}
 
