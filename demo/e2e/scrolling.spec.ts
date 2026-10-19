@@ -70,8 +70,9 @@ async function inset(page: Page): Promise<number> {
     })
 }
 
+/** What has focus: an editable cell, or a control in a cell. */
 function focused(page: Page): Locator {
-  return page.locator("[role=gridcell]:focus, [role=columnheader]:focus")
+  return page.locator(":focus")
 }
 
 test.describe("every table scrolls sideways in an area of its own", () => {
@@ -198,13 +199,16 @@ test.describe("every table scrolls sideways in an area of its own", () => {
     expect(await comments.scrollLeft()).toBe(Math.round(most))
   })
 
-  test("the grids are no tab stops of their own", async ({ page, tasks }) => {
+  test("the areas are no tab stops of their own; what they hold is", async ({ tasks }) => {
     await tasks.open()
-    await tasks.openLine(FIRST, "comments")
-    // the one tab stop of the tree is a cell
-    expect(await tasks.tabStops()).toHaveLength(1)
+    const comments = await tasks.openLine(FIRST, "comments")
     await expect(tasks.hookRoot).toHaveAttribute("tabindex", "-1")
-    await expect(tasks.nested(FIRST, "comments").hookRoot).toHaveAttribute("tabindex", "-1")
+    await expect(comments.hookRoot).toHaveAttribute("tabindex", "-1")
+    const stops = await tasks.tabStops()
+    expect(stops).not.toContain(`${tasks.id}-grid`)
+    expect(stops).not.toContain(`${comments.id}-grid`)
+    // the nested table's area holds stops of its own: its rows' controls and editable cells
+    expect(stops.filter((id) => id.startsWith(`${comments.id}-row-`)).length).toBeGreaterThan(0)
   })
 })
 
@@ -404,39 +408,39 @@ test.describe("the label column", () => {
     expect(await box(tasks.header("title"))).toMatchObject({ left: title.left, right: title.right + 60 })
     expect(await onTop(tasks.cell(FIRST, "title"))).toBe(true)
 
-    // from the keyboard as well
-    await tasks.header("title").focus()
-    await tasks.page.keyboard.press("F2")
-    await expect(tasks.resizer("title")).toBeFocused()
-    await tasks.page.keyboard.press("ArrowLeft")
+    // from the keyboard as well: its width field
+    await tasks.typeWidth("title", Math.round(title.right + 50 - title.left))
     await expect.poll(async () => (await box(tasks.cell(FIRST, "title"))).right).toBe(title.right + 50)
     await tasks.page.keyboard.press("Escape")
 
     // columns are hidden: the label column stays where it is, and cannot be hidden
     await tasks.hide("status", "priority")
     expect(await tasks.listedColumns()).not.toContain("title")
+    // the list closed again: it stands over the label column while it is open
+    await tasks.page.keyboard.press("Escape")
+    await expect(tasks.columnsList).toBeHidden()
     expect(await box(tasks.cell(FIRST, "title"))).toMatchObject({ left: title.left, right: title.right + 50 })
     expect(await onTop(tasks.cell(FIRST, "title"))).toBe(true)
   })
 })
 
 test.describe("with the keyboard", () => {
-  test("a cell that focus moves to is seen whole: beside the cells that stay, and above the scrollbar", async ({
+  test("what Tab moves focus to is seen whole: beside the cells that stay, and above the scrollbar", async ({
     page,
     tasks,
   }) => {
     await tasks.open()
-    await tasks.cell(FIRST, "title").click()
     const kept = (await box(tasks.cell(FIRST, "title"))).right
     const area = await box(tasks.hookRoot)
     const end = area.left + (await tasks.area()).seen
+    const stops = (await tasks.tabStops()).filter((id) => id.startsWith(`task-row-${FIRST}-`))
 
-    // to the end of the row, and back cell by cell: none is under the label column
-    await page.keyboard.press("End")
-    await expect(tasks.actionsCell(FIRST)).toBeFocused()
+    // to the end of the row, and back stop by stop: none is under the label column
+    await page.locator(`[id="${stops.at(-1)}"]`).focus()
     expect(await tasks.scrollLeft()).toBeGreaterThan(0)
     for (let step = 0; step < 8; step++) {
-      await page.keyboard.press("ArrowLeft")
+      await page.keyboard.press("Shift+Tab")
+      await expect(focused(page)).toHaveId(stops.at(-2 - step)!)
       const at = await box(focused(page))
       expect(at.left).toBeGreaterThanOrEqual(kept)
       expect(at.right).toBeLessThanOrEqual(end)
@@ -445,16 +449,21 @@ test.describe("with the keyboard", () => {
 
     // forward again: none is cut off at the end of the area
     for (let step = 0; step < 8; step++) {
-      await page.keyboard.press("ArrowRight")
+      await page.keyboard.press("Tab")
       const at = await box(focused(page))
       expect(at.left).toBeGreaterThanOrEqual(kept)
       expect(at.right).toBeLessThanOrEqual(end)
     }
 
-    // down the rows: the cell is above the scrollbar at the bottom edge
+    // from the last stop of a row to the first of the next, down the page:
+    // it is above the scrollbar at the bottom edge
     await expect(tasks.scrollbar).toBeVisible()
-    for (let step = 0; step < 14; step++) {
-      await page.keyboard.press("ArrowDown")
+    const keys = await tasks.rowKeys()
+    for (let row = 0; row < 14; row++) {
+      const last = (await tasks.tabStops()).filter((id) => id.startsWith(`task-row-${keys[row]}-`)).at(-1)!
+      await page.locator(`[id="${last}"]`).focus()
+      await page.keyboard.press("Tab")
+      await expect(tasks.boxCell(keys[row + 1]).locator("input")).toBeFocused()
       const at = await box(focused(page))
       expect(at.bottom).toBeLessThanOrEqual((await box(tasks.scrollbar)).top)
       expect(at.top).toBeGreaterThanOrEqual(0)
@@ -471,19 +480,29 @@ test.describe("with the keyboard", () => {
     const comments = await tasks.openLine(FIRST, "comments")
     const key = await comments.rowKey(1)
     await tasks.scrollTo(300)
+    // the row's stops: its controls and editable cells, left to right
+    const stops = comments
+      .row(key)
+      .locator(":is(button, input, select, a[href], [tabindex='0']):not([tabindex='-1'])")
+      .filter({ visible: true })
+    const count = await stops.count()
+    expect(count).toBeGreaterThan(2)
 
-    await comments.rowCells(key).nth(2).click()
-    await page.keyboard.press("End")
-    await expect(comments.rowCells(key).last()).toBeFocused()
+    // Tab to the row's last stop
+    await stops.nth(count - 2).focus()
+    await page.keyboard.press("Tab")
+    await expect(stops.nth(count - 1)).toBeFocused()
     expect(await comments.scrollLeft()).toBeGreaterThan(0)
     const area = await box(comments.hookRoot)
     const last = await box(focused(page))
     expect(last.right).toBeLessThanOrEqual(area.left + (await comments.area()).seen)
 
-    await page.keyboard.press("Home")
-    await expect(comments.rowCells(key).first()).toBeFocused()
+    // and Shift+Tab back to its first
+    await stops.nth(1).focus()
+    await page.keyboard.press("Shift+Tab")
+    await expect(stops.nth(0)).toBeFocused()
     await expect.poll(() => comments.scrollLeft()).toBe(0)
-    expect((await box(focused(page))).left).toBe(area.left)
+    expect((await box(comments.rowCells(key).first())).left).toBe(area.left)
 
     // /tasks did not move through any of it
     expect(await tasks.scrollLeft()).toBe(300)
@@ -561,7 +580,7 @@ for (const theme of ["light", "dark"] as const) {
       // with focus on a cell that stays, and on one beside it
       await tasks.cell(FIRST, "title").focus()
       await expectNoAxeViolations(page, "#task-table > [role=rowgroup]:first-of-type")
-      await page.keyboard.press("ArrowRight")
+      await page.keyboard.press("Tab")
       await expectNoAxeViolations(page, "#task-table > [role=rowgroup]:first-of-type")
     })
   })

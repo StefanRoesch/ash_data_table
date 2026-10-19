@@ -5,18 +5,20 @@ import { switchLocale } from "./support/locale"
 import { Table, columnRules, ownedSheets } from "./support/table"
 import { params } from "./support/url"
 
-// Spec section 17, slice 12: a person changes a column's width with the
-// handle at the end of its header, by dragging it or with the arrow keys.
-// The widths are the browser's alone: nothing is sent, nothing is in the
-// URL, they outlive every patch of the page and are gone with it.
+// Spec section 17, slice 12: a person changes a column's width by dragging
+// the handle at the end of its header (the pointer's way: the handle is no
+// Tab stop), or by typing it into the column's width field in the list of
+// "Columns", which has "Reset widths" after the columns (the keyboard's way,
+// and a pointer's without dragging). The widths are the browser's alone:
+// nothing is sent, nothing is in the URL, they outlive every patch of the
+// page and are gone with it.
 
 const FIRST = SEED.task.first
 const SECOND = SEED.task.second
 
-/** The narrowest and the widest a column can be made, and the step of an arrow key. */
+/** The narrowest and the widest a column can be made. */
 const NARROWEST = 48
 const WIDEST = 1000
-const STEP = 10
 
 /** The widths of a few columns of /tasks, which a test changes or expects unchanged. */
 async function some(table: Table, columns: string[]): Promise<Record<string, number>> {
@@ -81,7 +83,7 @@ test.describe("with the pointer", () => {
     await expect(handle).not.toHaveAttribute("data-dragging")
   })
 
-  test("neither a drag nor a click on the handle sorts; a click on the header beside it still does", async ({
+  test("neither a drag nor a click on the handle sorts; a click on the header's sort button beside it still does", async ({
     page,
     tasks,
     pushed,
@@ -105,7 +107,7 @@ test.describe("with the pointer", () => {
     expect(params(page)).toEqual({})
 
     // the click after a drag is the only one that is swallowed
-    await tasks.reads(() => header.click({ position: { x: 20, y: 10 } }))
+    await tasks.sortBy("title")
     await expect(header).toHaveAttribute("aria-sort", "ascending")
   })
 
@@ -125,12 +127,16 @@ test.describe("with the pointer", () => {
   test("a column cannot be made narrower than 48 pixels or wider than 1000", async ({ tasks }) => {
     await tasks.drag("title", -600)
     expect(await tasks.width("title")).toBe(NARROWEST)
-    await expect(tasks.resizer("title")).toHaveAttribute("aria-valuenow", String(NARROWEST))
     await expect(tasks.header("title")).toBeVisible()
+    // the column's width field says so
+    await tasks.openColumns()
+    await expect(tasks.widthField("title")).toHaveValue(String(NARROWEST))
+    await tasks.press("Escape")
 
     await tasks.drag("title", 1300)
     expect(await tasks.width("title")).toBe(WIDEST)
-    await expect(tasks.resizer("title")).toHaveAttribute("aria-valuenow", String(WIDEST))
+    await tasks.openColumns()
+    await expect(tasks.widthField("title")).toHaveValue(String(WIDEST))
   })
 
   test("a drag selects no text and leaves the focus where it is, and the pointer shows what the handle is for", async ({
@@ -228,132 +234,99 @@ test.describe("how the table is laid out", () => {
   })
 })
 
-test.describe("with the keyboard", () => {
+test.describe("from the keyboard: the width fields of Columns", () => {
   test.beforeEach(async ({ tasks }) => {
     await tasks.open()
   })
 
-  test("F2 on a header goes to its handle; the arrow keys move it, Enter undoes, Escape goes back", async ({
+  test("a column's field: typing sets the width, the field's own Up and Down step it, leaving keeps it between 48 and 1000; Reset widths undoes it", async ({
     page,
     tasks,
     pushed,
   }) => {
-    const header = tasks.header("title")
-    const handle = tasks.resizer("title")
-    const title = await tasks.width("title")
-    await header.focus()
+    const title = Math.round(await tasks.width("title"))
+    const status = await tasks.width("status")
     await pushed.clear()
+    await tasks.openColumns()
+    const field = tasks.widthField("title")
+    await expect(field).toHaveAccessibleName("Width of Title")
+    await expect(field).toHaveAttribute("type", "number")
+    await expect(field).toHaveAttribute("min", String(NARROWEST))
+    await expect(field).toHaveAttribute("max", String(WIDEST))
+    // it says how wide the column is as the list opens
+    await expect(field).toHaveValue(String(title))
 
-    await tasks.press("F2")
-    await expect(handle).toBeFocused()
-    await expect(handle).toHaveRole("separator")
-    await expect(handle).toHaveAccessibleName("Resize Title")
-    await expect(handle).toHaveAttribute("aria-orientation", "vertical")
-    await expect(handle).toHaveAttribute("aria-valuemin", String(NARROWEST))
-    await expect(handle).toHaveAttribute("aria-valuemax", String(WIDEST))
-    await expect(handle).toHaveAttribute("aria-valuenow", String(title))
+    await field.focus()
+    await tasks.retype("200")
+    await expect.poll(() => tasks.width("title")).toBe(200)
+    // the number field's own keys (Up and Down Arrow of an <input type=number>)
+    await tasks.press("ArrowUp", "ArrowUp")
+    await expect.poll(() => tasks.width("title")).toBe(202)
+    await tasks.press("ArrowDown")
+    await expect.poll(() => tasks.width("title")).toBe(201)
+    // no other column changes
+    expect(await tasks.width("status")).toBe(status)
 
-    await tasks.press("ArrowRight", "ArrowRight", "ArrowRight")
-    expect(await tasks.width("title")).toBe(title + 3 * STEP)
-    await expect(handle).toHaveAttribute("aria-valuenow", String(title + 3 * STEP))
-    await tasks.press("ArrowLeft", "ArrowLeft", "ArrowLeft", "ArrowLeft", "ArrowLeft")
-    expect(await tasks.width("title")).toBe(title - 2 * STEP)
-    await expect(handle).toHaveAttribute("aria-valuenow", String(title - 2 * STEP))
-    await expect(handle).toBeFocused()
+    // a number no column can be is not taken while it is typed, and is
+    // brought into bounds as the field is left
+    await tasks.retype("20")
+    expect(await tasks.width("title")).toBe(201)
+    await tasks.press("Tab")
+    await expect.poll(() => tasks.width("title")).toBe(NARROWEST)
+    await expect(field).toHaveValue(String(NARROWEST))
+    await field.focus()
+    await tasks.retype("5000")
+    await tasks.press("Tab")
+    await expect.poll(() => tasks.width("title")).toBe(WIDEST)
+    await expect(field).toHaveValue(String(WIDEST))
+    await expect(tasks.columnsList, "the list stays open").toBeVisible()
 
-    await tasks.press("Home")
-    expect(await tasks.width("title")).toBe(NARROWEST)
-    await tasks.press("ArrowLeft")
-    expect(await tasks.width("title")).toBe(NARROWEST)
-    await tasks.press("End")
-    expect(await tasks.width("title")).toBe(WIDEST)
-    await tasks.press("ArrowRight")
-    expect(await tasks.width("title")).toBe(WIDEST)
-
+    // "Reset widths": every column as wide as it was
+    await expect(tasks.resetWidths).toHaveText("Reset widths")
+    await tasks.resetWidths.focus()
     await tasks.press("Enter")
-    expect(await tasks.width("title")).toBe(title)
-    await expect(handle).toHaveAttribute("aria-valuenow", String(title))
-    await expect(handle).toBeFocused()
-
-    await tasks.press("ArrowLeft", "Escape")
-    await expect(header).toBeFocused()
-    expect(await tasks.width("title")).toBe(title - STEP)
+    await expect.poll(() => tasks.width("title")).toBe(title)
+    await expect(field).toHaveValue(String(title))
 
     // none of it sorted, or said anything to the server
     expect(await pushed.all()).toEqual([])
     expect(params(page)).toEqual({})
-    await expect(header).toHaveAttribute("aria-sort", "none")
+    await expect(tasks.header("title")).toHaveAttribute("aria-sort", "none")
   })
 
-  test("the keys of the grid are as they were: the handle is no stop of the arrow keys or of Tab", async ({
-    page,
-    tasks,
-  }) => {
-    await tasks.header("title").focus()
-    await tasks.press("ArrowRight")
-    await expect(tasks.header("status")).toBeFocused()
-    await tasks.press("ArrowLeft", "ArrowDown")
-    await expect(tasks.filterCell("title")).toBeFocused()
-    await tasks.press("ArrowUp")
-    await expect(tasks.header("title")).toBeFocused()
-    expect(await tasks.tabStops()).toEqual(["task-head-title"])
-
-    // on the handle, the keys that move about the grid or scroll the page do nothing
-    await tasks.press("F2")
-    const scrolled = await page.evaluate(() => window.scrollY)
-    await tasks.press("ArrowDown", "ArrowUp", "PageDown", "PageUp", "Space", "x")
-    await expect(tasks.resizer("title")).toBeFocused()
-    expect(await page.evaluate(() => window.scrollY)).toBe(scrolled)
-    // the header is still the one tab stop, and Tab leaves the grid
-    expect(await tasks.tabStops()).toEqual(["task-head-title"])
-    await tasks.press("Tab")
-    expect(await tasks.hookRoot.evaluate((root) => root.contains(document.activeElement))).toBe(false)
-    await tasks.press("Shift+Tab")
-    await expect(tasks.header("title")).toBeFocused()
+  test("a field follows a drag of its column's handle", async ({ tasks }) => {
+    const priority = await tasks.width("priority")
+    await tasks.drag("priority", 40)
+    await tasks.openColumns()
+    await expect(tasks.widthField("priority")).toHaveValue(String(Math.round(priority + 40)))
   })
 
-  test("Enter on a header still sorts, with a handle in it, and F2 works on a header that does not sort", async ({
-    tasks,
-  }) => {
-    await tasks.header("title").focus()
-    await tasks.reads(() => tasks.press("Enter"))
-    await expect(tasks.header("title")).toHaveAttribute("aria-sort", "ascending")
-    await expect(tasks.header("title")).toBeFocused()
+  test("the handle is the pointer's alone: no Tab stop, nothing a screen reader is told of", async ({ tasks }) => {
+    const handle = tasks.resizer("title")
+    await expect(handle).toHaveAttribute("aria-hidden", "true")
+    await expect(handle).not.toHaveAttribute("tabindex")
+    await expect(handle).not.toHaveAttribute("role")
+    // Tab goes from one sort button to the next, past the handle between them
+    await tasks.sortButton("title").focus()
+    expect(await tasks.walk(1)).toEqual(["task-sort-status"])
+  })
 
+  test("a header that does not sort has its handle and its field as well", async ({ tasks }) => {
     const tags = tasks.header("tags")
     await expect(tags).not.toHaveAttribute("data-sort")
-    const width = await tasks.width("tags")
-    await tags.focus()
-    await tasks.press("F2", "ArrowRight")
-    await expect(tasks.resizer("tags")).toBeFocused()
-    expect(await tasks.width("tags")).toBe(Math.round(width) + STEP)
+    await expect(tasks.resizer("tags")).toHaveCount(1)
+    const width = Math.round(await tasks.width("tags"))
+    await tasks.typeWidth("tags", width + 30)
+    await expect.poll(() => tasks.width("tags")).toBe(width + 30)
   })
 
-  test("the handle that has the focus shows it: a ring in the text colour, and the line", async ({ tasks }) => {
-    await tasks.header("title").focus()
-    await tasks.press("F2")
-    const handle = tasks.resizer("title")
-    const style = await handle.evaluate((handle) => {
-      const { outlineStyle, outlineWidth, outlineColor } = getComputedStyle(handle)
-      const text = getComputedStyle(handle.closest("table")!.querySelector("td")!).color
-      return { outlineStyle, outlineWidth, text: outlineColor === text, line: getComputedStyle(handle, "::after").content }
-    })
-    expect(style).toEqual({ outlineStyle: "solid", outlineWidth: "2px", text: true, line: '""' })
-  })
-
-  test("where text runs from right to left the column's end is on the left, and so are the keys", async ({
-    page,
-    tasks,
-  }) => {
+  test("where text runs from right to left the column's end is on the left", async ({ page, tasks }) => {
     await page.evaluate(() => document.documentElement.setAttribute("dir", "rtl"))
     const title = Math.round(await tasks.width("title"))
-    await tasks.header("title").focus()
-    await tasks.press("F2", "ArrowLeft", "ArrowLeft")
-    expect(await tasks.width("title")).toBe(title + 2 * STEP)
-    await tasks.press("ArrowRight")
-    expect(await tasks.width("title")).toBe(title + STEP)
     await tasks.drag("title", -50)
-    expect(await tasks.width("title")).toBe(title + STEP + 50)
+    expect(await tasks.width("title")).toBe(title + 50)
+    await tasks.drag("title", 20)
+    expect(await tasks.width("title")).toBe(title + 30)
   })
 })
 
@@ -369,10 +342,9 @@ test.describe("the widths outlive what the server sends", () => {
       expect(await some(tasks, columns), after).toEqual(set)
       expect(await tasks.widths(), after).toEqual(all)
       expect((await tasks.cell(await tasks.rowKey(1), "title").boundingBox())!.width, after).toBe(set.title)
-      await expect(tasks.resizer("title"), after).toHaveAttribute("aria-valuenow", String(set.title))
     }
 
-    await tasks.reads(() => tasks.header("priority").click({ position: { x: 20, y: 10 } }))
+    await tasks.sortBy("priority")
     await expect(tasks.header("priority")).toHaveAttribute("aria-sort", "ascending")
     await same("after a sort")
 
@@ -491,18 +463,20 @@ test.describe("each table on its own", () => {
     // the table around it is as it was: nothing of it has a width yet
     expect(await tasks.widths()).toEqual(outer)
 
-    await comments.header("body").focus()
-    await tasks.press("F2", "ArrowRight")
-    await expect(comments.resizer("body")).toBeFocused()
-    expect(await comments.width("body")).toBe(body - 70 + STEP)
+    // its own width fields, in its own list of "Columns"
+    await comments.openColumns()
+    await expect(comments.widthField("body")).toHaveValue(String(Math.round(body - 70)))
+    await comments.typeWidth("body", Math.round(body) - 60)
+    await expect.poll(() => comments.width("body")).toBe(Math.round(body) - 60)
+    expect(await tasks.widths()).toEqual(outer)
     await tasks.press("Escape")
-    await expect(comments.header("body")).toBeFocused()
+    await expect(comments.columnsList).toBeHidden()
 
     // and the other way round
     const title = await tasks.width("title")
     await tasks.drag("title", -80)
     expect(await tasks.width("title")).toBe(title - 80)
-    expect(await comments.width("body")).toBe(body - 70 + STEP)
+    expect(await comments.width("body")).toBe(Math.round(body) - 60)
   })
 
   test("a nested table that is closed and opened again has forgotten its widths", async ({ tasks }) => {
@@ -534,12 +508,12 @@ test.describe("each table on its own", () => {
 
     await users.drag(column, -40)
     expect(await users.width(column)).toBe(width - 40)
-    await users.header(column).focus()
-    await tasks.press("F2", "ArrowRight")
-    expect(await users.width(column)).toBe(width - 30)
-    // Escape on the handle goes back to the header, and the picker stays
+    // its own width field, in its own list of "Columns"
+    await users.typeWidth(column, width - 30)
+    await expect.poll(() => users.width(column)).toBe(width - 30)
+    // Escape closes the list, and the picker stays
     await tasks.press("Escape")
-    await expect(users.header(column)).toBeFocused()
+    await expect(users.columnsList).toBeHidden()
     await expect(tasks.picker).toBeVisible()
     // a drag has selected or chosen no row
     expect(await users.selectedKeys()).toEqual(selected)
@@ -568,18 +542,20 @@ test.describe("each table on its own", () => {
 
     // a patch of one leaves the widths of both
     const mine = await tasks.widths()
-    await projects.reads(() => projects.header("name").click({ position: { x: 20, y: 10 } }))
+    await projects.sortBy("name")
     expect(await projects.widths()).toEqual(set)
     expect(await tasks.widths()).toEqual(mine)
   })
 })
 
-test("in German the handle is called in German", async ({ page, tasks }) => {
+test("in German the width fields and Reset widths are called in German", async ({ page, tasks }) => {
   await tasks.open()
   await switchLocale(page, "de")
   await tasks.ready()
-  await expect(tasks.resizer("title")).toHaveAccessibleName("Breite von Titel ändern")
   await expect(tasks.header("title")).toHaveAccessibleName("Titel")
+  await tasks.openColumns()
+  await expect(tasks.widthField("title")).toHaveAccessibleName("Breite von Titel")
+  await expect(tasks.resetWidths).toHaveText("Breiten zurücksetzen")
 })
 
 for (const theme of ["light", "dark"] as const) {
@@ -591,10 +567,6 @@ for (const theme of ["light", "dark"] as const) {
     })
 
     test("as the page opens, and with columns made narrower and wider", async ({ page, tasks }) => {
-      // every handle says how wide its column is
-      for (const column of await tasks.columns()) {
-        await expect(tasks.resizer(column)).toHaveAttribute("aria-valuenow", /^\d+$/)
-      }
       await expectNoAxeViolations(page)
 
       await tasks.drag("title", -600)
@@ -602,17 +574,16 @@ for (const theme of ["light", "dark"] as const) {
       await expectNoAxeViolations(page)
     })
 
-    test("a handle with the focus, in a table and in a nested table", async ({ page, tasks }) => {
-      await tasks.header("priority").focus()
-      await tasks.press("F2", "ArrowLeft")
-      await expect(tasks.resizer("priority")).toBeFocused()
+    test("a width field with the focus, in a table and in a nested table", async ({ page, tasks }) => {
+      await tasks.typeWidth("priority", 120)
+      await tasks.widthField("priority").focus()
       await expectNoAxeViolations(page)
+      await tasks.press("Escape")
 
       const comments = await tasks.openLine(FIRST, "comments")
       await comments.drag("body", -70)
-      await comments.header("body").focus()
-      await tasks.press("F2")
-      await expect(comments.resizer("body")).toBeFocused()
+      await comments.openColumns()
+      await comments.widthField("body").focus()
       await expectNoAxeViolations(page)
     })
   })

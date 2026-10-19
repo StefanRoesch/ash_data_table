@@ -353,174 +353,45 @@ test.describe("a table without a column of its label", () => {
   })
 })
 
-test.describe("the keys of the grid", () => {
-  test.beforeEach(async ({ tasks }) => {
-    await tasks.open()
-  })
-
-  test("the arrow keys, Home and End pass over hidden columns, in the rows, the header and the filters", async ({
+test.describe("Tab and hidden columns", () => {
+  test("Tab passes over what a hidden column holds: its sort button, its filter, its cells", async ({
     page,
     tasks,
   }) => {
-    await tasks.hide("status", "priority", "assignee", "reporter")
+    await tasks.open()
+    const hidden = ["status", "priority", "assignee", "reporter"]
+    /** The stops of the grid that stand in one of the hidden columns. */
+    const inHidden = (stops: string[]) =>
+      stops.filter((id) =>
+        hidden.some(
+          (column) =>
+            id === `task-sort-${column}` || id.startsWith(`task-filter-${column}-`) || id.endsWith(`-c-${column}`),
+        ),
+      )
+    expect(inHidden(await tasks.tabStops()), "shown, they hold stops").not.toEqual([])
+
+    await tasks.hide(...hidden)
     await page.keyboard.press("Escape")
-    const keys = await tasks.rowKeys()
-    const [first, second] = keys
-    const last = keys.at(-1)!
+    const stops = await tasks.tabStops()
+    expect(inHidden(stops)).toEqual([])
 
-    await tasks.cell(first, "title").focus()
-    await tasks.press("ArrowRight")
-    await expect(tasks.cell(first, "progress")).toBeFocused()
-    await tasks.press("ArrowDown")
-    await expect(tasks.cell(second, "progress")).toBeFocused()
-    await tasks.press("ArrowLeft")
-    await expect(tasks.cell(second, "title")).toBeFocused()
-    await tasks.press("ArrowLeft")
-    await expect(tasks.expanderCell(second)).toBeFocused()
-
-    await tasks.press("End")
-    await expect(tasks.actionsCell(second)).toBeFocused()
-    await tasks.press("ArrowLeft")
-    await expect(tasks.cell(second, "project")).toBeFocused()
-    await tasks.press("ArrowRight")
-    await expect(tasks.actionsCell(second)).toBeFocused()
-    await tasks.press("Home")
-    await expect(tasks.boxCell(second)).toBeFocused()
-
-    // the header and the filter row
-    await tasks.header("title").focus()
-    await tasks.press("ArrowRight")
-    await expect(tasks.header("progress")).toBeFocused()
-    await tasks.press("ArrowDown")
-    await expect(tasks.filterCell("progress")).toBeFocused()
-    await tasks.press("ArrowLeft")
-    await expect(tasks.filterCell("title")).toBeFocused()
-    await tasks.press("ArrowRight", "ArrowDown")
-    await expect(tasks.cell(first, "progress")).toBeFocused()
-
-    await tasks.press("Control+End")
-    await expect(tasks.actionsCell(last)).toBeFocused()
-    await tasks.press("Control+Home")
-    await expect(tasks.boxCell(first)).toBeFocused()
-
-    // no key has reached a cell that is not shown
-    expect(await tasks.tabStops()).toEqual([`task-row-${first}-s`])
-  })
-
-  test("where the first and the last column are hidden, Home and End go to the first and the last that are shown", async ({
-    page,
-  }) => {
-    const specimens = specimensOf(page)
-    await specimens.open()
-    // no boxes, no expanders, no actions: the columns are all there is
-    await expect(specimens.hookRoot).toHaveAttribute("data-lead", "0")
-    await expect(specimens.actionsHeader).toHaveCount(0)
-    const columns = await specimens.columns()
-    expect(await specimens.listedColumns()).toEqual(columns)
-    const key = await specimens.rowKey(1)
-    const first = columns[0]
-    const last = columns.at(-1)!
-
-    await specimens.hide(first, columns[1], last)
-    await page.keyboard.press("Escape")
-    // the tab stop was the first cell of the first row: it is the first one shown now
-    expect(await specimens.tabStops()).toEqual([`specimen-row-${key}-c-${columns[2]}`])
-
-    await specimens.cell(key, columns[4]).focus()
-    await specimens.press("Home")
-    await expect(specimens.cell(key, columns[2])).toBeFocused()
-    await specimens.press("ArrowLeft")
-    await expect(specimens.cell(key, columns[2])).toBeFocused()
-    await specimens.press("End")
-    await expect(specimens.cell(key, columns.at(-2)!)).toBeFocused()
-    await specimens.press("ArrowRight")
-    await expect(specimens.cell(key, columns.at(-2)!)).toBeFocused()
-    await specimens.press("Control+Home")
-    await expect(specimens.cell(key, columns[2])).toBeFocused()
-    await specimens.press("ArrowUp", "ArrowUp", "Home")
-    await expect(specimens.header(columns[2])).toBeFocused()
-    await specimens.press("End")
-    await expect(specimens.header(columns.at(-2)!)).toBeFocused()
-
-    // the last column is hidden and its neighbour on that side is none: the tab stop goes to the left
-    await specimens.unhide(last)
-    await specimens.cell(key, last).focus()
-    await specimens.hide(last)
-    expect(await specimens.tabStops()).toEqual([`specimen-row-${key}-c-${columns.at(-2)!}`])
-  })
-
-  test("the tab stop leaves a column that is hidden, for the next one that is shown", async ({ page, tasks }) => {
+    // Tab goes from the title to the stop after it that is shown, in the
+    // header, the filter row and a row
     const first = await tasks.rowKey(1)
-    await tasks.cell(first, "status").focus()
-    expect(await tasks.tabStops()).toEqual([`task-row-${first}-c-status`])
+    for (const from of ["task-sort-title", "task-filter-title-value", `task-row-${first}-c-title`]) {
+      await page.locator(`[id="${from}"]`).focus()
+      const next = stops[stops.indexOf(from) + 1]
+      expect(await tasks.walk(1), `Tab from ${from}`).toEqual([next])
+    }
+    expect(stops[stops.indexOf("task-sort-title") + 1]).toBe("task-sort-progress")
+    expect(stops[stops.indexOf("task-filter-title-value") + 1]).toBe("task-filter-progress-operator")
 
-    await tasks.hide("status")
-    expect(await tasks.tabStops()).toEqual([`task-row-${first}-c-priority`])
-    await tasks.hide("priority")
-    expect(await tasks.tabStops()).toEqual([`task-row-${first}-c-progress`])
-    // one that is not the tab stop's leaves it where it is
-    await tasks.hide("due_on")
-    expect(await tasks.tabStops()).toEqual([`task-row-${first}-c-progress`])
-
-    // Tab from the last control before the grid, with the list closed, goes
-    // into the grid: to that cell
+    // shown again, the column's stops are back where they were
+    await tasks.unhide("status")
     await page.keyboard.press("Escape")
-    await expect(tasks.columnsButton).toBeFocused()
-    await tasks.create.focus()
-    await page.keyboard.press("Tab")
-    await expect(tasks.cell(first, "progress")).toBeFocused()
-    // and Down Arrow stays in its column
-    await tasks.press("ArrowDown")
-    await expect(tasks.cell(await tasks.rowKey(2), "progress")).toBeFocused()
-
-    // shown again, the column is reached as before
-    await tasks.unhide("priority")
-    await page.keyboard.press("Escape")
-    await tasks.cell(first, "progress").focus()
-    await tasks.press("ArrowLeft")
-    await expect(tasks.cell(first, "priority")).toBeFocused()
+    await tasks.sortButton("title").focus()
+    expect(await tasks.walk(1)).toEqual(["task-sort-status"])
   })
-
-  test("focus that is in a column when it is hidden goes to the next cell that is shown", async ({ tasks }) => {
-    await tasks.openColumns()
-
-    // on a cell
-    await tasks.cell(SECOND, "priority").focus()
-    await toggleInPlace(tasks, "priority")
-    await expect(tasks.header("priority")).toBeHidden()
-    await expect(tasks.cell(SECOND, "progress")).toBeFocused()
-    expect(await tasks.tabStops()).toEqual([`task-row-${SECOND}-c-progress`])
-
-    // in the filter of the column
-    await tasks.filterValue("progress").focus()
-    await toggleInPlace(tasks, "progress")
-    await expect(tasks.filterCell("estimate_hours")).toBeFocused()
-
-    // on its header
-    await tasks.header("estimate_hours").focus()
-    await toggleInPlace(tasks, "estimate_hours")
-    await expect(tasks.header("billable?")).toBeFocused()
-    expect(await tasks.hasFocus()).toBe(true)
-  })
-})
-
-test("from a line under a row, Up Arrow goes to the column a person was in, or to the next one that is shown", async ({
-  tasks,
-}) => {
-  await tasks.open()
-  await tasks.expand(FIRST)
-  await tasks.openColumns()
-  await tasks.cell(FIRST, "status").focus()
-  await tasks.press("ArrowDown")
-  const line = tasks.lines(FIRST).first()
-  await expect(line).toBeFocused()
-
-  // the column the person came from goes while they are on the line
-  await toggleInPlace(tasks, "status")
-  await expect(tasks.header("status")).toBeHidden()
-  await expect(line).toBeFocused()
-  await tasks.press("ArrowUp")
-  await expect(tasks.cell(FIRST, "priority")).toBeFocused()
 })
 
 test.describe("what is hidden outlives what the server sends", () => {
@@ -543,11 +414,10 @@ test.describe("what is hidden outlives what the server sends", () => {
       await expect(tasks.cell(key, "progress"), after).toBeVisible()
       await expect(tasks.columnBox("progress"), after).toBeChecked()
       await expect(tasks.columnsButton, after).toHaveAccessibleName("Columns (3 hidden)")
-      expect(await tasks.tabStops(), after).toHaveLength(1)
     }
     await same("at first")
 
-    await tasks.reads(() => tasks.header("progress").click({ position: { x: 20, y: 10 } }))
+    await tasks.sortBy("progress")
     await expect(tasks.header("progress")).toHaveAttribute("aria-sort", "ascending")
     await same("after a sort")
 
@@ -721,7 +591,7 @@ test.describe("a hidden column that the rows are filtered or sorted by", () => {
   test("keeps its filter and its sort, and the button and its box say so", async ({ page, tasks }) => {
     await tasks.filterValue("progress").fill("100")
     await tasks.reads(() => tasks.filterValue("progress").press("Enter"))
-    await tasks.reads(() => tasks.header("progress").click({ position: { x: 20, y: 10 } }))
+    await tasks.sortBy("progress")
     await tasks.filterValue("title").fill("e")
     await tasks.reads(() => tasks.filterValue("title").press("Enter"))
     const range = await tasks.range.textContent()
@@ -797,8 +667,8 @@ test.describe("a hidden column that the rows are filtered or sorted by", () => {
   test("a column that is hidden first and sorted by afterwards", async ({ tasks }) => {
     await tasks.hide("priority")
     await expect(tasks.columnsButton).toHaveAccessibleName("Columns (1 hidden)")
-    // sorted by a script: its header is not there to be clicked
-    await tasks.reads(() => tasks.header("priority").evaluate((header: HTMLElement) => header.click()))
+    // sorted by a script: its header's button is not there to be clicked
+    await tasks.reads(() => tasks.sortButton("priority").evaluate((button: HTMLElement) => button.click()))
     await expect(tasks.columnsButton).toHaveAccessibleName("Columns (1 hidden, 1 sorted)")
     await expect(tasks.columnEntry("priority")).toHaveText("Priority (sorted)")
     await tasks.unhide("priority")
@@ -823,8 +693,8 @@ test.describe("the widths of the columns", () => {
     await tasks.hide("status")
     await page.keyboard.press("Escape")
     expect(await tasks.width("title")).toBe(title)
-    // its handle says what it said: there is no width to read meanwhile
-    await expect(tasks.resizer("status")).toHaveAttribute("aria-valuenow", String(status + 60))
+    // its width field says what it said: there is no width to read meanwhile
+    await expect(tasks.widthField("status")).toHaveValue(String(status + 60))
     const narrow = await layout(tasks)
     expect(narrow.table).toBeCloseTo(wide.table - (status + 60), 0)
     expect(narrow.cells).toBeCloseTo(narrow.table, 0)
@@ -836,7 +706,7 @@ test.describe("the widths of the columns", () => {
     await tasks.unhide("status")
     await page.keyboard.press("Escape")
     expect(await tasks.width("status")).toBe(status + 60)
-    await expect(tasks.resizer("status")).toHaveAttribute("aria-valuenow", String(status + 60))
+    await expect(tasks.widthField("status")).toHaveValue(String(status + 60))
     expect((await tasks.cell(FIRST, "status").boundingBox())!.width).toBe(status + 60)
     expect(await tasks.width("title")).toBe(title + 30)
 
@@ -864,7 +734,7 @@ test.describe("the widths of the columns", () => {
     expect(priority).toBeGreaterThan(0)
     expect(await tasks.width("title")).toBe(title - 70)
     expect(await tasks.width("status")).toBe(status)
-    await expect(tasks.resizer("priority")).toHaveAttribute("aria-valuenow", String(Math.round(priority)))
+    await expect(tasks.widthField("priority")).toHaveValue(String(Math.round(priority)))
 
     await tasks.drag("priority", 40)
     expect(await tasks.width("priority")).toBe(Math.round(priority) + 40)
@@ -891,9 +761,6 @@ test.describe("what is open in a column when it is hidden", () => {
     await expect(tasks.openEditors).toHaveCount(0)
     await expect(cell).toHaveText("A text of another kind")
     await expect(cell).not.toHaveAttribute("aria-busy")
-    // focus is on the next cell that is shown, which is the tab stop
-    await expect(tasks.cell(FIRST, "tags")).toBeFocused()
-    expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-c-tags`])
 
     await tasks.unhide("description")
     await expect(cell).toBeVisible()
@@ -975,7 +842,7 @@ test.describe("what is open in a column when it is hidden", () => {
     await specimens.press("Enter")
     await specimens.editor(cell).fill("5000")
     await specimens.saves(cell, () => specimens.press("Enter"))
-    await expect(cell).toHaveAttribute("aria-invalid", "true")
+    await expect(cell).toHaveAttribute("data-failed")
     // the message is in the cell, under what it shows, and always there to be seen
     await expect(specimens.failure(cell)).toBeVisible()
     await expect(cell).toHaveAttribute("aria-describedby", /-error$/)
@@ -988,7 +855,7 @@ test.describe("what is open in a column when it is hidden", () => {
 
     // the cell is marked still, and says why, without a person coming to it
     await specimens.unhide("an_integer")
-    await expect(cell).toHaveAttribute("aria-invalid", "true")
+    await expect(cell).toHaveAttribute("data-failed")
     await expect(specimens.failure(cell)).toBeVisible()
     await expect(specimens.failure(cell)).toHaveText("must be less than or equal to 1000")
     await page.keyboard.press("Escape")
@@ -1101,23 +968,13 @@ test.describe("each table on its own", () => {
     const row = (await tasks.rowLine(FIRST).boundingBox())!
     expect(line.width).toBeCloseTo(row.width, 0)
 
-    // the keys of the nested grid pass over its hidden column
-    const key = await comments.rowKey(1)
-    const at = inner.indexOf("body")
-    await comments.cell(key, inner[at - 1]).focus()
-    await tasks.press("ArrowRight")
-    await expect(comments.cell(key, inner[at + 1])).toBeFocused()
-
-    // Left at a cell of a column that is hidden afterwards, the nested
-    // table is come back into at the next cell that is shown.
+    // Tab passes over the nested table's hidden column, as over any table's
+    const inBody = (stops: string[]) =>
+      stops.filter((id) => id.startsWith(`${comments.id}-`) && (id.endsWith("-c-body") || id.includes("-filter-body-") || id === `${comments.id}-sort-body`))
+    expect(inBody(await tasks.tabStops())).toEqual([])
     await comments.unhide("body")
-    await comments.cell(key, "body").focus()
-    await tasks.press("Escape")
-    await expect(tasks.nestedCell(FIRST, "comments")).toBeFocused()
-    await toggleInPlace(comments, "body")
-    await expect(comments.header("body")).toBeHidden()
-    await tasks.press("Enter")
-    await expect(comments.cell(key, inner[at + 1])).toBeFocused()
+    await page.keyboard.press("Escape")
+    expect(inBody(await tasks.tabStops())).not.toEqual([])
   })
 
   test("a nested table that is closed and opened again shows every column", async ({ tasks }) => {
@@ -1200,7 +1057,7 @@ test.describe("each table on its own", () => {
     await page.keyboard.press("Escape")
 
     // a patch of one leaves both as they are
-    await projects.reads(() => projects.header("name").click({ position: { x: 20, y: 10 } }))
+    await projects.sortBy("name")
     await expect(projects.header("status")).toBeHidden()
     await expect(tasks.header("priority")).toBeHidden()
     await expect(projects.columnsButton).toHaveAccessibleName("Columns (1 hidden)")
