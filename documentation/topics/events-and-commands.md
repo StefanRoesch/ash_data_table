@@ -251,6 +251,12 @@ request.
 
 ## Edge cases
 
+- **These are not the browser's events.** What the browser sends a table
+  (`ash_data_table:ID:sort`, `:save`, …) is the table's own, between its
+  markup, its hooks and its core; the page does not hear it. A kit that
+  draws in the browser sends them, as the `AshDataTable.Attrs` moduledoc
+  lists them ("Events": what sends each, its payload and its answer), and
+  each still goes through the table's checks.
 - **The events of a table you never see.** A picker's table sends none. A
   nested table's events reach the page with its `path`.
 - **A selection is a claim.** `:selection_changed` and `status/1` give the

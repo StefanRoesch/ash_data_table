@@ -123,6 +123,13 @@ selected rows, a table action and create. Its records are kept in memory.
 `KitCase` names its twenty states (`states/0`) and four presentations
 (`presentations/0`), and generates a test for each pair.
 
+The texts a part is given are checked with the messages they are made of:
+each a map `%{key: key, values: values}` of a key of `AshDataTable.Messages`
+with exactly its values. A kit's rows are the items of `AshDataTable.Item`,
+whose cells hold their texts; a kit that draws in the browser has the
+browser side of its contract checked in a browser (see
+[Kits](kits.md#a-kit-that-draws-in-the-browser)).
+
 What a person does with the keyboard and hears from a screen reader is not
 checked there: that needs a browser. The library checks it for the default
 kit and for the demo's kit of `div`s in its own browser suite. See

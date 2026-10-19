@@ -213,7 +213,7 @@ defmodule AshDataTable.Kit do
       sender (`data-sender`) before it, the `role=grid` element `ID-table`
       (`data-first-row`) with `ID-head` and its two rows, the filter row's
       form `ID-filters`, a `role=rowgroup` element per item of the stream
-      `rows` (with `Attrs.rowgroup/2`'s bundle), the `footer`, a
+      `rows` (with the item's `attrs`), the `footer`, a
       `<template>` per editable column (`Attrs.editor_template/3`:
       `ID-editor-FIELD`, `data-editor`, `data-commit`, and `data-confirm`
       where the table asks, `asks?`) and the failure template `ID-failure`.

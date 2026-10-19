@@ -7,9 +7,12 @@ defmodule AshDataTable.Present do
   # nothing else: it is never given a record, an `AshPhoenix.Form` or a
   # changeset.
   #
-  # Values, not texts: a part makes the text of a value (`AshDataTable.Format`)
-  # and of a message. The messages the core holds (a title, an error, a
-  # failed edit's message) are message terms, passed on as they are.
+  # Values, not texts: the words are made beside the drawing, in the
+  # LiveView's process (`AshDataTable.Kit.Words`, and for the rows of the
+  # stream `AshDataTable.Item`, which turns a `Present.Row` into the item a
+  # part is given, each cell with its text: ADR 0002). The messages the core
+  # holds (a title, an error, a failed edit's message) are message terms,
+  # passed on as they are.
   #
   # Nothing sensitive is in what this gives (F1). A row's record goes
   # through `AshDataTable.Sensitive.scrub/2` first, and a sensitive cell is

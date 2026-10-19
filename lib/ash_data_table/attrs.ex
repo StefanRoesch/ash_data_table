@@ -676,10 +676,11 @@ defmodule AshDataTable.Attrs do
   # A cell of a column whose field is declared `sensitive?` shows a mask,
   # the same for every value, and a button (`data-reveal`); an empty one is
   # empty, as any cell is. The value is not in the page, and not in what the
-  # server keeps of a row: a row goes into the stream as
-  # `AshDataTable.Present.row/3` gives it, which replaces the record's
-  # sensitive values first (`AshDataTable.Sensitive.scrub/2`) and gives a
-  # sensitive cell no value at all.
+  # server keeps of a row: a row goes into the stream as an item of
+  # `AshDataTable.Item`, made of what `AshDataTable.Present.row/3` gives,
+  # which replaces the record's sensitive values first
+  # (`AshDataTable.Sensitive.scrub/2`) and gives a sensitive cell no value
+  # at all; its item has no text and no value either.
   #
   # The hook asks for the value of one cell with one `reveal` event, with
   # the row and the column, and the server answers with the value as text:

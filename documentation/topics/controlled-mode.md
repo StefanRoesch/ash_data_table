@@ -59,7 +59,7 @@ Every request has:
 | `table`, `path` | The id of the table that holds it, and the ids from the table on the page down to it. |
 | `key` | The primary key of the row it is about, or nil. |
 | `question` | The question to ask before it runs, or nil. |
-| `messages` | What its texts are made of, by name, as `AshDataTable.Messages` lists them, for a page that translates for itself. |
+| `messages` | What its texts are made of, by name, each a map `%{key: key, values: values}` as `AshDataTable.Messages` lists them, for a page that translates for itself. |
 
 And by kind:
 
@@ -67,9 +67,10 @@ And by kind:
   `value`, the value the cell is to be given (nil for a sensitive column).
 - **`:panel`**: `action` (nil for the panel of a filter), `column` (of a
   cell's or a filter's panel), `title`, `errors` (what is said about none of
-  its fields) and `fields`. Each field has `name`, `label`, `type`, `editor`
-  (its control), `required?`, `value` (as its form sends it; nil for a
-  sensitive field), `values` (the choices of an enum), `errors`, `messages`
+  its fields) and `fields`. Each field has `name`, `label`, `type` (an
+  array's is `%{array: item}`), `editor` (its control), `required?`,
+  `value` (as its form sends it; nil for a sensitive field), `values` (the
+  choices of an enum, each `%{value: value, label: label}`), `errors`, `messages`
   and `chosen` (the records a field holds that were chosen, each with `key`
   and `label`). A value made of fields has its `fields`, a union its
   `kinds`, each described the same way, and a file field its `upload`.
@@ -77,6 +78,9 @@ And by kind:
   from), `several?`, `allow_none?`, `current` (the key or keys held now),
   `chosen`, `title` and `errors` (why a key chose nothing). Its `question`
   is the column's question: see [Picking](#picking).
+
+A request is plain data, maps, lists, strings, numbers and atoms, so a
+page can hand it to a client as JSON as it is (to a React component, say).
 
 Texts are in words, in the person's language. The page draws from them in
 its `render/1`. The demo's page draws the first request as a form of its

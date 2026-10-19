@@ -364,9 +364,10 @@ The default kit shows the texts as the table translated them. A
 [kit](kits.md) of your own is given, at each part that shows a text of
 the table's, both: `texts`, by name, the finished strings in the person's
 language, and `messages`, the same names, each the message the text was
-made of: `{key, values}`, a key of `AshDataTable.Messages` with its
-values, or an action's own message as Ash gives it, `{message, vars}`. A
-kit drawn in HEEx shows `texts`; one that translates for itself (a React or
+made of: a map `%{key: key, values: values}` of a key of
+`AshDataTable.Messages` and its values (an action's own message is the key
+`:ash`, with Ash's `message` and its `vars`). A message is plain data, so a
+kit hands it to a client as JSON as it is. A kit drawn in HEEx shows `texts`; one that translates for itself (a React or
 Vue kit) takes `messages` and looks each key up in its own catalogue.
 `AshDataTable.Kit.Words` makes both, and the `AshDataTable.Kit`
 documentation says which names each part is given.

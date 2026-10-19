@@ -170,11 +170,11 @@ of your own is given the resolved look, a map of all six, as `look` in its
 ## Drawing a part
 
 A part is a function component of the kit, named after the part
-(`AshDataTable.Kit.parts/0` lists the 32 of contract 1). It is given values,
+(`AshDataTable.Kit.parts/0` lists the 32 of contract 2). It is given values,
 never a record, an `AshPhoenix.Form`, a changeset or the actor, and never the
 value of a `sensitive?` field. The moduledoc of `AshDataTable.Kit` says, part
 by part, what each is given, which elements it must draw with which markers,
-and the fields of every value it is given ("Kit contract 1").
+and the fields of every value it is given ("Kit contract 2").
 
 The demo has a kit of its own, `DemoWeb.DivKit`, which draws the grid, its
 rows, cells and footer with `div`s in place of a `<table>`, and opens
@@ -238,12 +238,43 @@ the `AshDataTable.Kit` moduledoc.
 
 **Texts.** A part shows the texts it is given, in the person's language:
 `texts` by name (`@texts.kind`), and for a part of one text or value `text`.
-Beside them it is given `messages`, what each text is made of (a key of
-`AshDataTable.Messages` and its values), and `locale`, for a kit that
-translates or formats for itself. They are made by `AshDataTable.Kit.Words`
+Beside them it is given `messages`, what each text is made of, a map
+`%{key: key, values: values}` of a key of `AshDataTable.Messages`, and
+`locale`, for a kit that translates or formats for itself. They are made by `AshDataTable.Kit.Words`
 and passed as attributes, so LiveView sends a text again only when what it
 is made of changed. See
 [Messages and translations](messages-and-translations.md).
+
+### The rows: items of the stream
+
+The rows of a table are a LiveView stream, and the server keeps none of
+them. The `grid` part is given the stream as `rows` and hands it on as it
+is; each item is a plain map made by `AshDataTable.Item`: a record's row,
+each of its cells with its finished text (in the person's language and the
+page's time zone) and the attributes that vary by row or cell, or the
+detail under an expanded row with its lines. The `DivKit` draws a row group
+per item and spreads its `attrs`:
+
+<!-- source: demo/lib/demo_web/div_kit.ex -->
+```elixir
+<div
+  :for={{dom_id, row} <- @rows}
+  id={dom_id}
+  role="rowgroup"
+  {row.attrs}
+  class="table-row-group"
+  phx-no-format
+```
+
+and a cell with `Attrs.cell/2`, the column's attributes and the cell's:
+
+<!-- source: demo/lib/demo_web/div_kit.ex -->
+```elixir
+{Attrs.cell(column, @row.cells[column.name])}
+```
+
+A cell's `text` is what the cell shows; a masked cell has none, and no
+value. The item's moduledoc lists every key.
 
 ### A part inside a part
 
@@ -297,6 +328,62 @@ while nothing is selected, no filter is set and no notice shows. Of more
 than three actions on the selected rows it shows the first two and puts
 the others in a menu, "More" (the browser's popover); an action that
 destroys has the error colour's outline.
+
+## A kit that draws in the browser
+
+A kit may draw a part with a client framework (React in a LiveView,
+through `live_react`). The table stays the same: its rows a stream, every
+write through the server's checks. What such a kit relies on is public:
+
+- **Props.** `AshDataTable.Attrs.props/1` turns a bundle into what a
+  framework takes: `true` as `""`, `false` and nil left out, every other
+  value as text; the kit renames what its framework names otherwise
+  (`class` to `className`, `tabindex` to `tabIndex`, …) and never renders a
+  bundle's `phx-hook`. An item's `attrs` are of the same form.
+- **Events.** A kit sends an event through a bundle wherever one exists
+  (`phx-click` and a form's `phx-change`/`phx-submit` work from a client
+  framework's elements: LiveView hears them at its root). The `Attrs`
+  moduledoc lists every event ("Events"), what sends it, its payload and its
+  answer; a kit sends by name only those it marks "a kit may send it".
+- **The hooks.** Inside an island LiveView mounts no hook, so the kit mounts
+  them itself with the package's JS entries, `mountGrid`, `mountPanel`,
+  `mountPicker` and `mountPagination`, given a transport that
+  `liveViewTransport` makes of LiveView's hook functions. `update()` after
+  each render, `destroy()` when the element goes; mounted again after
+  `destroy()` it works (React's StrictMode). `onEdit` tells the kit which
+  cell is being edited: it keeps that cell's content as it is until the
+  edit ends. The comment at the top of `assets/js/mount.js` is the contract.
+- **What the hooks own.** The hooks write some attributes of the elements a
+  kit draws (where the tab stop is, what is selected, a busy cell);
+  `assets/js/owned.js` lists them, and what a kit may render of each.
+- **Ids.** `assets/js/ids.js` makes the ids of `AshDataTable.Ids`, function
+  by function.
+- **Two rules of the `Kit` moduledoc.** The place a nested table is moved
+  into must be in the page before the patch that opens it: a kit that
+  draws after LiveView's patch draws the place of every line of an expanded
+  row ahead of time, hidden while it is closed. And the grid's sender
+  (`Attrs.sender/1`) is drawn as LiveView's markup, outside the island, so
+  that LiveView mounts its hook and locks it, never the grid.
+
+The demo checks the JS entries in the browser
+([`demo/e2e/contract.spec.ts`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/e2e/contract.spec.ts)):
+the grid's hook mounted by hand on a grid of `div`s, and `ids.js` against
+the server's ids. Its hook mounts the grid so:
+
+<!-- source: demo/assets/js/mounted_grid.js -->
+```javascript
+mountGrid(
+  grid,
+  liveViewTransport({
+    el: grid,
+    pushEventTo: (target, event, payload) => this.pushEventTo(target, event, payload),
+    handleEvent: (event, handler) => this.handleEvent(event, handler),
+    removeHandleEvent: ref => this.removeHandleEvent(ref),
+    liveSocket: this.liveSocket
+  }),
+  {onEdit: cellId => edits.push(cellId)}
+)
+```
 
 ## The development check
 
@@ -368,11 +455,16 @@ changed.
   table through `Kit.part/1` has to pass that part's `texts` and `messages`
   made with `Kit.Words`.
 - **Reading a function of the table's structs.** A kit reads the fields
-  "Kit contract 1" lists; their modules' functions are the table's own, and
+  "Kit contract 2" lists; their modules' functions are the table's own, and
   may change.
+- **A kit of contract 1 no longer compiles.** Contract 2 draws the rows
+  from the items of `AshDataTable.Item` (`row.open`, `cell.text`,
+  `row.failure`, `{row.attrs}`, `Attrs.cell/2`) and gives every message as a
+  map: the compile error names what changed.
 
 ## Not in the first version
 
-No kit for another UI technology (React or Vue in LiveView), and no kit
-other than the default and the demo's. See the
+No kit for another UI technology ships with the library; a React kit is
+being built in the demo, on the contract of "A kit that draws in the
+browser". No kit other than the default and the demo's. See the
 [specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

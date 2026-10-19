@@ -74,8 +74,8 @@ declared in the resource and mounted with one line in the router.
 ### Kits
 
 - Every table is drawn by a kit, `AshDataTable.Kit`: one function
-  component per part (32 in contract 1), `class/2` and `presentation/1`.
-  `use AshDataTable.Kit, contract: 1` starts from `AshDataTable.Kit.Default`,
+  component per part (32 in contract 2), `class/2` and `presentation/1`.
+  `use AshDataTable.Kit, contract: 2` starts from `AshDataTable.Kit.Default`,
   the daisyUI kit, and is checked as it compiles. Named with
   `config :ash_data_table, kit:`, or per table on the tag, at `attach/4` and
   on the router line.
@@ -106,6 +106,28 @@ declared in the resource and mounted with one line in the router.
   library.
 - `AshDataTable.Messages` lists every message key with its values and its
   English text; counts are said in Gettext's plural forms.
+- Kit contract 2: the rows of the grid are the items of the table's stream,
+  plain maps made by `AshDataTable.Item`, each cell with its finished,
+  translated text and the attributes that vary by row or cell, for every
+  kit (ADR 0002); `Attrs.cell/2` and an item's `attrs` in place of
+  `Attrs.cell/5` and `Attrs.rowgroup/2`. A message is a map
+  `%{key: key, values: values}` wherever it is given (an action's is the key
+  `:ash`), `requests/1` among them, whose choices are
+  `%{value: value, label: label}`: what a part and a request are given
+  goes to JSON as it is. A kit of contract 1 fails to compile and says
+  what changed.
+- What a kit that draws in the browser (a React kit) needs is public:
+  `Attrs.props/1` (a bundle as props), `Attrs.event/2` and the list of the
+  events a table takes, with what sends each, its payload and its answer
+  (`Attrs.events/0`, the moduledoc's "Events"); the JS entries
+  `mountGrid`, `mountPanel`, `mountPicker`, `mountPagination` and
+  `liveViewTransport` (with `onEdit`, and mounted again after `destroy`);
+  `assets/js/owned.js`, the attributes the hooks write and what a kit may
+  render of each; `assets/js/ids.js`, the ids of `AshDataTable.Ids`, which
+  gains the ids that were the table's id and a suffix (`head/1`,
+  `header_cell/2`, `filter_row/1`, `filters/1`, `selector/1`, `editor/2`,
+  `error/1`, `dialog/1`, …). `Kit`'s moduledoc says where a nested table is
+  moved into (drawn before it opens) and where the grid's sender is drawn.
 
 ### Editing several values in the side panel
 
