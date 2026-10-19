@@ -3,7 +3,7 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {head as headId, row as rowId} from "../ids.js"
+import {filterRow as filterRowId, head as headId, row as rowId} from "../ids.js"
 import {FOCUSABLE} from "../panel.js"
 import {ACTION, ACTIONS, DIALOG, EXPANDER, GRID, HANDLE, LINE, NESTED, OPEN, OPENED, REVEAL, ROWGROUP, SELECTOR, SELECT_PAGE, TABLE, WHOLE} from "../markers.js"
 import {ANYCELL, SPANNING, firstRow, is, page, rowsOf} from "./shared.js"
@@ -120,8 +120,10 @@ export default {
     const body = group && (this.isRecord(group) ? group : document.getElementById(rowId(this.id, group.dataset.row || "")))
     const row = body ? records.indexOf(body) : -1
     const place = body === group ? this.stopPlace(target) : [0, -1]
-    // a cell outside the records (a filter's): its id, and where in it
-    const cell = !body && !holder ? target.closest(ANYCELL) : null
+    // a cell of this table's filter row, whose clear button goes as its
+    // filter is cleared: its id, and where in it
+    const filterRow = !body && !holder ? document.getElementById(filterRowId(this.id)) : null
+    const cell = filterRow && filterRow.contains(target) ? target.closest(ANYCELL) : null
     const within = cell ? this.stopsIn(cell).indexOf(target) : -1
     this.focused = {target, row, place, holder, cell: cell && cell.id, within, trail: holder ? [holder.dataset.lineCell, holder.dataset.expanderCell] : []}
   },
