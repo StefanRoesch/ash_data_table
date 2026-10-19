@@ -304,8 +304,13 @@ defmodule AshDataTable.Attrs do
   on every one itself (`AshDataTable.Kit` lists them); `AshDataTable.KitCase`
   checks both.
 
-  `markers/0` names every marker; the hooks name the same list
-  (`assets/js/markers.js`).
+  `markers/0` names every marker the hooks find an element by; the hooks
+  name the same list (`assets/js/markers.js`). The parts write a few more
+  that no hook finds an element by, for the look and for
+  `AshDataTable.KitCase`: `data-filter` (a filter's cell), `data-pager`
+  and `data-view` (a nested table's pages and its full view),
+  `data-summaries` (the footer row of the summaries) and `data-lines` (a
+  cell of several lines, whose value the hooks read).
 
   ## Attributes as props
 
@@ -888,8 +893,8 @@ defmodule AshDataTable.Attrs do
     [role=dialog]
     [data-ash-data-table] data-table [data-sender]
     [colspan] [data-selector] [data-select-page] [data-expander] [data-line] [data-nested]
-    [data-actions] [data-pager] [data-view] [data-filter] [data-lines] [data-paragraph] [data-detail]
-    [data-current] [data-summaries] [data-failed]
+    [data-actions] [data-paragraph] [data-detail]
+    [data-current] [data-failed]
     [data-resize] [data-open] [data-action] [data-table-action] [data-destructive]
     [data-question] [data-confirm]
     [data-reveal] [data-mask] [data-masked] [data-secret] [data-unseen] [data-whole]

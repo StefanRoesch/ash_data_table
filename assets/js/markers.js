@@ -9,6 +9,13 @@
 // which the element of each hook says in `data-table`), and the hooks
 // find a part of their table by it (`ID-whole`, `ID-dialog`, …).
 //
+// The parts write other markers that no hook finds an element by: a
+// filter's cell (`data-filter`), a nested table's pages and its link to the
+// full view (`data-pager`, `data-view`), the footer row of the summaries
+// (`data-summaries`), and a cell of several lines (`data-lines`, whose value
+// the hooks read off a cell they have). The look of `Kit.Default` and
+// `AshDataTable.KitCase` find elements by them; they are not in this list.
+//
 // Besides these, the hooks ask for native controls by their kind:
 // `input`, `select`, `textarea`, `button`, `a[href]`, `label`, `form`,
 // `option` and `template`, which hold a value, take the focus or hold
@@ -56,17 +63,11 @@ export const EXPANDER = "[data-expander]"
 export const LINE = "[data-line]"
 export const NESTED = "[data-nested]"
 export const ACTIONS = "[data-actions]"
-export const PAGER = "[data-pager]"
-export const VIEW = "[data-view]"
-export const FILTER = "[data-filter]"
-// a cell whose text is a paragraph of several lines, and that paragraph
-export const LINES = "[data-lines]"
+// the paragraph of a cell whose text has several lines
 export const PARAGRAPH = "[data-paragraph]"
 // the row group of a row's detail, and the row of the record chosen now
 export const DETAIL = "[data-detail]"
 export const CURRENT = "[data-current]"
-// the footer row of the summaries
-export const SUMMARIES = "[data-summaries]"
 // a cell whose save, or a row whose action, failed
 export const FAILED = "[data-failed]"
 

@@ -4,7 +4,7 @@
 // puts together, and share its state through `this`.
 
 import {filterRow as filterRowId, head as headId, headRow as headRowId} from "../ids.js"
-import {HANDLE, HEADER, ROW, ROWGROUP, WIDTH} from "../markers.js"
+import {HANDLE, HEADER, ROW, ROWGROUP, SPANS, WIDTH} from "../markers.js"
 import {DATACELL, cellsOf} from "./shared.js"
 
 // The narrowest and the widest a column can be made, in pixels: the
@@ -51,7 +51,7 @@ export default {
   // spans the grid, and not a cell of a grid nested in it.
   under(table, place) {
     const at = `#${CSS.escape(table.id)}`
-    const cell = `:is(${DATACELL})[aria-colindex="${place}"]:not([colspan])`
+    const cell = `:is(${DATACELL})[aria-colindex="${place}"]:not(${SPANS})`
     return `:is(${at}>${ROWGROUP}>${ROW}>${cell},#${CSS.escape(`${this.id}-summaries`)}>${cell})`
   },
 
