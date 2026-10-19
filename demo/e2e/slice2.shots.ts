@@ -40,8 +40,7 @@ test("the actions column, and the line of the table's name", async ({ page, task
   await shot(page, "final-header-mounted")
 
   await toActions(tasks, FIRST)
-  await tasks.actionsCell(SEED.task.second).focus()
-  await tasks.press("Enter", "ArrowRight")
+  await tasks.action(SEED.task.second, "reassign").focus()
   await shot(page, "final-actions-column")
 
   await tasks.action(SEED.task.second, "destroy").click()

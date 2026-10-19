@@ -65,6 +65,7 @@ for (const theme of ["light", "dark"] as const) {
         await tasks.open()
         await tasks.acts(SECOND, () => tasks.action(SECOND, "set_progress").click())
         await expect(tasks.field("progress")).toBeFocused()
+        // the slider's own keys: a range input of the panel
         await tasks.press("ArrowRight", "ArrowRight", "ArrowRight")
         await tasks.panelSettled()
         await shot(page, `final-panel-slider-${width}-${theme}`)
