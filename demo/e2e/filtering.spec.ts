@@ -82,220 +82,77 @@ test.describe("the controls of the filter row", () => {
     ])
   })
 
-  test("the filters are no tab stops, and the keys in an input are the input's", async ({
+  test("each filter's controls are Tab stops, in order; a cell without a filter is none; the keys in an input are the input's", async ({
     page,
     tasks,
     pushed,
   }) => {
-    await tasks.filterCell("title").focus()
-    expect(await tasks.tabStops()).toEqual(["task-filter-title"])
+    await tasks.filterOperator("title").focus()
+    expect(await tasks.walk(3)).toEqual([
+      "task-filter-title-value",
+      "task-filter-status-operator",
+      "task-filter-status-value",
+    ])
+    // `description` says `filterable? false`: its cell holds nothing, and is no stop
+    await expect(tasks.filterCell("description")).not.toHaveAttribute("tabindex")
+    await expect(tasks.filterCell("description").locator("input, select, button")).toHaveCount(0)
 
-    await tasks.press("Enter")
-    await expect(tasks.filterValue("title")).toBeFocused()
+    await tasks.filterValue("title").focus()
     await pushed.clear()
     await page.keyboard.type("se")
+    // the text input's own keys: they move its caret, and nothing of the table's
     await tasks.press("ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp", "Home", "End")
     await expect(tasks.filterValue("title")).toBeFocused()
     await page.keyboard.type("ss")
     await expect(tasks.filterValue("title")).toHaveValue("sess")
-
     expect(await pushed.all(), "typing asks the server nothing").toEqual([])
-    expect(await tasks.tabStops()).toEqual(["task-filter-title"])
   })
 
-  test("F2 goes into a filter as Enter does, and a click into an input stays there", async ({
-    tasks,
-  }) => {
-    await tasks.filterCell("progress").focus()
-    await tasks.press("F2")
-    await expect(tasks.filterValue("progress")).toBeFocused()
-
+  test("a click into an input stays there", async ({ tasks }) => {
     await tasks.filterValue("title").click()
     await expect(tasks.filterValue("title")).toBeFocused()
   })
 
-  test("Tab walks the controls of one filter, then leaves the grid", async ({ page, tasks }) => {
-    await tasks.filterCell("title").focus()
-    await tasks.press("Enter")
+  test("Tab walks the controls of one filter, then goes on to the next filter", async ({ page, tasks }) => {
+    await tasks.filterValue("title").focus()
     await page.keyboard.type("sess")
     await tasks.reads(() => tasks.press("Enter"))
+    await expect(tasks.filterClear("title")).toBeVisible()
 
-    await tasks.press("Shift+Tab")
-    await expect(tasks.filterOperator("title")).toBeFocused()
-    await tasks.press("Shift+Tab")
-    await expect(tasks.filterCell("title"), "before the first control is the cell").toBeFocused()
-
-    await tasks.press("Enter", "Tab")
-    await expect(tasks.filterClear("title")).toBeFocused()
-    await tasks.press("Tab")
-    expect(await tasks.hasFocus(), "after the last control Tab leaves the grid").toBe(false)
-
-    await tasks.press("Shift+Tab")
-    await expect(tasks.filterCell("title"), "the grid's one tab stop").toBeFocused()
+    expect(await tasks.walk(1, true)).toEqual(["task-filter-title-operator"])
+    expect(await tasks.walk(3)).toEqual([
+      "task-filter-title-value",
+      "task-filter-title-clear",
+      "task-filter-status-operator",
+    ])
   })
 })
 
-test.describe("a printable key on a filter cell goes into the filter and types there", () => {
-  test("text: the key is the first character; one over an applied value replaces it", async ({
-    page,
-    tasks,
-    pushed,
-  }) => {
-    await tasks.filterCell("title").focus()
-    await pushed.clear()
-    await tasks.press("s")
-    await expect(tasks.filterValue("title")).toBeFocused()
-    await expect(tasks.filterValue("title")).toHaveValue("s")
-    await page.keyboard.type("ess")
-    await expect(tasks.filterValue("title")).toHaveValue("sess")
-    expect(await pushed.all(), "typing asks the server nothing").toEqual([])
-    expect(await tasks.tabStops(), "the cell is still the grid's one tab stop").toEqual([
-      "task-filter-title",
-    ])
-
-    await tasks.reads(() => tasks.press("Enter"))
-    expect(params(page)).toEqual({ "task[f][title]": "sess" })
-    await expect(tasks.range).toHaveText("1–18 of 18")
-
-    // back on the cell, a key types over the value, which is selected
-    await tasks.press("Escape")
-    await expect(tasks.filterCell("title")).toBeFocused()
-    await tasks.press("x")
-    await expect(tasks.filterValue("title")).toBeFocused()
-    await expect(tasks.filterValue("title")).toHaveValue("x")
-    // and Escape gives that up
-    await tasks.press("Escape")
-    await expect(tasks.filterValue("title")).toHaveValue("sess")
-    await expect(tasks.range).toHaveText("1–18 of 18")
-  })
-
-  test("a capital letter and a character that is no letter are typed as they are", async ({
-    tasks,
-  }) => {
-    await tasks.filterCell("title").focus()
-    await tasks.press("Shift+A")
-    await expect(tasks.filterValue("title")).toHaveValue("A")
-
-    await tasks.press("Escape")
-    await tasks.press("ArrowRight", "ArrowRight", "ArrowRight", "ArrowRight")
-    await expect(tasks.filterCell("estimate_hours")).toBeFocused()
-    await tasks.press(".")
-    await expect(tasks.filterValue("estimate_hours")).toBeFocused()
-    await tasks.press("5")
-    await expect(tasks.filterValue("estimate_hours")).toHaveValue(".5")
-  })
-
-  test("a number: a digit starts the number; a letter keeps the number there is", async ({
+test.describe("a menu of a filter, from the keyboard", () => {
+  test("a choice and a boolean apply at once when a key chooses another of their options", async ({
     page,
     tasks,
   }) => {
-    await tasks.filterCell("progress").focus()
-    await tasks.press("5")
-    await expect(tasks.filterValue("progress")).toBeFocused()
-    await expect(tasks.filterValue("progress")).toHaveValue("5")
-    await tasks.press("0")
-    await tasks.reads(() => tasks.press("Enter"))
-    expect(params(page)).toEqual({ "task[f][progress]": "50" })
-    await expect(tasks.range).toHaveText("1–8 of 8")
-
-    await tasks.press("Escape")
-    await expect(tasks.filterCell("progress")).toBeFocused()
-    await tasks.press("a")
-    await expect(tasks.filterValue("progress")).toBeFocused()
-    await expect(tasks.filterValue("progress"), "a letter does not empty it").toHaveValue("50")
-    // the number is selected: a digit types over it
-    await tasks.press("7")
-    await expect(tasks.filterValue("progress")).toHaveValue("7")
-  })
-
-  test.describe("a date and a datetime", () => {
-    // how a date is typed is the browser's, by its locale
-    test.use({ locale: "en-US" })
-
-    test("the key goes into the first part of the date", async ({ page, tasks, pushed }) => {
-      await tasks.filterCell("due_on").focus()
-      await pushed.clear()
-      await tasks.press("1")
-      await expect(tasks.filterValue("due_on")).toBeFocused()
-      await expect(tasks.filterValue("due_on"), "not a date yet").toHaveValue("")
-      // the month goes on, then the day and the year
-      await page.keyboard.type("2152030")
-      await expect(tasks.filterValue("due_on")).toHaveValue("2030-12-15")
-      expect(await pushed.all()).toEqual([])
-      await tasks.reads(() => tasks.press("Enter"))
-      expect(params(page)).toEqual({ "task[f][due_on]": "2030-12-15" })
-      await expect(tasks.empty).toHaveText("No records")
-
-      await tasks.filterCell("completed_at").focus()
-      await tasks.press("0")
-      await expect(tasks.filterValue("completed_at")).toBeFocused()
-      await page.keyboard.type("3042026")
-      // the year takes more digits than four: the arrow goes on to the time
-      await tasks.press("ArrowRight")
-      await page.keyboard.type("091530a")
-      await expect(tasks.filterValue("completed_at")).toHaveValue("2026-03-04T09:15:30")
-    })
-  })
-
-  test("a choice and a boolean: the first choice that starts with the key, applied at once", async ({
-    page,
-    tasks,
-  }) => {
-    await tasks.filterCell("status").focus()
+    // a key picks the first option that starts with it: the menu's own (a <select>)
+    await tasks.filterValue("status").focus()
     await tasks.reads(() => tasks.press("d"))
     await expect(tasks.filterValue("status")).toBeFocused()
     await expect(tasks.filterValue("status").locator("option:checked")).toHaveText("Done")
     expect(params(page)).toEqual({ "task[f][status]": "done" })
     for (const state of await tasks.columnTexts("status")) expect(state).toBe("Done")
 
-    await tasks.press("Escape")
-    await tasks.filterCell("billable?").focus()
+    await tasks.filterValue("billable?").focus()
     await tasks.reads(() => tasks.press("y"))
     await expect(tasks.filterValue("billable?")).toBeFocused()
     await expect(tasks.filterValue("billable?").locator("option:checked")).toHaveText("Yes")
     expect(params(page)).toEqual({ "task[f][status]": "done", "task[f][billable?]": "yes" })
     for (const text of await tasks.columnTexts("billable?")) expect(text).toBe("✓Yes")
   })
-
-  test("a filter that needs no value: the key goes to its operators", async ({ page, tasks }) => {
-    await tasks.open("/tasks?task[f][due_on][is_empty]=")
-    await expect(tasks.filterValue("due_on")).toHaveCount(0)
-    const found = await tasks.range.textContent()
-
-    await tasks.filterCell("due_on").focus()
-    await tasks.reads(() => tasks.press("b"))
-    await expect(tasks.filterOperator("due_on")).toBeFocused()
-    await expect(tasks.filterOperator("due_on").locator("option:checked")).toHaveText("before")
-    // "before" without a date is no filter
-    await expect(tasks.filterValue("due_on")).toHaveValue("")
-    expect(params(page)).toEqual({})
-    await expect(tasks.range).toHaveText("1–25 of 320")
-    expect(found).not.toBe("1–25 of 320")
-  })
-
-  test("what is no printable key, and a cell without a filter, stay as they are", async ({
-    tasks,
-    pushed,
-  }) => {
-    await tasks.filterCell("title").focus()
-    await pushed.clear()
-    await tasks.press("Space", "Control+a", "Alt+s")
-    await expect(tasks.filterCell("title")).toBeFocused()
-    await expect(tasks.filterValue("title")).toHaveValue("")
-
-    // `description` says `filterable? false`
-    await tasks.filterCell("description").focus()
-    await tasks.press("s", "5")
-    await expect(tasks.filterCell("description")).toBeFocused()
-    await expect(tasks.openEditors).toHaveCount(0)
-    expect(await pushed.all()).toEqual([])
-  })
 })
 
 test.describe("applying a filter", () => {
   test("Enter applies what was typed, and focus stays in the input", async ({ page, tasks }) => {
-    await tasks.filterCell("title").focus()
-    await tasks.press("Enter")
+    await tasks.filterValue("title").focus()
     await page.keyboard.type("sess")
     await tasks.reads(() => tasks.press("Enter"))
 
@@ -307,7 +164,6 @@ test.describe("applying a filter", () => {
 
     await expect(tasks.clearFilters).toBeVisible()
     await expect(tasks.filterClear("title")).toBeVisible()
-    expect(await tasks.tabStops()).toEqual(["task-filter-title"])
   })
 
   test("leaving the input applies what was typed", async ({ page, tasks }) => {
@@ -320,7 +176,7 @@ test.describe("applying a filter", () => {
     for (const title of await tasks.columnTexts("title")) expect(title).toContain("Fix")
   })
 
-  test("Escape gives up what was typed and not applied, and goes back to the cell", async ({
+  test("Escape gives up what was typed and not applied, and focus stays in the input", async ({
     page,
     tasks,
   }) => {
@@ -334,7 +190,7 @@ test.describe("applying a filter", () => {
     await tasks.press("Escape")
 
     await expect(tasks.filterValue("title")).toHaveValue("sess")
-    await expect(tasks.filterCell("title")).toBeFocused()
+    await expect(tasks.filterValue("title")).toBeFocused()
     expect(params(page)).toEqual({ "task[f][title]": "sess" })
     expect(await tasks.rowKeys()).toEqual(filtered)
     await expect(tasks.grid, "nothing is read again").not.toHaveAttribute("aria-busy")
@@ -344,7 +200,7 @@ test.describe("applying a filter", () => {
     await page.keyboard.type("EXT")
     await tasks.press("Escape")
     await expect(tasks.filterValue("external_ref")).toHaveValue("")
-    await expect(tasks.filterCell("external_ref")).toBeFocused()
+    await expect(tasks.filterValue("external_ref")).toBeFocused()
   })
 
   test("text: contains, equals, starts with", async ({ page, tasks }) => {
@@ -417,12 +273,10 @@ test.describe("applying a filter", () => {
     expect(await total(tasks)).toBe(72)
     for (const due of await tasks.columnTexts("due_on")) expect(due).toBe("")
 
-    // Enter on the cell goes to what is left of the filter: its menu
-    await tasks.filterCell("due_on").focus()
-    await tasks.press("Enter")
+    // what is left of the filter is its menu, a Tab stop after the filter before it
+    await tasks.filterValue("billable?").focus()
+    await tasks.press("Tab")
     await expect(tasks.filterOperator("due_on")).toBeFocused()
-    await tasks.press("Escape")
-    await expect(tasks.filterCell("due_on")).toBeFocused()
 
     // another operator brings the input back; without a value nothing is filtered
     await tasks.reads(() => tasks.filterOperator("due_on").selectOption("before"))
@@ -542,16 +396,16 @@ test.describe("a value that is none", () => {
 })
 
 test.describe("clearing", () => {
-  test("a filter's clear button takes that filter away, and focus goes to its cell", async ({
+  test("a filter's clear button takes that filter away, and focus goes to that filter's value", async ({
     page,
     tasks,
   }) => {
     await tasks.open("/tasks?task[f][title]=sess&task[f][billable?]=yes")
     await expect(tasks.filterValue("title")).toHaveValue("sess")
 
-    // by keyboard: into the filter, on to its button
-    await tasks.filterCell("title").focus()
-    await tasks.press("Enter", "Tab")
+    // by keyboard: from the filter's value on to its button
+    await tasks.filterValue("title").focus()
+    await tasks.press("Tab")
     await expect(tasks.filterClear("title")).toBeFocused()
     await expect(tasks.filterClear("title")).toHaveAccessibleName("Clear the Title filter")
     await tasks.reads(() => tasks.press("Enter"))
@@ -559,11 +413,11 @@ test.describe("clearing", () => {
     expect(params(page)).toEqual({ "task[f][billable?]": "yes" })
     await expect(tasks.filterValue("title")).toHaveValue("")
     await expect(tasks.filterClear("title")).toHaveCount(0)
-    await expect(tasks.filterCell("title"), "the button is gone: its cell has the focus").toBeFocused()
+    await expect(tasks.filterValue("title"), "the button is gone: the filter's value has the focus").toBeFocused()
     await expect(tasks.clearFilters, "another filter is still active").toBeVisible()
   })
 
-  test("\"Clear filters\" takes them all away, and focus goes to the grid", async ({
+  test("\"Clear filters\" takes them all away, and focus goes to the first control of the filter row", async ({
     page,
     tasks,
   }) => {
@@ -577,8 +431,7 @@ test.describe("clearing", () => {
     await expect(tasks.clearFilters).toHaveCount(0)
     await expect(tasks.filterValue("title")).toHaveValue("")
     await expect(tasks.filterValue("billable?")).toHaveValue("")
-    expect(await tasks.hasFocus(), "the button is gone: the grid has the focus").toBe(true)
-    await expect(tasks.tabStop).toBeFocused()
+    await expect(tasks.filterOperator("title"), "the button is gone: the filter row's first control has the focus").toBeFocused()
   })
 })
 
@@ -603,7 +456,7 @@ test.describe("what is read out", () => {
 
     // a sort or a page change is not announced: the text stays as it is
     const before = await page.evaluate(() => document.querySelector("#task-status")!.textContent)
-    await tasks.reads(() => tasks.header("title").click())
+    await tasks.sortBy("title")
     await tasks.reads(() => tasks.next.click())
     expect(await page.evaluate(() => document.querySelector("#task-status")!.textContent)).toBe(before)
   })

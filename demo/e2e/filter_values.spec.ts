@@ -119,11 +119,10 @@ test.describe("is any of", () => {
   }) => {
     const state = several(tasks, "status")
 
-    await tasks.filterCell("status").focus()
-    await tasks.press("Enter")
-    await expect(tasks.filterValue("status")).toBeFocused()
+    await tasks.filterValue("status").focus()
     await tasks.press("Shift+Tab")
     await expect(tasks.filterOperator("status")).toBeFocused()
+    // the menu's own key (a <select>): its next operator
     await tasks.press("ArrowDown")
     await expect(tasks.filterOperator("status")).toHaveValue("any_of")
     await expect(state.button).toHaveText("Any")
@@ -154,7 +153,6 @@ test.describe("is any of", () => {
     await expect(state.button, "focus is back on the button").toBeFocused()
     await expect(state.button).toHaveText("2 selected")
     expect(all(page, STATES)).toEqual(["todo", "done"])
-    expect(await tasks.tabStops(), "the grid is still one tab stop").toHaveLength(1)
 
     // Escape: the panel goes, and nothing of what was ticked applies
     await tasks.press("Enter")
@@ -175,10 +173,6 @@ test.describe("is any of", () => {
     await tasks.press("Escape")
     await expect(tasks.panel).toHaveCount(0)
     await expect(state.button).toBeFocused()
-
-    // and once more, back to the cell
-    await tasks.press("Escape")
-    await expect(tasks.filterCell("status")).toBeFocused()
     // The old list applied what was ticked when Tab left it; the panel is a
     // modal dialog, which focus does not leave, and applies on "Apply" alone.
   })
@@ -216,9 +210,9 @@ test.describe("between", () => {
     const dated = await total(tasks)
     expect(dated + undated).toBe(SEED.tasks.acme)
 
-    // Tab goes to the other end; leaving that one applies it
-    await tasks.press("Tab")
-    await expect(to).toBeFocused()
+    // the other end (a date input is several Tab stops of the browser's
+    // own, one per part of the date); leaving that one applies it
+    await to.focus()
     await to.fill("2100-01-01")
     await tasks.reads(() => tasks.range.click())
     expect(params(page)).toEqual({

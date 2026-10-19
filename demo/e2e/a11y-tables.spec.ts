@@ -75,10 +75,10 @@ test.describe("two tables in one page: /dashboard", () => {
   })
 
   test("both sorted and filtered, the tasks on a later page", async ({ page }) => {
-    await projects.reads(() => projects.header("name").click())
+    await projects.sortBy("name")
     await projects.filterValue("name").fill("i")
     await projects.reads(() => projects.filterValue("name").press("Enter"))
-    await tasks.reads(() => tasks.header("title").click())
+    await tasks.sortBy("title")
     await tasks.reads(() => tasks.filterValue("billable?").selectOption("yes"))
     await tasks.reads(() => tasks.next.click())
     await expect(tasks.next).toBeFocused()
@@ -116,7 +116,7 @@ test.describe("/dashboard as nobody, for whom one of its tables is not there", (
   test("the page with the table that is left", async ({ page }) => {
     const tasks = new Table(page, "dashboard-tasks", "/dashboard")
     await tasks.open()
-    await expect(page.getByRole("grid")).toHaveCount(1)
+    await expect(page.getByRole("table")).toHaveCount(1)
     await expect(tasks.empty).toHaveText("No records")
     await expectNoAxeViolations(page)
   })
@@ -176,8 +176,7 @@ test.describe("reading states", () => {
 
   test("a filter active, with focus in its input", async ({ page, tasks }) => {
     await tasks.open()
-    await tasks.filterCell("title").focus()
-    await tasks.press("Enter")
+    await tasks.filterValue("title").focus()
     await page.keyboard.type("sess")
     await tasks.reads(() => tasks.press("Enter"))
     await expect(tasks.clearFilters).toBeVisible()

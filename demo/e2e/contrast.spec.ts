@@ -266,7 +266,7 @@ for (const theme of ["light", "dark"] as const) {
     test.describe("a cell whose save failed", () => {
       test("at rest: a ring with enough contrast, and a mark that is not a colour", async ({ page, tasks }) => {
         const title = await failTitle(page, tasks)
-        await tasks.press("ArrowDown")
+        await tasks.press("Tab")
         // its message stands in the cell, with the focus elsewhere too
         await expect(tasks.failure(title)).toBeVisible()
 
@@ -451,8 +451,10 @@ for (const theme of ["light", "dark"] as const) {
         // the message under it is what says "invalid" without a colour
         expect(await contrastOf(tasks.filterError("progress"), "text")).toBeGreaterThanOrEqual(TEXT)
 
-        await tasks.press("Escape")
+        // without the focus, its edge still marks it
+        await tasks.filterValue("title").focus()
         await expect(progress).not.toBeFocused()
+        await expect(tasks.filterError("progress")).toHaveText("Not a valid value")
         expect(await contrastOf(progress, "border")).toBeGreaterThanOrEqual(MARK)
       })
 
@@ -604,7 +606,7 @@ test.describe("in forced colours", () => {
     const inner = await style(title, ["top"], "::before")
     expect(parseFloat(inner.top)).toBeGreaterThanOrEqual(2)
 
-    await tasks.press("ArrowDown")
+    await tasks.press("Tab")
     await expectFailedRing(title)
     await expectFailedMark(title)
   })
