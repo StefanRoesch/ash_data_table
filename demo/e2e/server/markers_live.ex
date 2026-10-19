@@ -11,9 +11,11 @@ defmodule DemoWeb.E2E.MarkersLive do
 
   The note of the first record shows two lines of its text (`data-lines`,
   its paragraph `data-paragraph`) and shows its whole text in place by the
-  button the hook puts into it (`data-whole`, its texts on the grid's
-  element); under the first record is the line of its parts, which
-  opens and closes the nested table (`toggle`).
+  button the hook puts into it (`data-whole`, its texts and names on the
+  grid's element); under the first record is the line of its parts, which
+  opens and closes the nested table (`toggle`). `?note=TEXT` calls the
+  column of the notes `TEXT` in place of "Note", which the button's name
+  is made with ("Show all of TEXT").
 
   The header of each grid is a row group too, as a kit may draw it: the
   hook must not take it for a record.
@@ -57,7 +59,7 @@ defmodule DemoWeb.E2E.MarkersLive do
     {:ok,
      assign(socket,
        page_title: "Markers",
-       columns: @columns,
+       columns: noted(@columns, params["note"]),
        rows: @rows,
        parts: @parts,
        missing: params["missing"],
@@ -68,13 +70,16 @@ defmodule DemoWeb.E2E.MarkersLive do
      )}
   end
 
+  defp noted(columns, nil), do: columns
+  defp noted(columns, label), do: List.keyreplace(columns, :note, 0, {:note, label})
+
   @impl true
   def handle_event(
         "ash_data_table:kit:save",
         %{"row" => key, "column" => column, "value" => value},
         socket
       ) do
-    field = Enum.find_value(@columns, fn {name, _label} -> to_string(name) == column && name end)
+    field = Enum.find_value(socket.assigns.columns, fn {name, _label} -> to_string(name) == column && name end)
 
     rows =
       for {row, values} <- socket.assigns.rows do
@@ -180,6 +185,8 @@ defmodule DemoWeb.E2E.MarkersLive do
           data-select="multi"
           data-show-whole="Show all"
           data-show-less="Show less"
+          data-show-whole-of="Show all of {column}"
+          data-show-less-of="Show less of {column}"
           tabindex="-1"
         >
           <div

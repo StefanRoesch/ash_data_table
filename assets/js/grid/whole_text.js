@@ -116,7 +116,7 @@ export default {
     const named = open ? showLessOf : showWholeOf
     button.setAttribute("aria-expanded", String(open))
     button.setAttribute(ATTRIBUTE(WHOLE), shows)
-    button.setAttribute("aria-label", column && named ? named.replace("{column}", column) : shows)
+    button.setAttribute("aria-label", column && named ? named.replace("{column}", () => column) : shows)
     if (open) this.expanded.add(cell.id)
     else this.expanded.delete(cell.id)
   },
