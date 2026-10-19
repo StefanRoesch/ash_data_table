@@ -54,35 +54,25 @@ test.describe("the link of a nested table", () => {
     await expect(full.fullView).toHaveCount(0)
   })
 
-  test("with the keyboard: it is the last row of the nested grid, no tab stop of its own, and Enter follows it", async ({
+  test("with the keyboard: a link of its own, the nested table's last stop, just before where its \"Skip table\" goes; Enter follows it", async ({
     page,
     tasks,
   }) => {
     await tasks.open()
     const nested = await tasks.openLine(FIRST, "comments")
-    const last = (await nested.rowKeys()).at(-1)!
 
-    await tasks.nestedCell(FIRST, "comments").focus()
+    // "Skip table Comments" jumps past the table: one stop back is the link
+    await nested.skip.focus()
     await tasks.press("Enter")
-    await tasks.press("Control+End")
-    await expect(nested.viewCell).toBeFocused()
-    expect(await tasks.tabStops(), "the link is reached through its cell").toEqual([`${nested.id}-view`])
+    await expect(nested.skipTarget).toBeFocused()
+    await tasks.press("Shift+Tab")
+    await expect(nested.fullView).toBeFocused()
+    // and Tab from it leaves the nested table for the next line of the row
+    await tasks.press("Tab")
+    expect(await nested.hasFocus()).toBe(false)
+    await expect(tasks.line(FIRST, "first_comment")).toBeFocused()
 
-    // Up from it is the last row of comments, or their pages
-    await tasks.press("ArrowUp")
-    const above = await tasks.focused()
-    expect([`${nested.id}-pager`, `${nested.id}-row-${last}-c-id`]).toContain(above)
-    await tasks.press("ArrowDown")
-    await expect(nested.viewCell).toBeFocused()
-    await tasks.press("ArrowDown")
-    await expect(nested.viewCell, "the last row is where Down ends").toBeFocused()
-
-    // Escape comes back out of the nested table, as from any of its cells
-    await tasks.press("Escape")
-    await expect(tasks.nestedCell(FIRST, "comments")).toBeFocused()
-    await tasks.press("Enter")
-    await expect(nested.viewCell, "and back in at the cell it was left at").toBeFocused()
-
+    await nested.fullView.focus()
     await tasks.press("Enter")
     const full = comments(page)
     await full.ready()
@@ -109,10 +99,6 @@ test.describe("the link of a nested table", () => {
     await expect(reporter.rows).toHaveCount(1)
     await expect(reporter.fullView).toHaveCount(0)
     await expect(reporter.viewCell).toHaveCount(0)
-    const [person] = await reporter.rowKeys()
-    await reporter.cell(person, "name").focus()
-    await tasks.press("ArrowDown")
-    await expect(reporter.cell(person, "name"), "Down ends at its one row").toBeFocused()
   })
 
   test("is on a table nested in a table that a page of the demo's own holds", async ({ page }) => {
@@ -164,7 +150,7 @@ test.describe("the page a link leads to", () => {
     // every row is of that project
     expect(new Set(await tasks.columnTexts("project"))).toEqual(new Set(["Mobile app"]))
 
-    await tasks.reads(() => tasks.header("title").click())
+    await tasks.sortBy("title")
     expect(params(page)).toEqual({ ...limit, "task[sort]": "title" })
     await expect(tasks.header("title")).toHaveAttribute("aria-sort", "ascending")
 
@@ -199,11 +185,11 @@ test.describe("the page a link leads to", () => {
     await expect(tasks.relatedClear).toHaveRole("link")
     await expect(tasks.relatedClear).toHaveText("Show all records")
 
-    // from the grid backwards: "Show all records", the create button
-    // before it on the same line (actions.spec.ts), the parent; then the
-    // heading line above it: the two inputs of the argument line
-    // (arguments.spec.ts) and "Columns" (hiding.spec.ts)
-    await tasks.cell(await tasks.rowKey(1), "title").focus()
+    // from the table's "Skip table" backwards: "Show all records", the
+    // create button before it on the same line (actions.spec.ts), the
+    // parent; then the heading line above it: the two inputs of the
+    // argument line (arguments.spec.ts) and "Columns" (hiding.spec.ts)
+    await tasks.skip.focus()
     await page.keyboard.press("Shift+Tab")
     await expect(tasks.relatedClear).toBeFocused()
     await page.keyboard.press("Shift+Tab")
@@ -241,7 +227,6 @@ test.describe("the page a link leads to", () => {
     const nested = await tasks.openLine(key, "comments")
     await expect(nested.grid).toBeVisible()
     await expect(nested.fullView).toHaveAttribute("href", new RegExp(`comment\\[of\\]\\[task\\]\\[comments\\]=${key}`))
-    expect(await tasks.tabStops()).toHaveLength(1)
     await expectNoAxeViolations(page)
   })
 

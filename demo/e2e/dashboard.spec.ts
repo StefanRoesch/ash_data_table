@@ -5,8 +5,9 @@ import { Table } from "./support/table"
 // /dashboard: two tables placed in a LiveView of the demo's own with
 // `<AshDataTable.table>`, where the router's `ash_data_table` gives a table a page to
 // itself. Each keeps its sort, filters and page itself, nothing of them is
-// in the URL, and neither moves when the other does. Two grids on one page:
-// each is one tab stop, and each has a keyboard of its own.
+// in the URL, and neither moves when the other does. Two tables on one
+// page: Tab goes through the first and on into the second, and each has a
+// "Skip table" of its own.
 
 const FIRST = SEED.task.first
 const SECOND = SEED.task.second
@@ -41,14 +42,14 @@ test.describe("the page", () => {
     await expect(page).toHaveTitle("Dashboard · ash_data_table demo")
   })
 
-  test("holds two tables, each a grid named after its resource under a heading of its own", async ({
+  test("holds two tables, each named after its resource under a heading of its own", async ({
     page,
   }) => {
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Dashboard")
     await expect(page.getByRole("heading", { level: 2 })).toHaveText(["Projects", "Tasks"])
-    await expect(page.getByRole("grid")).toHaveCount(2)
-    await expect(page.getByRole("grid", { name: "Projects" })).toHaveId("dashboard-projects-table")
-    await expect(page.getByRole("grid", { name: "Tasks" })).toHaveId("dashboard-tasks-table")
+    await expect(page.getByRole("table")).toHaveCount(2)
+    await expect(page.getByRole("table", { name: "Projects" })).toHaveId("dashboard-projects-table")
+    await expect(page.getByRole("table", { name: "Tasks" })).toHaveId("dashboard-tasks-table")
 
     // as on their own pages (tables.spec.ts)
     await expect(projects.headers).toHaveText([
@@ -88,8 +89,8 @@ test.describe("each table keeps its own sort, filters and page", () => {
     const taskKeys = await tasks.rowKeys()
 
     // sorting the projects
-    await projects.reads(() => projects.header("name").click())
-    await projects.reads(() => projects.header("name").click())
+    await projects.sortBy("name")
+    await projects.sortBy("name")
     await expect(projects.header("name")).toHaveAttribute("aria-sort", "descending")
     const names = await projects.columnTexts("name")
     expect(names).toEqual([...names].sort().reverse())
@@ -147,7 +148,7 @@ test.describe("each table keeps its own sort, filters and page", () => {
     await page.locator("#embedded").getByRole("link", { name: "dashboard" }).click()
     await tasks.ready()
     await tasks.reads(() => tasks.next.click())
-    await tasks.reads(() => tasks.header("title").click())
+    await tasks.sortBy("title")
 
     await page.goBack()
     await expect(page).toHaveURL(/\/$/)
@@ -169,113 +170,67 @@ test.describe("each table keeps its own sort, filters and page", () => {
   })
 })
 
-test.describe("two grids on one page", () => {
-  test("each is one tab stop: Tab goes through the first and its pagination to the second", async ({
+test.describe("two tables on one page", () => {
+  test("Tab goes from the first table's pagination to the second's heading line, its skip link and its header; Shift+Tab back", async ({
     page,
   }) => {
-    const firstProject = await projects.rowKey(1)
-    expect(await projects.tabStops()).toEqual([`dashboard-projects-row-${firstProject}-c-id`])
-    expect(await tasks.tabStops()).toEqual([`dashboard-tasks-row-${FIRST}-c-title`])
-
-    await projects.tabStop.focus()
-    await page.keyboard.press("Tab")
-    await expect(projects.pageButton(1), "Previous and Next are disabled").toBeFocused()
-    // above the second grid, on the line of its name: its "Columns" button
-    // (hiding.spec.ts), the inputs of its argument line, its create button
-    await page.keyboard.press("Tab")
-    await expect(tasks.columnsButton).toBeFocused()
-    await page.keyboard.press("Tab")
-    await expect(tasks.argument("search")).toBeFocused()
-    await page.keyboard.press("Tab")
-    await expect(tasks.argument("due_within-days")).toBeFocused()
-    await page.keyboard.press("Tab")
-    await expect(tasks.create).toBeFocused()
-    await page.keyboard.press("Tab")
-    await expect(tasks.cell(FIRST, "title")).toBeFocused()
-    await page.keyboard.press("Tab")
-    await expect(tasks.pageButton(1)).toBeFocused()
-
-    await page.keyboard.press("Shift+Tab")
-    await expect(tasks.cell(FIRST, "title")).toBeFocused()
-    await page.keyboard.press("Shift+Tab")
-    await expect(tasks.create).toBeFocused()
-    await page.keyboard.press("Shift+Tab")
-    await expect(tasks.argument("due_within-days")).toBeFocused()
-    await page.keyboard.press("Shift+Tab")
-    await expect(tasks.argument("search")).toBeFocused()
-    await page.keyboard.press("Shift+Tab")
-    await expect(tasks.columnsButton).toBeFocused()
-    await page.keyboard.press("Shift+Tab")
-    await expect(projects.pageButton(1)).toBeFocused()
-    await page.keyboard.press("Shift+Tab")
-    await expect(projects.cell(firstProject, "id")).toBeFocused()
-    await page.keyboard.press("Shift+Tab")
-    expect(await projects.hasFocus(), "one more leaves the first grid at its other end").toBe(false)
-    expect(await tasks.hasFocus()).toBe(false)
-  })
-
-  test("the keys move in the grid that has the focus, and each grid remembers its own cell", async ({
-    page,
-    pushed,
-  }) => {
-    const projectKeys = await projects.rowKeys()
-    const taskKeys = await tasks.rowKeys()
-
-    await projects.tabStop.focus()
-    await pushed.clear()
-    await projects.press("ArrowDown", "ArrowRight")
-    await expect(projects.cell(projectKeys[1], "name")).toBeFocused()
-    expect(await projects.tabStops()).toEqual([`dashboard-projects-row-${projectKeys[1]}-c-name`])
-    expect(await tasks.tabStops(), "the other grid's tab stop is where it was").toEqual([
-      `dashboard-tasks-row-${FIRST}-c-title`,
+    // the projects' Previous and Next are disabled: their one page is the last stop
+    await projects.pageButton(1).focus()
+    expect(await tasks.walk(9)).toEqual([
+      // on the line of the second's name: "Columns", the inputs of its argument line, create
+      "dashboard-tasks-columns-button",
+      "dashboard-tasks-arg-search",
+      "dashboard-tasks-arg-due_within-days",
+      "dashboard-tasks-create",
+      "dashboard-tasks-skip",
+      // its header: the box of the page, then a sort button per column that sorts
+      "dashboard-tasks-select-head>input",
+      "dashboard-tasks-sort-title",
+      "dashboard-tasks-sort-status",
+      "dashboard-tasks-sort-priority",
     ])
-
-    // the ends of the first grid are ends: no key goes on into the second.
-    // The last cell of a row holds its actions.
-    await projects.press("Control+End")
-    await expect(projects.actionsCell(projectKeys.at(-1)!)).toBeFocused()
-    await projects.press("ArrowDown", "ArrowRight", "PageDown", "End")
-    await expect(projects.actionsCell(projectKeys.at(-1)!)).toBeFocused()
+    expect(await tasks.walk(9, true)).toEqual([
+      "dashboard-tasks-sort-status",
+      "dashboard-tasks-sort-title",
+      "dashboard-tasks-select-head>input",
+      "dashboard-tasks-skip",
+      "dashboard-tasks-create",
+      "dashboard-tasks-arg-due_within-days",
+      "dashboard-tasks-arg-search",
+      "dashboard-tasks-columns-button",
+      "dashboard-projects-page-1",
+    ])
     expect(await tasks.hasFocus()).toBe(false)
-
-    // and the second grid's first rows are its header rows, not the first grid
-    await tasks.tabStop.focus()
-    await tasks.press("ArrowRight", "ArrowDown", "ArrowDown")
-    await expect(tasks.cell(taskKeys[2], "status")).toBeFocused()
-    // the first cell of the first data row: the box that selects it
-    await tasks.press("Control+Home")
-    await expect(tasks.boxCell(FIRST)).toBeFocused()
-    await tasks.cell(FIRST, "title").focus()
-    await tasks.press("ArrowUp", "ArrowUp")
-    await expect(tasks.header("title")).toBeFocused()
-    await tasks.press("ArrowUp", "PageUp")
-    await expect(tasks.header("title"), "the top of the second grid").toBeFocused()
-    expect(await projects.hasFocus()).toBe(false)
-    expect(await pushed.all(), "moving about sends nothing").toEqual([])
-
-    // Tab from the one comes to the cell the other was left on
-    await tasks.press("ArrowDown", "ArrowDown", "ArrowDown")
-    await expect(tasks.cell(taskKeys[1], "title")).toBeFocused()
-    // between the two grids: the pages of the first, and the create button,
-    // the two inputs of the argument line and "Columns" of the second
-    for (let stops = 0; stops < 6; stops++) await page.keyboard.press("Shift+Tab")
-    await expect(projects.actionsCell(projectKeys.at(-1)!)).toBeFocused()
-    for (let stops = 0; stops < 6; stops++) await page.keyboard.press("Tab")
-    await expect(tasks.cell(taskKeys[1], "title")).toBeFocused()
-    expect(await projects.tabStops()).toHaveLength(1)
-    expect(await tasks.tabStops()).toHaveLength(1)
   })
 
-  test("Enter on a header sorts its own grid, and a filter is entered in its own grid", async () => {
-    await projects.header("name").focus()
+  test("each table's \"Skip table\" skips that table only: past the projects comes the tasks' heading line", async ({
+    page,
+  }) => {
+    await expect(projects.skip).toHaveText("Skip table Projects")
+    await expect(tasks.skip).toHaveText("Skip table Tasks")
+    await projects.skip.focus()
+    await expect(projects.skip).toBeVisible()
+    await page.keyboard.press("Enter")
+    await expect(projects.skipTarget).toBeFocused()
+    await page.keyboard.press("Tab")
+    await expect(tasks.columnsButton).toBeFocused()
+
+    await tasks.skip.focus()
+    await page.keyboard.press("Enter")
+    await expect(tasks.skipTarget).toBeFocused()
+    expect(await projects.hasFocus()).toBe(false)
+    expect(await tasks.hasFocus()).toBe(false)
+  })
+
+  test("Enter on a sort button sorts its own table, and a filter is typed in its own table", async () => {
+    await projects.sortButton("name").focus()
     await projects.reads(() => projects.press("Enter"))
     await expect(projects.header("name")).toHaveAttribute("aria-sort", "ascending")
-    await expect(projects.header("name")).toBeFocused()
+    await expect(projects.sortButton("name")).toBeFocused()
     await expect(tasks.grid.locator('[aria-sort]:not([aria-sort="none"])')).toHaveCount(0)
 
-    await tasks.filterCell("title").focus()
+    await tasks.filterValue("title").focus()
     await tasks.press("s")
-    await expect(tasks.filterValue("title")).toBeFocused()
     await expect(tasks.filterValue("title")).toHaveValue("s")
     await expect(projects.filterValue("name")).toHaveValue("")
   })
@@ -299,17 +254,15 @@ test.describe("editing", () => {
     // task it is the one row of "Reported by".
     const reporter = await tasks.openLine(FIRST, "reporter")
     await expect(reporter.editorTemplates).toHaveCount(0)
-    await expect(reporter.grid.locator("[aria-readonly]"), "nothing is marked either").toHaveCount(0)
+    // no cell of it is a Tab stop: there is nothing to edit
+    await expect(reporter.grid.locator(":is([role=cell],[role=rowheader])[tabindex]")).toHaveCount(0)
 
     const name = reporter.cell(await reporter.rowKey(1), "name")
-    await name.focus()
     await pushed.clear()
-    await tasks.press("Enter", "F2", "x")
     await name.dblclick()
     await expect(reporter.openEditors).toHaveCount(0)
     await expect(tasks.openEditors).toHaveCount(0)
     await expect(projects.openEditors).toHaveCount(0)
-    await expect(name).toBeFocused()
     expect(await pushed.all()).toEqual([])
   })
 
@@ -323,7 +276,7 @@ test.describe("editing", () => {
     await projects.saves(name, () => projects.press("Enter"))
 
     await expect(name).toHaveText("Renamed on the dashboard")
-    await expect(name).not.toHaveAttribute("aria-invalid")
+    await expect(name).not.toHaveAttribute("data-failed")
     // the row stays where it is, although the table is sorted by name
     expect(await projects.columnTexts("name")).toEqual(["Renamed on the dashboard", ...names.slice(1)])
 
@@ -358,11 +311,9 @@ test.describe("editing", () => {
     await expect(title).toHaveText("Edited on the dashboard")
     await expect(title).toBeFocused()
     expect(await pushed.count("save")).toBe(1)
-    expect(await tasks.tabStops()).toEqual([`dashboard-tasks-row-${SECOND}-c-title`])
 
     expect(await page.evaluate(() => (window as any).__projectsPatched)).toBe(0)
     expect(await projects.columnTexts("name")).toEqual(names)
-    expect(await projects.tabStops()).toHaveLength(1)
 
     // it is in the database: the table's own page shows it
     const own = new Table(page, "task", "/tasks")
@@ -385,8 +336,6 @@ test.describe("editing", () => {
 
     await expect(title).toHaveText("Saved from afar")
     await expect(elsewhere, "focus stays where the person went").toBeFocused()
-    expect(await projects.tabStops()).toEqual([await elsewhere.getAttribute("id")])
-    expect(await tasks.tabStops()).toEqual([`dashboard-tasks-row-${SECOND}-c-title`])
   })
 
   test("a save that fails marks its cell and is read out by its own table", async () => {
@@ -396,17 +345,17 @@ test.describe("editing", () => {
     await tasks.retype("ab")
     await tasks.saves(title, () => tasks.press("Enter"))
 
-    await expect(title).toHaveAttribute("aria-invalid", "true")
+    await expect(title).toHaveAttribute("data-failed")
     await expect(tasks.failure(title)).toHaveText("length must be greater than or equal to 3")
     await expect(tasks.status).toHaveText(
       "Title was not saved: length must be greater than or equal to 3",
     )
     await expect(projects.status).toHaveText("")
-    await expect(projects.grid.locator("[aria-invalid]")).toHaveCount(0)
+    await expect(projects.grid.locator("[data-failed]")).toHaveCount(0)
 
     await tasks.press("Escape")
     await expect(title).toHaveText("Remove the dashboard charts")
-    await expect(title).not.toHaveAttribute("aria-invalid")
+    await expect(title).not.toHaveAttribute("data-failed")
   })
 
   test("the question before a save is asked by the table the cell is in", async ({ page }) => {
@@ -454,7 +403,7 @@ test.describe("as another actor", () => {
       await expect(page.getByRole("heading", { level: 1 })).toHaveText("Dashboard")
       await expect(projects.root).toBeHidden()
       await expect(projects.root).toBeEmpty()
-      await expect(page.getByRole("grid")).toHaveCount(1)
+      await expect(page.getByRole("table")).toHaveCount(1)
       await expect(tasks.empty).toHaveText("No records")
       await expect(tasks.error).toHaveCount(0)
     })

@@ -40,7 +40,7 @@ async function portals(page: Page): Promise<{ portals: number; loose: number }> 
     return {
       portals: tables.length,
       loose:
-        tables.filter((marker) => marker.closest("[role=gridcell][data-nested]")?.id !== marker.dataset.ashDataTablePortal)
+        tables.filter((marker) => marker.closest("[role=cell][data-nested]")?.id !== marker.dataset.ashDataTablePortal)
           .length +
         marked.filter((marker) => !placed(marker)).length +
         Math.abs(marked.length - 2 * tables.length),
@@ -71,7 +71,7 @@ test("the page's own stream and button work beside the tables", async ({ page })
 test("sorting a table that keeps its state itself leaves the URL alone", async ({ page }) => {
   const { tasks } = await opened(page)
 
-  await tasks.reads(() => tasks.header("title").click())
+  await tasks.sortBy("title")
   await expect(tasks.header("title")).toHaveAttribute("aria-sort", "ascending")
   expect(params(page)).toEqual({})
 })
@@ -80,8 +80,7 @@ test("a table with its state in the URL keeps it there, and the back button take
   const { labels } = await opened(page)
   const all = await labels.columnTexts("name")
 
-  await labels.filterCell("name").focus()
-  await labels.press("Enter")
+  await labels.filterValue("name").focus()
   await page.keyboard.type("bu")
   await labels.reads(() => labels.press("Enter"))
   await expect(labels.columnCells("name")).toHaveText(["bug"])

@@ -55,7 +55,7 @@ test.describe("a named table as a page of its own", () => {
     const table = compact(page)
     await table.open()
 
-    await table.reads(() => table.header("body").click())
+    await table.sortBy("body")
     expect(params(page)).toEqual({ "comment_compact[sort]": "body" })
     await expect(table.header("body")).toHaveAttribute("aria-sort", "ascending")
     const sorted = await table.columnTexts("body")
@@ -82,13 +82,17 @@ test.describe("a named table as a page of its own", () => {
     await expect(table.actions(FIRST)).toHaveText(["Archive"])
     await expect(table.create).toHaveCount(0)
 
-    // one tab stop, and the arrow keys as on any table
-    await table.cell(FIRST, "title").focus()
-    await table.press("ArrowRight")
-    await expect(table.cell(FIRST, "status")).toBeFocused()
-    await table.press("End")
-    expect(await table.focused()).toBe(`task_board-row-${FIRST}-a`)
-    expect(await table.tabStops()).toHaveLength(1)
+    // Tab goes along a row's stops, as on any table, its Archive button
+    // last, and on to the next row
+    const row = `task_board-row-${FIRST}-`
+    const stops = (await table.tabStops()).filter((id) => id.startsWith(row))
+    expect(stops.at(-1)).toBe(`${row}a-archive`)
+    // the first is the row's box, which has no id of its own: `ID-s>input`
+    const [holder, tag] = stops[0].split(">")
+    await table.page.locator(`[id="${holder}"]`).locator(tag ?? ":scope").first().focus()
+    expect(await table.walk(stops.length - 1)).toEqual(stops.slice(1))
+    const [next] = await table.walk(1)
+    expect(next.startsWith(`task_board-row-${await table.rowKey(2)}-`)).toBe(true)
   })
 
   test("both are reached from the front page and from the page of the named tables", async ({ page }) => {
@@ -179,7 +183,7 @@ test.describe("nested under a row of the board", () => {
     expect(await full.columnTexts("body")).toEqual(bodies)
 
     // the limit stays through a sort and a reload
-    await full.reads(() => full.header("body").click())
+    await full.sortBy("body")
     expect(params(page)).toEqual({
       "comment_compact[of][task_board][comments]": FIRST,
       "comment_compact[sort]": "body",
@@ -245,7 +249,7 @@ test.describe("two tables of one resource on one page", () => {
     named: new Table(page, "comment_compact", "/named"),
   })
 
-  test("each has its own id, name, columns and tab stop, without an id being written", async ({ page }) => {
+  test("each has its own id, name, columns and \"Skip table\", without an id being written", async ({ page }) => {
     const { defaults, named } = both(page)
     await page.goto("/named")
     await defaults.ready()
@@ -262,9 +266,9 @@ test.describe("two tables of one resource on one page", () => {
     const ids = await page.locator("[id]").evaluateAll((elements) => elements.map((e) => e.id))
     expect(ids.filter((id, index) => ids.indexOf(id) !== index)).toEqual([])
 
-    // two grids, each one tab stop
-    expect(await defaults.tabStops()).toHaveLength(1)
-    expect(await named.tabStops()).toHaveLength(1)
+    // each has its own "Skip table", named after it
+    await expect(defaults.skip).toHaveText("Skip table Comments")
+    await expect(named.skip).toHaveText("Skip table Comments, compact")
   })
 
   test("each keeps its own sort and page in the one URL, through a reload", async ({ page }) => {
@@ -273,12 +277,12 @@ test.describe("two tables of one resource on one page", () => {
     await defaults.ready()
     await named.ready()
 
-    await named.reads(() => named.header("body").click())
+    await named.sortBy("body")
     expect(params(page)).toEqual({ "comment_compact[sort]": "body" })
     await expect(defaults.header("body")).toHaveAttribute("aria-sort", "none")
 
-    await defaults.reads(() => defaults.header("body").click())
-    await defaults.reads(() => defaults.header("body").click())
+    await defaults.sortBy("body")
+    await defaults.sortBy("body")
     expect(params(page)).toEqual({ "comment[sort]": "-body", "comment_compact[sort]": "body" })
 
     await named.reads(() => named.next.click())
@@ -315,7 +319,7 @@ for (const theme of ["light", "dark"] as const) {
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme)
       await expectNoAxeViolations(page)
 
-      await named.reads(() => named.header("body").click())
+      await named.sortBy("body")
       await expectNoAxeViolations(page)
     })
 
