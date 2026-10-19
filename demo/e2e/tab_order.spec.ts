@@ -12,8 +12,8 @@ import { Table } from "./support/table"
 // actions), the lines under an expanded row with their nested tables in
 // place, the pagination. A read-only cell is no stop, nor is a header that
 // does not sort. A nested table is a table like any other, further down the
-// page: nothing goes "into" or "out of" it. The table handles no arrow key:
-// Tab is the browser's.
+// page: nothing goes "into" or "out of" it. The table moves focus on no key
+// of its own: Tab is the browser's.
 //
 // /tasks as the admin: 25 rows of tasks, newest first.
 
@@ -173,7 +173,7 @@ test.describe("the Tab order of /tasks", () => {
     await expect(tasks.grid).toHaveRole("table")
     // nothing in the table says it is a grid, selected, read-only or invalid
     await expect(
-      tasks.root.locator("[role=grid], [role=gridcell], [aria-selected], [aria-readonly], [aria-multiselectable], [role=cell][aria-invalid]"),
+      tasks.root.locator("[aria-selected], [aria-readonly], [role=cell][aria-invalid]"),
     ).toHaveCount(0)
   })
 

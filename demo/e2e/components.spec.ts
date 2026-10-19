@@ -530,6 +530,7 @@ test.describe("around the components", () => {
     // a Tab stop of the nested table as on a page of its own; the slider's own keys
     await expect(progress).toHaveAttribute("tabindex", "0")
     await progress.focus()
+    // the slider's own keys: End, Home and Right Arrow of its range input
     await nested.press("Enter", "End")
     await expect(nested.editor(progress)).toHaveValue("100")
     await nested.press("Home", "ArrowRight", "ArrowRight", "ArrowRight")

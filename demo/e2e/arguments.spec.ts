@@ -424,7 +424,7 @@ test.describe("a nested table", () => {
     await expect(tasks.argumentLine.locator("input")).toHaveCount(2)
     await expect(tasks.range).toHaveText("1–25 of 57")
 
-    // from the line's button, Tab goes on into the nested table's heading line:
+    // from the line's button, Tab goes on to the nested table's heading line:
     // its "Columns", then its inputs
     await projects.line(SEED.project.mobileApp, "tasks").focus()
     expect(await tasks.walk(2)).toEqual([`${tasks.id}-columns-button`, `${tasks.id}-arg-search`])

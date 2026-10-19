@@ -11,7 +11,7 @@ import { expect, type Locator, type Page, type Response } from "@playwright/test
  * (`ID-row-KEY-t-RELATIONSHIP`): `nested()` gives it. What is asked of a
  * table here is about that table alone, not about the tables nested in it,
  * with one exception that is about the whole tree on purpose: `stops()`,
- * the Tab stops in page order, which a nested table is part of.
+ * the stops in page order, which a nested table is part of.
  */
 export class Table {
   constructor(
@@ -171,7 +171,7 @@ export class Table {
   }
 
   /**
-   * The button in a sortable column's header: the Tab stop that sorts
+   * The button in a sortable column's header: the stop that sorts
    * (ascending, descending, none). The header says the direction
    * (`aria-sort`). A header that does not sort has none.
    */
@@ -1057,7 +1057,7 @@ export class Table {
   }
 
   /**
-   * The Tab stops of the grid, and of the tables nested in it, in page
+   * The stops of the grid, and of the tables nested in it, in page
    * order: every element Tab can reach there (`tabIndex` 0 or more, shown,
    * not disabled, not in a closed dialog or popover), by its id, else
    * `id-of-its-cell>tag`. The controls of a nested table's heading line
@@ -1077,7 +1077,7 @@ export class Table {
     )
   }
 
-  /** The Tab stops of a row, left to right, named as `stops()` names them: its box, expander, editable cells, buttons. */
+  /** The stops of a row, left to right, named as `stops()` names them: its box, expander, editable cells, buttons. */
   async rowStops(key: string): Promise<string[]> {
     return this.rowLine(key).evaluate((row) =>
       Array.from(row.querySelectorAll<HTMLElement>("*"))
