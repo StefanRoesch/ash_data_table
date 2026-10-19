@@ -153,7 +153,10 @@ export default {
   repair() {
     const focused = this.focused
     if (!focused) return
-    if (focused.holder && focused.holder.isConnected) return
+    // a nested table that is still there sees to its own rows; the cell it
+    // stood in may stay without it (a kit that draws the place of a
+    // nested table ahead of time keeps it, hidden, once the line closes)
+    if (focused.holder && focused.holder.isConnected && focused.holder.querySelector(GRID)) return
     this.focused = null
     const take = node => {
       if (!node) return false

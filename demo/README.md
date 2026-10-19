@@ -710,22 +710,32 @@ them comes back too, whatever it holds.
 
 ### React islands
 
-http://localhost:4478/react is a LiveView of the demo's own
-(`DemoWeb.ReactLive`) with one React component in it, drawn with shadcn/ui:
-the tooling the React kit is built on (stage 8 of the refactor,
-`docs/architecture/react-kit-design.md`). "Count" sends an event to the
-LiveView, which answers it and gives the component its new count as a prop.
-`e2e/react.spec.ts` checks it.
+http://localhost:4478/react/tasks is the table of /tasks drawn with the
+demo's React kit (`DemoWeb.ReactKit`, stage 8 of the refactor,
+`docs/architecture/react-kit-design.md`), attached to a LiveView of the
+demo's own (`DemoWeb.ReactTasksLive`): its grid, "Columns", the line above
+the grid, the live region and the pagination are React islands drawn with
+shadcn/ui, on the table's own hooks (`mountGrid`, `mountPagination`); the
+heading line around "Columns", the argument line, the messages, the panel,
+the picker and the question are still the default kit's. What each island is
+given is picked by `DemoWeb.ReactKit.Props`, plain data only
+(`test/demo_web/react_kit_test.exs` encodes it to JSON); the islands are in
+`assets/islands/table/`, their look in `assets/css/react_kit.css`.
+`e2e/react.spec.ts` checks what only the React kit has, and the browser
+tests' project `react` runs the grid specs with every table drawn by it
+(`e2e/playwright.config.ts`, `x-demo-kit`, `DemoWeb.E2E.ChosenKit`).
 
 How it is put together, as a recipe:
 
 - **live_react 2.0** (`mix.exs`) renders a component with
-  `<LiveReact.react name="Sample" class="shadcn" count={@count} />`: every
-  other attribute becomes a prop. `config :live_react, ssr: false`: the
+  `<LiveReact.react name="AshGrid" rows={@rows} grid={…} />`: every
+  other attribute becomes a prop, and a stream goes as a stream. `config :live_react, ssr: false`: the
   component renders in the browser only, so there is no Node at runtime,
   and the first render of a page shows nothing in its place until the
-  socket connects. `assets/js/app.js` adds `getHooks(islands)` to the
-  LiveSocket's hooks.
+  socket connects. `assets/js/app.js` adds the React kit's
+  `reactKitHooks(islands)` to the LiveSocket's hooks: live_react's
+  `getHooks`, which commits each update at once and destroys the table's
+  hooks in an island as the island goes.
 - **npm** in `assets/` only: `react`, `react-dom` and the packages the
   shadcn sources import (`@radix-ui/react-slot`, `class-variance-authority`,
   `clsx`, `tailwind-merge`). live_react's own JS is not an npm package

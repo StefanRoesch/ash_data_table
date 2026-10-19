@@ -64,6 +64,8 @@
   text-align: start;
   border-bottom: 1px solid var(--sh-border);
 }
+/* a line and the cell a nested table is in: the padding is what they hold */
+.ash-react-grid-table > tbody > tr > td:is([data-line], [data-nested]) { padding: 0; }
 .ash-react-grid-table > thead > tr > th {
   font-weight: 600;
   white-space: nowrap;
@@ -258,9 +260,15 @@
   border-inline-start: 3px solid color-mix(in oklab, var(--sh-foreground) 35%, transparent);
   padding: 0.25rem 0 0.25rem 1.25rem;
 }
-.ash-react-grid-table > tbody[data-detail] > tr > td[data-nested] {
+/* the nested area: its line down its left and one inset after it, on the
+   element that stays where it is as the table around it scrolls (the view
+   the nested table is drawn in), at every depth */
+.ash-react-table [data-nested] [data-ash-data-table-view] {
   border-inline-start: 3px solid color-mix(in oklab, var(--sh-foreground) 35%, transparent);
+  padding-inline-start: 1.25rem;
+  padding-bottom: 0.75rem;
 }
+.ash-react-table [data-nested] [data-ash-data-table] { isolation: isolate; }
 
 /* a nested table stays at the left edge of the scroll area around it, and is
    as wide as that area (`--ash-data-table-view`, which the grid's hook sets) */
