@@ -1,7 +1,7 @@
 // The browser side of ash_data_table: the five hooks of a table.
 //
-// A LiveView host needs nothing from here: the table component's
-// colocated hooks import these, and a host has them with
+// A LiveView host needs nothing from here: the colocated hooks of
+// `AshDataTable.attached/1` import these, and a host has them with
 // `phoenix-colocated/ash_data_table`. A custom build, or another UI
 // technology, imports them from this package:
 //
