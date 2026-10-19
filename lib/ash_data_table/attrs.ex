@@ -827,10 +827,10 @@ defmodule AshDataTable.Attrs do
   # see holds what it holds in every column.
   #
   # A cell that cuts some of its text off shows all of it in place, the
-  # row as high as it needs: the hook puts a button into the cell
-  # (`data-whole`, `aria-expanded`) while the cell has the focus or the
-  # pointer, and Shift+Enter on the cell does the same (see "the whole
-  # text of a cell" in the hook). The root's rules show the whole text of
+  # row as high as it needs: the hook puts a button into every such cell,
+  # read-only or editable (`data-whole`, `aria-expanded`, a Tab stop named
+  # after its column), and Shift+Enter on an editable cell does the same
+  # (see "the whole text of a cell" in the hook). The root's rules show the whole text of
   # a cell whose button says it is expanded. The server renders no part of
   # it. A sensitive cell has no such text, masked or shown.
   #

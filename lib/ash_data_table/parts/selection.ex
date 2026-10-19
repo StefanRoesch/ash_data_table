@@ -22,9 +22,8 @@ defmodule AshDataTable.Parts.Selection do
   # filters match more records than the page shows. The hook paints the
   # rows and their boxes only.
   #
-  # The buttons are ordinary tab stops while they are shown, in a nested
-  # table too: they are there only while rows are selected, and have to be
-  # reached then.
+  # The buttons are ordinary Tab stops while they are shown, in a nested
+  # table too.
   #
   # Of more than three actions the first two are buttons of the line and
   # the others are in a menu (`More`, the browser's popover, placed as the

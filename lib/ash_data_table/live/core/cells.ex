@@ -141,8 +141,9 @@ defmodule AshDataTable.Live.Core.Cells do
     end
   end
 
-  # Sent by the hook when a person presses Escape on a row's actions cell
-  # that shows the message of an action that failed: the message is given up.
+  # Sent by the hook when a person presses Escape on a button of a row's
+  # actions cell that shows the message of an action that failed: the
+  # message is given up.
   def on({:dismiss, key}, socket) do
     case Core.table(socket).entry.failed[key] do
       %{action: message} when not is_nil(message) ->
