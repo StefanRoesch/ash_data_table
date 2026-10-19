@@ -269,6 +269,8 @@ test.describe("the question of an action panel", () => {
     pushed,
   }) => {
     await page.goto("/e2e/markers?panel=1")
+    // connected: the panel's hook, which asks, is mounted
+    await expect(page.locator(".phx-connected").first()).toBeAttached()
     await page.locator('[id="kit-panel"]').getByRole("button", { name: "Run" }).click()
     const dialog = page.locator('[id="kit-dialog"]')
     await expect(page.locator('[id="kit-dialog-question"]')).toHaveText("Stamp this part?")

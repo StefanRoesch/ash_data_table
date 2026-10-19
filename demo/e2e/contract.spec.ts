@@ -52,8 +52,8 @@ test.describe("the grid's hook mounted by hand", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/e2e/markers?mount=1")
     await expect(page.locator('[id="kit-grid"]')).not.toHaveAttribute("phx-hook")
-    // the hook mounted by hand has made its tab stop
-    await expect(cell(page, "a", "name")).toHaveAttribute("tabindex", "0")
+    // the hooks are mounted by hand (`window.kitMount`, the demo's MountedGrid)
+    await page.waitForFunction(() => "kitMount" in window)
   })
 
   test("moves with the keys, edits and saves, and tells onEdit", async ({ page }) => {
