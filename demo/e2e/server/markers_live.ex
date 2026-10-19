@@ -79,7 +79,10 @@ defmodule DemoWeb.E2E.MarkersLive do
         %{"row" => key, "column" => column, "value" => value},
         socket
       ) do
-    field = Enum.find_value(socket.assigns.columns, fn {name, _label} -> to_string(name) == column && name end)
+    field =
+      Enum.find_value(socket.assigns.columns, fn {name, _label} ->
+        to_string(name) == column && name
+      end)
 
     rows =
       for {row, values} <- socket.assigns.rows do
