@@ -31,7 +31,8 @@ export default {
   },
 
   // Opens the column's editor in the cell. `key` is the character
-  // that was typed on the cell, or null for Enter and a double click. Returns whether the key has been dealt with here; if not,
+  // that was typed on the cell, or null for Enter, Space and a double
+  // click. Returns whether the key has been dealt with here; if not,
   // the browser goes on to type it into the editor, which has the
   // focus by then.
   startEdit(cell, key) {
@@ -42,23 +43,23 @@ export default {
     this.quitWhole(cell)
     const template = this.editorOf(cell)
     const type = template.dataset.editor
-    // a boolean has no edit mode: Enter toggles it, typing does nothing
+    // a boolean has no edit mode: Enter or Space toggles it, typing does nothing
     if (type === "boolean") {
       if (key === null) this.toggle(cell, template)
       return key === null
     }
-    // nor has a reference cell: Enter opens the picker, typing does nothing
+    // nor has a reference cell: Enter or Space opens the picker, typing does nothing
     if (type === "reference") {
       if (key === null) this.pick(cell)
       return key === null
     }
-    // nor has an array: Enter and a key typed on it open the side
+    // nor has an array: Enter, Space and a key typed on it open the side
     // panel, with the field of its values
     if (type === "choices" || type === "list") {
       this.editInPanel(cell)
       return true
     }
-    // nor has a map cell, or a union: Enter opens the side panel, typing does nothing
+    // nor has a map cell, or a union: Enter or Space opens the side panel, typing does nothing
     if (type === "group" || type === "groups" || type === "union") {
       if (key === null) this.editInPanel(cell)
       return key === null

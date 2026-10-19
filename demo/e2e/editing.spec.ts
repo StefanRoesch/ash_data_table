@@ -156,6 +156,49 @@ test.describe("starting and giving up an edit", () => {
     await expect(title).toHaveText("Rename the onboarding email")
   })
 
+  // Space acts as Enter on an editable cell (owner, 2026-10-19): it is no
+  // typed character there, so it never empties the value, and the page
+  // does not scroll for it.
+  test("Space on an editable cell acts as Enter: the editor opens with the value, a yes/no toggles, a reference opens its picker; the page does not scroll", async ({
+    page,
+    tasks,
+  }) => {
+    const scrollY = () => page.evaluate(() => window.scrollY)
+    // the page is higher than the window: a Space the browser had would scroll it
+    expect(await page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight)).toBe(true)
+
+    const title = tasks.cell(FIRST, "title")
+    await title.focus()
+    const scrolled = await scrollY()
+    await tasks.press("Space")
+    await expect(tasks.editor(title)).toBeFocused()
+    await expect(tasks.editor(title), "Space replaces nothing").toHaveValue("Rename the onboarding email")
+    // in the open editor Space is a character
+    await tasks.press("End", "Space", "x")
+    await expect(tasks.editor(title)).toHaveValue("Rename the onboarding email x")
+    await tasks.press("Escape")
+    await expect(title).toHaveText("Rename the onboarding email")
+    await expect(title).toBeFocused()
+
+    const billable = tasks.cell(FIRST, "billable?")
+    await expect(billable).toHaveAttribute("data-value", "true")
+    await billable.focus()
+    await tasks.saves(billable, () => tasks.press("Space"))
+    await expect(billable).toHaveAttribute("data-value", "false")
+    await expect(billable).toBeFocused()
+
+    const assignee = tasks.cell(FIRST, "assignee")
+    await assignee.focus()
+    await tasks.press("Space")
+    await expect(tasks.picker).toBeVisible()
+    await tasks.pickerTable("assignee").ready()
+    await tasks.press("Escape")
+    await expect(tasks.picker).toHaveCount(0)
+    await expect(assignee).toBeFocused()
+
+    expect(await scrollY(), "the page did not scroll").toBe(scrolled)
+  })
+
   test("a double click opens the editor", async ({ tasks }) => {
     const title = tasks.cell(SECOND, "title")
     await title.dblclick()
@@ -378,7 +421,7 @@ test.describe("saving", () => {
     await expect(completed).toHaveText("2031-02-03T04:05:06")
   })
 
-  test("a checkbox cell toggles with Enter and saves at once; typing and Space do nothing", async ({
+  test("a checkbox cell toggles with Enter and saves at once; typing does nothing", async ({
     tasks,
     pushed,
   }) => {
@@ -388,7 +431,7 @@ test.describe("saving", () => {
 
     await billable.focus()
     await pushed.clear()
-    await tasks.press("Space", "x")
+    await tasks.press("x")
     await expect(billable).toHaveAttribute("data-value", "true")
     await expect(tasks.openEditors).toHaveCount(0)
     // a row is selected with its box, not from a cell

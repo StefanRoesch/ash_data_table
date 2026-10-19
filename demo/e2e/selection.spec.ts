@@ -251,18 +251,17 @@ test.describe("selecting from the keyboard", () => {
     expect(await pushed.besides("select"), "selecting sends nothing but what is selected").toEqual([])
   })
 
-  test("Space on a boolean cell selects nothing and leaves its value alone: Enter toggles it", async ({
-    page,
+  test("Space on a boolean cell selects nothing: it toggles the value, as Enter does", async ({
     tasks,
     pushed,
   }) => {
     const cell = tasks.cell(FIRST, "billable?")
-    const before = await cell.textContent()
+    await expect(cell).toHaveAttribute("data-value", "true")
     await cell.focus()
     await pushed.clear()
-    await page.keyboard.press("Space")
-    await expect(cell).toHaveText(before!)
-    expect(await pushed.all()).toEqual([])
+    await tasks.saves(cell, () => tasks.press("Space"))
+    await expect(cell).toHaveAttribute("data-value", "false")
+    expect(await pushed.count("select")).toBe(0)
     expect(await tasks.selectedKeys()).toEqual([])
     await expect(tasks.openEditors).toHaveCount(0)
   })

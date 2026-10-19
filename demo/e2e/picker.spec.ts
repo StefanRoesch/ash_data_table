@@ -138,11 +138,11 @@ test.describe("opening the picker", () => {
     expect(box.width).toBeCloseTo(768, 0)
   })
 
-  test("a double click opens it too; a printable key and Space do not", async ({ tasks, pushed }) => {
+  test("a double click opens it too; a printable key does not", async ({ tasks, pushed }) => {
     const cell = tasks.cell(FIRST, "assignee")
     await cell.focus()
     await pushed.clear()
-    await tasks.press("x", "5", "Space")
+    await tasks.press("x", "5")
     await expect(tasks.picker).toHaveCount(0)
     expect(await pushed.count("pick")).toBe(0)
     await expect(cell).toBeFocused()

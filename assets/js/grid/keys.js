@@ -5,8 +5,8 @@
 //
 // The table is a table: Tab and Shift+Tab go from stop to stop (its
 // controls and its editable cells), and every control keeps the keys
-// the browser gives it. What is left here: on an editable cell, Enter,
-// a typed character, Shift+Enter and Escape; in a filter, Enter and
+// the browser gives it. What is left here: on an editable cell, Enter
+// or Space, a typed character, Shift+Enter and Escape; in a filter, Enter and
 // Escape; in a table to choose a record from, Enter on a row's button;
 // Escape on a row action's button whose action failed; and the keys of
 // an open editor (saving.js).
@@ -36,7 +36,12 @@ export default {
     }
     let handled = true
     switch (e.key) {
-      case "Enter": this.startEdit(cell, null); break
+      // Space is Enter here, as it is on every other control of the
+      // table: the edit starts with the value as it is (a boolean
+      // toggles, a picker or the side panel opens), and the page does
+      // not scroll (owner, 2026-10-19)
+      case "Enter":
+      case " ": this.startEdit(cell, null); break
       // a value that is shown is hidden again, a whole text cut off
       // again, and the edit of a cell whose save failed given up
       case "Escape":

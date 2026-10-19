@@ -18,7 +18,7 @@ That matches a known critique of the grid role for data tables. Adrian Roselli, 
 - Every interactive element is a Tab stop, in page order: editable cells, boxes, expanders, relationship lines, sort buttons (a `<button>` in the header, `aria-sort` on the header), filter controls, action buttons, the heading line's controls, the skip link, the pagination. **Read-only cells are no stops**: a screen reader reads them with its own reading cursor and table keys. A cell that holds controls is not a stop itself. Nested tables the same as top tables. The expert's "every element" is read as "every interactive element"; the owner, after an explanation: "readonly cells not focusable".
 - A "Skip table %{name}" link at the start of each table, top and nested, before the header row, visible on focus, jumping to after its pagination.
 - The table handles no arrow key, no F2, no Home/End/Page keys, and has no Shift+Arrow range selection (Shift+click stays). Controls keep the browser's own keys (a menu, a number field, a radio group). Column widths are typed in a width field per column in the "Columns" list, with "Reset widths"; the drag handle is pointer-only.
-- Editing is as today: Enter or a typed character on an editable cell edits in place; arrays, maps, groups and unions open the side panel; Escape gives up.
+- Editing is as today: Enter or a typed character on an editable cell edits in place; arrays, maps, groups and unions open the side panel; Escape gives up. Space acts as Enter on an editable cell (owner, 2026-10-19; tab-model note §2.5).
 - Built as stage 8a, after the React kit's R1 and before its R2.
 
 How, in detail: [tab-model-design.md](../architecture/tab-model-design.md).

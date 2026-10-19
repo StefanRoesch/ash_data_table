@@ -62,7 +62,7 @@ A nested table follows exactly the model of a table on the page. Section 3 says 
 | Element | Enter | Space | Escape | Other |
 | --- | --- | --- | --- | --- |
 | A read-only cell | No stop: a screen reader reads it with its table keys | | | |
-| An editable cell | Starts editing: in place; a boolean toggles and saves; a reference opens the picker; an array, a map, a group or a union opens the side panel (as today) | A typed character, as built (`keys.js`): it starts editing with a space typed (a text's value is replaced by it), and opens the side panel of an array; on a boolean, a reference, a map, a group or a union the hook does nothing with it, so it is the browser's (the page scrolls) | Gives up a failed edit (as today) | A character typed starts editing with it, as today. Shift+Enter shows a cut-off text whole, and cuts it off again (as today). Double click edits, as today |
+| An editable cell | Starts editing: in place; a boolean toggles and saves; a reference opens the picker; an array, a map, a group or a union opens the side panel (as today) | The same as Enter (**owner's decision, 2026-10-19**): it starts editing with the value as it is, toggles a boolean, opens the picker or the side panel; the page does not scroll. It is no typed character on a cell any more; inside an open editor it is one. Why: every other control of the table takes "Enter or Space"; a screen reader's browse mode clicks the element on either key, and that click edits as Enter does; and an accidental Space followed by Tab can no longer empty a value (a text was replaced by the space and saved on Tab) | Gives up a failed edit (as today); hides a shown sensitive value; cuts off a shown whole text | A character typed (not Space) starts editing with it, as today. Shift+Enter shows a cut-off text whole, and cuts it off again (as today). Double click edits, as today |
 | The "Show all" button of a cell that cuts its text off (the hook's, in every such cell, read-only too) | Shows the whole text, and cuts it off again; focus stays (`aria-expanded`) | The same (a real button) | | Named after its column, "Show all of Title" |
 | A sensitive cell | Edits, where editable | | Hides a shown value; on its "Show" button whose reveal failed, gives the failure up (K2) | Its "Show" button is a stop of its own, also in a read-only sensitive cell; Shift+Enter on an editable sensitive cell still shows and hides |
 | The editor in a cell | Saves; focus back on the cell | Types | Gives up; focus back on the cell | Tab saves and goes on to the next stop (today it left the grid). Shift+Tab saves and goes back. Arrows belong to the editor |
@@ -82,7 +82,7 @@ F2 has no use any more (it was the key that went "into" a cell). It is dropped (
 
 ### 2.6 Editing: how it starts and ends, and where focus goes
 
-Starting is as today: Enter, a typed character or a double click on an editable cell. The editor opens in the cell and has focus.
+Starting is as today: Enter, Space (as Enter, 2.5), a typed character or a double click on an editable cell. The editor opens in the cell and has focus.
 
 | After | Focus is |
 | --- | --- |
