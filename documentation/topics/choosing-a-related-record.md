@@ -99,7 +99,7 @@ about there being something to choose from.
 | The records can be read through a `public?` action | The relationship's own `read_action`, else the read action of the destination's table. |
 
 A cell for which one of these does not hold stays read-only: it shows the
-label and says `aria-readonly`.
+label and is no Tab stop.
 Under the table's `update_action` that is nothing to report. A column's own
 `update_action` that cannot save the column, and a `confirm` on a column
 nobody edits, are reported when the resource is compiled; see
@@ -430,9 +430,8 @@ All keys of a table are in
 | What | How |
 | --- | --- |
 | The picker | Over the page, a modal dialog; in the page, a region. Either is named by its heading. |
-| Its table | A grid, named as the destination's table is. |
-| That one row is selected at a time | `aria-multiselectable="false"` on the grid. |
-| Whether a row is selected | `aria-selected` on the row, `true` or `false`. |
+| Its table | A table (`role="table"`), named as the destination's table is. |
+| Whether a row is selected | Its radio button is on. |
 | The control of a row | A radio button named "Select row". The radio buttons of the table are one group (one `name`): one of a set. |
 | That "Choose" has nothing to take yet | `aria-disabled="true"` on it. It is not `disabled`, so it keeps its place in the tab order. |
 | A choice that was not taken | An alert in the picker (`role="alert"`), and the table's live region. |

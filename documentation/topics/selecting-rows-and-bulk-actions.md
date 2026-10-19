@@ -515,8 +515,7 @@ All keys of a table are in
 
 | What | How |
 | --- | --- |
-| That rows can be selected | `aria-multiselectable="true"` on the grid. |
-| Whether a row is selected | `aria-selected` on the row, `true` or `false`, on every row of records. |
+| Whether a row is selected | Its box is ticked. |
 | The box of a row | A checkbox named "Select row", in a cell of the grid that is counted in `aria-colcount` and `aria-colindex`. |
 | The box of the page | A checkbox named "Select all rows of this page"; mixed when some rows of the page are selected. |
 | The line above the grid | A group (`role="group"`) named "Selected rows". |

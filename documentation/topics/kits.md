@@ -20,7 +20,7 @@ the questions, panels and pickers in your own page, see
 <!-- sketch -->
 ```elixir
 defmodule MyAppWeb.TableKit do
-  use AshDataTable.Kit, contract: 2
+  use AshDataTable.Kit, contract: 3
 
   # restyle a part drawn once per table
   def class(:panel, _state), do: "my-panel"
@@ -32,7 +32,7 @@ defmodule MyAppWeb.TableKit do
 end
 ```
 
-`use AshDataTable.Kit, contract: 2` makes every part the default kit's. A kit
+`use AshDataTable.Kit, contract: 3` makes every part the default kit's. A kit
 defines the parts it draws itself, and calls `super` for what the default kit
 draws. It is checked as it compiles: another contract number than this
 version's, a public function of one argument that is no part (a typo such as
@@ -170,11 +170,11 @@ of your own is given the resolved look, a map of all six, as `look` in its
 ## Drawing a part
 
 A part is a function component of the kit, named after the part
-(`AshDataTable.Kit.parts/0` lists the 32 of contract 2). It is given values,
+(`AshDataTable.Kit.parts/0` lists the 32 of contract 3). It is given values,
 never a record, an `AshPhoenix.Form`, a changeset or the actor, and never the
 value of a `sensitive?` field. The moduledoc of `AshDataTable.Kit` says, part
 by part, what each is given, which elements it must draw with which markers,
-and the fields of every value it is given ("Kit contract 2").
+and the fields of every value it is given ("Kit contract 3").
 
 The demo has a kit of its own, `DemoWeb.DivKit`, which draws the grid, its
 rows, cells and footer with `div`s in place of a `<table>`, and opens
@@ -183,7 +183,7 @@ everything in the page
 
 <!-- source: demo/lib/demo_web/div_kit.ex -->
 ```elixir
-use AshDataTable.Kit, contract: 2
+use AshDataTable.Kit, contract: 3
 
 alias AshDataTable.Attrs
 alias AshDataTable.Ids
@@ -201,9 +201,8 @@ def summary_cell(assigns) do
   ~H"""
   <div
     id={@id}
-    role="gridcell"
+    role="cell"
     aria-colindex={@colindex}
-    tabindex="-1"
     {Attrs.summary(@column, @summing?)}
     class="table-cell whitespace-nowrap"
   >
@@ -213,12 +212,12 @@ def summary_cell(assigns) do
 end
 ```
 
-Four things are at work there.
+Five things are at work there.
 
 **Markers.** The table's behaviour in the browser (its hooks) finds the
 elements of a table by their markers, never by their tags: an ARIA role where
-the element has one (`grid`, `rowgroup`, `row`, `gridcell`, `columnheader`,
-`dialog`, `region`), else a `data-*` attribute, and the ids that begin with
+the element has one (`table`, `rowgroup`, `row`, `cell`, `rowheader`,
+`columnheader`, `dialog`, `region`), else a `data-*` attribute, and the ids that begin with
 the table's id. So a part may draw any elements, as long as they carry the
 markers. `AshDataTable.Attrs.markers/0` names every marker.
 
@@ -226,9 +225,21 @@ markers. `AshDataTable.Attrs.markers/0` names every marker.
 `AshDataTable.Attrs`, maps of attributes a part spreads on its element
 (`{Attrs.summary(@column, @summing?)}`), made of the values the part is
 given. Where a part is drawn once per row, cell or column, the attributes that
-are the same on every one are written by the part itself, as `role` and
-`tabindex` above (a bundle would send them again with every row), and the
-bundle holds what varies. The `Attrs` moduledoc is the contract.
+are the same on every one are written by the part itself, as `role` above
+(a bundle would send it again with every row), and the bundle holds what
+varies. The `Attrs` moduledoc is the contract.
+
+**Tab stops.** A table is a table (`role="table"`), not an ARIA grid: the
+browser moves the focus with Tab, from control to control in the order they
+stand in, nested tables included. So a part writes no `tabindex` on a
+control: a box, a button, a link, a menu or an input is a stop by itself. A
+cell is no stop, but an editable one, whose item's `attrs` hold
+`tabindex="0"` (and the `aria-describedby` that says it can be edited);
+a summary cell, as above, has none. Nor does a header: a column that sorts
+has a button in its header, which is the stop. The `grid` part draws a link
+"Skip table …" before the header row (`Attrs.skip/1`), and the `root` part
+the place it jumps to after the table's pages (`Attrs.skip_target/1`). The
+`Kit` moduledoc, "The Tab stops", has the rule; `KitCase` checks it.
 
 **Ids.** Where the table names an element a part draws (focus goes to it, a
 nested table is moved into it), the part makes its id with
@@ -295,13 +306,12 @@ column, with the id `AshDataTable.Ids` makes for it:
   colindex={@lead + index + 1}
   attrs={
     Attrs.column_header(
-      @id,
       column,
       @state.sort,
-      @model.sticky_label? and column == @label_column,
-      @myself
+      @model.sticky_label? and column == @label_column
     )
   }
+  button={column.sortable? && Attrs.sort(@id, column, @myself)}
   sort={@state.sort}
   resizer={"#{@id}-resize-#{column.name}"}
   texts={Words.texts(:header_cell, %{column: column, editing?: @editing?})}
@@ -321,8 +331,8 @@ table draws its `heading` too, and it is moved onto the line that opens it
 (a portal of its own, as the nested table is moved into the cell under the
 line): a kit's `line` part draws the empty element `Ids.line_heading/2`
 where it wants it, as it draws the cell `Ids.nested_cell/2`. The line gives
-the nested table its name; the nested table's buttons there are no tab
-stops, as the line's are not.
+the nested table its name; the nested table's controls there are Tab stops,
+after the line's button.
 
 The line of the selection (`selection_line`) says in its class's `state`
 whether anything is on it (`shown?`): the default kit gives it no room
@@ -357,7 +367,7 @@ write through the server's checks. What such a kit relies on is public:
   cell is being edited: it keeps that cell's content as it is until the
   edit ends. The comment at the top of `assets/js/mount.js` is the contract.
 - **What the hooks own.** The hooks write some attributes of the elements a
-  kit draws (where the tab stop is, what is selected, a busy cell);
+  kit draws (a busy cell, a failed one, a box's state);
   `assets/js/owned.js` lists them, and what a kit may render of each.
 - **Ids.** `assets/js/ids.js` makes the ids of `AshDataTable.Ids`, function
   by function.
@@ -449,8 +459,11 @@ changed.
 
 ## Things people trip over
 
-- **The arrow keys do nothing in a kit's grid.** A marker is missing: look
-  at the browser's console with LiveView's debug on, and run `KitCase`.
+- **Editing does not start in a kit's grid.** A marker is missing: look at
+  the browser's console with LiveView's debug on, and run `KitCase`.
+- **Tab stops at a cell it should pass, or twice in one cell.** A part wrote
+  a `tabindex` of its own: only the item's `attrs` give one, to an editable
+  cell. `KitCase` names the element.
 - **A part of your own gets an assign as nil.** A part called through the
   kit is given what its caller passes, and its `attr` defaults are not
   applied.
@@ -458,12 +471,17 @@ changed.
   table through `Kit.part/1` has to pass that part's `texts` and `messages`
   made with `Kit.Words`.
 - **Reading a function of the table's structs.** A kit reads the fields
-  "Kit contract 2" lists; their modules' functions are the table's own, and
+  "Kit contract 3" lists; their modules' functions are the table's own, and
   may change.
-- **A kit of contract 1 no longer compiles.** Contract 2 draws the rows
-  from the items of `AshDataTable.Item` (`row.open`, `cell.text`,
-  `row.failure`, `{row.attrs}`, `Attrs.cell/2`) and gives every message as a
-  map: the compile error names what changed.
+- **A kit of contract 2 no longer compiles.** Contract 3 draws a table, not
+  an ARIA grid: `role="table"`, `"cell"` and `"rowheader"` (the label
+  column's cell, the `row` part's `label`), no `tabindex="-1"` on cells and
+  controls, a sort button in a sortable header (`Attrs.sort/3`, the
+  `header_cell` part's `button`), the skip link and its target,
+  `data-failed` in place of `aria-invalid`, and no `aria-readonly` or
+  `aria-multiselectable` (`Attrs.table/8`, `Attrs.empty_cell/2`,
+  `Attrs.column_header/3`): the compile error names what changed. A kit of
+  contract 1 is told both steps.
 
 ## Not in the first version
 

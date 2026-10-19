@@ -7,8 +7,10 @@ how rows are selected, what is announced to assistive technology, how focus and 
 are shown and what contrast they were measured at, and what has and has not
 been tested.
 
-A note on words: this guide says "grid" for the element with `role="grid"`
-and for the ARIA pattern it follows. Everywhere else the thing is a table.
+A note on words: a table is drawn as a table (`role="table"`, its cells
+`role="cell"` and the label column's `role="rowheader"`), not as an ARIA
+grid ([ADR 0003](https://github.com/StefanRoesch/ash_data_table/blob/main/docs/adr/0003-table-semantics-controls-in-the-tab-order.md)).
+This guide says "grid" for the area of a table that holds its rows.
 
 ## The smallest example
 
@@ -534,9 +536,10 @@ page and keeps the focus.
 
 | What | How |
 | --- | --- |
-| The grid and its name | `role="grid"` with `aria-label`: the table's name, such as "Tasks". |
+| The table and its name | `role="table"` with `aria-label`: the table's name, such as "Tasks". Its cells are `role="cell"`; the cell of the label column is the row's header (`role="rowheader"`), so a screen reader names the row as it moves down a column. |
+| Skipping a table | A link "Skip table Tasks" before its header row, seen only while it has the focus, jumps past the table and its pages; a nested table has its own ("Skip table Comments"). |
 | Size and position | `aria-rowcount` (the total when the table knows it, counting the header rows (the header row, and the filter row where the table has one) and the footer row of the summaries where the table has one; else `-1`), `aria-colcount`, `aria-rowindex` on every row, `aria-colindex` on every cell. Under offset pagination the row numbers run through all pages; under keyset pagination they do not (see below). |
-| Sort | `aria-sort` on every sortable heading: `ascending`, `descending` or `none`. |
+| Sort | `aria-sort` on every sortable heading: `ascending`, `descending` or `none`. The heading holds a button named by the column, which sorts. |
 | The handle of a column's width | `role="separator"` with `aria-orientation="vertical"`, named "Resize Title". `aria-valuenow` is the column's width in pixels, between `aria-valuemin` (48) and `aria-valuemax` (1000). The heading has its column's label as `aria-label`, so the handle's name is not read as part of it. |
 | A read in progress | `aria-busy` on the grid. The previous rows stay. |
 | A filter's controls | An accessible name each: "Filter Title", "How to filter Title", "Clear the Title filter". |
@@ -551,21 +554,21 @@ page and keeps the focus.
 | The field of an array, in the side panel and in the action panel | A group (`role="group"`) named by the column. In a multiple choice each box is named by its choice; in a list each value's control is named by the column and its place ("Tags 2"), and its button "Remove Tags 2". The button that adds a value says "Add value". |
 | A cell hidden from the person by a field policy | The text "Not available", for screen readers only. |
 | The expander of a row, and the button of a line | `aria-expanded`. The expanders, and the heading of their column, are named "Related records"; a line is named by its relationship. The expanders are a column of the grid, counted in `aria-colcount` and `aria-colindex`. |
-| A nested table | A grid of its own, named by its line and by the first data cell of the row it belongs to (`aria-labelledby`): "Comments Write the report". |
+| A nested table | A table of its own, named by its line and by the first data cell of the row it belongs to (`aria-labelledby`): "Comments Write the report". |
 | A nested table whose first rows are on their way | The text "Loading…", and `aria-busy` on its grid. |
 | The pages of a nested table | A group (`role="group"`) named "Pagination: Comments", in place of the landmark. |
 | The link to the full view | A link named "Open in full view: Comments": its text and the nested table's name. |
 | A table limited to the records of one parent | A heading above the grid: the parent and the relationship, "Write the report: Comments". |
-| Cells that cannot be edited | `aria-readonly`, on a table that offers the person any editing. |
+| Cells that can be edited | A Tab stop each (`tabindex="0"`), described by "Editable: press Enter". A cell that cannot be edited is no stop, and says nothing of it. |
 | The editor of a cell | Named by its column. `aria-required` where the column's action cannot take the cell empty; not on a box, on the group of an array, or on the editor of a sensitive cell, which saves nothing when left empty. |
 | The limits of a number | `min`, `max` and `step` on the number input of a cell's editor, of a field of the action panel and of the argument line, from the resource's constraints: the browser passes them on as the least and the greatest value of the input. Nothing is checked against them in the browser. See [Inline editing](inline-editing.md#limits-an-editor-shows-before-saving). |
 | The length of a text | A text with a `max_length` is described by its counter (`aria-describedby`): "12/30", read when the control gets the focus. It is no live region, and is not read out at every key. Past the most it says a number greater than the most, in a heavier weight. In a cell's editor, on a field of the action panel and on the argument line. See [Inline editing](inline-editing.md#the-counter-of-a-text). |
 | The button that empties a sensitive value | Named with the column or the field: "Clear Budget". In the action panel it says "Keep" once it was used, named "Keep Budget" and described by "Will be cleared.". |
 | A save in progress | `aria-busy` on the cell. |
-| A failed save | `aria-invalid` on the cell, described by the action's message, which stands in the cell under the value, and the same live region: "Title was not saved: …". |
+| A failed save | The cell is described by the action's message, which stands in the cell under the value, and the same live region says it: "Title was not saved: …". |
 | A cell that cuts its text off | The whole text is in the cell, and is read from there. The button "Show all" / "Show less" that the cell gets while it has the pointer or the focus is for the eye: hidden from assistive technology, and no tab stop. |
 | The column of the row actions | A column of the grid, the last one, with the heading "Actions". It is counted in `aria-colcount` and `aria-colindex`. Each button is named by its action. |
-| That rows can be selected | `aria-multiselectable="true"` on the grid, and `aria-selected`, `true` or `false`, on every row of records. Neither is there on a table without the boxes. In the picker, where one row is selected at a time, the grid says `aria-multiselectable="false"`. |
+| That rows can be selected | The boxes: a row is selected when its box is ticked. In the picker, where one row is selected at a time, they are radio buttons of one group. |
 | The box of a row, and the one in the header | Checkboxes named "Select row" and "Select all rows of this page", in a first column of the grid that is counted in `aria-colcount` and `aria-colindex`. The one in the header is mixed when some rows of the page are selected. |
 | What is selected | A group above the grid (`role="group"`) named "Selected rows", with a live region (`role="status"`) that says the number when it changes: "3 selected", "All 320 that match are selected". |
 | A bulk action in progress | `aria-busy` on the grid, and `aria-disabled` on the buttons of the line, which keep the focus. |
@@ -574,13 +577,13 @@ page and keeps the focus.
 | An action that ran | The live region: "Archive: done"; after a create, "Task created". |
 | A table action, or a generic action in a row, that ran | The live region, and the same words above the grid: the action and what it returned, "Count unused: 3", or "Remove unused: done". |
 | A table action without a panel that failed | The live region, and the same words above the grid: "Count unused failed: …". |
-| An action that failed | The live region: "Archive failed: …". For an action that ran straight away, also `aria-invalid` on the row's actions cell, described by the message. |
+| An action that failed | The live region: "Archive failed: …". For an action that ran straight away, the row's actions cell is described by the message too. |
 | The action panel | A modal dialog over the page, or a region in the page, named by its heading (`aria-labelledby`): "Reassign: Write the report", "New task". |
 | The question | A modal dialog over the page, or a region in the page, named by its question. Focus is on "Cancel" as it opens. |
 | A field of the panel | A label. A required field has `aria-required`, and the mark " \*" beside its label is hidden from assistive technology. A field with an error has `aria-invalid` and is described by the message. |
 | A field of the panel that holds the key of a related record | A group (`role="group"`) named by the field's label, with what the record is called as text and the button "Choose", which is described by that text. A group cannot say `aria-required`, so the label of a required one ends in the word "required", for screen readers only. Its errors describe the group. |
-| The picker | A modal dialog over the page, or a region in the page, named by its heading: "Assignee: choose user". A picker in the page opened from a panel over the page is drawn inside the panel. "Choose" is `aria-disabled` while no row is selected. Its table is a grid named as the destination's table is, with `aria-multiselectable="false"`, `aria-selected` on every row, and a radio button named "Select row" in every row, all of one group. See [Choosing a related record](choosing-a-related-record.md#what-assistive-technology-is-told). |
-| A field of the panel that holds several related records | A group named by the field's label, with what each record is called as text, a button per record named by what it does ("Remove ops"), and the button "Choose". Its picker's grid says `aria-multiselectable="true"`, and has a box named "Select row" in every row and a status above it that says how many rows are selected. |
+| The picker | A modal dialog over the page, or a region in the page, named by its heading: "Assignee: choose user". A picker in the page opened from a panel over the page is drawn inside the panel. "Choose" is `aria-disabled` while no row is selected. Its table is a table named as the destination's table is, with a radio button named "Select row" in every row, all of one group. See [Choosing a related record](choosing-a-related-record.md#what-assistive-technology-is-told). |
+| A field of the panel that holds several related records | A group named by the field's label, with what each record is called as text, a button per record named by what it does ("Remove ops"), and the button "Choose". Its picker's table has a box named "Select row" in every row and a status above it that says how many rows are selected. |
 | The field of a union | A group (`role="group"`) named by the field's label, which ends in the word "required", for screen readers only, where the union cannot be empty. In it a menu labelled "Kind", and the fields of the kind that is chosen, each with its own label. What the action says of the value of a kind that holds one value describes that value's control; of a kind made of fields, the group. |
 | The field of an argument that takes a file | The browser's file input, with a label. A required one has `aria-required`. A file the upload refuses, and what the action said of the file, mark the input `aria-invalid` and describe it; a refusal as the file is chosen is said in the live region as well ("File: The file is too large. …"). While the file is sent, a `<progress>` named by the file says how far it has come. |
 | What an action says that is about no field of its panel | An alert (`role="alert"`) above the fields. |
@@ -620,14 +623,15 @@ follows the theme, light or dark.
 
 | State | What a person sees |
 | --- | --- |
-| The focused cell | A solid ring of 2px, flush inside the cell, in the theme's text colour (`base-content`). Not in `primary` alone: a brand colour may be any lightness, and the text colour is the one a theme promises can be seen on its background. In a table that offers editing, a cell that can be edited has its ring in the primary colour mixed with the text colour (80 % to 20 %, so that it keeps 3:1), and a read-only cell a dashed ring of 1.5px in the text colour at half strength. A cell keeps the ring while its editor has focus. A relationship line and the cell that holds a nested table span the whole table: their ring is drawn around what is seen of them (the line, and the nested table's area with the line down its left), above the nested table's header, so that it lines up with what has focus at every depth. |
-| Focus in a control | A filter's input and menu, a button in a cell, the pagination buttons and the fields and buttons of the action panel and the dialog show daisyUI's own focus ring. It is in the text colour as well. |
+| The focused cell | An editable cell, the one cell that takes the focus: a solid ring of 2px, flush inside the cell, in the theme's text colour (`base-content`), as daisyUI draws its own. Not in `primary`: a brand colour may be any lightness, and the text colour is the one a theme promises can be seen on its background. A cell keeps the ring while its editor has focus. |
+| Focus on a button of the table's own look | A column's sort button, a row's expander and a relationship line's button: a ring of 2px in the text colour (`currentColor`), outside the button, as daisyUI's. |
+| Focus in a control | A filter's input and menu, a button in a cell, the pagination buttons, "Skip table" and the fields and buttons of the action panel and the dialog show daisyUI's own focus ring. It is in the text colour as well. |
 | A cell whose save or action failed | A ring of 2px in the error colour mixed with the text colour, and a "!" at the end of the cell. The "!" is the mark that does not depend on a colour. Both are drawn by the cell's style and do not change the cell's width. The message stands in the cell under the value, in the text colour, and the row grows to it. |
 | A cell that cuts its text off, with the pointer or the focus | A small underlined button "Show all" at its top end; once used, the whole text in the cell, the row as high as it needs, and "Show less" under it. |
 | A failed cell that has focus | Both rings: the focus ring at the edge of the cell and the ring of the failure inside it, with the "!". |
 | A cell whose save or action is on its way | Its text at 70% opacity. |
 | Which cells can be edited, with the pointer | At rest an editable and a read-only cell look alike. Under the pointer an editable cell shows a thin edge inside it, a text cursor and a small ✎ at its end (hidden from assistive technology); a read-only cell does not change. |
-| A column no row may be edited in | A small lock after its heading, in a table that offers the person editing at all: a calculation, an aggregate, a column with `update_action false`, one the update action does not accept. Its accessible name is "read-only" (translated). Whether one cell can be edited depends on its record too: such cells say `aria-readonly`, and their column has no lock. |
+| A column no row may be edited in | A small lock after its heading, in a table that offers the person editing at all: a calculation, an aggregate, a column with `update_action false`, one the update action does not accept. Its accessible name is "read-only" (translated). Whether one cell can be edited depends on its record too: such cells are no Tab stops, and their column has no lock. |
 | A selected row | The box at its start is ticked. A row has no other mark of being selected and no colour of its own; the box has an edge in the text colour at half strength, as the other boxes of a table have. |
 | A table that is reading | Its rows at 70% opacity. The header and the filters are not dimmed: they can be used meanwhile, and their text is muted already. |
 | An input or a menu | An edge in the text colour at half strength, on the filters and on the fields of the action panel. daisyUI's own edge, at a fifth, does not show where an empty input is. |
@@ -656,8 +660,7 @@ measure the same and hold each line at what WCAG 2 asks.
 
 | | WCAG asks | Light | Dark |
 | --- | --- | --- | --- |
-| The focus ring against the cell (1.4.11) | 3:1 | 16.7:1 | 12.6:1 |
-| The focus ring of an editable cell, and the dashed one of a read-only cell (1.4.11), computed from the theme's colours | 3:1 | 3.9:1; 3.8:1 | 4.1:1; 4.0:1 |
+| The focus ring against the cell, and of a sort button (1.4.11) | 3:1 | 16.7:1 | 12.6:1 |
 | The ring of a failed cell against the cell (1.4.11) | 3:1 | 7.1:1 | 4.6:1 |
 | The "!" of a failed cell (1.4.1, 1.4.11) | 3:1 | 16.7:1 | 12.6:1 |
 | The message of a failed cell, of a filter and of a field (1.4.3) | 4.5:1 | 16.7:1; a filter's 4.6:1 | 12.6:1; a filter's 5.6:1 |

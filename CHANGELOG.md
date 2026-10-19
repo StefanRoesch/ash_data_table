@@ -98,7 +98,7 @@ declared in the resource and mounted with one line in the router.
   the table actions; it wraps only where it does not fit. The `heading`
   part draws the `columns` and `argument_line` parts; a nested table's
   heading is moved onto its line (`Ids.line_heading/2`, which a kit's
-  `line` draws), where its buttons are no tab stops. The line of the
+  `line` draws), where its controls are Tab stops after the line's button. The line of the
   selection takes no room while nothing is selected, filtered or noticed
   (`shown?` in its class's state), in a table on the page too.
 - `AshDataTable.KitCase` checks a kit in a host's tests: twenty states, four
@@ -116,6 +116,22 @@ declared in the resource and mounted with one line in the router.
   `%{value: value, label: label}`: what a part and a request are given
   goes to JSON as it is. A kit of contract 1 fails to compile and says
   what changed.
+- Kit contract 3 (stage 8a, ADR 0003): a table is drawn as a table, not as
+  an ARIA grid. `role="table"`, `role="cell"`, and the label column's
+  cell a row header (`role="rowheader"`, the `row` part's `label`); no
+  `aria-multiselectable` (`Attrs.table/8`), no `aria-readonly`, and a
+  failed cell says `data-failed` in place of `aria-invalid`. Every control
+  is a Tab stop of its own, with no `tabindex`; an editable cell is one
+  (`tabindex="0"` in its item's `attrs`, described by the table's
+  "Editable: press Enter", `Attrs.editable/1`); a read-only cell, a header
+  that does not sort and a cell that holds controls are none. A sortable
+  header holds a button (`Attrs.sort/3`, `Ids.sort/2`, the `header_cell`
+  part's `button`; `Attrs.column_header/3`). The `grid` part draws "Skip
+  table NAME" before the header row (`Attrs.skip/1`) and the `root` part
+  where it jumps to, after the pagination (`Attrs.skip_target/1`);
+  `Attrs.empty_cell/2` in place of `Attrs.gridcell/3`. `KitCase` checks
+  the stop rule. A kit of contract 2 fails to compile and says what
+  changed.
 - What a kit that draws in the browser (a React kit) needs is public:
   `Attrs.props/1` (a bundle as props), `Attrs.event/2` and the list of the
   events a table takes, with what sends each, its payload and its answer
@@ -384,8 +400,13 @@ declared in the resource and mounted with one line in the router.
   one that was used; when it is disabled by the page it led to, focus goes to
   the button of that page, or to the other of Previous and Next in a table
   without page numbers.
-- States are shown with the theme's colours and can be seen: the focus ring
-  is in the text colour, 2px inside the cell; a failed cell has a ring and a
+- A table is a table to assistive technology (`role="table"`, the label
+  column's cell the row's header), and a link "Skip table NAME", seen only
+  while it has the focus, jumps past each table, nested ones too.
+- States are shown with the theme's colours and can be seen: every focus
+  ring the table draws itself is in the text colour, 2px, as daisyUI's
+  own (inside an editable cell; outside a sort button, an expander and a
+  line's button); a failed cell has a ring and a
   "!" that does not depend on a colour, and shows both rings when it has
   focus; a saving cell and the rows of a table that is reading are dimmed to
   70%, the header and the filters not at all; inputs and menus have an edge

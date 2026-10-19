@@ -361,7 +361,7 @@ and no other.
 | --- | --- |
 | The field | A group named by its label. |
 | A record's button | Named by what it does to which record: "Remove ops". For a record that is called "Not available", by its place: "Remove Labels 2". |
-| The picker's table | A grid that says `aria-multiselectable="true"`, with a box named "Select row" per row. |
+| The picker's table | A table with a box named "Select row" per row. |
 | How many rows are selected | A status above the grid, read out when it changes. |
 
 axe-core reports no violations with the panel open on such a field, with a
