@@ -119,8 +119,19 @@ export default {
     const records = this.records()
     const body = group && (this.isRecord(group) ? group : document.getElementById(rowId(this.id, group.dataset.row || "")))
     const row = body ? records.indexOf(body) : -1
-    const stop = body === group ? Math.max(0, this.stopsIn(group).indexOf(target)) : 0
-    this.focused = {target, row, stop, holder, trail: holder ? [holder.dataset.lineCell, holder.dataset.expanderCell] : []}
+    const place = body === group ? this.stopPlace(target) : [0, -1]
+    this.focused = {target, row, place, holder, trail: holder ? [holder.dataset.lineCell, holder.dataset.expanderCell] : []}
+  },
+
+  // Where a stop stands in its row: its cell's column (`aria-colindex`),
+  // and its place among the stops of that cell (-1: the cell itself).
+  // Rows of one table have stops in other numbers (a "Show all" only
+  // where a text is cut off, a cell editable in one record and not in
+  // another), so a place is a column, not a count of stops.
+  stopPlace(stop) {
+    const cell = stop.closest(ANYCELL)
+    if (!cell) return [0, -1]
+    return [Number(cell.getAttribute("aria-colindex") || 0), cell === stop ? -1 : this.stopsIn(cell).indexOf(stop)]
   },
 
   // After a patch that left focus nowhere (the callers ask): to the
@@ -151,9 +162,13 @@ export default {
     }
     const records = this.records()
     if (focused.row >= 0 && records.length > 0) {
+      // the stop at the same place, else the next one along the row,
+      // else its last
       const body = records[Math.min(focused.row, records.length - 1)]
       const stops = this.stopsIn(body)
-      if (take(stops[Math.min(focused.stop, stops.length - 1)])) return
+      const [column, within] = focused.place
+      const at = place => place[0] > column || (place[0] === column && place[1] >= within)
+      if (take(stops.find(stop => at(this.stopPlace(stop))) || stops[stops.length - 1])) return
     }
     this.toFirstStop()
   },
