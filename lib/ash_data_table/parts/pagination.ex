@@ -14,8 +14,8 @@ defmodule AshDataTable.Parts.Pagination do
   # The pages of a table: where the page is among the records, and the
   # controls to go to another. Under a table of its own it is a navigation
   # landmark after the grid, whose controls are ordinary tab stops. In a
-  # nested table it is a group in the last row of the grid, and its controls
-  # are reached through that row's cell. There the controls follow the range
+  # nested table it is a group in the last row of the grid, its controls Tab
+  # stops as well. There the controls follow the range
   # at the left: the right end of a nested table may be out of sight.
   #
   # The hook keeps focus on the control that was used, or sends it on when
@@ -24,8 +24,7 @@ defmodule AshDataTable.Parts.Pagination do
   # A table that offers page sizes has a menu after the buttons,
   # `ID-page-size`, with its label "Rows per page" (in the form
   # `ID-page-size-form`). Choosing sends `page_size`, and the table reads
-  # its first page with that size. In a nested table the menu is reached as
-  # the buttons are: Enter on the row's cell, then Left and Right Arrow.
+  # its first page with that size.
   attr :id, :string, required: true
   attr :nested?, :boolean, required: true
   attr :page, :map, required: true

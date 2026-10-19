@@ -66,8 +66,8 @@ defmodule AshDataTable.Parts.Heading do
     name, "Columns", the inputs of the read action, and at the far end what
     the table lets a person create and run. It wraps only where it does not
     fit. A nested table's name is its line's (`Parts.Related.line`), which
-    this line is moved onto (`AshDataTable.Live.Drawing`); its buttons are no
-    tab stops there, as the line's are not. --%>
+    this line is moved onto (`AshDataTable.Live.Drawing`); its controls are
+    Tab stops there, after the line's button. --%>
     <div
       :if={
         @nested? or !!@heading or columns?(@model) or @model.arguments != [] or
