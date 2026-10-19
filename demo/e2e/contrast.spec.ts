@@ -185,9 +185,36 @@ for (const theme of ["light", "dark"] as const) {
         tasks,
       }) => {
         const comments = await tasks.openLine(FIRST, "comments")
+        const grid = (await tasks.hookRoot.boundingBox())!
+
+        // A line and the cell of a nested table span the whole table: the ring
+        // is on what stays in view of them, within what is seen of the grid,
+        // and no header covers its top edge.
+        const line = tasks.lineCell(FIRST, "comments")
+        await line.focus()
+        const lineRing = line.locator(":scope > div")
+        await expectFocusRing(lineRing, "a relationship line")
+        expect(await contrastOf(lineRing, "outline")).toBeGreaterThanOrEqual(MARK)
+        expect(await style(line, ["outline-style"])).toEqual({ "outline-style": "none" })
+
+        const holder = tasks.nestedCell(FIRST, "comments")
+        await holder.focus()
+        const view = holder.locator("[data-ash-data-table-view]").first()
+        // drawn above the nested table's header (z-index), so that it covers no edge of it
+        expect(await style(view, ["border-top-style", "border-top-width", "z-index"], "::after")).toEqual({
+          "border-top-style": "solid",
+          "border-top-width": "2px",
+          "z-index": "20",
+        })
+        expect(await contrastOf(view, "border", "::after")).toBeGreaterThanOrEqual(MARK)
+        expect(await style(holder, ["outline-style"])).toEqual({ "outline-style": "none" })
+        for (const ring of [lineRing, view]) {
+          const box = (await ring.boundingBox())!
+          expect(box.x).toBeGreaterThanOrEqual(grid.x - 1)
+          expect(box.x + box.width).toBeLessThanOrEqual(grid.x + grid.width + 1)
+        }
+
         const cells = {
-          "a relationship line": tasks.lineCell(FIRST, "comments"),
-          "the cell that holds a nested table": tasks.nestedCell(FIRST, "comments"),
           "a cell of a nested table": comments.cell(await comments.rowKey(1), "body"),
           "a header of a nested table": comments.header("body"),
         }

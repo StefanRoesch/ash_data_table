@@ -620,7 +620,7 @@ follows the theme, light or dark.
 
 | State | What a person sees |
 | --- | --- |
-| The focused cell | A solid ring of 2px, flush inside the cell, in the theme's text colour (`base-content`). Not in `primary`: a brand colour may be any lightness, and the text colour is the one a theme promises can be seen on its background. A cell keeps the ring while its editor has focus. |
+| The focused cell | A solid ring of 2px, flush inside the cell, in the theme's text colour (`base-content`). Not in `primary`: a brand colour may be any lightness, and the text colour is the one a theme promises can be seen on its background. A cell keeps the ring while its editor has focus. A relationship line and the cell that holds a nested table span the whole table: their ring is drawn around what is seen of them (the line, and the nested table's area with the line down its left), above the nested table's header, so that it lines up with what has focus at every depth. |
 | Focus in a control | A filter's input and menu, a button in a cell, the pagination buttons and the fields and buttons of the action panel and the dialog show daisyUI's own focus ring. It is in the text colour as well. |
 | A cell whose save or action failed | A ring of 2px in the error colour mixed with the text colour, and a "!" at the end of the cell. The "!" is the mark that does not depend on a colour. Both are drawn by the cell's style and do not change the cell's width. The message stands in the cell under the value, in the text colour, and the row grows to it. |
 | A cell that cuts its text off, with the pointer or the focus | A small underlined button "Show all" at its top end; once used, the whole text in the cell, the row as high as it needs, and "Show less" under it. |

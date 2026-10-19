@@ -924,8 +924,16 @@ defmodule AshDataTable.Parts.Grid do
             # the focus ring, which a cell keeps while its editor has the focus. In
             # the text colour: the one colour a theme promises to be seen on its
             # background, which its brand colour need not be.
-            "[&_:is([role=gridcell],[role=columnheader]):focus]:outline-2 [&_:is([role=gridcell],[role=columnheader]):focus]:-outline-offset-2 [&_:is([role=gridcell],[role=columnheader]):focus]:outline-base-content",
-            "[&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:not([data-nested]):focus-within]:outline-2 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:not([data-nested]):focus-within]:-outline-offset-2 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:not([data-nested]):focus-within]:outline-base-content",
+            "[&_:is([role=gridcell],[role=columnheader]):not([data-line],[data-nested]):focus]:outline-2 [&_:is([role=gridcell],[role=columnheader]):not([data-line],[data-nested]):focus]:-outline-offset-2 [&_:is([role=gridcell],[role=columnheader]):not([data-line],[data-nested]):focus]:outline-base-content",
+            "[&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:not([data-nested],[data-line]):focus-within]:outline-2 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:not([data-nested],[data-line]):focus-within]:-outline-offset-2 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:not([data-nested],[data-line]):focus-within]:outline-base-content",
+            # A line and the cell of a nested table span the whole table, far
+            # wider than what is seen of it: their ring is drawn on what stays
+            # in view of them, the line's own element and the nested table's
+            # view (`data-ash-data-table-view`, not one of a table nested
+            # deeper), above the nested table's header, which would cover a
+            # ring drawn inside the view (a border, which forced colours keep).
+            "[&_[data-line]:is(:focus,:focus-within)>div]:outline-2 [&_[data-line]:is(:focus,:focus-within)>div]:-outline-offset-2 [&_[data-line]:is(:focus,:focus-within)>div]:outline-base-content",
+            "[&_[data-nested]:focus_[data-ash-data-table-view]:not([data-nested]:focus_[data-nested]_*)]:after:pointer-events-none [&_[data-nested]:focus_[data-ash-data-table-view]:not([data-nested]:focus_[data-nested]_*)]:after:absolute [&_[data-nested]:focus_[data-ash-data-table-view]:not([data-nested]:focus_[data-nested]_*)]:after:inset-0 [&_[data-nested]:focus_[data-ash-data-table-view]:not([data-nested]:focus_[data-nested]_*)]:after:z-20 [&_[data-nested]:focus_[data-ash-data-table-view]:not([data-nested]:focus_[data-nested]_*)]:after:border-2 [&_[data-nested]:focus_[data-ash-data-table-view]:not([data-nested]:focus_[data-nested]_*)]:after:border-base-content [&_[data-nested]:focus_[data-ash-data-table-view]:not([data-nested]:focus_[data-nested]_*)]:after:content-['']",
             # A cell whose save is on its way, and the rows of a table that is
             # reading: dimmed, and no further than text may be. The header and the
             # filters are not dimmed, as they can be used meanwhile and are muted
@@ -981,7 +989,7 @@ defmodule AshDataTable.Parts.Grid do
             # it, and is as wide as that area (`--ash-data-table-view`, which
             # the grid's hook sets); its heading, the other portal, is on its
             # line, which stays there itself
-            "[&_[data-ash-data-table-portal]:has(>[data-ash-data-table-view])]:sticky [&_[data-ash-data-table-portal]:has(>[data-ash-data-table-view])]:left-0 [&_[data-ash-data-table-portal]:has(>[data-ash-data-table-view])]:w-0 [&_[data-ash-data-table-view]]:w-[var(--ash-data-table-view)]"
+            "[&_[data-ash-data-table-portal]:has(>[data-ash-data-table-view])]:sticky [&_[data-ash-data-table-portal]:has(>[data-ash-data-table-view])]:left-0 [&_[data-ash-data-table-portal]:has(>[data-ash-data-table-view])]:w-0 [&_[data-ash-data-table-view]]:relative [&_[data-ash-data-table-view]]:w-[var(--ash-data-table-view)]"
           ],
           " "
         )
