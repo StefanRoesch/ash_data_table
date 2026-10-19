@@ -53,8 +53,8 @@ table says what became of it: "Archive: 3 done."
 
 A table has the column of boxes when it has something to do with a
 selection: at least one row action that this person can ever run and that
-runs on several rows. Otherwise it has no such column, no line above the
-grid, and is not announced as a grid whose rows can be selected.
+runs on several rows. Otherwise it has no such column and no line above the
+grid.
 
 | Demo page | As | Boxes |
 | --- | --- | --- |
@@ -69,7 +69,7 @@ grid, and is not announced as a grid whose rows can be selected.
 The boxes are the first column of the grid. Where rows expand, the expander
 is the second cell of a row, and the first column of the table the third.
 The box in the header stands for the rows of the page. The cell under it in
-the filter row is empty, and the arrow keys pass over it.
+the filter row is empty, and Tab passes over it. Each box is a Tab stop.
 
 A nested table is the table of its resource and has its own boxes, its own
 line and its own selection. See [Nested tables](#nested-tables).
@@ -81,9 +81,11 @@ line and its own selection. See [Nested tables](#nested-tables).
 | A click on a row's box, or beside it in its cell | Selects the row, or takes it out of the selection. |
 | A click on the box in the header | Selects every row of the page. When all of them are selected already, takes them out. |
 | Shift and a click, anywhere on a row | Selects the rows from the one that was selected or clicked last to this one. It adds, and takes nothing out. |
-| Space, on any cell of a row | Selects the row, or takes it out. |
-| Space, on the cell of the box in the header | As a click on that box. |
-| Shift+Down Arrow, Shift+Up Arrow, on a cell of a row | Moves to the next or the previous row and selects as it goes: the rows from where the key was first pressed to where focus is now, with what was selected before. Going back takes rows out again. |
+| Space, on a row's box | Selects the row, or takes it out. |
+| Space, on the box in the header | As a click on that box. |
+
+There is no key that selects a range of rows: Space on each box, the box
+in the header, and "Select all … that match" do it from the keyboard.
 
 The box in the header is ticked when every row of the page is selected, and
 shows the mixed state (a dash) when only some are.
@@ -93,26 +95,13 @@ browser at once, and every change of what is selected is sent to the
 server, which brings no row back: it draws the line above the grid from
 what it holds, so the count and the buttons follow a moment later.
 
-**Try it:** `/tasks` as Ada Admin. Press Tab until a cell has the focus
-ring, then Space: "1 selected". Hold Shift and press Down Arrow twice: "3
-selected". Still holding Shift, press Up Arrow: "2 selected".
+**Try it:** `/tasks` as Ada Admin. Press Tab until a row's box has the
+focus ring, then Space: "1 selected". Tab on to the next row's box and
+press Space: "2 selected".
 
-### What Space does where
-
-Space is the key of row selection on a cell. It keeps what it does anywhere
-else inside a control that a cell holds:
-
-| Focus is | Space |
-| --- | --- |
-| On a cell of a row of records, a boolean cell among them | Selects the row, or takes it out. A boolean is toggled with Enter or F2. |
-| On the cell of the box in the header | Selects the rows of the page. |
-| On any other cell: a heading, a filter cell, a relationship line, the cell that holds a nested table | Nothing. It does not scroll the page. |
-| On a button in a cell: a row action, an expander | Uses the button. |
-| In a filter's input, or in the editor of a cell | Types a space. |
-| On a cell, in a table without boxes | Nothing. |
-
-This is the split the ARIA grid pattern makes: a key belongs to the grid
-while focus is on a cell, and to the control once focus is in one.
+Space selects only on a box. On a button it uses the button, in an input
+it types, and on an editable cell it starts editing, as any typed
+character does. A boolean is toggled with Enter.
 
 ## What is selected, and for how long
 
@@ -418,8 +407,8 @@ when the task is done (1)".
 | --- | --- |
 | A question answered with Cancel or Escape | On the button that asked; for an action of the menu, on "More". |
 | A run that left rows selected | On the button that was used, or "More". |
-| A run that left nothing selected | On the grid's current cell: the buttons are gone, and the line with them. |
-| "Clear selection" | On the grid's current cell. |
+| A run that left nothing selected | On the table's first stop: the buttons are gone, and the line with them. |
+| "Clear selection" | On the table's first stop. |
 | "Select all … that match" | On "Clear selection". |
 
 ## Who may run what
@@ -495,18 +484,16 @@ them.
 
 | Key | Where | Effect |
 | --- | --- | --- |
-| Space | On a cell of a row of records | Selects the row, or takes it out. |
-| Space | On the cell of the box in the header | Selects the rows of the page, or takes them out. |
-| Shift+Down Arrow, Shift+Up Arrow | On a cell of a row of records | Moves to the next or previous row of records and selects as it goes. What is open under a row is passed over. |
-| Left Arrow | On the first data cell of a row | Moves to the row's expander, where rows expand, and from there to its box. Home goes to the box at once. Tab still enters the grid on the first column of the table. |
-| Shift+Tab | On a cell of the grid | Leaves the grid backwards: to the buttons of the line above the grid, the last first: "More" or the bulk actions, "Clear selection", "Select all … that match"; then to the heading line. |
+| Tab, Shift+Tab | Anywhere | The boxes are Tab stops: the box in the header, then each row's box at the start of its row. The buttons of the line above the grid come before "Skip table": "Select all … that match", "Clear selection", the bulk actions or "More". |
+| Space | On a row's box | Selects the row, or takes it out. |
+| Space | On the box in the header | Selects the rows of the page, or takes them out. |
 | Enter, Space | On a button of the line | Uses it. |
 
 When the question opens, focus moves to Cancel, Tab reaches Confirm, and
 Escape is Cancel, whether it opens over the page or in it.
 
-In a nested table the buttons of its line are tab stops as well, while that
-table has a selection. Without one, the tree of grids is one tab stop.
+A nested table's boxes and the buttons of its line are Tab stops too, in
+the same order, where the nested table stands.
 
 All keys of a table are in
 [Keyboard and accessibility](keyboard-and-accessibility.md).
@@ -516,7 +503,7 @@ All keys of a table are in
 | What | How |
 | --- | --- |
 | Whether a row is selected | Its box is ticked. |
-| The box of a row | A checkbox named "Select row", in a cell of the grid that is counted in `aria-colcount` and `aria-colindex`. |
+| The box of a row | A checkbox named "Select row", in the first column, which is counted in `aria-colcount` and `aria-colindex`. |
 | The box of the page | A checkbox named "Select all rows of this page"; mixed when some rows of the page are selected. |
 | The line above the grid | A group (`role="group"`) named "Selected rows". |
 | The number of selected records | A live region in that group: "3 selected". |
@@ -566,8 +553,9 @@ no other mark, and no colour of their own.
   See [How Ash is asked](#how-ash-is-asked).
 - **Expecting a filter change to keep the selection.** It gives it up. A
   sort and a change of page keep it.
-- **Expecting Space to toggle a boolean.** Enter and F2 do. Space selects
-  the row.
+- **Expecting Space on a cell to select the row.** Space selects on the
+  box only; on an editable cell it starts editing. A boolean is toggled
+  with Enter.
 - **Expecting the question of `confirm false` to be skipped.** A bulk
   action always asks.
 - **Expecting rows to be highlighted.** A selected row has a ticked box.

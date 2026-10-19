@@ -144,10 +144,10 @@ number, Enter. The sum under the column follows a moment later.
 
 ## Where it shows
 
-The footer row is a row of the grid like the others.
+The footer row is a row of the table like the others.
 
-- **Keyboard:** Arrow Down from the last record goes into it, and the arrow
-  keys move along it. Page Down and Ctrl+End stop at the last record.
+- **Keyboard:** it has no Tab stops: Tab goes from the last record on to
+  the pagination. A screen reader reads it with its table keys.
 - **Hidden columns:** a summary is hidden with its column, and comes back
   with it. See [Columns and defaults](columns-and-defaults.md).
 - **Nested tables and pickers** show the summaries of their table. A nested

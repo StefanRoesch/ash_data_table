@@ -74,11 +74,11 @@ update :update do
 end
 ```
 
-**Try it:** `/tasks` in the demo, as Ada Admin. Move to a cell of
+**Try it:** `/tasks` in the demo, as Ada Admin. Tab to a cell of
 "Assignee" and press Enter. A dialog opens at the right edge, headed
 "Assignee: choose user", with the table of the people in it. The row of the
-task's assignee is selected. Press Down Arrow, then Space: another row is
-selected. Use "Choose": the dialog closes, the cell shows the new name, and
+task's assignee is selected, and its radio button has the focus. Press Down
+Arrow: the next row is selected. Use "Choose": the dialog closes, the cell shows the new name, and
 focus is on the cell again.
 
 ## Which reference cells are edited
@@ -115,7 +115,7 @@ nobody edits, are reported when the resource is compiled; see
 
 | With | Effect |
 | --- | --- |
-| Enter or F2 on the cell | Opens the picker. |
+| Enter on the cell | Opens the picker. |
 | A double click on the cell | Opens the picker. |
 | A printable key on the cell | Nothing. There is nothing to type into. |
 
@@ -165,7 +165,7 @@ It is a table to choose from, and for nothing else:
 | Row actions, the create button | None. |
 | Boxes, and actions on the selected rows | A radio button per row: one row is selected at a time. |
 | Rows expand into nested tables | They do not. |
-| Its name is a heading above it | The picker's heading stands above it. Its grid is named as the table is ("User", "Projects"). |
+| Its name is a heading above it | The picker's heading stands above it. Its table is named as the table is ("User", "Projects"). |
 
 An event that asks for any of the left column in the picker's table is
 refused, as an event is that names a column nobody edits.
@@ -405,19 +405,18 @@ picker has nothing to choose.
 
 | Key | Where | Effect |
 | --- | --- | --- |
-| Enter, F2 | On a reference cell that is edited | Opens the picker. |
-| Arrow keys, Home, End, Page Up, Page Down | In the picker's grid | Move, as in any grid. They send nothing. |
-| Space | On a cell of a row | Selects the row. |
-| Enter | On a cell of a row | Chooses the row. |
-| Enter | On a heading, on a filter cell | Sorts; goes into the filter. As in any grid. |
-| Escape | In a filter of the picker's grid | Back to the filter's cell. The picker stays open. |
+| Enter | On a reference cell that is edited | Opens the picker. Focus goes to the radio button of the row chosen now, else of the first row. |
+| Tab, Shift+Tab | In the picker | Through the table's stops, as in any table: "Skip table", the sort buttons, the filters, the radio buttons (one stop for the group), the pages; then the picker's buttons. Over the page it stays in the picker; in the page it goes on to the page after the last button. |
+| Up and Down Arrow | On a row's radio button | The radio group's own keys: the next or the previous row is selected. They send nothing but what is selected. |
+| Space | On a row's radio button | Selects the row. |
+| Enter | On a row's radio button | Chooses the row, as "Choose" does. |
+| Enter | In a filter's input | Applies the filter. |
+| Escape | In a filter's input | Gives up what was typed. The picker stays open. |
 | Escape | Anywhere else in the picker | Closes the picker. |
-| Tab | In the picker | Leaves the grid for the table's pages and the picker's buttons. Over the page it stays in the picker; in the page it goes on to the page after the last button. |
 | Enter, Space | On "Cancel", "None", "Choose" | Uses the button. |
 
-The grid in the picker is a grid like any other, with one tab stop. It is a
-tree of grids of its own. While a picker over the page is open, nothing
-outside it can be reached, by Tab or by the pointer.
+The table in the picker is a table like any other. While a picker over the
+page is open, nothing outside it can be reached, by Tab or by the pointer.
 
 When the picker closes, focus is back where it was opened from: on the
 cell, or on the "Choose" button of the panel's field.
@@ -435,13 +434,14 @@ All keys of a table are in
 | The control of a row | A radio button named "Select row". The radio buttons of the table are one group (one `name`): one of a set. |
 | That "Choose" has nothing to take yet | `aria-disabled="true"` on it. It is not `disabled`, so it keeps its place in the tab order. |
 | A choice that was not taken | An alert in the picker (`role="alert"`), and the table's live region. |
-| A save that failed | The cell, as for any cell: `aria-invalid`, described by the action's message, which is read out. |
+| A save that failed | The cell, as for any cell: described by the action's message, which is read out. |
 | A field of the panel that holds a key | A group named by the field's label, with what the record is called and the button "Choose", which is described by that text. |
 
 axe-core reports no violations with the picker open, with a failed choice
 shown on the cell, with the column's question on top of the picker, and
 with the picker on top of the action panel, in the light and the dark
-theme. No screen reader has been tried.
+theme. A screen reader's check is pending: see
+[What has been tested](keyboard-and-accessibility.md#what-has-been-tested).
 
 ## Edge cases
 
@@ -484,10 +484,10 @@ theme. No screen reader has been tried.
 - **Accepting the relationship's name.** An action accepts attributes:
   `accept [:assignee_id]`, not `accept [:assignee]`.
 - **Expecting to type a name.** The picker has no search box of its own. The
-  filter row of the table in it is the search: Up Arrow from the first row,
+  filter row of the table in it is the search: Shift+Tab from the rows,
   or a click.
 - **Expecting Space to choose.** Space selects. "Choose", or Enter on the
-  row, chooses.
+  row's radio button, chooses.
 - **Expecting a second click on the selected row to take it out.** It stays
   selected. "None" chooses no record.
 - **A field of the panel that is still a typed key.** The destination has no

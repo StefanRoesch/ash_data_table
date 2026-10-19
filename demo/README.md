@@ -121,7 +121,7 @@ beside its default one.
 | URL | Resource | Shows |
 | --- | --- | --- |
 | http://localhost:4478/tasks/board | `Task`, table `:board` | a second table of the tasks, declared in a file of its own (`lib/demo/tracker/task/board_table.ex`, a fragment of the resource): four columns, "Title" and "State" edited in place, one row action ("Archive"), no "New task". Its id is `task_board`. A row expands into "Comments", which nests the compact table of the comments and links to its full view at `/comments/compact`, and into "Labels", which nests the short table of the labels (`:short`, declared in `label.ex`): that table is mounted nowhere, so it has no "Open in full view", although `/labels` exists. The assignee is chosen in the picker, which shows the people's default table |
-| http://localhost:4478/comments/compact | `Comment`, table `:compact` | a second table of the comments, in a file of its own too (`lib/demo/tracker/comment/compact_table.ex`): "Body", "Author" (the author's name, where `/comments` shows the key) and "Inserted at"; "Body" shows up to three lines of a comment (`max_lines 3`); "Show all", which comes into the cell on focus or under the pointer, or Shift+Enter, shows the whole comment in the row, and Escape cuts it off again; nothing is edited, there is no row action and no "New comment", and rows do not expand. Its id is `comment_compact`. For nobody it says "You are not allowed to see these records.": the named table says `on_forbidden :message` itself, since it takes nothing over from the default table |
+| http://localhost:4478/comments/compact | `Comment`, table `:compact` | a second table of the comments, in a file of its own too (`lib/demo/tracker/comment/compact_table.ex`): "Body", "Author" (the author's name, where `/comments` shows the key) and "Inserted at"; "Body" shows up to three lines of a comment (`max_lines 3`); "Show all", a button in every comment that is cut off and a Tab stop, shows the whole comment in the row, and "Show less" cuts it off again; nothing is edited, there is no row action and no "New comment", and rows do not expand. Its id is `comment_compact`. For nobody it says "You are not allowed to see these records.": the named table says `on_forbidden :message` itself, since it takes nothing over from the default table |
 | http://localhost:4478/named | `Comment`, both tables | a LiveView of the demo's own (`DemoWeb.NamedLive`) with the default table and the compact table of the comments, placed with `<AshDataTable.table>` and no `id`. Sort both: the address holds `comment[sort]=…` and `comment_compact[sort]=…` side by side. The comments have **live updates** (`live? true`), so the two tables follow each other: change a comment's text in the first and the same row changes in the second; create one in the first and the second says "There are new or changed records." with "Read again"; delete one and its row goes from both |
 | http://localhost:4478/projects/sticky | `Project`, `look: [sticky_header: true]` | the projects with the header that stays in view: the table has a height of its own and only its rows scroll inside it, both ways, with its header and filter row at its top. Expand a project, open "Tasks" and a task's "Comments": each nested table is about ten rows high, scrolls by itself and keeps its own header in view, under the projects' header. Its id is `project-sticky` |
 | http://localhost:4478/tasks/striped | `Task`, `look: [density: :compact, stripes: true, column_lines: true]` | the tasks with the other options of the look: compact rows, faint stripes over the records only, and lines between the columns. `/tasks` keeps the default look. Its id is `task-striped` |
@@ -196,10 +196,10 @@ Things to try:
   destination's own table, so it edits what that table edits on its own
   page. Under "Assignee" and "Reported by" no cell opens: the table of the
   people names no `update_action`, as the demo's one read-only table.
-- With the keyboard: Left Arrow from the first data cell of a row reaches
-  its expander; Right Arrow opens it and Left Arrow closes it; Down Arrow goes
-  through the lines; on the cell of a nested table Enter goes in and Escape
-  comes back out. Tab leaves the whole tree.
+- With the keyboard: Tab reaches a row's expander after its box; Enter
+  opens and closes it. Tab goes on to each line's button, Enter opens the
+  line, and Tab goes on into its nested table, then to the next line and
+  the next row. "Skip table Comments" jumps past a nested table.
 - As **Vera Viewer**, the lines "Assignee" and "Reported by" are not there
   under a task, nor "Author" under a comment: a viewer's read of the people
   is refused outright. For the same reason `/tasks` has no "Assignee" and no
@@ -219,8 +219,8 @@ Things to try:
   without the field "Project ID". "Labels", "Project" and the other lines
   have no such button: a nested table creates only under a has-many whose
   create action takes the joining key.
-- With the keyboard: F2 on a line that has a create button goes to its
-  controls; Enter on the line opens and closes it, as before.
+- With the keyboard: the create button on a line is a Tab stop after the
+  line's button; Enter on the line's button opens and closes it.
 
 ### The argument line
 
@@ -355,19 +355,19 @@ Some filters to try, as the admin:
 
 ### Editing on `/tasks`
 
-Enter or F2 on a cell starts editing, as does typing or a double click;
-Enter or leaving the cell saves, Escape gives up.
+Enter on a cell starts editing, as does typing or a double click; Enter,
+Tab or leaving the cell saves, Escape gives up.
 
 | Column | Edited as | Through |
 | --- | --- | --- |
 | `title`, `description` | text; Shift+Enter makes a new line | the table's `update_action :update` |
 | `status` ("State") | a choice | `update`, after the question of its `confirm`: "Change the state of this task?" |
 | `priority` | a choice | its own action, `reprioritise` |
-| `progress` | a slider, with the number beside it: its column's component. It saves when it is let go and stays open; a step with the arrow keys is saved by Enter or by leaving | its own action, `set_progress`, which also starts a task that is still to do: its state changes in the same row |
+| `progress` | a slider, with the number beside it: its column's component. It saves when it is let go and stays open; a step with Up or Down Arrow is saved by Enter or by leaving | its own action, `set_progress`, which also starts a task that is still to do: its state changes in the same row |
 | `estimate_hours` | a number with its unit beside it: the demo's own component | `update`. Empty it to see nil saved |
 | `billable?` | a boolean: Enter toggles and saves | `update` |
 | `due_on`, `completed_at` | a date, a datetime | `update` |
-| `tags` | an array of text, in the side panel: Enter, F2, a double click or a typed key opens it with one field per tag, each with a button that takes it away, and "Add value" under them. "Save" saves the list; Escape and "Cancel" give it up, and focus is back on the cell | `update`, with the whole list. A task has five tags at most, of two to twenty characters each |
+| `tags` | an array of text, in the side panel: Enter, a double click or a typed key opens it with one field per tag, each with a button that takes it away, and "Add value" under them. "Save" saves the list; Escape and "Cancel" give it up, and focus is back on the cell | `update`, with the whole list. A task has five tags at most, of two to twenty characters each |
 | `checks` | an array of enum values, as multiple choice, in the side panel: a box per value, Space ticks, Tab goes from box to box, "Save" saves | `update`, with the values that are ticked |
 | `project` | a related record, chosen in the picker: Enter opens the projects' own table in a dialog at the right edge; a row is selected and "Choose" takes it | `update`, with `project_id` alone, after the question of its `confirm`: "Move this task to another project?". A task has to have a project: the picker has no "None" |
 | `assignee` | a related record, chosen in the picker from the people's table | `update`, with `assignee_id` alone. "None" takes the assignee off |
@@ -406,12 +406,13 @@ Saves that fail, to try:
 The picker, to try, as Ada Admin:
 
 - Enter on a cell of "Assignee": the people's table in a dialog at the right
-  edge, with the row of the task's assignee selected and focused. Down
-  Arrow, Space, then "Choose"; or Enter on a row; or a double click on a
-  row. Focus is back on the cell.
+  edge, with the row of the task's assignee selected and its radio button
+  focused. Down Arrow (the radio group's own key), then "Choose"; or Enter
+  on a row's radio button; or a double click on a row. Focus is back on the
+  cell.
 - "None" takes the assignee off. Escape and "Cancel" change nothing.
-- Up Arrow from the first row reaches the filters of the people's table:
-  type a name, Enter. Escape there comes back to the grid, and once more
+- Shift+Tab from the rows reaches the filters of the people's table: type a
+  name, Enter. Escape there gives up what was typed; Escape anywhere else
   closes the picker.
 - Enter on a cell of "Project", choose another project: "Move this task to
   another project?" is asked on top of the picker.
@@ -424,7 +425,7 @@ new title, `overdue?` a new due date, without the page being read again.
 ### Maps and embedded resources
 
 A value made of fields is shown on one line, `field: value, field: value`,
-and edited in the side panel: Enter, F2 or a double click on its cell.
+and edited in the side panel: Enter or a double click on its cell.
 
 | Where | What it is | In the panel |
 | --- | --- | --- |
@@ -544,11 +545,11 @@ Things to try, on `/tasks`:
   these labels and no others.
 - As **Max Member**, "Archive" a task that is neither assigned to him nor
   reported by him: the row's last cell is marked and says "You are not
-  allowed to do this." Escape on that cell clears it. His "New task" has no
+  allowed to do this." Escape on its button clears it. His "New task" has no
   field "External ref". "Set labels" on such a task shows its labels, and
   "Run" is refused in the panel.
-- With the keyboard: End moves to the actions cell, Enter to its first
-  button, Left and Right Arrow between the buttons, Escape back to the cell.
+- With the keyboard: each action button is a Tab stop at the end of its
+  row; Enter or Space uses it.
 
 And on `/deadlines`, once "Due by" has a day:
 
@@ -600,9 +601,9 @@ Things to try, on `/labels` as **Ada Admin**:
   that line, after "Labels". A table action is the same there as on
   `/labels`: it is not told which task the line is under, so "Count unused"
   still counts the labels of the whole organization.
-- With the keyboard: Tab reaches the buttons before the grid; on the
-  "Labels" line of a task, F2 goes into the line's buttons, and Left and
-  Right Arrow move between them.
+- With the keyboard: Tab reaches the buttons on the table's heading line;
+  on the "Labels" line of a task they are Tab stops after the line's
+  button.
 - In German (the language switcher): "Unbenutzte zählen", "Umfärben",
   "Unbenutzte entfernen", "Importieren", "Kopieren".
 
@@ -673,9 +674,8 @@ Things to try, on `/tasks`:
   "Select all 320 that match" appears. Use it, then filter "Title" by
   `email`: the selection is given up, as it was made under other filters.
   Sorting and paging keep it.
-- **With the keyboard.** Space on any cell of a row selects the row. Shift
-  with Down or Up Arrow selects as it goes. Shift+Tab from the grid reaches
-  the buttons of the line.
+- **With the keyboard.** Space on a row's box selects the row. The buttons
+  of the line are Tab stops before "Skip table".
 - **A nested table has its own.** Expand a task, open "Comments", tick two
   comments and use "Destroy" on the line above them. The tasks around them
   are not selected.

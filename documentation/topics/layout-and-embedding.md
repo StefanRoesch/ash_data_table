@@ -252,7 +252,7 @@ each in a section of its own:
 | `authorize?` | | Overrides the domain's `authorize?` for this table, either way. |
 | `live?` | | `false` places the table without [live updates](live-updates.md). |
 | `url` | | The page's current URL. When given, the table keeps its state in it. See [State in the URL](state-in-the-url.md#a-table-inside-your-own-liveview). |
-| `label` | | The table's name: the accessible name of the grid, and the text of the line above it. Defaults to the name described above. |
+| `label` | | The table's name: the accessible name of the table, and the text of the line above it. Defaults to the name described above. |
 | `heading` | | How the name is shown on the line above the table: `true` (the default), a number from 1 to 6, or `false`. See below. |
 | `time_zone` | | The zone its datetimes are shown, typed and filtered in. Nil is UTC. See [Time zones](time-zones.md). |
 | `assigns` | | What a default of an asked argument that is a function is given. See below. |
@@ -487,8 +487,8 @@ group, in the table's own scroll area); no script places anything.
   it is in; the header of the table on the page is drawn over everything
   nested. With `sticky_label?`, the label column's header is the corner, over
   both.
-- **The focus is never hidden under the header.** A cell the keyboard moves
-  to is scrolled into view below the header group (`scroll-padding-top`).
+- **The focus is never hidden under the header.** A stop that Tab reaches
+  is scrolled into view below the header group (`scroll-padding-top`).
 - **No second scrollbar** at the bottom edge of the window: the table's own
   is in view.
 - **Square corners.** A scroll area whose header stays in view has square

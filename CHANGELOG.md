@@ -179,9 +179,9 @@ declared in the resource and mounted with one line in the router.
   and expand a row. Off by default. Verified at compile time: the resource
   has a `label_field`, and the table shows it. `--ash-data-table-ground` names the
   colour behind a table for those cells.
-- A cell that the keyboard moves focus to is brought into view in its own
-  table's area, beside the cells that stay and above the second scrollbar.
-  The grids are no tab stops of their own in browsers that make one of every
+- A stop that Tab reaches is brought into view in its own table's area,
+  beside the cells that stay and above the second scrollbar. The scroll
+  areas are no Tab stops of their own in browsers that make one of every
   element that scrolls.
 
 ### Long text
@@ -192,11 +192,12 @@ declared in the resource and mounted with one line in the router.
   date, a datetime, a boolean, an enum, a reference cell, a sensitive column
   or a column whose component shows the cell it is reported at compile time.
 - The whole text of a cell that cuts some of its text off, in any column, is
-  shown in place, the row growing to it: with the "Show all" button the
-  cell offers while it has the focus or the pointer, or Shift+Enter; Escape
-  or "Show less" cuts it off again. Nothing is sent for it. A sensitive cell
-  has none. The button is for the eye: screen readers read the whole text
-  in the cell.
+  shown in place, the row growing to it: with the "Show all" button in
+  every such cell, read-only or editable, a Tab stop named after its column
+  ("Show all of Title"), or Shift+Enter on an editable cell; "Show less",
+  or Escape on an editable cell, cuts it off again. Nothing is sent for it.
+  A sensitive cell has none. Screen readers read the whole text in the
+  cell.
 
 ### Reading
 
@@ -258,12 +259,12 @@ declared in the resource and mounted with one line in the router.
   typed. `confirm` asks in a dialog before saving.
 - **Choosing a related record.** A reference cell is edited where its
   column's update action, its own or the table's, accepts the relationship's
-  foreign key: Enter, F2 or a double click opens the picker, a modal dialog
+  foreign key: Enter or a double click opens the picker, a modal dialog
   at the right edge with the destination resource's own table (its columns,
   filter row, sorting and pages), read as the person. The table there is for
   choosing only, and its rows are selected one at a time. A row is selected
-  with a click or Space and taken with "Choose"; Enter on a row and a double
-  click choose it at once; "None" empties a key that can be empty; Escape
+  with a click or with its radio button and taken with "Choose"; Enter on a
+  row's radio button and a double click choose it at once; "None" empties a key that can be empty; Escape
   and "Cancel" close. The save is that of a cell: the column's action with
   the key as its one input, nothing for the record the cell points at
   already, the question of `confirm` on top of the picker, the row shown
@@ -286,8 +287,7 @@ declared in the resource and mounted with one line in the router.
   not accept the relationship's foreign key, and where the related record
   cannot be chosen.
 - Where one row at a time is selected, a table's rows have radio buttons
-  of one group, its grid says `aria-multiselectable="false"`, and the
-  selected row stays selected when it is used again.
+  of one group, and the selected row stays selected when it is used again.
 - **Arrays.** An array of text, numbers, booleans, dates, datetimes or enum
   values is a cell of its own: shown as its values, as plain text separated
   by commas, each as a cell of its type shows it (the labels of an enum's
@@ -316,7 +316,7 @@ declared in the resource and mounted with one line in the router.
   map are the fields it declares, or whatever it holds when it declares
   none. A private attribute of an embedded resource is no longer shown.
 - An embedded resource, a map that declares its fields (also as a NewType),
-  and an array of either are edited in the side panel: Enter, F2 or a
+  and an array of either are edited in the side panel: Enter or a
   double click on the cell opens the action panel, headed by the column and
   the record, with the value as a group of its fields, each with the
   control of its type, a value inside it as a group in the group, and an
@@ -390,18 +390,33 @@ declared in the resource and mounted with one line in the router.
 
 ### Accessibility and keyboard
 
-- An ARIA grid with one tab stop, moved by the arrow keys, Home, End, Page Up
-  and Page Down without a round trip; colocated hooks, no npm package.
-- Enter, F2 or a character starts editing a cell or goes into a filter;
-  Escape gives up. Results of filters and failed saves are announced, the
-  former with their count whenever the read action counts.
-- The pagination is ordinary buttons outside the grid. Focus stays on the
+- **The keyboard model (stage 8a, ADR 0003).** A table is a plain table to
+  assistive technology (`role="table"`, `role="cell"`, the label column's
+  cell the row's header, `role="rowheader"`), not an ARIA grid. Every
+  control is a Tab stop of its own, in page order, nested tables included:
+  the boxes, the expanders, the lines' buttons, a sort button in each
+  header that sorts, the filters, the action buttons, the heading line's
+  controls, the pagination, "Show" of a sensitive cell and "Show all" of a
+  cell that cuts its text off. An editable cell is a stop; a read-only cell
+  is none, and a screen reader reads it with its own table keys. Removed:
+  the one tab stop with a roving `tabindex`, every arrow, Home, End, Page
+  and F2 key of the table's own, Shift+Arrow selection, Escape out of a
+  nested table, the column handle's keys and its `role="separator"`,
+  `aria-multiselectable`, `aria-selected` on rows, `aria-readonly` on
+  cells. Added: a link "Skip table NAME" before each table, nested ones
+  too, seen only while it has the focus; a width field per column and
+  "Reset widths" in the list of "Columns"; the focus put back after a
+  patch takes the focused element away. Kit contract 3. Focus rings are
+  daisyUI's default: 2px in the text colour. Colocated hooks, no npm
+  package.
+- Enter or a character on an editable cell starts editing; Enter saves,
+  Tab saves and goes on to the next stop, Escape gives up. Results of
+  filters and failed saves are announced, the former with their count
+  whenever the read action counts.
+- The pagination is ordinary buttons after the table. Focus stays on the
   one that was used; when it is disabled by the page it led to, focus goes to
   the button of that page, or to the other of Previous and Next in a table
   without page numbers.
-- A table is a table to assistive technology (`role="table"`, the label
-  column's cell the row's header), and a link "Skip table NAME", seen only
-  while it has the focus, jumps past each table, nested ones too.
 - States are shown with the theme's colours and can be seen: every focus
   ring the table draws itself is in the text colour, 2px, as daisyUI's
   own (inside an editable cell; outside a sort button, an expander and a
@@ -449,9 +464,9 @@ declared in the resource and mounted with one line in the router.
   sees on some records only, as Ash counts a page of related records without
   the field policies.
 - The expander is the first cell of a row and counts as a column
-  (`aria-colindex`, `aria-colcount`). Right Arrow and Left Arrow on it expand
-  and collapse; Enter on the cell of a nested table goes into it and Escape
-  comes back out. The whole tree of tables is one tab stop.
+  (`aria-colindex`, `aria-colcount`). Enter or Space on it expands and
+  collapses the row. A nested table is a table like any other, further down
+  the page: Tab goes on into it and out of it again.
 - Nothing of a nested table is in the URL.
 - **The full view.** The last row of a nested table is a link, "Open in full
   view", to the page the host's router mounts the destination's table at:
@@ -594,7 +609,7 @@ declared in the resource and mounted with one line in the router.
   by one. A page left without rows is read again.
 - An action that ran straight away and failed marks the row's actions cell
   with the action's message, as a failed save marks its cell, and is
-  announced. Escape on the cell gives the message up.
+  announced. Escape on its button gives the message up.
 - A row action a person can never run has no button for them, and a table
   with none left has no actions column; a create action they can never run
   has no create button (`Ash.can/3`, once per action). An input of a field
@@ -606,12 +621,10 @@ declared in the resource and mounted with one line in the router.
   `create_action` accepts the joining attribute: the table fills that in
   from the row above, read again as the person, and the button is on the
   relationship line. The full view has it beside "Show all records".
-- The keyboard: Enter or F2 on an actions cell goes to its first button,
-  Left and Right Arrow move between the buttons, Escape returns to the
-  cell, Tab goes on through them and out of the grid. F2 on a relationship
-  line with a create button goes to the line's controls. After a destroy,
-  focus goes to the actions cell of the next row; after a create, to the
-  first cell of the new row; after the panel closes, to the control that
+- The keyboard: each action button is a Tab stop at the end of its row, and
+  a line's create button one after the line's button. After a destroy,
+  focus goes to the same stop of the next row; after a create, to the new
+  row's box; after the panel closes, to the control that
   opened it.
 - `heading` on `<AshDataTable.table>`: how the table's name is shown on the
   line above it, which also holds "Columns", the argument line and the
@@ -638,11 +651,10 @@ declared in the resource and mounted with one line in the router.
   first column of boxes: one per row, and one in the header that stands for
   the rows of the page and is mixed when some are selected. It counts as a
   column (`aria-colindex`, `aria-colcount`); where rows expand, the
-  expander is the second cell of a row. The grid is
-  `aria-multiselectable`, and every row of records says `aria-selected`.
-  The mark of a selected row is its ticked box.
-- Selecting is the browser's alone: a click on a box, Space on any cell of
-  a row, Shift and a click or Shift with Down or Up Arrow for a range. It
+  expander is the second cell of a row. The mark of a selected row is its
+  ticked box, for the eye and for assistive technology.
+- Selecting is the browser's alone: a click on a box, Space on a box,
+  Shift and a click for a range. It
   sends nothing and brings no row back. A selection lasts through a sort
   and a change of page, is given up when a filter changes, and is in no
   URL. Each table has its own; a nested table's is apart from that of the
@@ -746,7 +758,7 @@ declared in the resource and mounted with one line in the router.
   says which kind it is. An array of unions (`{:array, :union}`) shows its
   values with `; ` between them, and a union inside an embedded resource or
   a map is shown after its field's label.
-- A union is edited in the side panel, kind first: Enter, F2 or a double
+- A union is edited in the side panel, kind first: Enter or a double
   click on the cell opens the action panel with the union as a group, in it
   "Kind", a choice of the union's kinds by their names in words (through
   the host's Gettext, as the labels of an enum's values), and under it the
@@ -942,11 +954,9 @@ declared in the resource and mounted with one line in the router.
 
 - A person can change how wide a column is. Every column's header ends in a
   handle: dragged with the pointer (built for mouse, pen and touch; tested
-  with the mouse in Chromium), or moved from the
-  keyboard once F2 on the header has put focus on it (Left and Right Arrow
-  by 10 pixels, Home and End to the narrowest and the widest, Enter back to
-  the width before, Escape back to the header). A double click on the handle
-  goes back to the width before as well. A column is between 48 and 1000
+  with the mouse in Chromium), for the pointer only; from the keyboard, a
+  width field per column in the list of "Columns", and "Reset widths". A
+  double click on the handle goes back to the width before. A column is between 48 and 1000
   pixels wide. A click or a drag on the handle does not sort.
 - The widths are not remembered. They are kept in the browser while the page
   is open, through every sort, filter, page, save and expanded row; a reload
@@ -959,9 +969,9 @@ declared in the resource and mounted with one line in the router.
 - Each table has its own widths: a nested table, the table of a picker, each
   of several tables on a page. The columns of the boxes, the expanders and
   the row actions have no handle.
-- The handle is a `role="separator"` named "Resize %{column}" (a new message
-  of the template), with the width in `aria-valuenow`. A column's header now
-  has its label as `aria-label` too, so that its name stays the label alone.
+- The handle is hidden from assistive technology and is no Tab stop. A
+  width field is named "Width of %{column}". A column's header has its
+  label as `aria-label` too, so that its name stays the label alone.
 
 ### Hiding columns
 
@@ -970,7 +980,7 @@ declared in the resource and mounted with one line in the router.
   are hidden) opens a list of the table's columns with a box each, the
   browser's popover (a group of labelled checkboxes), which closes with
   Escape, with a click elsewhere and when focus moves on, and is the same in
-  a nested table and in a picker. A nested table's is on its line, no tab
+  a nested table and in a picker. A nested table's is on its line, a Tab
   stop there, and named for it: "Columns of Comments".
 - Hiding is done in the browser and is not a permission: the column is still
   read and still in the page. Nothing is sent to the server, nothing is in
@@ -982,9 +992,8 @@ declared in the resource and mounted with one line in the router.
 - A hidden column keeps its filter and its sort. The button's name says so
   ("Columns (2 hidden, 1 filtered)"), and so does the column's line in the
   list ("Progress (filtered)"). "Clear filters" clears it as well.
-- The arrow keys, Home and End pass over hidden columns, and a hidden cell
-  is never focused or the tab stop. `aria-colindex` and `aria-colcount`
-  keep counting hidden columns, whose cells are not displayed. Hiding and
+- Tab passes over hidden columns, whose cells are not displayed.
+  `aria-colindex` and `aria-colcount` keep counting them. Hiding and
   showing a column is read out.
 - Hidden columns stay hidden through every sort, filter, page, save and
   expanded row, and keep the width a person gave them.
@@ -1077,8 +1086,8 @@ declared in the resource and mounted with one line in the router.
   attribute, a kind that does not fit the type, `summary` on a `sensitive?`
   column, in a table with a manual read action, and on a data layer that
   cannot compute it.
-- The footer row is counted in the grid's `aria-rowcount`. Arrow Down from
-  the last record reaches it; Page Down and Ctrl+End end at the last record.
+- The footer row is counted in the table's `aria-rowcount`. It has no Tab
+  stops.
 - See the guide [Footer summaries](documentation/topics/footer-summaries.md).
 
 ### Choosing the page size

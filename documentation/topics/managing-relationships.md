@@ -351,10 +351,9 @@ and no other.
 | --- | --- | --- |
 | Enter, Space | On the field's "Choose" | Opens the picker. |
 | Enter, Space | On a record's "✕" | Takes the record out of the list. |
-| Space | On a cell of a row of the picker | Selects the row, or takes it out. |
-| Shift and Down Arrow, Up Arrow | On a row of the picker | Selects a range, as in any table with boxes. |
-| Enter | On a row of the picker for several | Nothing. |
-| Tab | In the picker | Leaves the grid for the buttons. Over the page it stays in the picker; in the page it goes on to the page. |
+| Space | On a row's box in the picker | Selects the row, or takes it out. The box in the header selects the rows of the page. |
+| Enter | On a row's box in the picker for several | Nothing. |
+| Tab, Shift+Tab | In the picker | Through the table's stops, a box per row, then the picker's buttons. Over the page it stays in the picker; in the page it goes on to the page. |
 | Escape | In the picker | Closes the picker alone. |
 
 | What | How |

@@ -255,9 +255,9 @@ With `commit: :change`:
 
 - **Nothing is sent while a slider is dragged.** A range input fires
   `change` when it is let go.
-- **A step with the keyboard is not yet a choice.** The arrow keys, Home,
-  End, Page Up and Page Down move a slider and change a closed menu at every
-  press. Such a change is saved by Enter or by leaving the cell, as in the
+- **A step with the keyboard is not yet a choice.** The control's own keys
+  (Up and Down Arrow, Home, End, Page Up, Page Down) move a slider and
+  change a closed menu at every press. Such a change is saved by Enter or by leaving the cell, as in the
   table's own menus.
 - **Escape gives up what has not been saved, and nothing that has.** After a
   save through the slider, Escape closes it and the cell shows the saved
@@ -307,27 +307,24 @@ with the slider in it. Move it: nothing is saved until "Run".
 
 ## The keyboard
 
-The grid's keys are in
+The table's keys are in
 [Keyboard and accessibility](keyboard-and-accessibility.md). An editor of a
 component is opened, left and given up as every editor:
 
 | Key | On the cell | In the editor |
 | --- | --- | --- |
-| Enter, F2 | Opens the editor. | Enter saves what is not saved and closes it. |
+| Enter | Opens the editor. | Saves what is not saved and closes it. |
 | A character | With a control that is typed into (text, a number): opens the editor and replaces the value, as the table's own editors do. With any other control: opens the editor with its value; the key goes on to the control, and a slider takes no characters. | The control's. |
-| Arrow keys, Home, End, Page Up, Page Down | Move through the grid. | The control's: they move a slider. |
+| Up and Down Arrow, Home, End, Page Up, Page Down | The browser's. | The control's: they move a slider. |
 | Escape | | Closes the editor and gives up what is not saved. |
-| Tab, Shift+Tab | Leave the grid. | Save what is not saved and leave the grid. |
-
-The grid stays one tab stop: while an editor is open, its control is that
-stop.
+| Tab, Shift+Tab | To the next or the previous stop. | Save what is not saved, and go on to the next or the previous stop. |
 
 ## What stays the table's
 
 `cell/1` renders inside the table's cell, and never the cell itself. So
 these do not depend on a component, and work over one:
 
-- the cell's id, its role and its place in the grid;
+- the cell's id, its role and its place in the table;
 - the focus ring, which the cell keeps while its editor has the focus;
 - a cell whose save is on its way, which is dimmed;
 - a cell whose save failed: the ring, the "!", and the action's message,

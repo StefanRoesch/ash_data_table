@@ -43,7 +43,7 @@ A calculation column that gives its calculation arguments is filtered by
 with them, and two columns of one calculation each by their own: see
 [Arguments](arguments.md#the-arguments-of-a-calculation). What a person
 gives the read action itself is not a filter of the row, though it is
-applied like one: it is on the argument line above the grid.
+applied like one: it is on the argument line above the table.
 
 ## Operators per type
 
@@ -233,9 +233,9 @@ text whatever its case, make the attribute a `:ci_string`.
 
 ## A column without a filter
 
-A column has no filter, and an empty cell in the filter row, which the
-arrow keys pass over (see
-[Keyboard and accessibility](keyboard-and-accessibility.md#keys-on-a-cell)),
+A column has no filter, and an empty cell in the filter row, which Tab
+passes over (see
+[Keyboard and accessibility](keyboard-and-accessibility.md#the-tab-order)),
 when
 
 - its cell type is "other": UUIDs, times and the rest of the types shown

@@ -184,7 +184,8 @@ tag or with `AshDataTable.attach/4`:
 Open `/projects` in the demo as Ada Admin. The page shows the columns ID,
 Name, Description, Status, Starts on, Budget, Client, Milestones and
 Inserted at, ten projects to a page, sorted by name. A click on a column's heading sorts, the row under
-the headings filters, and the arrow keys move from cell to cell. The page size and
+the headings filters, and Tab goes from control to control and to each
+cell that can be edited. The page size and
 the order are not the table's: they are the `default_limit` and the sort of
 the primary read action.
 [Reading, sorting and pagination](../topics/reading-sorting-and-pagination.md)
@@ -362,7 +363,7 @@ The options of the two extensions are listed in the DSL reference:
   the hooks. Stop the server, run `mix assets.build`, start it again.
 - **The table looks unstyled.** The `@source` line is missing or points at
   the wrong directory, so Tailwind never saw the table's classes.
-- **The arrow keys do nothing.** The hooks are imported but not spread into
+- **Enter on a cell does nothing.** The hooks are imported but not spread into
   `hooks`, or the assets were built before the dependency was compiled.
 - **Nobody is logged in.** A table mounted outside the `live_session` that
   assigns the user reads as nobody. With a policy that filters, that is an

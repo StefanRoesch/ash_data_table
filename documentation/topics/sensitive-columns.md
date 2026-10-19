@@ -71,7 +71,8 @@ The row is as high as every other row.
 ## Showing a value
 
 - **With the pointer:** the "Show" button in the cell.
-- **With the keyboard:** Shift+Enter on the cell.
+- **With the keyboard:** Enter or Space on "Show", which is a Tab stop,
+  in a read-only cell too; or Shift+Enter on an editable cell.
 
 The table then asks the server for this one cell. The server reads the
 record again, as the person, and answers with the value. So the value shown
@@ -79,8 +80,9 @@ is the one the record has now.
 
 The value is hidden again:
 
-- when focus leaves the cell (another cell, Tab, a click elsewhere);
-- with "Hide", with Shift+Enter again, or with Escape;
+- when focus leaves the cell (Tab, a click elsewhere);
+- with "Hide", with Shift+Enter again, or with Escape on the cell or its
+  button;
 - when the table reads again (a sort, a filter, another page), and when the
   row is saved.
 
@@ -198,9 +200,10 @@ with the column: "Clear Budget".
 | Shift+Tab, from "Clear" | Goes back to the input, with what was typed. |
 | Enter or Space, on "Clear" | Empties the cell. Focus is on the cell. |
 | Escape, on "Clear" | Gives the edit up, as on the input. |
-| Tab, from "Clear" | Leaves the grid and saves what was typed, as Tab from any editor does. An empty input saves nothing. |
+| Tab, from "Clear" | Saves what was typed and goes on to the next stop, as Tab from any editor does. An empty input saves nothing. |
 
-A cell without a value has no "Clear": Tab from its input leaves the grid.
+A cell without a value has no "Clear": Tab from its input saves and goes on
+to the next stop.
 
 **In the action panel** the button stands under the field: "Clear", named
 "Clear Budget".

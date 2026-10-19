@@ -199,12 +199,12 @@ Every other type is read-only text; see
 [Columns and defaults](columns-and-defaults.md#types-shown-as-read-only-text).
 A NewType is edited as the type it is made of.
 
-A reference cell has no editor in the cell: Enter and F2 open the picker,
+A reference cell has no editor in the cell: Enter opens the picker,
 a dialog with the related resource's own table, in which the person chooses
 the related record. See
 [Choosing a related record](choosing-a-related-record.md).
 
-Nor has a cell whose value is made of fields: Enter and F2 open the side
+Nor has a cell whose value is made of fields: Enter opens the side
 panel, where the value is edited field by field and saved with "Save". See
 [Maps and embedded resources](maps-and-embedded-resources.md). An array
 opens the same side panel: see [Arrays](#arrays).
@@ -247,7 +247,7 @@ Both are columns of `/tasks`, and `update` accepts both. Nothing else is
 declared for them: an array is editable on the conditions of
 [What makes a cell editable](#what-makes-a-cell-editable), as any column.
 
-**An array is not edited in its cell.** Enter, F2, a double click or a
+**An array is not edited in its cell.** Enter, a double click or a
 typed key on the cell opens the side panel (the
 [action panel](row-actions-and-create.md)), with the column's attribute as
 its one field, as a cell of a map or a union does. The typed key opens the
@@ -339,8 +339,8 @@ attribute :an_integer, :integer do
 end
 ```
 
-Its editor is `<input type="number" min="-1000" max="1000" step="1">`. The
-arrow keys and the input's own arrows stop at -1000 and at 1000, and
+Its editor is `<input type="number" min="-1000" max="1000" step="1">`. Up
+and Down Arrow, and the input's own arrows, stop at -1000 and at 1000, and
 assistive technology is told the two limits with the input. Nothing is
 declared for it in the `table` block.
 
@@ -457,18 +457,18 @@ itself.
 
 **Try it:** on `/labels` as Ada Admin, press Enter on a name and type. Type
 past 30 characters and press Enter: the cell is marked, with "length must be
-less than or equal to 30". On `/tasks`, type into "Search" above the grid.
+less than or equal to 30". On `/tasks`, type into "Search" above the table.
 
 ## Saving and cancelling
 
 | Gesture | Effect |
 | --- | --- |
 | Enter | Saves. Focus stays on the cell. |
-| Leaving the cell: a click elsewhere, Tab | Saves. Focus goes where the person sent it. |
+| Leaving the cell: a click elsewhere, Tab, Shift+Tab | Saves. Focus goes where the person sent it: Tab to the next stop, Shift+Tab to the one before. |
 | Escape | Gives the edit up. The cell shows its value again. |
 | Toggling a boolean, choosing from a menu with the pointer | Saves at once. |
-| Moving through a menu with the arrow keys | Nothing yet: Enter, or leaving the cell, saves the value reached. |
-| Enter, F2, a double click or a typed key on an array | Opens the side panel; "Save" there saves the list. See [Arrays](#arrays). |
+| Moving through a closed menu with Up and Down Arrow | Nothing yet: Enter, or leaving the cell, saves the value reached. |
+| Enter, a double click or a typed key on an array | Opens the side panel; "Save" there saves the list. See [Arrays](#arrays). |
 | Letting go of a slider, or changing any other editor of a component that saves on change | Saves at once. The editor stays open; Enter or leaving the cell closes it. |
 
 Two rules keep the table from doing more than was asked:

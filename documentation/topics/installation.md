@@ -188,7 +188,7 @@ guard at its default: raising it lets a tiny frame take a lot of memory.
   rebuild the hooks. Stop the server, run `mix assets.build`, start it again.
 - **The table looks unstyled.** The `@source` line is missing or points at
   the wrong directory, so Tailwind never saw the table's classes.
-- **The arrow keys do nothing.** The hooks are imported but not spread into
+- **Enter on a cell does nothing.** The hooks are imported but not spread into
   `hooks`, or the assets were built before the dependency was compiled.
 - **An upload closes the socket.** Compression is on, and the file is very
   repetitive: see [Compressing the websocket](#compressing-the-websocket).

@@ -196,9 +196,8 @@ show. Two cases differ:
   and that action does not allow the sizes, the table has that action's page
   size and no menu.
 
-The menu has a visible label. It comes after Next:
-one more tab stop under a table of its own, and reached with Right Arrow in
-the last row of a nested table.
+The menu has a visible label. It comes after Next, one more Tab stop, in a
+nested table too.
 
 **Try it:** `/tasks` in the demo. Choose 50 under the table: the range says
 "1–50 of 320" and the address ends in `?task[per]=50`. Then open
@@ -247,7 +246,7 @@ What a person gets differs by strategy:
 | Demo page | `/tasks`, `/projects`, `/specimens` | `/comments` | `/labels` |
 
 The controls are a navigation landmark under the table. They are ordinary
-buttons, and tab stops of their own after the table's.
+buttons, Tab stops after the table's rows.
 
 Under either strategy the table asks the read for the count when the action
 is `countable`, and only then. An offset table uses it for the range, the
@@ -289,8 +288,8 @@ large resource a paginated action.
 
 ## Sorting
 
-A click on a column's heading, or Enter while the heading has focus, sorts by
-that column: ascending first, then descending, then not at all, which leaves
+A column that sorts has a button in its heading. A click on it, or Enter or
+Space while it has focus, sorts by that column: ascending first, then descending, then not at all, which leaves
 the action's own order. One column is sorted at a time. Any change of sort
 returns to the first page; the filters stay.
 

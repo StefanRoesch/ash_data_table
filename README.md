@@ -60,8 +60,8 @@ The table offers what the resource offers, as the person asking may use it:
   footer, and shows datetimes in the person's time zone.
 - Its columns adapt to who is looking: Ash's policies and field policies
   decide, and a `sensitive?` field stays masked until a person asks for it.
-- It is translated through Gettext, and keyboard and screen-reader users
-  are first-class.
+- It is translated through Gettext, and works with the keyboard alone:
+  every control is a Tab stop, and a screen reader reads a plain table.
 - Its look is a kit: every part can be drawn with markup of your own.
 
 ## Install

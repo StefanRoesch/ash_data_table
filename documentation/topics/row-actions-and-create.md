@@ -558,8 +558,8 @@ page that a destroy leaves without rows is read again at once.
 | After | Focus is |
 | --- | --- |
 | An update action that ran straight away | Still on the action's button. |
-| A destroy | On the actions cell of the row after the one that went; else of the row before it; else on the grid's first cell. |
-| A create | On the first data cell of the new row. It shows where the record went, and Enter edits it. |
+| A destroy | On the same stop of the row after the one that went (its action button); else of the row before it; else on the table's first stop. |
+| A create | On the new row's box, else its first stop. It shows where the record went. |
 | A row action that ran from its panel | Back on the action's button; after a destroy, as above. |
 | The panel closed with Cancel or Escape | Back on the control that opened it. |
 
@@ -713,19 +713,13 @@ none at all on `/labels`.
 
 ## The keyboard
 
-The actions cell is a cell of the grid: the arrow keys stop at it, and End
-reaches it. Its buttons are not tab stops. They are reached from the cell,
-as a filter's controls are.
+Each button of the actions cell is a Tab stop, at the end of its row: Tab
+reaches them after the row's editable cells, and goes on to the next row.
 
 | Key | Where | Effect |
 | --- | --- | --- |
-| Enter, F2 | On an actions cell | Focus goes to its first button. |
-| Left Arrow, Right Arrow | On a button | The button before, the button after. |
-| Enter, Space | On a button | Uses it. |
-| Escape | On a button | Back to the cell. |
-| Tab | On a button | The next button; from the last one, out of the grid. |
-| Escape | On an actions cell that shows a failure | Gives the message up. |
-| Space | On the cell | Selects the row, or takes it out of the selection, as on any cell of a row. |
+| Enter, Space | On a button | Uses it: the action runs, asks its question, or opens its panel. |
+| Escape | On a button of a row whose action failed | Gives the message up. |
 
 Focus moves into the action panel as it opens, Tab goes through its fields
 and buttons, and Escape is Cancel. Over the page, as a modal dialog, focus
@@ -736,13 +730,9 @@ the picker on top of the panel, and Escape there closes the picker alone.
 The field of several related records has a button per record besides,
 which takes that record out of the list.
 
-A relationship line that has a create button holds two controls. Enter on
-the line still opens and closes it. F2 on the line moves into its controls,
-Left Arrow and Right Arrow move between them, Enter uses one and Escape
-returns to the line.
-
-The create button above a table is an ordinary button in the page's tab
-order, before the grid.
+A nested table's create button stands on its relationship line, after the
+line's button, and is a Tab stop like it. The create button above a table
+is a Tab stop on the table's heading line.
 
 All keys of a table are in
 [Keyboard and accessibility](keyboard-and-accessibility.md).

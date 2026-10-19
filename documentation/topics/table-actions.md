@@ -97,7 +97,7 @@ ask for: see
 
 The buttons stand in the declared order, after the create button where the
 table has one. They are the same buttons as "New label": ordinary buttons of
-the page, in its tab order before the grid.
+the page, Tab stops on the table's heading line.
 
 **Where the buttons are.**
 
@@ -484,13 +484,12 @@ reaches them before the grid, and Enter and Space use them.
 | A question answered with Confirm | On the button. |
 | The panel closed, by "Run", Cancel or Escape | Back on the button that opened it. |
 
-The buttons on a relationship line are no tab stops, as its create button
-is none. F2 on the line moves into its controls, Left Arrow and Right Arrow
-move between them, Enter uses one and Escape returns to the line.
+The buttons on a relationship line are Tab stops, after the line's button
+and its create button.
 
-A generic action in a row is a button of the actions cell, with the keys of
-that cell. After it ran, the table reads again, and focus stays in the
-grid.
+A generic action in a row is a button of the actions cell, a Tab stop like
+the others. After it ran, the table reads again, and focus is on its
+button again.
 
 What the table says afterwards is in a live region (`role="status"`), and
 is read out when it changes. All keys of a table are in

@@ -441,17 +441,20 @@ A table lays its columns out by itself: it is as wide as the place it is in,
 and each column gets what its content asks for, up to `20rem`. Nothing in the
 `table` block sets a width.
 
-The person using the table can change a width. Every column's header ends in
-a handle, which is not seen until the pointer is over it or it has focus:
+The person using the table can change a width:
 
 - **Drag the handle** to make the column narrower or wider. It is built for
   a mouse, a pen and a finger; only the mouse has been tried.
 - **Double-click the handle** to give the column the width it had before.
-- **From the keyboard:** F2 on the header moves focus to the handle. Left and
-  Right Arrow change the width by 10 pixels, Home and End go to the narrowest
-  and the widest, Enter gives the column its old width back, and Escape
-  returns to the header. See
-  [Keyboard and accessibility](keyboard-and-accessibility.md#column-widths-from-the-keyboard).
+  The handle is at the end of every column's header, seen when the pointer
+  is over it. It is for the pointer only: no Tab stop.
+- **Type the width** in the list that "Columns" opens: each column has a
+  number field, "Width of Title", in pixels, beside its box; the label
+  column has one too, first. Up and Down Arrow, the field's own keys, change
+  it as well. "Reset widths" at the end gives every column its first width
+  again. This is the way from the keyboard, and for a pointer that does not
+  drag. See
+  [Keyboard and accessibility](keyboard-and-accessibility.md#column-widths-and-hiding-columns).
 
 What to know about it:
 
@@ -473,7 +476,8 @@ What to know about it:
   and each of several tables on one page. A nested table that is closed and
   opened again starts over.
 - **Which columns:** the table's own columns. The columns of the boxes that
-  select rows, of the expanders and of the row actions have no handle.
+  select rows, of the expanders and of the row actions have no handle and
+  no width field.
 - **There is no option** to switch this off or to set a starting width.
 
 **Try it:** drag the edge of "Title" on `/tasks` in the demo, then sort by
@@ -491,9 +495,9 @@ can show all of it in place: the row grows as high as the text needs.
   read-only or editable. It is a Tab stop, named after its column ("Show
   all of Title"). A click on it, Enter or Space on it, or Shift+Enter on an
   editable cell shows the whole text; focus stays where it is.
-- The button then says "Show less". It, Shift+Enter again, or Escape on the
-  cell cuts the text off again. Escape does nothing else then: the focus
-  stays where it is.
+- The button then says "Show less". It, or Shift+Enter again, cuts the
+  text off again; so does Escape on an editable cell. Escape does nothing
+  else then: the focus stays where it is.
 - A cell whose whole text shows keeps showing it when the focus and the
   pointer move on, until it is cut off again.
 
@@ -545,8 +549,8 @@ What to know about the whole text:
   was.
 - **A column header that is cut off has none.**
 
-**Try it:** open `/comments/compact` in the demo, stop on a comment that
-starts with "Done on my side" and press Shift+Enter. Then open
+**Try it:** open `/comments/compact` in the demo, Tab to the "Show all" of
+a comment that starts with "Done on my side" and press Enter. Then open
 `/comments`, where the same comments are one line, and do the same.
 
 ## Hiding columns
@@ -609,7 +613,7 @@ the window. It closes with Escape, with a click anywhere else, and when
 focus moves on. The button's text counts in the plural forms of the
 person's language (see
 [Messages and translations](messages-and-translations.md#counts-plural-forms)). The keys are in
-[Keyboard and accessibility](keyboard-and-accessibility.md#hiding-columns-from-the-keyboard).
+[Keyboard and accessibility](keyboard-and-accessibility.md#column-widths-and-hiding-columns).
 
 **Try it:** on `/tasks` in the demo, filter "Progress", then hide it with
 "Columns".

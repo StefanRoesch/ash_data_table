@@ -73,7 +73,7 @@ label, as every field does: `Label: Box, Either: 5`.
 
 ## Editing in the side panel
 
-Enter, F2 or a double click on the cell opens the side panel: the
+Enter or a double click on the cell opens the side panel: the
 [action panel](row-actions-and-create.md#the-fields-of-the-panel), headed by
 the column and the record, with "Save" and "Cancel". A key that types a
 character does nothing on such a cell: there is nothing in the cell to type

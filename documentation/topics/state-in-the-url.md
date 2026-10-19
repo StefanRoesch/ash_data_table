@@ -25,7 +25,7 @@ sorted.
 
 | Kept in the URL | Not kept |
 | --- | --- |
-| The sorted column and its direction | Which cell has focus |
+| The sorted column and its direction | What has focus |
 | Every filter that applies: column, operator, value | A filter value that was rejected as invalid |
 | What the person gave the arguments of the read action, and those a column asks for | An argument's value that Ash refused; an argument that is as its input shows it with nothing chosen |
 | The page number (offset) or the cursor (keyset) | An open editor, an open action panel, and what is typed in them |

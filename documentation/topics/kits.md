@@ -477,9 +477,10 @@ changed.
   column's cell, the `row` part's `label`), no `tabindex="-1"` on cells and
   controls, a sort button in a sortable header (`Attrs.sort/3`, the
   `header_cell` part's `button`), the skip link and its target,
-  `data-failed` in place of `aria-invalid`, and no `aria-readonly` or
-  `aria-multiselectable` (`Attrs.table/8`, `Attrs.empty_cell/2`,
-  `Attrs.column_header/3`): the compile error names what changed. A kit of
+  `data-failed` in place of `aria-invalid`, and none of the grid's
+  attributes of selection and of read-only cells (`Attrs.table/8`,
+  `Attrs.empty_cell/2`, `Attrs.column_header/3`): the compile error names
+  what changed. A kit of
   contract 1 is told both steps.
 
 ## Not in the first version

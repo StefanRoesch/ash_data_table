@@ -306,41 +306,28 @@ which ones is known when they are read. See
 
 ## The keyboard
 
-The whole tree of tables is one tab stop: Tab enters it and Tab leaves all
-of it. Inside, the arrow keys move, and each nested table is a grid of its
-own in a cell of the grid around it.
+A nested table is a table like any other, further down the page: its
+controls and its editable cells are Tab stops, in the same order as in a
+table on the page. Tab simply goes on into it and out of it again.
 
 | Key | Where | Effect |
 | --- | --- | --- |
-| Left Arrow | On the first data cell of a row | Moves to the row's expander. |
-| Right Arrow | On an expander or a line that is closed | Opens it. |
-| Left Arrow | On an expander or a line that is open | Closes it, with everything open under it. |
-| Enter | On an expander or a line | Opens or closes it. |
-| F2 | On a line that has a create button, or the buttons of the nested table's [table actions](table-actions.md#nested-tables) | Goes to the line's controls: the button that opens and closes it, the create button, and the buttons of the table actions. Left Arrow and Right Arrow move between them, Enter uses one, Escape returns to the line. |
-| Down Arrow, Up Arrow | In the grid | Go through the lines of an expanded row and the cell of each open nested table, as through rows. |
-| Enter, F2 | On the cell that holds a nested table | Goes into the nested table: to the cell that was left last, or to its first. |
-| Escape | In a nested table | Comes back out, to the cell that holds it. |
-| Down Arrow, Ctrl+End | In a nested table | Reach its last rows: its pages, where it has any, and its link to the full view, where it has one. |
-| Enter, F2 | On the cell of a nested table's pages | Goes to its buttons. Left Arrow and Right Arrow move between them, Enter uses one, Escape returns to the cell. |
-| Enter, F2 | On the cell of the link to the full view | Follows the link. |
+| Enter, Space | On a row's expander | Opens or closes the row. Focus stays. |
+| Enter, Space | On a line's button | Opens or closes the line and its nested table. Focus stays. |
+| Tab | On an open line's button | Goes on to the nested table's stops: its "Columns", its argument line, its create button and its table actions on the line, then "Skip table Comments", its header, filters, rows, pages and its link to the full view. |
+| Tab | After a nested table's last stop | The parent row's next line, then the next row. |
+| Enter | On "Skip table Comments" | Jumps past that nested table only. |
 
-Inside a nested table every key works as in a table on a page: headings
-sort, filter cells are entered, cells are edited, the buttons of a row's
-actions cell are reached with Enter. The pages and the link of
-a nested table are rows of its grid and no tab stops of their own, so that
-Tab from anywhere in the tree leaves it. Its create button is on its line
-for the same reason, and so are the buttons of its table actions and its
-"Columns" button: F2 on the line goes to them. The "Clear filters" button of a
-nested table is not reached from the keyboard; each filter is cleared from
-its own cell. The inputs of its argument line, on its line too, are tab
-stops of their own.
+Inside a nested table every key works as in a table on a page. Two levels
+deep, or several nested tables open at once, are the same: each table
+stands under its own line, and Tab goes through them in page order. No key
+enters or leaves a nested table, and Escape does not leave one.
 
-Focus is kept through everything that patches the page. When a line or a
-row is closed while focus is inside it, focus goes to the line, or to the
-expander.
+When a line or a row is closed while focus is inside it, focus goes to the
+line's button, or to the row's expander.
 
-The keys of a table without nesting are in
-[Keyboard and accessibility](keyboard-and-accessibility.md).
+All keys, and the Tab order with an example two levels deep, are in
+[Keyboard and accessibility](keyboard-and-accessibility.md#through-nested-tables).
 
 ## The full view
 
