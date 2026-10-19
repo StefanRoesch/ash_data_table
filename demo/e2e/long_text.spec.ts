@@ -67,13 +67,14 @@ const own = (cell: Locator) =>
 /** How high a row is. */
 const height = async (table: Table, key: string) => (await table.rowLine(key).boundingBox())!.height
 
-/** Makes a column as narrow as it can be, from the keyboard. */
+/**
+ * Makes a column as narrow as it can be, from the keyboard: its width field
+ * in "Columns", the least width typed in, the list closed again with Escape.
+ */
 async function narrow(table: Table, column: string): Promise<void> {
-  await table.header(column).focus()
-  await table.press("F2")
-  await expect(table.resizer(column)).toBeFocused()
-  await table.press("Home", "Escape")
-  await expect(table.header(column)).toBeFocused()
+  await table.typeWidth(column, 48)
+  await table.press("Escape")
+  await expect(table.columnsList).toBeHidden()
   expect(await table.width(column)).toBe(48)
 }
 
@@ -559,8 +560,9 @@ test.describe("the whole text of a nested table, and of a row that changes", () 
 
 // "Budget" at /projects is sensitive: masked until somebody asks for it.
 // Made as narrow as a column can be, its cell cuts off what it holds, masked
-// and shown, and still is given no button for its whole text: neither the
-// mask nor the value is ever shown as a whole.
+// and shown, and still is given no button for its whole text, as every
+// other cell that cuts its text off is: neither the mask nor the value is
+// ever shown as a whole.
 test.describe("a sensitive cell", () => {
   test.use({ actor: "member" })
 
@@ -571,35 +573,37 @@ test.describe("a sensitive cell", () => {
     await table.open()
     const cell = table.cell(PORTAL.id, "budget")
 
+    /** The buttons of a whole text in the column of the budgets: none, ever. */
+    const budgets = table.columnCells("budget").locator(":scope > [data-whole]")
+
     await narrow(table, "budget")
     await expect(cell.locator("[data-mask]")).toBeVisible()
     expect(await cut(cell), "the masked cell is cut off").toBe(true)
-
-    await cell.focus()
-    await expect(cell).toBeFocused()
-    await expect(table.whole(cell)).toHaveCount(0)
+    // the hook has measured the cells at their new width: a cell beside it
+    // that is cut off now has its button
+    await narrow(table, "name")
+    const name = table.cell(PORTAL.id, "name")
+    await expect(table.whole(name)).toBeVisible()
+    await expect(budgets).toHaveCount(0)
     await cell.hover()
     await expect(table.whole(cell)).toHaveCount(0)
 
     // shown: the value is in the cell, cut off, and nowhere else
-    await page.getByRole("heading", { level: 1 }).hover()
+    await cell.focus()
+    await expect(cell).toBeFocused()
     await table.press("Shift+Enter")
     await expect(cell.locator("[data-secret]")).toHaveText(PORTAL.budget)
     expect(await cut(cell), "the cell that shows its value is cut off").toBe(true)
     await expect(table.whole(cell)).toHaveCount(0)
     await cell.hover()
     await expect(cell.locator("[data-secret]")).toHaveText(PORTAL.budget)
-    await expect(table.whole(cell)).toHaveCount(0)
-    await expect(anyWhole(page)).toHaveCount(0)
+    await expect(budgets).toHaveCount(0)
 
-    // a cell beside it that is cut off has its button, as everywhere
-    await narrow(table, "name")
-    const name = table.cell(PORTAL.id, "name")
-    await name.focus()
-    await expect(table.whole(name)).toBeVisible()
-    await table.press("Shift+Enter")
+    // the name beside it shows its whole text, and nothing of the budget
+    await table.whole(name).click()
     await expect(table.whole(name)).toHaveAttribute("aria-expanded", "true")
     expect(await own(name)).not.toContain(PORTAL.budget)
+    await expect(budgets).toHaveCount(0)
   })
 })
 
@@ -615,8 +619,11 @@ test.describe("a cell of a field the person may not see", () => {
     await expect(cell.locator(".sr-only")).toHaveCount(1)
 
     await narrow(tasks, "estimate_hours")
-    await cell.focus()
-    await expect(cell).toBeFocused()
+    // the hook has measured the cells at their new width: a cut-off title has its button
+    await narrow(tasks, "title")
+    await expect(tasks.whole(tasks.cell(SEED.task.first, "title"))).toBeVisible()
+    // a read-only cell is no Tab stop; the hidden one has no button, with the pointer on it or not
+    await expect(cell).not.toHaveAttribute("tabindex")
     await expect(tasks.whole(cell)).toHaveCount(0)
     await cell.hover()
     await expect(tasks.whole(cell)).toHaveCount(0)
