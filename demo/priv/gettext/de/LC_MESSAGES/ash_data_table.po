@@ -89,6 +89,9 @@ msgstr "Zurück"
 msgid "Related records"
 msgstr "Zugehörige Einträge"
 
+msgid "read-only"
+msgstr "schreibgeschützt"
+
 msgid "Results updated"
 msgstr "Ergebnisse aktualisiert"
 

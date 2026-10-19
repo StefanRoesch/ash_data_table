@@ -98,6 +98,7 @@ defmodule AshDataTable.Kit.Words do
     :status,
     :grid,
     :row,
+    :header_cell,
     :resizer,
     :editor,
     :list,
@@ -267,6 +268,11 @@ defmodule AshDataTable.Kit.Words do
       not_available: t(:not_available)
     ]
   end
+
+  # the lock after the heading of a column that no row may be edited in,
+  # where the table offers editing at all: nil for none
+  defp words(:header_cell, %{column: column, editing?: editing?}),
+    do: [read_only: (editing? and not column.editable? and t(:read_only)) || nil]
 
   defp words(:resizer, %{column: column}),
     do: [resize_column: t(:resize_column, column: column.label)]

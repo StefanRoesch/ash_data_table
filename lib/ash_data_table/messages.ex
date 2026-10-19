@@ -82,6 +82,8 @@ defmodule AshDataTable.Messages do
     confirm: {[], dgettext_noop("ash_data_table", "Confirm")},
     # names the column of the expanders, and each expander
     related_records: {[], dgettext_noop("ash_data_table", "Related records")},
+    # names the lock after the heading of a column no row may be edited in
+    read_only: {[], dgettext_noop("ash_data_table", "read-only")},
     # in a nested table whose first read is on its way
     loading: {[], dgettext_noop("ash_data_table", "Loading…")},
     # in a nested table whose read was refused, where the destination's table

@@ -335,6 +335,7 @@ defmodule AshDataTable.Parts.Grid do
   attr :sort, :any, required: true
   attr :resizer, :string, required: true
   attr :kit, :atom, required: true
+  attr :texts, :map, required: true
 
   def header_cell(assigns) do
     ~H"""
@@ -351,7 +352,7 @@ defmodule AshDataTable.Parts.Grid do
         @column.sortable? && "cursor-pointer select-none"
       ]}
       phx-no-format
-    >{@column.label}<span :if={@column.sortable?} aria-hidden="true">{sort_mark(@sort, @column)}</span><Kit.part part={:resizer} kit={@kit} id={@resizer} column={@column} texts={Words.texts(:resizer, %{column: @column})} messages={Words.messages(:resizer, %{column: @column})} /></th>
+    >{@column.label}<svg :if={@texts.read_only} role="img" aria-label={@texts.read_only} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ms-1 inline-block size-3 align-[-1px] opacity-60"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span :if={@column.sortable?} aria-hidden="true">{sort_mark(@sort, @column)}</span><Kit.part part={:resizer} kit={@kit} id={@resizer} column={@column} texts={Words.texts(:resizer, %{column: @column})} messages={Words.messages(:resizer, %{column: @column})} /></th>
     """
   end
 
@@ -769,6 +770,8 @@ defmodule AshDataTable.Parts.Grid do
               }
               sort={@state.sort}
               resizer={"#{@id}-resize-#{column.name}"}
+              texts={Words.texts(:header_cell, %{column: column, editing?: @editing?})}
+              messages={Words.messages(:header_cell, %{column: column, editing?: @editing?})}
             />
             <th
               :if={@acting?}
@@ -934,6 +937,19 @@ defmodule AshDataTable.Parts.Grid do
             # ring drawn inside the view (a border, which forced colours keep).
             "[&_[data-line]:is(:focus,:focus-within)>div]:outline-2 [&_[data-line]:is(:focus,:focus-within)>div]:-outline-offset-2 [&_[data-line]:is(:focus,:focus-within)>div]:outline-base-content",
             "[&_[data-nested]:focus_[data-ash-data-table-view]:not([data-nested]:focus_[data-nested]_*)]:after:pointer-events-none [&_[data-nested]:focus_[data-ash-data-table-view]:not([data-nested]:focus_[data-nested]_*)]:after:absolute [&_[data-nested]:focus_[data-ash-data-table-view]:not([data-nested]:focus_[data-nested]_*)]:after:inset-0 [&_[data-nested]:focus_[data-ash-data-table-view]:not([data-nested]:focus_[data-nested]_*)]:after:z-20 [&_[data-nested]:focus_[data-ash-data-table-view]:not([data-nested]:focus_[data-nested]_*)]:after:border-2 [&_[data-nested]:focus_[data-ash-data-table-view]:not([data-nested]:focus_[data-nested]_*)]:after:border-base-content [&_[data-nested]:focus_[data-ash-data-table-view]:not([data-nested]:focus_[data-nested]_*)]:after:content-['']",
+            # Which cells can be edited, where a table offers editing (its grid
+            # has an editor's template): at rest they look alike. With the
+            # pointer an editable cell shows a thin edge inside it, a text
+            # cursor and a small pencil at its end (not on a failed cell, whose
+            # end holds its mark); a read-only cell (`aria-readonly`) does not
+            # change. With the focus an editable cell's ring is in the primary
+            # colour, mixed with the text colour so that it has 3:1 against the
+            # cell in any theme; a read-only cell's is dashed, in the text colour
+            # at half strength.
+            "[&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan])]:relative [&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan])]:cursor-text [&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan]):hover]:shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-base-content)_30%,transparent)]",
+            "[&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan]):not([aria-invalid]):is(:hover,:focus)]:after:absolute [&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan]):not([aria-invalid]):is(:hover,:focus)]:after:end-1.5 [&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan]):not([aria-invalid]):is(:hover,:focus)]:after:top-1/2 [&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan]):not([aria-invalid]):is(:hover,:focus)]:after:-translate-y-1/2 [&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan]):not([aria-invalid]):is(:hover,:focus)]:after:text-xs [&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan]):not([aria-invalid]):is(:hover,:focus)]:after:leading-none [&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan]):not([aria-invalid]):is(:hover,:focus)]:after:text-base-content/60 [&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan]):not([aria-invalid]):is(:hover,:focus)]:after:content-['✎'_/_'']",
+            "[&_[data-ash-data-table]:has(>template[data-editor])>[role=grid]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>[role=gridcell]:not([aria-readonly],[data-selector],[data-expander],[data-actions],[colspan]):is(:focus,:focus-within)]:outline-[color-mix(in_oklab,var(--color-primary)_80%,var(--color-base-content))]",
+            "[&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][aria-readonly]:is(:focus,:focus-within)]:outline-dashed [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][aria-readonly]:is(:focus,:focus-within)]:outline-[1.5px] [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][aria-readonly]:is(:focus,:focus-within)]:-outline-offset-[3px] [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][aria-readonly]:is(:focus,:focus-within)]:outline-[color-mix(in_oklab,var(--color-base-content)_50%,transparent)]",
             # A cell whose save is on its way, and the rows of a table that is
             # reading: dimmed, and no further than text may be. The header and the
             # filters are not dimmed, as they can be used meanwhile and are muted

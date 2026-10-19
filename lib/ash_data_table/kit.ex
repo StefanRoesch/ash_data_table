@@ -272,7 +272,8 @@ defmodule AshDataTable.Kit do
     * `header_cell` - `id`, `column`, `colindex`, `attrs`
       (`Attrs.column_header/5`: `data-sort`, `data-label`, …), `sort`:
       writes `role="columnheader"`, `aria-colindex`, `tabindex="-1"`; draws
-      the `resizer`.
+      the `resizer`, and after the label a lock where its `texts` give
+      `read_only` (its accessible name).
     * `resizer` - a column's handle (`role="separator"`, `data-resize`):
       `id`, `column`.
     * `filter_cell` - `id`, `column`, `colindex`, `filter`, `form`, `table`,
@@ -411,6 +412,9 @@ defmodule AshDataTable.Kit do
       `not_available`; after a save failed (but of a sensitive column):
       `typed`, what was typed as the cell would show it;
     * `summary_cell` - `value`, `text`, `locale`; `kind`, `not_available`;
+    * `header_cell` - `read_only`: the name of the lock after the heading
+      of a column no row may be edited in, where the table offers editing
+      at all (nil for none: no lock);
     * `resizer` - `resize_column`;
     * `editor` - `clear`, `clear_value`;
     * `list` - `add_value`, `value_label`, `remove_label` (with `{n}`), and

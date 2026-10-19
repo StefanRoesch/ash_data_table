@@ -104,4 +104,51 @@ defmodule DemoWeb.Tables.LookTest do
     html = render_async(view, 10_000)
     assert said in classes(html, "[id='looked-pick-assignee']")
   end
+
+  describe "which cells can be edited" do
+    test "a lock, named \"read-only\", after the heading of a column no row may be edited in; none after an editable one",
+         %{conn: conn, world: world} do
+      {:ok, _view, html} = live(conn, "/tasks")
+      [task | _] = world.tasks
+
+      # `overdue?` is a calculation, `reporter` no update action accepts
+      for column <- ["overdue?", "reporter"] do
+        assert attribute(html, "[id='task-head-#{column}'] > svg[role=img]", "aria-label") == [
+                 "read-only"
+               ],
+               column
+      end
+
+      assert attribute(html, "#task-head-title > svg", "aria-label") == []
+      # and its cells say so to assistive technology; an editable one does not
+      assert attribute(html, cell("task", task.id, "reporter"), "aria-readonly") == ["true"]
+      assert attribute(html, cell("task", task.id, "title"), "aria-readonly") == []
+    end
+
+    test "a table that offers the person no editing draws no lock at all", %{
+      conn: conn,
+      world: world
+    } do
+      {:ok, _view, html} = conn |> log_in(world.viewer) |> live("/tasks")
+      assert attribute(html, "#task-head-row svg[role=img]", "aria-label") == []
+    end
+
+    test "the look of an editable and a read-only cell is in the root's rules, once per page", %{
+      conn: conn
+    } do
+      {:ok, _view, html} = live(conn, "/tasks")
+      root = classes(html, "#task")
+
+      assert Enum.any?(
+               root,
+               &(String.contains?(&1, "template[data-editor]") and
+                   String.ends_with?(&1, ":cursor-text"))
+             )
+
+      assert Enum.any?(
+               root,
+               &String.contains?(&1, "[aria-readonly]:is(:focus,:focus-within)]:outline-dashed")
+             )
+    end
+  end
 end

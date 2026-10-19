@@ -172,6 +172,33 @@ for (const theme of ["light", "dark"] as const) {
         }
       })
 
+      test("of an editable cell in the primary colour, of a read-only one dashed; the pointer shows which can be edited", async ({
+        page,
+        tasks,
+      }) => {
+        const title = tasks.cell(FIRST, "title")
+        const reporter = tasks.cell(FIRST, "reporter")
+        await expect(reporter).toHaveAttribute("aria-readonly", "true")
+
+        await title.focus()
+        await expectFocusRing(title, "an editable cell")
+        expect(await contrastOf(title, "outline")).toBeGreaterThanOrEqual(MARK)
+        await reporter.focus()
+        const ring = await style(reporter, ["outline-style", "outline-width"])
+        expect(ring["outline-style"]).toBe("dashed")
+        expect(parseFloat(ring["outline-width"])).toBeGreaterThanOrEqual(1)
+        expect(await contrastOf(reporter, "outline")).toBeGreaterThanOrEqual(MARK)
+
+        // with the pointer: a text cursor and a pencil on an editable cell, nothing on a read-only one
+        await page.keyboard.press("Tab")
+        await title.hover()
+        expect(await style(title, ["cursor"])).toEqual({ cursor: "text" })
+        expect((await style(title, ["content"], "::after")).content).toContain("✎")
+        await reporter.hover()
+        expect(await style(reporter, ["cursor"])).not.toEqual({ cursor: "text" })
+        expect(await style(reporter, ["content"], "::after")).toEqual({ content: "none" })
+      })
+
       test("of a cell that is being edited", async ({ tasks }) => {
         const title = tasks.cell(FIRST, "title")
         await title.focus()
@@ -270,7 +297,8 @@ for (const theme of ["light", "dark"] as const) {
         await title.evaluate((cell) => {
           cell.removeAttribute("aria-invalid")
         })
-        expect(await style(title, ["content"], "::after")).toEqual({ content: "none" })
+        // (its end may hold the pencil of an editable cell with focus, but no mark)
+        expect((await style(title, ["content"], "::after")).content).not.toContain('"!"')
         expect(await placeOf(title)).toEqual(failed)
       })
 

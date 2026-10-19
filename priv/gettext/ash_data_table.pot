@@ -576,3 +576,7 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "More"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "read-only"
+msgstr ""
