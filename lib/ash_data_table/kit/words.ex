@@ -136,10 +136,6 @@ defmodule AshDataTable.Kit.Words do
     ]
   end
 
-  # how many records an open nested table has, where it is known
-  defp words(:line, %{count: count}),
-    do: [count: count && t(:records, count: count)]
-
   defp words(:full_view, %{label: label}),
     do: [full_view: t(:full_view), full_view_of: t(:full_view_of, table: label)]
 

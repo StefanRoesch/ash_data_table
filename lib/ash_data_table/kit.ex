@@ -381,7 +381,8 @@ defmodule AshDataTable.Kit do
       record, which a part draws as a link; nil without a title),
       `show_all_records`;
     * `line` - `count` (how many records its open nested table has, nil
-      where that is not known);
+      where that is not known), the `text` and `message` of the line in the
+      detail's item (`AshDataTable.Item`), which its `detail` hands on;
     * `full_view` - `full_view`, `full_view_of`;
     * `argument` - `add_value`, `errors`, and per value of a list
       `value_position`, `remove_value`;

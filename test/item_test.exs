@@ -98,14 +98,20 @@ defmodule AshDataTable.ItemTest do
     assert closed.attrs == %{"hidden" => true, "data-detail" => true, "data-row" => "k1"}
   end
 
-  test "a line of the detail says whether it is open and, once known, its count in words" do
+  test "a line of the detail says whether it is open and, once known, its count in words and as a message" do
     model = %{relationships: [%{name: :comments}, %{name: :labels}]}
 
     detail = Item.detail(model, "t", "1", [:comments], %{1 => 9, comments: 2})
 
     assert detail.lines == [
-             %{name: :comments, open: true, count: 2, text: "2 records"},
-             %{name: :labels, open: false, count: nil, text: nil}
+             %{
+               name: :comments,
+               open: true,
+               count: 2,
+               text: "2 records",
+               message: %{key: :records, values: %{count: 2}}
+             },
+             %{name: :labels, open: false, count: nil, text: nil, message: nil}
            ]
 
     assert detail.dom_id == "t-row-1-x"

@@ -83,7 +83,15 @@ defmodule AshDataTable.Item do
         dom_id: "tasks-row-42-x",
         detail: true,
         key: "42",
-        lines: [%{name: :comments, open: true, count: 2, text: "2 records"}],
+        lines: [
+          %{
+            name: :comments,
+            open: true,
+            count: 2,
+            text: "2 records",
+            message: %{key: :records, values: %{count: 2}}
+          }
+        ],
         attrs: %{"data-detail" => true, "data-row" => "42"}
       }
 
@@ -94,7 +102,8 @@ defmodule AshDataTable.Item do
       relationship the row offers, in the model's order: `name`, `open`
       (whether its nested table is open), `count` (how many records the
       open nested table has, once it has read; else nil) and `text` (that
-      number in words; else nil)
+      number in words; else nil) and `message` (what that text says,
+      `AshDataTable.Messages`; else nil)
     * `attrs` - the row group's attributes (`hidden` while it holds no
       line, `data-detail`, `data-row`)
 
@@ -184,11 +193,14 @@ defmodule AshDataTable.Item do
     open? = relationship.name in open
     count = if open?, do: Map.get(counts, relationship.name)
 
+    message = count && {:text, :records, count: count}
+
     %{
       name: relationship.name,
       open: open?,
       count: count,
-      text: count && Text.say({:text, :records, count: count})
+      text: message && Text.say(message),
+      message: message && Messages.of(message)
     }
   end
 

@@ -321,8 +321,8 @@ defmodule DemoWeb.DivKit do
       colspan={@colspan}
       table={Ids.nested_table(Ids.row(@id, @row.key), relationship.name)}
       myself={@myself}
-      texts={Words.texts(:line, %{count: line.count})}
-      messages={Words.messages(:line, %{count: line.count})}
+      texts={%{count: line.text}}
+      messages={%{count: line.message}}
     />
     """
   end

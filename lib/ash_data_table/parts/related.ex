@@ -9,7 +9,6 @@ defmodule AshDataTable.Parts.Related do
   alias AshDataTable.Attrs
   alias AshDataTable.Ids
   alias AshDataTable.Kit
-  alias AshDataTable.Kit.Words
   alias AshDataTable.Parts
 
   # What is under an expanded row: one line per relationship the person is
@@ -45,8 +44,8 @@ defmodule AshDataTable.Parts.Related do
       colspan={@colspan}
       table={Ids.nested_table(Ids.row(@id, @row.key), relationship.name)}
       myself={@myself}
-      texts={Words.texts(:line, %{count: line.count})}
-      messages={Words.messages(:line, %{count: line.count})}
+      texts={%{count: line.text}}
+      messages={%{count: line.message}}
     />
     """
   end
