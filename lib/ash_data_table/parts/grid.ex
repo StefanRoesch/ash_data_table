@@ -149,12 +149,7 @@ defmodule AshDataTable.Parts.Grid do
         class="dropdown menu max-h-[60vh] flex-nowrap overflow-y-auto rounded-box bg-base-100 p-2 text-base-content shadow-sm forced-colors:border [position-area:bottom_span-right] [position-try-fallbacks:flip-inline,flip-block] supports-[position-area:bottom]:inset-auto supports-[position-area:bottom]:m-0 supports-[position-area:bottom]:mt-0.5"
       >
         <div :if={@label_column} class="flex items-center gap-2">
-          <span
-            id={"#{@id}-column-#{@label_column.name}-entry"}
-            class="grow py-0.5 ps-7 pe-1 whitespace-nowrap"
-          >
-            {@label_column.label}
-          </span>
+          <span class="grow py-0.5 ps-7 pe-1 whitespace-nowrap">{@label_column.label}</span>
           <input
             type="number"
             min="48"

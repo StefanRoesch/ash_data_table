@@ -128,7 +128,7 @@ defmodule DemoWeb.Tables.ColumnResizeTest do
              ["task-head-title" | boxes]
 
     assert width_field(html, "task", "title")["aria-label"] == "Width of Title"
-    assert text(html, "#task-column-title-entry") == "Title"
+    assert text(html, "#task-columns > div:first-child > span") == "Title"
 
     assert attribute(html, "#task-columns > button[data-reset-widths]", "id") == [
              "task-reset-widths"
