@@ -837,7 +837,9 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
       # not there to be taken
       html = picked(view, "stock", basement.id)
 
+      # nothing is selected: the picker stays open, and has nothing to say
       assert_reply view, %{ok: false}
+      assert picker(html, "stock").error == nil
       assert stored!(apple).shelf_id == attic.id
 
       # offered once the line asks for it, and taken as the line holds it:

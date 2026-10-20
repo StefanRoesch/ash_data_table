@@ -799,13 +799,15 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
 
     test "let a row go that is closed while something was open under it",
          %{world: world, member: member, task: task, comments: comments} do
-      click(member, "[id='task-row-#{task.id}-t-comments-create']")
+      html = click(member, "[id='task-row-#{task.id}-t-comments-create']")
+      assert panel(html, comments).heading == "New comment"
       Ash.update!(task, %{title: "Changed under an open panel"}, as(world.admin))
       assert titles(heard(member)) == ["Another task", "With comments"]
 
       # the row is closed, and the panel with it
       html = expand(member, task.id)
       assert titles(html) == ["Another task", "Changed under an open panel"]
+      assert panel(html, comments) == nil
     end
   end
 
