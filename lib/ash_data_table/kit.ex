@@ -420,7 +420,7 @@ defmodule AshDataTable.Kit do
       `data-add`, `data-remove`): `id`, `rest` (attributes for its
       element), `label`, `item`, `limits`, `counted`, `values`, `name`.
     * `field` - a field of the panel (`data-field`; its buttons
-      `Attrs.add_group/3`, `Attrs.remove_group/3` (`data-remove-group`),
+      `Attrs.add_group/4`, `Attrs.remove_group/4` (`data-remove-group`),
       `Attrs.unpick/4`, `Attrs.clear_field/3`, which send their events
       with `phx-click`; `data-invalid`): `id`, `input` (an
       `AshDataTable.Model.Input`, or inside a value made of fields an
@@ -440,15 +440,19 @@ defmodule AshDataTable.Kit do
       its value was given for; `[]` of any other field), `members` (of a
       value made of fields while it holds one: `name`, `hidden` (the entry
       that says it is there and the keys it sends back as they came,
-      bundles as the field's), and `fields`; nil for no value), `items` (of
-      a list of them: per value `key`, `id`, `path` and `members`), `kind`,
-      `kind_name`, `kind_path` and `single` (of a union: the kind chosen,
-      `""` for none, what the choice of the kind is sent under and its
+      bundles as the field's), and `fields`; nil for no value), `add_id` and
+      `remove_id` (of a value made of fields, and `add_id` of a list of
+      them: the ids of the buttons that add a value and take it away, which
+      `Attrs.add_group/4` and `Attrs.remove_group/4` put into their
+      bundles), `items` (of a list of them: per value `key`, `id`,
+      `remove_id`, `path` and `members`), `kind`, `kind_id`, `kind_name`,
+      `kind_path` and `single` (of a union: the kind chosen, `""` for none,
+      the id of the choice of the kind, what it is sent under and its
       `data-field` path, and the kind's value where it holds one value, a
       field; else `members`). Nil, `[]` and nil where the field is none of
-      these. The names and the hidden entries are the table's to make
-      (the wire format of a value made of fields): a kit draws them as it is
-      given them.
+      these. The names, the ids and the hidden entries are the table's to
+      make (the wire format of a value made of fields): a kit draws them as
+      it is given them.
     * `control` - a field's control: `id`, `input`, `name`, `value`,
       `secret?`, `invalid?`, `described`, `limits`.
     * `failure` - the message of a failed cell or row, drawn in the cell
@@ -831,12 +835,14 @@ defmodule AshDataTable.Kit do
   `table`, `limits`, `counted`, `members`, `items`, `kind` and `single`
   in place of `inside`.
 
-  Contract 6 (from contract 5), the stage of the refactor that makes it
-  (`docs/architecture/deepening-design.md`) by step: the group value
-  (9b), the `field` part is given `hidden`, the hidden entries of a value
-  made of fields as bundles, and of a union `kind_name` and `kind_path`;
-  its `members` hold `hidden` in place of `keys`. A kit no longer writes
-  the names a value made of fields sends beside its fields.
+  Contract 6 (from contract 5), by stage (9b, …): the `field` part is
+  given `hidden`, the hidden entries of a value made of fields as
+  bundles, of a union `kind_id`, `kind_name` and `kind_path`, and of a
+  value made of fields `add_id` and `remove_id` (an item `remove_id`);
+  its `members` hold `hidden` in place of `keys`; `Attrs.add_group/4` and
+  `Attrs.remove_group/4` take the button's id and put it into the
+  bundle. A kit no longer writes the names or the ids a value made of
+  fields has inside the panel.
   """
 
   use Phoenix.Component
@@ -1245,8 +1251,11 @@ defmodule AshDataTable.Kit do
         members: nil,
         items: [],
         kind: nil,
+        kind_id: nil,
         kind_name: nil,
         kind_path: nil,
+        add_id: nil,
+        remove_id: nil,
         single: nil,
         texts: Words.texts(:field, words),
         messages: Words.messages(:field, words),
@@ -1268,14 +1277,21 @@ defmodule AshDataTable.Kit do
   defp field_counted(_input), do: nil
 
   # A value made of fields: its `members` while it holds one (nil for no
-  # value). A list of them: an item per value (`AshDataTable.GroupValue.items/1`),
-  # each under a number of its own, and the entry of its own (`hidden`). A
-  # union: the kind chosen (`kind`), what its choice is sent under
-  # (`kind_name`, `kind_path`), the entry that says which kind its value
+  # value), and the ids of the buttons that add it and take it away
+  # (`add_id`, `remove_id`). A list of them: an item per value (`AshDataTable.GroupValue.items/1`),
+  # each under a number of its own with the id of the button that takes it
+  # away, the entry of its own (`hidden`) and the id of the button that adds
+  # one. A union: the kind chosen (`kind`), its choice's id and what it is
+  # sent under (`kind_id`, `kind_name`, `kind_path`), the entry that says which kind its value
   # was given for (`hidden`), and that kind's value, one field (`single`) or
   # its `members`.
-  defp within(%{editor: :group} = input, held, _errors, inside),
-    do: %{members: if(is_map(held), do: members(input, held, inside))}
+  defp within(%{editor: :group} = input, held, _errors, inside) do
+    %{
+      members: if(is_map(held), do: members(input, held, inside)),
+      add_id: GroupValue.id(inside.table, inside, :add),
+      remove_id: GroupValue.id(inside.table, inside, :remove)
+    }
+  end
 
   defp within(%{editor: :groups} = input, held, _errors, inside) do
     items =
@@ -1285,12 +1301,17 @@ defmodule AshDataTable.Kit do
         %{
           key: key,
           id: GroupValue.id(inside.table, at),
+          remove_id: GroupValue.id(inside.table, at, :remove),
           path: at.path,
           members: members(%{input | cell_type: :map}, item, at)
         }
       end
 
-    %{items: items, hidden: GroupValue.hidden(input, inside.name, held)}
+    %{
+      items: items,
+      hidden: GroupValue.hidden(input, inside.name, held),
+      add_id: GroupValue.id(inside.table, inside, :add)
+    }
   end
 
   defp within(%{editor: :union} = input, held, errors, inside) do
@@ -1311,6 +1332,7 @@ defmodule AshDataTable.Kit do
 
     %{
       kind: if(member, do: Atom.to_string(member.name), else: ""),
+      kind_id: GroupValue.id(inside.table, inside, :kind),
       kind_name: choice.name,
       kind_path: choice.path,
       hidden: GroupValue.hidden(input, inside.name, held),
@@ -1524,8 +1546,10 @@ defmodule AshDataTable.Kit do
   defp changed(5),
     do:
       ". Contract 6 gives field the hidden entries of a value made of fields as bundles " <>
-        "(hidden; members' hidden in place of keys) and of a union kind_name and kind_path: " <>
-        "a kit no longer writes the names a value made of fields sends beside its fields"
+        "(hidden; members' hidden in place of keys), of a union kind_id, kind_name and " <>
+        "kind_path, and the ids of its buttons (add_id, remove_id, an item's remove_id), which " <>
+        "Attrs.add_group/4 and Attrs.remove_group/4 put into their bundles: a kit no longer " <>
+        "writes the names or the ids a value made of fields has inside the panel"
 
   defp changed(_contract), do: "."
 

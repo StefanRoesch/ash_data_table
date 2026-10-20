@@ -264,7 +264,7 @@ defmodule AshDataTable.GroupValue do
   def change(%{cell_type: :map} = field, nil, [], :add, zone), do: {:ok, blank(field, zone), []}
 
   def change(%{cell_type: :map, required?: false}, %{}, [], :remove, _zone),
-    do: {:ok, nil, ["add"]}
+    do: {:ok, nil, [control(:add)]}
 
   def change(%{cell_type: {:array, :map}} = field, held, [], :add, zone) do
     held = if is_map(held), do: held, else: %{"_present" => ""}
@@ -285,7 +285,7 @@ defmodule AshDataTable.GroupValue do
         at = Enum.find_index(keys, &(&1 == key))
         # to the value after it, else to the one before it, else to the
         # button that adds one
-        focus = Enum.at(keys, at + 1) || (at > 0 && Enum.at(keys, at - 1)) || "add"
+        focus = Enum.at(keys, at + 1) || (at > 0 && Enum.at(keys, at - 1)) || control(:add)
         {:ok, Map.delete(held, key), [focus]}
 
       true ->
@@ -347,6 +347,18 @@ defmodule AshDataTable.GroupValue do
   @spec id(String.t(), at) :: String.t()
   def id(table, %{ids: ids}), do: Ids.field(table, ids)
 
+  @doc """
+  The id of a control of the field at `at` that is no field of its own:
+  the choice of a union's kind (`:kind`), the button that adds a group
+  (`:add`, where `change/5` puts focus when the last one goes) and the one
+  that takes it away (`:remove`).
+  """
+  @spec id(String.t(), at, :kind | :add | :remove) :: String.t()
+  def id(table, %{ids: ids}, control) when control in [:kind, :add, :remove],
+    do: Ids.field(table, ids ++ [control(control)])
+
+  defp control(control), do: Atom.to_string(control)
+
   defp segment({:field, name}), do: Atom.to_string(name)
   defp segment({:item, key}), do: key
   defp segment({:value, _member}), do: "_union_value"
@@ -360,7 +372,7 @@ defmodule AshDataTable.GroupValue do
   defp ids({:item, key}), do: [key]
   defp ids({:value, %{cell_type: :map}}), do: []
   defp ids({:value, _member}), do: ["value"]
-  defp ids(:kind), do: ["kind"]
+  defp ids(:kind), do: [control(:kind)]
 
   @doc """
   The hidden entries a field made of groups sends beside its fields: of a

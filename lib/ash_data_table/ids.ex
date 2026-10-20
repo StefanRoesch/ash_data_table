@@ -153,8 +153,9 @@ defmodule AshDataTable.Ids do
 
   @doc """
   A field of the action panel, by the way to it: its name, and inside a
-  value made of fields the names and the keys of the values on the way
-  (`[:place]`, `[:stops, "0", :city]`): `ID-panel-f-NAME-…`.
+  value made of fields the segments on the way, which
+  `AshDataTable.GroupValue.at/2` and `inside/2` make (`[:place]`,
+  `["stops", "0", "f", "city"]`): `ID-panel-f-NAME-…`.
   """
   @spec field(String.t(), [atom | String.t() | integer]) :: String.t()
   def field(id, path), do: Enum.join(["#{id}-panel-f" | path], "-")

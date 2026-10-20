@@ -594,7 +594,8 @@ defmodule AshDataTable.KitTest do
     # every assign of the `field` part but `kit` and `target`
     part =
       ~w(id input name value errors places chosen clear upload path table limits counted
-         hidden members items kind kind_name kind_path single texts messages locale)a
+         hidden members items kind kind_id kind_name kind_path add_id remove_id single texts
+         messages locale)a
 
     for {_name, given} <- fields, do: assert(Enum.sort(Map.keys(given)) == Enum.sort(part))
 
@@ -611,7 +612,9 @@ defmodule AshDataTable.KitTest do
 
     # a list of them: an item per value, under its own number, and its own entry
     assert [%{key: "0", members: stop} = item] = fields.stops.items
-    assert is_binary(item.id) and is_list(item.path)
+    assert is_binary(item.id) and is_binary(item.remove_id) and is_list(item.path)
+    assert is_binary(fields.stops.add_id) and fields.stops.remove_id == nil
+    assert is_binary(fields.place.add_id) and is_binary(fields.place.remove_id)
     assert %{fields: [%{value: "Thun"} | _]} = stop
     assert [_own] = fields.stops.hidden
 
@@ -620,7 +623,8 @@ defmodule AshDataTable.KitTest do
     assert %{kind: "count", single: %{value: "7", input: %{name: :count}}, members: nil} =
              fields.kind
 
-    assert is_binary(fields.kind.kind_name) and is_list(fields.kind.kind_path)
+    assert is_binary(fields.kind.kind_id) and is_binary(fields.kind.kind_name)
+    assert is_list(fields.kind.kind_path)
     assert [%{"value" => "count"}] = fields.kind.hidden
     assert fields.tags.members == nil and fields.tags.items == [] and fields.tags.hidden == []
 

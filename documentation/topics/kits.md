@@ -235,9 +235,12 @@ of bundles, each spread on an `<input type="hidden">` (of a list of maps the
 entry that sends the list when it has no values, of a union the one that says
 which kind its value was typed for), and the same in its `members` (the entry
 that says the value is there, and the key of each value of a list, which Ash
-tells them apart by). A union's choice of its kind is sent under `kind_name`.
-What those entries are called and hold is the table's: a part draws them as
-it is given them, and writes no name of its own.
+tells them apart by). A union's choice of its kind is sent under `kind_name`
+and has the id `kind_id`; the buttons that add a value and take it away have
+the ids `add_id` and `remove_id` (an item of a list its own `remove_id`),
+which `Attrs.add_group/4` and `Attrs.remove_group/4` put into their bundles.
+What those entries are called and hold, and these ids, are the table's: a
+part draws them as it is given them, and writes no name or id of its own.
 
 **Tab stops.** A table is a table (`role="table"`), not an ARIA grid: the
 browser moves the focus with Tab, from control to control in the order they
@@ -514,9 +517,13 @@ changed.
 - **A kit of contract 5 no longer compiles.** Contract 6 gives a field of the
   panel its hidden entries as bundles (`hidden`, and `members.hidden` in
   place of `members.keys`) and a union the name of its kind's choice
-  (`kind_name`, `kind_path`). A field of your own spreads each entry of
-  `hidden` on an `<input type="hidden">` and names the kind's choice
-  `kind_name`, in place of the names it wrote itself.
+  (`kind_name`, `kind_path`) and the ids of the kind's choice and of the
+  group buttons (`kind_id`, `add_id`, `remove_id`, an item's `remove_id`);
+  `Attrs.add_group/4` and `Attrs.remove_group/4` take the button's id. A
+  field of your own spreads each entry of `hidden` on an
+  `<input type="hidden">`, names the kind's choice `kind_name` with the id
+  `kind_id`, and passes the ids to the group bundles, in place of the names
+  and ids it wrote itself.
 
 ## Not in the first version
 

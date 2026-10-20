@@ -1,6 +1,6 @@
 defmodule AshDataTable.ItemTest do
   @moduledoc """
-  An item of a table's stream (`AshDataTable.Item`, kit contract 5, ADR
+  An item of a table's stream (`AshDataTable.Item`, kit contract 6, ADR
   0002): a plain map whose cells hold their finished text. Its keys are the
   ones its moduledoc lists, both ways; it goes to JSON as it is; and it
   holds no sensitive value, as the row it is made of holds none.

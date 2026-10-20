@@ -98,6 +98,7 @@ export type FieldProps = {
   members: Members | null
   items: {key: string; id: string; remove: Bundle; members: Members}[]
   kind: string | null
+  kind_id: string | null
   kind_name: string | null
   kind_path: string | null
   kinds: null | {value: string; label: string}[]
@@ -525,7 +526,7 @@ export function Group({field}: {field: FieldProps}) {
       <div className="flex items-center gap-1">
         <GroupLabel field={field} />
         {field.members && field.remove && (
-          <button type="button" id={`${id}-remove`} {...attrs(field.remove)} aria-label={texts.remove_group} className={button("ghost", "xs")}>
+          <button type="button" {...attrs(field.remove)} aria-label={texts.remove_group} className={button("ghost", "xs")}>
             <span aria-hidden="true">✕</span>
           </button>
         )}
@@ -537,7 +538,7 @@ export function Group({field}: {field: FieldProps}) {
         </div>
       )}
       {!field.members && (
-        <button type="button" id={`${id}-add`} {...attrs(field.add)} className={button("outline", "sm")}>
+        <button type="button" {...attrs(field.add)} className={button("outline", "sm")}>
           {texts.add_value}
         </button>
       )}
@@ -566,7 +567,7 @@ export function Groups({field}: {field: FieldProps}) {
               <span id={`${item.id}-label`} className="text-sm">
                 {texts.value_position?.[index]}
               </span>
-              <button type="button" id={`${item.id}-remove`} {...attrs(item.remove)} aria-label={texts.remove_value?.[index]} className={button("ghost", "xs")}>
+              <button type="button" {...attrs(item.remove)} aria-label={texts.remove_value?.[index]} className={button("ghost", "xs")}>
                 <span aria-hidden="true">✕</span>
               </button>
             </div>
@@ -577,7 +578,7 @@ export function Groups({field}: {field: FieldProps}) {
           </div>
         )
       })}
-      <button type="button" id={`${id}-add`} {...attrs(field.add)} className={button("outline", "sm")}>
+      <button type="button" {...attrs(field.add)} className={button("outline", "sm")}>
         {texts.add_value}
       </button>
     </div>
@@ -602,10 +603,10 @@ export function Union({field}: {field: FieldProps}) {
       <div className="ps-4">
         <HiddenEntries entries={field.hidden} />
         <div className="mb-3 flex flex-col gap-1" data-field={field.kind_path ?? undefined}>
-          <label htmlFor={`${id}-kind`} className={LABEL}>
+          <label htmlFor={field.kind_id ?? undefined} className={LABEL}>
             <span data-label="">{texts.kind}</span>
           </label>
-          <select ref={ref} id={`${id}-kind`} name={field.kind_name ?? undefined} defaultValue={kind} aria-required={field.required ? "true" : undefined} className={select("h-8 w-full text-sm")}>
+          <select ref={ref} id={field.kind_id ?? undefined} name={field.kind_name ?? undefined} defaultValue={kind} aria-required={field.required ? "true" : undefined} className={select("h-8 w-full text-sm")}>
             {(!field.required || kind === "") && <option value=""></option>}
             {(field.kinds || []).map(choice => (
               <option key={choice.value} value={choice.value}>

@@ -31,7 +31,8 @@ export const editor = (id, name) => `${id}-editor-${name}`
 export const dialog = id => `${id}-dialog`
 export const panelPlace = id => `${id}-panel-place`
 export const pickerPlace = id => `${id}-picker-place`
-// `path`: the names and keys on the way to the field, `["stops", "0", "city"]`
+// `path`: the segments on the way to the field, as `AshDataTable.GroupValue.at/2` and
+// `inside/2` make them, `["stops", "0", "f", "city"]`
 export const field = (id, path) => [`${id}-panel-f`, ...path].join("-")
 export const clear = field => `${field}-clear`
 export const choose = field => `${field}-choose`

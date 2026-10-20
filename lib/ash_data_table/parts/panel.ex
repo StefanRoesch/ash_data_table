@@ -93,8 +93,9 @@ defmodule AshDataTable.Parts.Panel do
   # what the field says of itself (`data-field`): its name, and for a field
   # inside a group the names on the way to it, with a dot between; `table`
   # the id its events name. What a value made of fields holds is given
-  # (`hidden`, `members`, `items`, `kind`, `kind_name`, `kind_path`,
-  # `single`: `AshDataTable.Kit.fields/3`), and what its control says
+  # (`hidden`, `members`, `items`, `kind`, `kind_id`, `kind_name`,
+  # `kind_path`, `single`, and the ids of its buttons `add_id` and
+  # `remove_id`: `AshDataTable.Kit.fields/3`), and what its control says
   # (`limits`, `counted`).
   attr :id, :string, required: true
   attr :input, :map, required: true
@@ -113,8 +114,11 @@ defmodule AshDataTable.Parts.Panel do
   attr :members, :map, required: true
   attr :items, :list, required: true
   attr :kind, :string, required: true
+  attr :kind_id, :string, required: true
   attr :kind_name, :string, required: true
   attr :kind_path, :list, required: true
+  attr :add_id, :string, required: true
+  attr :remove_id, :string, required: true
   attr :single, :map, required: true
   attr :target, :any, required: true
   attr :kit, :atom, required: true
@@ -333,6 +337,8 @@ defmodule AshDataTable.Parts.Panel do
         id={@id}
         name={@name}
         field={@input}
+        add_id={@add_id}
+        remove_id={@remove_id}
         members={@members}
         items={@items}
         kind={@kind}
@@ -350,6 +356,7 @@ defmodule AshDataTable.Parts.Panel do
         name={@name}
         field={@input}
         hidden={@hidden}
+        add_id={@add_id}
         members={@members}
         items={@items}
         kind={@kind}
@@ -371,6 +378,7 @@ defmodule AshDataTable.Parts.Panel do
         members={@members}
         items={@items}
         kind={@kind}
+        kind_id={@kind_id}
         kind_name={@kind_name}
         kind_path={@kind_path}
         single={@single}
@@ -570,13 +578,15 @@ defmodule AshDataTable.Parts.Panel do
   # be left out a button that takes it away: no group is no value, and a
   # group is the value as its fields say it, empty fields included. The
   # server renders it either way, and the buttons ask it to with
-  # `phx-click` (`Attrs.add_group/3`, `Attrs.remove_group/3`: the way to
-  # the group).
+  # `phx-click` (`Attrs.add_group/4`, `Attrs.remove_group/4`: the way to
+  # the group, and the button's id, `add_id`, `remove_id`).
   #
   # `members` are its fields while it holds a value, nil for none.
   attr :id, :string, required: true
   attr :name, :string, required: true
   attr :field, :map, required: true
+  attr :add_id, :string, required: true
+  attr :remove_id, :string, required: true
   attr :members, :map, required: true
   attr :items, :list, required: true
   attr :kind, :string, required: true
@@ -606,8 +616,7 @@ defmodule AshDataTable.Parts.Panel do
         <button
           :if={@members && not @field.required?}
           type="button"
-          id={"#{@id}-remove"}
-          {Attrs.remove_group(@table, @path, @target)}
+          {Attrs.remove_group(@remove_id, @table, @path, @target)}
           aria-label={@texts.remove_group}
           class="btn btn-ghost btn-xs mb-1"
         >
@@ -623,8 +632,7 @@ defmodule AshDataTable.Parts.Panel do
       <button
         :if={!@members}
         type="button"
-        id={"#{@id}-add"}
-        {Attrs.add_group(@table, @path, @target)}
+        {Attrs.add_group(@add_id, @table, @path, @target)}
         class="btn btn-sm"
       >
         {@texts.add_value}
@@ -647,6 +655,7 @@ defmodule AshDataTable.Parts.Panel do
   attr :name, :string, required: true
   attr :field, :map, required: true
   attr :hidden, :list, required: true
+  attr :add_id, :string, required: true
   attr :members, :map, required: true
   attr :items, :list, required: true
   attr :kind, :string, required: true
@@ -691,8 +700,7 @@ defmodule AshDataTable.Parts.Panel do
           </span>
           <button
             type="button"
-            id={"#{item.id}-remove"}
-            {Attrs.remove_group(@table, item.path, @target)}
+            {Attrs.remove_group(item.remove_id, @table, item.path, @target)}
             aria-label={Enum.at(@texts.remove_value, index)}
             class="btn btn-ghost btn-xs mb-1"
           >
@@ -712,8 +720,7 @@ defmodule AshDataTable.Parts.Panel do
       </div>
       <button
         type="button"
-        id={"#{@id}-add"}
-        {Attrs.add_group(@table, @path, @target)}
+        {Attrs.add_group(@add_id, @table, @path, @target)}
         class="btn btn-sm"
       >
         {@texts.add_value}
@@ -748,6 +755,7 @@ defmodule AshDataTable.Parts.Panel do
   attr :members, :map, required: true
   attr :items, :list, required: true
   attr :kind, :string, required: true
+  attr :kind_id, :string, required: true
   attr :kind_name, :string, required: true
   attr :kind_path, :list, required: true
   attr :single, :map, required: true
@@ -780,11 +788,11 @@ defmodule AshDataTable.Parts.Panel do
       <div class="ps-4">
         <input :for={entry <- @hidden} type="hidden" {entry} />
         <div class="fieldset mb-2" {Attrs.field(@kind_path)}>
-          <label for={"#{@id}-kind"} class="label mb-1 text-base-content">
+          <label for={@kind_id} class="label mb-1 text-base-content">
             <span data-label>{@texts.kind}</span>
           </label>
           <select
-            id={"#{@id}-kind"}
+            id={@kind_id}
             name={@kind_name}
             aria-required={@field.required? && "true"}
             class={["select w-full", Parts.Editors.control_edge()]}

@@ -817,8 +817,8 @@ defmodule DemoWeb.ReactKit.Props do
 
   # One field of the panel, of what its `field` part is given: its ids, name
   # and value, what its control is and says, its buttons' bundles
-  # (`Attrs.unpick/4`, `Attrs.clear_field/3`, `Attrs.add_group/3`,
-  # `Attrs.remove_group/3`, and the picker's `pick_input`), a file's upload,
+  # (`Attrs.unpick/4`, `Attrs.clear_field/3`, `Attrs.add_group/4`,
+  # `Attrs.remove_group/4`, with the buttons' ids, and the picker's `pick_input`), a file's upload,
   # and what a value made of fields holds, each a field again, with its
   # hidden entries as bundles (`hidden`) and a union's choice of its kind
   # (`kind_name`, `kind_path`).
@@ -864,22 +864,25 @@ defmodule DemoWeb.ReactKit.Props do
         end,
       component: editor == :component && inspect(input.component.module),
       upload: given.upload && upload(given.upload),
-      add: group? && editor != :union && bundle(Attrs.add_group(given.table, given.path, target)),
+      add:
+        group? && editor != :union &&
+          bundle(Attrs.add_group(given.add_id, given.table, given.path, target)),
       remove:
         editor == :group and not input.required? and
-          bundle(Attrs.remove_group(given.table, given.path, target)),
+          bundle(Attrs.remove_group(given.remove_id, given.table, given.path, target)),
       members: members(given.members, target),
       items:
         for item <- given.items do
           %{
             key: item.key,
             id: item.id,
-            remove: bundle(Attrs.remove_group(given.table, item.path, target)),
+            remove: bundle(Attrs.remove_group(item.remove_id, given.table, item.path, target)),
             members: members(item.members, target)
           }
         end,
       hidden: Enum.map(given.hidden, &bundle/1),
       kind: given.kind,
+      kind_id: given.kind_id,
       kind_name: given.kind_name,
       kind_path: given.kind_path && Enum.join(given.kind_path, "."),
       kinds:

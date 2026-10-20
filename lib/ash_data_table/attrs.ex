@@ -210,7 +210,7 @@ defmodule AshDataTable.Attrs do
     %{
       name: "panel_add",
       by: :bundle,
-      bundle: "add_group/3",
+      bundle: "add_group/4",
       payload: "`{path}`, the names as a JSON list",
       reply: "none (focus: `ash_data_table:focus`)",
       example: %{"path" => ~s(["stops"])}
@@ -218,7 +218,7 @@ defmodule AshDataTable.Attrs do
     %{
       name: "panel_remove",
       by: :bundle,
-      bundle: "remove_group/3",
+      bundle: "remove_group/4",
       payload: "`{path}`, the names as a JSON list",
       reply: "none (focus: `ash_data_table:focus`)",
       example: %{"path" => ~s(["stops","0"])}
@@ -1686,23 +1686,25 @@ defmodule AshDataTable.Attrs do
   end
 
   @doc """
-  The button that adds a group of fields: `panel_add` with the way to it,
+  The button that adds a group of fields, `id` its id (the field's
+  `add_id`): `panel_add` with the way to it,
   the names it is sent under (`path`, a list, sent as its JSON in
   `phx-value-path`: a `phx-value-*` holds text). The server says where
   focus goes then (`ash_data_table:focus`).
   """
-  def add_group(table, path, target), do: group(event(table, "panel_add"), path, target)
+  def add_group(id, table, path, target), do: group(id, event(table, "panel_add"), path, target)
 
   @doc """
   The button that takes a group of fields away (`data-remove-group`, by
   which the panel's hook does not open on it): `panel_remove` with the way
-  to it, as `add_group/3`.
+  to it, as `add_group/4`.
   """
-  def remove_group(table, path, target),
-    do: Map.put(group(event(table, "panel_remove"), path, target), "data-remove-group", true)
+  def remove_group(id, table, path, target),
+    do: Map.put(group(id, event(table, "panel_remove"), path, target), "data-remove-group", true)
 
-  defp group(event, path, target) do
+  defp group(id, event, path, target) do
     %{
+      "id" => id,
       "phx-click" => event,
       "phx-value-path" => AshDataTable.GroupValue.path_value(path),
       "phx-target" => target

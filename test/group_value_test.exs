@@ -465,6 +465,13 @@ defmodule AshDataTable.GroupValueTest do
       assert %{name: "panel[value][_union_type]", path: ["value", "_union_type"]} =
                GroupValue.inside(top, :kind)
 
+      # the controls that are no field: the kind's choice, the group's buttons
+      assert GroupValue.id("t", top, :kind) == "t-panel-f-value-kind"
+      assert GroupValue.id("t", item, :remove) == "t-panel-f-stops-0-remove"
+
+      assert GroupValue.id("t", GroupValue.at("panel[stops]", ["stops"]), :add) ==
+               "t-panel-f-stops-add"
+
       # what else the map holds stays
       assert %{place: [:value]} = GroupValue.inside(Map.put(top, :place, [:value]), :kind)
     end
