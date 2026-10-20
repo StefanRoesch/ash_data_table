@@ -67,6 +67,7 @@ defmodule AshDataTable.MixProject do
       # `test/documentation_test.exs`.
       extras: [
         "README.md",
+        {"documentation/README.md", filename: "documentation", title: "Documentation"},
         "documentation/tutorials/get-started-with-ash-data-table.md",
         "documentation/topics/installation.md",
         "documentation/topics/columns-and-defaults.md",

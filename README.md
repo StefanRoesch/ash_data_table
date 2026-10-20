@@ -1,208 +1,118 @@
 # ash_data_table
 
-## Try the demo
+**An editable table for [Ash](https://ash-hq.org) resources, in Phoenix
+LiveView — an interface to Ash for people, the way `ash_json_api` and
+`ash_graphql` are interfaces for machines.**
 
-The repository is private: you need read access to
-`StefanRoesch/ash_data_table` on GitHub.
+> **Early preview, looking for feedback.** Version 0.1, not on Hex, not meant
+> for production. I'd like to know two things: **is there a need for
+> something like this, and is it worth polishing?**
+
+![The tasks table of the demo, a row opened into its comments](docs/images/tasks.png)
+
+## What it is
+
+You add an extension to an Ash resource, optionally describe the table in a
+`table do … end` block, and mount it with one line in the router. No HEEx.
+The table offers what the resource offers, as the person looking may use it:
+reading, sorting, filtering and paging through the read action, editing a cell
+through the update action, row and table actions, related records as nested
+tables. Ash's policies decide who sees and changes what.
+
+## Try it
+
+You need Git and Docker. The repository is private: you need read access to
+`StefanRoesch/ash_data_table`.
 
 ```sh
 git clone git@github.com:StefanRoesch/ash_data_table.git
 cd ash_data_table
-```
-
-With Docker only (no Elixir needed):
-
-```sh
 docker compose --profile demo up --build
 ```
 
-Or with Elixir 1.18 or later, Node 20 or later (`demo/assets/.tool-versions`
-pins 24 for asdf; npm is used for the demo's React page only) and Docker for
-Postgres (the Docker image uses Elixir 1.19 on OTP 28 and Debian's Node 20):
+The first build takes a few minutes. Then open **http://localhost:4478**
+and pick a person under **"Acting as"** at the top right, for example
+**Ada Admin**.
+
+<details>
+<summary>With Elixir instead of Docker for the app</summary>
+
+Elixir 1.18 or later and Node 20 or later; Docker still runs Postgres.
 
 ```sh
 docker compose up -d postgres   # Postgres on port 5477
 cd demo
 mix setup                       # deps, database, seed data, npm packages, assets
-mix phx.server
+mix phx.server                  # http://localhost:4478
 ```
+</details>
 
-Open http://localhost:4478 and pick a person under "Acting as" at the top
-right, for example "Ada Admin". Then look at "Tasks" (open a row with its
-arrow to see the related tables), "Projects" and the other pages in the
-menu. What each person may see and change differs: switch persons to see
-the table follow the resource's policies. More in
-[demo/README.md](demo/README.md).
+**If it doesn't start:** port 4478 or 5477 is taken by something else. Stop
+it, or pick other ports: `DEMO_PORT=4500 POSTGRES_PORT=5500 docker compose
+--profile demo up --build` (with Elixir: `PORT` and `POSTGRES_PORT`, see
+`.env.example`). Or Docker isn't running. The first build needs internet for
+Hex and npm.
 
-An Ash extension that presents a resource to people as an editable table in
-Phoenix LiveView. It is an interface to Ash resources in the way
-`ash_json_api` and `ash_graphql` are, for humans.
+## Ten minutes in the demo
 
-Add the extension to a resource, optionally describe the table in a
-`table do … end` block, and mount it with one line in the router. You write
-no HEEx.
+The demo is a small issue tracker: projects, tasks, comments, labels, people.
 
-> **This is the first version, 0.1.0, and it is not on Hex yet.**
+1. **`/tasks`:** double-click a title (or press Enter on it), change it,
+   press Enter. Escape cancels.
 
-The table offers what the resource offers, as the person asking may use it:
+   ![Editing a title on /tasks](docs/images/edit-cell.gif)
 
-- It reads, sorts, filters and pages on the server, through the read action,
-  and gives the read action's arguments in a line above the rows.
-- A cell is edited in place through an update action; lists, maps, embedded
-  resources and unions are edited in a side panel, field by field.
-- Rows have buttons for update, destroy and generic actions; the table has
-  a create button and table actions. An action with inputs asks for them in
-  the action panel, files included.
-- Rows can be selected, and a row action runs on all of them at once.
-- A row expands into the tables of its related records; a cell shows a
-  related record by its label, and another one is chosen in a picker.
-- It follows what other people change (`live? true`), sums a column in its
-  footer, and shows datetimes in the person's time zone.
-- Its columns adapt to who is looking: Ash's policies and field policies
-  decide, and a `sensitive?` field stays masked until a person asks for it.
-- It is translated through Gettext, and works with the keyboard alone:
-  every control is a Tab stop, and a screen reader reads a plain table.
-- Its look is a kit: every part can be drawn with markup of your own.
+2. Open a row with its **arrow**: a line for each related resource (comments,
+   labels, project, …). Open one, and its records appear as a nested table,
+   a full table of its own.
 
-## Install
+   ![A task opened into its comments, a nested table](docs/images/nested-table.gif)
 
-<!-- sketch -->
-```sh
-mix igniter.install ash_data_table@github:StefanRoesch/ash_data_table
-```
+3. Double-click a task's **Project** or **Assignee** cell: you choose another
+   record from that resource's own table.
+4. Use a **row action** in the last column, or **New task**: actions with
+   inputs ask for them in a side panel.
+5. **Switch persons** under "Acting as": Max Member, Vera Viewer, Olga
+   Outsider (another organization) or Nobody. Columns, buttons and editable
+   cells change with the resource's policies.
 
-Once the package is on Hex this is `mix igniter.install ash_data_table`. It
-needs Elixir 1.17, Ash 3.36.1, `ash_phoenix` 2.3, Phoenix 1.8 and LiveView
-1.2.12 or later. The [Installation](documentation/topics/installation.md)
-guide says what the installer changes, gives the manual steps, and explains
-a setting it leaves to you: compressing LiveView's websocket.
+   ![On /tasks/board, switching from Ada Admin to Vera Viewer: the Assignee column and the Archive buttons go](docs/images/acting-as.gif)
 
-## A first table
+6. Open `/tasks` in a second, private window as another person and change a
+   title: the other window follows (**live updates**).
+7. Switch the language to **Deutsch**.
+8. Put the mouse away and use only **Tab**, Enter, Space and Escape.
+9. **`/specimens`:** one attribute of every Ash type, with nothing declared
+   but the update action.
+10. **`/react/tasks`:** the same table drawn with React and shadcn, to show
+    the drawing can be swapped.
+11. **`/tasks/planner`:** the sprint planner. Tick tasks in the table and
+    watch the cards above follow: the page and the table talk through
+    events and commands.
 
-List the extension on a resource:
+More pages and what each shows:
+[demo/README.md](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/README.md).
 
-<!-- sketch -->
-```elixir
-defmodule MyApp.Tracker.Task do
-  use Ash.Resource,
-    domain: MyApp.Tracker,
-    extensions: [AshDataTable.Resource]
+## What I'd like to know
 
-  table do
-    update_action :update
+Two questions, not a review; answer where you found the link:
 
-    column :title
-    column :status
-    column :assignee
-  end
-end
-```
+- **Is there a need for something like this?** Would you, or your team, use
+  a table like this over an Ash app, instead of building one or using
+  `ash_admin`?
+- **Is it worth polishing?** What would have to be true for you to use it?
 
-and mount it in the router, inside the `live_session` whose `on_mount` hooks
-assign who is logged in:
+## Known limits
 
-<!-- sketch -->
-```elixir
-import AshDataTable.Router
+- Not on Hex; the API may still change.
+- No record page yet (one record on a page of its own): a row opens into
+  nested tables and a side panel instead.
+- The React drawing is a proof that it can be done, not polished.
 
-live_session :default, on_mount: [{MyAppWeb.UserAuth, :mount_current_scope}] do
-  ash_data_table "/tasks", MyApp.Tracker.Task
-end
-```
+## For developers
 
-`/tasks` now shows the three columns, read as the person through the
-primary read action, and saves a cell through `update`. Without a `table`
-block the table shows the resource's public attributes and edits nothing.
-
-A table can also be placed in a LiveView of yours, with a tag:
-
-<!-- sketch -->
-```heex
-<AshDataTable.table resource={MyApp.Tracker.Task} scope={@current_scope} />
-```
-
-or attached to it, so that the page can give it commands and draw what it
-opens:
-
-<!-- sketch -->
-```elixir
-socket |> AshDataTable.attach(:tasks, MyApp.Tracker.Task, scope: socket.assigns.current_scope)
-```
-
-[Layout and embedding](documentation/topics/layout-and-embedding.md)
-compares the three.
-
-## Guides
-
-The [tutorial](documentation/tutorials/get-started-with-ash-data-table.md)
-takes one of your resources to an editable table. The topic guides go
-deeper, one topic each, with examples from the demo app and each topic's
-edge cases.
-
-**The table**
-
-- [Installation](documentation/topics/installation.md)
-- [Columns and defaults](documentation/topics/columns-and-defaults.md)
-- [Reading, sorting and pagination](documentation/topics/reading-sorting-and-pagination.md)
-- [Filtering](documentation/topics/filtering.md)
-- [Arguments](documentation/topics/arguments.md)
-- [State in the URL](documentation/topics/state-in-the-url.md)
-- [Inline editing](documentation/topics/inline-editing.md)
-- [Confirm](documentation/topics/confirm.md)
-- [Choosing a related record](documentation/topics/choosing-a-related-record.md)
-- [Relationships an action manages](documentation/topics/managing-relationships.md)
-- [Maps and embedded resources](documentation/topics/maps-and-embedded-resources.md)
-- [Unions](documentation/topics/unions.md)
-- [Row actions and create](documentation/topics/row-actions-and-create.md)
-- [Selecting rows and bulk actions](documentation/topics/selecting-rows-and-bulk-actions.md)
-- [Table actions](documentation/topics/table-actions.md)
-- [Files](documentation/topics/files.md)
-- [Nested tables](documentation/topics/nested-tables.md)
-- [Named tables](documentation/topics/named-tables.md)
-- [Live updates](documentation/topics/live-updates.md)
-- [Footer summaries](documentation/topics/footer-summaries.md)
-- [Sensitive columns](documentation/topics/sensitive-columns.md)
-- [Authorization](documentation/topics/authorization.md)
-- [Time zones](documentation/topics/time-zones.md)
-
-**In your app**
-
-- [Layout and embedding](documentation/topics/layout-and-embedding.md): the router line, the tag and `attach/4`
-- [Events and commands](documentation/topics/events-and-commands.md): what the page hears, page values, the veto, commands
-- [Controlled mode](documentation/topics/controlled-mode.md): the page draws the questions, panels and pickers
-- [Custom components](documentation/topics/custom-components.md): how one column's cells look and are edited
-- [Kits](documentation/topics/kits.md): how the whole table looks
-- [Keyboard and accessibility](documentation/topics/keyboard-and-accessibility.md)
-- [Messages and translations](documentation/topics/messages-and-translations.md)
-- [Testing](documentation/topics/testing.md)
-- [Mistakes at compile time](documentation/topics/mistakes-at-compile-time.md)
-
-The options of the two extensions are listed in the DSL reference,
-[`AshDataTable.Resource`](documentation/dsls/DSL-AshDataTable.Resource.md) and
-[`AshDataTable.Domain`](documentation/dsls/DSL-AshDataTable.Domain.md).
-
-## Things people trip over
-
-- **Nothing is editable** until the block names an `update_action`, and then
-  only what the action accepts. See
-  [Inline editing](documentation/topics/inline-editing.md).
-- **Page size and default sort live on the read action**, not in the `table`
-  block: `pagination default_limit: 25` and `prepare build(sort: …)`.
-- **Text filters are case-sensitive for `:string`**, and not for
-  `:ci_string`. What a filter matches is the resource's decision.
-- **Mistakes in the `table` block are compile warnings**, reported only in a
-  run that compiles the resource: use `mix compile --force
-  --warnings-as-errors` in CI. See
-  [Mistakes at compile time](documentation/topics/mistakes-at-compile-time.md).
-- **A question is no authorization.** `confirm` guards a person against a
-  mistake; what must not happen belongs in the resource's policies. See
-  [Confirm](documentation/topics/confirm.md).
-
-## The demo
-
-`demo/` is a Phoenix and Ash app on Postgres that shows all of this: an
-issue tracker with one of everything a table has to cope with, five actors
-to switch between, and German beside English. See `demo/README.md`.
+How a table is declared, mounted and customized, and the guide for every
+topic: [the documentation](documentation/README.md).
 
 ## Licence
 
