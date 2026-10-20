@@ -375,4 +375,97 @@ defmodule AshDataTable.KitTest do
     assert {texts.yes, texts.no} == {"Yes", "No"}
     assert Map.keys(texts) == Map.keys(messages)
   end
+
+  test "the editor of a column is given what its control says, as plain data; so is the grid" do
+    model = AshDataTable.Model.build(AshDataTable.Test.Resource)
+    editors = Kit.editors(model)
+
+    # every editable column whose cell has an editor in it, and no other
+    assert Map.keys(editors) |> Enum.sort() ==
+             for(
+               column <- model.columns,
+               column.editable?,
+               column.editor not in [:reference, :choices, :list, :group, :groups, :union],
+               do: column.name
+             )
+             |> Enum.sort()
+
+    assert editors.size == %{
+             limits: %{min: "0", max: "100", step: "1"},
+             counted: nil,
+             clearable?: false
+           }
+
+    assert editors.name.counted == %{max: 40, unit: :codepoints, trim?: true, casing: nil}
+    assert editors.secret.clearable?
+
+    assert editors.tier == %{
+             limits: %{min: nil, max: nil, step: nil},
+             counted: nil,
+             clearable?: false
+           }
+
+    assert Jason.decode!(Jason.encode!(editors))["size"]["limits"]["max"] == "100"
+
+    # the editor part is given the same
+    kit =
+      compile("""
+      defmodule AshDataTable.KitTest.Editors do
+        use AshDataTable.Kit, contract: 3
+
+        def editor(assigns) do
+          send(self(), {:editor, Map.take(assigns, [:limits, :counted, :clearable?])})
+          super(assigns)
+        end
+      end
+      """)
+
+    for column <- model.columns,
+        Map.has_key?(editors, column.name),
+        column.editor != :component do
+      Phoenix.LiveViewTest.rendered_to_string(
+        Kit.editor(%{__changed__: nil, kit: kit, id: "t-editor-#{column.name}", column: column})
+      )
+
+      assert_received {:editor, given}
+      assert given == editors[column.name]
+    end
+  end
+
+  test "the argument line is given what each argument's input is drawn with, as plain data" do
+    model = AshDataTable.Model.build(AshDataTable.Test.Resource)
+    [argument] = model.arguments
+    key = AshDataTable.Model.Argument.key(argument)
+
+    [given] = Kit.arguments("t", model, %{}, %AshDataTable.State{}, %{})
+
+    assert Map.take(given, [:id, :named, :name, :value, :errors, :limits, :counted]) == %{
+             id: "t-arg-near",
+             named: "near",
+             name: "arguments[a][near]",
+             value: "",
+             errors: [],
+             limits: %{min: nil, max: nil, step: nil},
+             counted: nil
+           }
+
+    assert given.texts.add_value == "Add value"
+    assert Map.keys(given.texts) == Map.keys(given.messages)
+
+    # what the person chose, and what Ash refused of it
+    state = %AshDataTable.State{arguments: %{key => "x"}}
+    refused = %{key => %{typed: "y", messages: [{:ash, "is required", []}], held: nil}}
+
+    assert [%{value: "x"}] = Kit.arguments("t", model, %{}, state, %{})
+
+    assert [%{value: "y", errors: [error], texts: %{errors: [text]}} = refusal] =
+             Kit.arguments("t", model, %{}, state, refused)
+
+    assert error == %{key: :ash, values: %{message: "is required", vars: %{}}}
+    assert text == "is required"
+
+    assert Jason.decode!(Jason.encode!(refusal))["errors"] == [
+             %{"key" => "ash", "values" => %{"message" => "is required", "vars" => %{}}}
+           ]
+  end
 end

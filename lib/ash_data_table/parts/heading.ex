@@ -44,6 +44,8 @@ defmodule AshDataTable.Parts.Heading do
     """
   end
 
+  # one per argument of the model, what its input is drawn with
+  attr :arguments, :list, required: true
   attr :heading, :any, required: true
   attr :id, :any, required: true
   attr :kit, :atom, required: true
@@ -118,6 +120,7 @@ defmodule AshDataTable.Parts.Heading do
         part={:argument_line}
         kit={@kit}
         id={@id}
+        arguments={@arguments}
         lines={@lines}
         model={@model}
         myself={@myself}

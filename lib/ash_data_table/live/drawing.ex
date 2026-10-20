@@ -129,6 +129,7 @@ defmodule AshDataTable.Live.Drawing do
       kit={@kit}
       heading={@heading}
       id={@entry.id}
+      arguments={Kit.arguments(@entry.id, @entry.model, @entry.lines, @entry.state, @entry.refused)}
       label={@entry.label}
       label_column={@entry.label_column}
       lines={@entry.lines}
@@ -335,6 +336,7 @@ defmodule AshDataTable.Live.Drawing do
         summary={@entry.summary}
         summing?={@entry.summing?}
         time_zone={@time_zone}
+        editors={Kit.editors(@entry.model)}
         texts={Words.texts(:grid, %{label: @entry.label, columns: @entry.model.columns})}
         messages={Words.messages(:grid, %{label: @entry.label, columns: @entry.model.columns})}
       />

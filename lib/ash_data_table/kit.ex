@@ -202,7 +202,8 @@ defmodule AshDataTable.Kit do
       `heading`, `label`, `label_column` (the `Model.Column` a record is
       called by, nil for none: the one column `columns` cannot hide),
       `model`, `offered` (the table actions), `page`, `related`, `state`,
-      `lines`, `refused`, `nested?`, `myself`. A nested
+      `arguments` (as `argument_line`'s), `lines`, `refused`, `nested?`,
+      `myself`. A nested
       table's is drawn in a portal of its own onto its line
       (`Ids.line_heading/2`, which the `line` part draws), where the line
       gives the name; its controls are Tab stops there, after the line's
@@ -213,10 +214,20 @@ defmodule AshDataTable.Kit do
       every record), `create`, `actions`, `target`.
     * `argument_line` - the form of the read action's arguments
       (`ID-arguments`, `data-arguments`, `AshDataTable.Attrs.arguments/2`),
-      drawn by `heading`: `id`, `lines`, `model`, `refused`, `state`,
-      `nested?`, `myself`; it draws an `argument` per argument.
+      drawn by `heading`: `id`, `arguments`, `lines`, `model`, `refused`,
+      `state`, `nested?`, `myself`; it draws an `argument` per argument.
+      `arguments` holds, per argument of `model.arguments` and in its
+      order, what its input is drawn with, as plain data (it goes to JSON
+      as it is), the assigns of its `argument` but `argument` itself:
+      `id` (`Ids.argument/2`), `named` (what it is called in the ids of
+      the page), `name` (what its control is sent under), `value` (what
+      it holds: text, or of an array the list of its values), `errors`
+      (what Ash said of a value it refused: messages), `limits` and
+      `counted` (as `editor`'s; `counted` of a text and of an array of
+      texts), `texts` and `messages`.
     * `argument` - one argument's input (`data-argument`): `id`,
-      `argument`, `name`, `named`, `value`, `errors`.
+      `argument`, `name`, `named`, `value`, `errors`, `limits`, `counted`,
+      `target`, `table` (the table's id).
     * `selection_line` - what is selected (`ID-selection`, `data-selection`;
       `ID-selected`, the live region with `texts.selected`;
       `ID-selection-controls`, `hidden` while nothing is selected;
@@ -270,7 +281,11 @@ defmodule AshDataTable.Kit do
       `labelledby`, `label_column`, `lead`, `selecting`, `choose`,
       `open`, `asks?`, `acting?`, `editing?`, `expandable?`,
       `busy?`, `running` (as `selection_line`'s), `row_count`, `full_view`, `summarised?`,
-      `summary`, `summing?`, `time_zone`, `nested?`, `myself`. It draws a
+      `summary`, `summing?`, `time_zone`, `nested?`, `myself`, and
+      `editors`: by column name, of each editable column whose cell has an
+      editor in it (the kit's `editor`, or its component's), what the
+      `editor` part is given of its control (`limits`, `counted`,
+      `clearable?`), for a kit that draws the editors itself. It draws a
       `header_cell` and a `filter_cell` per column, a `row` or a `detail`
       per item, and an `editor` per template.
     * `confirm` - the question `ID-dialog` (`Attrs.confirm/3`,
@@ -384,7 +399,15 @@ defmodule AshDataTable.Kit do
     * `editor` - the editor of a column in its template, for a single
       value (an array, a map cell and a union are edited in the panel, a
       reference in the picker): one control, `data-control` where there
-      are more: `id`, `column`.
+      are more: `id`, `column`, and what its control says, as plain data
+      (it goes to JSON as it is): `limits`, the `min`, `max` and `step`
+      a number's control is given (each text, or nil: what the type's
+      constraints say that HTML means alike; `step` `"1"` of an integer,
+      `"any"` of a float and a decimal); `counted`, of a text whose type
+      says the most it can be long, how its counter counts (`max`, `unit`
+      `:graphemes`, `:codepoints` or `:bytes`, `trim?`, `casing` `:lower`,
+      `:upper` or nil; as Ash counts it), else nil; `clearable?`, whether
+      a sensitive cell can be emptied ("Clear" beside its input).
     * `count` - the counter of a text (`data-count`, `data-max`): `id`,
       `counted`, `value`, `class`.
     * `list` - the field of an array in the panel, value by value
@@ -766,7 +789,10 @@ defmodule AshDataTable.Kit do
 
   use Phoenix.Component
 
+  alias AshDataTable.Edit
   alias AshDataTable.Kit.Words
+  alias AshDataTable.Model
+  alias AshDataTable.Model.Limits
 
   @contract 3
 
@@ -1021,16 +1047,93 @@ defmodule AshDataTable.Kit do
       place={:grid}
       control={AshDataTable.Attrs.component_control(@column)}
     /><.part
-      :if={@column.editor not in [:component, :reference, :choices, :list, :group, :groups, :union]}
+      :if={built_in?(@column.editor)}
       part={:editor}
       kit={@kit}
       id={@id}
       column={@column}
+      {editing(@column)}
       texts={Words.texts(:editor, %{column: @column})}
       messages={Words.messages(:editor, %{column: @column})}
     />
     """
   end
+
+  # the columns whose cells are edited in the cell with an editor of the
+  # kit's (the others in the picker or the panel, or with a component's)
+  @built_in [:text, :number, :boolean, :date, :datetime, :enum]
+  defp built_in?(editor), do: editor in @built_in
+
+  # What the control of a column's editor says (the `editor` part, and the
+  # grid's `editors`), as plain data: the limits of a number
+  # (`Model.Limits.of/1`), how a text with a most it can be long is counted
+  # (`Model.Limits.counted/1`), and whether a sensitive cell can be emptied
+  # (`Edit.clearable?/1`).
+  defp editing(column) do
+    %{
+      limits: Limits.of(column),
+      counted: Limits.counted(column),
+      clearable?: Edit.clearable?(column)
+    }
+  end
+
+  @doc false
+  # The grid's `editors`: by column name, of each editable column whose
+  # cell has an editor in it (the kit's or a component's), what its control
+  # says (`editing/1`).
+  def editors(model) do
+    for column <- model.columns,
+        column.editable?,
+        column.editor in [:component | @built_in],
+        into: %{},
+        do: {column.name, editing(column)}
+  end
+
+  @doc false
+  # The `arguments` of `heading` and `argument_line`: one per argument of
+  # the model, in its order, what its input is drawn with: its ids, the
+  # name its control is sent under, what it holds (what its line was sent,
+  # else what the state gives it), what Ash said of a value it refused,
+  # the limits of a number and the counter of a text, and its words.
+  def arguments(id, model, lines, state, refused) do
+    for argument <- model.arguments do
+      named = Model.Argument.argument_id(argument)
+      key = Model.Argument.key(argument)
+      value = Map.get(lines, key) || Model.Argument.shown(argument, state, refused)
+
+      errors =
+        case refused[key] do
+          nil -> []
+          %{messages: messages} -> messages
+        end
+
+      words = %{argument: argument, value: value, errors: errors}
+
+      %{
+        id: AshDataTable.Ids.argument(id, named),
+        named: named,
+        name: argument_name(argument),
+        value: value,
+        errors: Enum.map(errors, &AshDataTable.Messages.of/1),
+        limits: Limits.of(argument),
+        counted: counted(argument),
+        texts: Words.texts(:argument, words),
+        messages: Words.messages(:argument, words)
+      }
+    end
+  end
+
+  # What an argument's control is sent under.
+  defp argument_name(%{column: nil, name: name}), do: "arguments[a][#{name}]"
+  defp argument_name(%{column: column, name: name}), do: "arguments[c][#{column}][#{name}]"
+
+  # the counter of a text that has a most it can be long, as in the panel
+  defp counted(%{editor: :text} = argument), do: Limits.counted(argument)
+
+  defp counted(%{editor: :list, cell_type: {:array, :text}} = argument),
+    do: Limits.counted(argument)
+
+  defp counted(_argument), do: nil
 
   # Whether the column's component draws a cell: a value that is there and
   # that the person may see.

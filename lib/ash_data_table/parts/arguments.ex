@@ -7,9 +7,6 @@ defmodule AshDataTable.Parts.Arguments do
   alias AshDataTable.Attrs
   alias AshDataTable.Ids
   alias AshDataTable.Kit
-  alias AshDataTable.Kit.Words
-  alias AshDataTable.Model
-  alias AshDataTable.Model.Limits
   alias AshDataTable.Parts
 
   # One input of the argument line: its label, the control of its type, and
@@ -29,6 +26,10 @@ defmodule AshDataTable.Parts.Arguments do
   attr :argument, :map, required: true
   attr :value, :any, required: true
   attr :errors, :list, required: true
+  # the limits of a number, and the counter of a text (nil for none), as
+  # for a field of the action panel
+  attr :limits, :map, required: true
+  attr :counted, :map, required: true
   attr :target, :any, required: true
   attr :table, :string, required: true
   attr :kit, :atom, required: true
@@ -37,27 +38,11 @@ defmodule AshDataTable.Parts.Arguments do
   def argument(assigns) do
     assigns =
       assign(assigns,
-        described: assigns.errors != [] && Ids.error(assigns.id),
         array?: assigns.argument.editor in [:choices, :list],
-        # as for a field of the action panel
-        limits: Limits.of(assigns.argument)
-      )
-
-    # the counter of a text that has a most it can be long, as in the panel
-    counted =
-      case assigns.argument do
-        %{editor: :text} = argument -> Limits.counted(argument)
-        %{editor: :list, cell_type: {:array, :text}} = argument -> Limits.counted(argument)
-        _another_control -> nil
-      end
-
-    assigns =
-      assign(assigns,
-        counted: counted,
         described:
           Parts.Editors.described([
-            assigns.described,
-            counted && assigns.argument.editor == :text && "#{assigns.id}-count"
+            assigns.errors != [] && Ids.error(assigns.id),
+            assigns.counted && assigns.argument.editor == :text && "#{assigns.id}-count"
           ])
       )
 
@@ -224,12 +209,12 @@ defmodule AshDataTable.Parts.Arguments do
 
   attr :id, :any, required: true
   attr :kit, :atom, required: true
-  attr :lines, :any, required: true
+  # one per argument of the model, what its input is drawn with
+  # (`AshDataTable.Kit`, `argument_line`)
+  attr :arguments, :list, required: true
   attr :model, :any, required: true
   attr :myself, :any, required: true
   attr :nested?, :any, required: true
-  attr :refused, :any, required: true
-  attr :state, :any, required: true
 
   def argument_line(assigns) do
     ~H"""
@@ -239,62 +224,25 @@ defmodule AshDataTable.Parts.Arguments do
     line under it fills. A table without arguments has none.
 
     `novalidate`: an input of a number says the least and the most the
-    argument takes (`AshDataTable.Model.Limits`), and the browser is not to hold
-    the form back over that. Ash is given what was typed and says what is
-    wrong with it. Only what the browser cannot read as a value at all is
-    held back, by the hook (`UNREADABLE`). --%>
+    argument takes (`limits`), and the browser is not to hold the form back
+    over that. Ash is given what was typed and says what is wrong with it.
+    Only what the browser cannot read as a value at all is held back, by the
+    hook (`UNREADABLE`). --%>
     <form
       :if={@model.arguments != []}
       {Attrs.arguments(@id, @myself)}
       class={@kit.class(:argument_line, %{nested?: @nested?})}
     >
       <Kit.part
-        :for={argument <- @model.arguments}
+        :for={{argument, given} <- Enum.zip(@model.arguments, @arguments)}
         part={:argument}
         kit={@kit}
-        id={Ids.argument(@id, Model.Argument.argument_id(argument))}
-        named={Model.Argument.argument_id(argument)}
-        name={argument_name(argument)}
         argument={argument}
-        value={argument_value(argument, @lines, @state, @refused)}
-        errors={argument_errors(argument, @refused)}
         target={@myself}
         table={@id}
-        texts={
-          Words.texts(:argument, %{
-            argument: argument,
-            value: argument_value(argument, @lines, @state, @refused),
-            errors: argument_errors(argument, @refused)
-          })
-        }
-        messages={
-          Words.messages(:argument, %{
-            argument: argument,
-            value: argument_value(argument, @lines, @state, @refused),
-            errors: argument_errors(argument, @refused)
-          })
-        }
+        {given}
       />
     </form>
     """
-  end
-
-  # What an argument's control is sent under.
-  defp argument_name(%{column: nil, name: name}), do: "arguments[a][#{name}]"
-  defp argument_name(%{column: column, name: name}), do: "arguments[c][#{column}][#{name}]"
-
-  # What an argument's input holds: what its line was sent, else what the
-  # state gives it.
-  defp argument_value(argument, lines, state, refused),
-    do:
-      Map.get(lines, Model.Argument.key(argument)) ||
-        Model.Argument.shown(argument, state, refused)
-
-  # What is said at an argument whose value was refused.
-  defp argument_errors(argument, refused) do
-    case refused[Model.Argument.key(argument)] do
-      nil -> []
-      %{messages: messages} -> messages
-    end
   end
 end

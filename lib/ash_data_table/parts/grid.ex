@@ -12,9 +12,7 @@ defmodule AshDataTable.Parts.Grid do
   alias AshDataTable.Attrs
   alias AshDataTable.Kit
   alias AshDataTable.Kit.Words
-  alias AshDataTable.Edit
   alias AshDataTable.Ids
-  alias AshDataTable.Model.Limits
   alias AshDataTable.Parts
   alias AshDataTable.Parts.Common
   alias AshDataTable.Present
@@ -224,6 +222,11 @@ defmodule AshDataTable.Parts.Grid do
   # (`grid/1`); the kit's `editor/1` draws the others.
   attr :id, :string, required: true
   attr :column, :map, required: true
+  # what the control says: the limits of a number, the counter of a text,
+  # whether a sensitive cell can be emptied (`AshDataTable.Kit`, `editor`)
+  attr :limits, :map, required: true
+  attr :counted, :map, required: true
+  attr :clearable?, :boolean, required: true
   attr :kit, :atom, required: true
   attr :texts, :map, required: true
 
@@ -231,13 +234,11 @@ defmodule AshDataTable.Parts.Grid do
   # what is typed is not shown. The hook opens it empty.
   #
   # Left empty it saves nothing, so nothing typed into it empties the cell.
-  # Where the cell can be empty (`AshDataTable.Edit.clearable?/1`), a button
+  # Where the cell can be empty (`clearable?`), a button
   # beside the input does: "Clear", named with the column. The two are the
   # editor then, and the input is its control. The hook takes the button
   # out for a cell that holds nothing.
   def editor(%{column: %{sensitive?: true}} = assigns) do
-    assigns = assign(assigns, clearable?: Edit.clearable?(assigns.column))
-
     ~H"""
     <input
       :if={!@clearable?}
@@ -274,8 +275,6 @@ defmodule AshDataTable.Parts.Grid do
   # and the column keeps its width. The two are the editor; the textarea is
   # its control.
   def editor(%{column: %{editor: :text}} = assigns) do
-    assigns = assign(assigns, counted: Limits.counted(assigns.column))
-
     ~H"""
     <textarea
       :if={!@counted}
@@ -330,11 +329,9 @@ defmodule AshDataTable.Parts.Grid do
   end
 
   # The control of a number says what the attribute's constraints say of it
-  # (`AshDataTable.Model.Limits`). Nothing in the browser checks it against them:
-  # the hook sends what the control holds, and Ash says what is wrong with it.
+  # (`limits`). Nothing in the browser checks it against them: the hook
+  # sends what the control holds, and Ash says what is wrong with it.
   def editor(assigns) do
-    assigns = assign(assigns, limits: Limits.of(assigns.column))
-
     ~H"""
     <input
       type={Parts.Editors.input_type(@column.editor)}
