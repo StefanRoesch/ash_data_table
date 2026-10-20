@@ -32,6 +32,27 @@ defmodule DemoWeb.ReactKitTest do
     grid = Enum.find(islands, &(&1.name == "AshGrid"))
     assert %{"grid" => %{"data-table" => "task"}, "columns" => [_ | _]} = grid.props
 
+    # the editors, which the island draws into their templates: what the
+    # `editor` part is given of a control, a component's by its module, and
+    # a template without an editor where the picker edits the cell
+    editors = Map.new(grid.props["editors"], &{&1["name"], &1})
+
+    assert %{
+             "template" => %{"id" => "task-editor-title", "data-editor" => "text"},
+             "editor" => "text",
+             "counted" => %{"max" => 120},
+             "control" => %{"aria-describedby" => "task-editor-title-count"}
+           } = editors["title"]
+
+    assert %{
+             "editor" => "component",
+             "component" => "DemoWeb.Cells.Progress",
+             "limits" => %{"min" => "0", "max" => "100", "step" => "1"}
+           } = editors["progress"]
+
+    assert %{"editor" => nil, "template" => %{"data-editor" => "reference"}} =
+             editors["assignee"]
+
     task = hd(world.tasks)
 
     # sent from the grid's sender, which the React kit draws as markup of

@@ -241,6 +241,48 @@ defmodule DemoWeb.ReactKit.Props do
   end
 
   @doc """
+  The editors' templates (`Attrs.editor_template/3`), one per editable
+  column, and in each what its editor is drawn with: what the `editor`
+  part is given of its control (the grid's `editors`: the `limits` of a
+  number, the `counted` of a text and the counter's bundle `Attrs.count/2`,
+  whether a sensitive cell is `clearable`), the column's label, whether it
+  is required, its enum's values, the control's bundle where the table
+  gives one (`Attrs.counted_control/2`, `Attrs.component_control/1`), the
+  component by its module's name and the texts (`clear`, `clear_value`).
+  `editor` is nil where the cell has no editor in it (a reference, an
+  array, …: the hook opens the picker or the panel).
+  """
+  def editors(id, model, editors, asks?) do
+    for column <- model.columns, column.editable? do
+      given = editors[column.name]
+      template = Ids.editor(id, column.name)
+
+      %{
+        name: column.name,
+        template: bundle(Attrs.editor_template(id, column, asks?)),
+        editor: given && column.editor,
+        label: column.label,
+        required: column.required?,
+        sensitive: column.sensitive?,
+        values: choices(column.values),
+        limits: given && given.limits,
+        counted: given && given.counted,
+        count: given && given.counted && bundle(Attrs.count(given.counted, false)),
+        clearable: given != nil and given.clearable?,
+        control:
+          cond do
+            given == nil -> nil
+            column.editor == :component -> bundle(Attrs.component_control(column))
+            given.counted && column.editor == :text -> bundle(Attrs.counted_control(template, column))
+            true -> nil
+          end,
+        component: column.editor == :component && inspect(column.component.module),
+        texts: given && Words.texts(:editor, %{column: column})
+      }
+    end
+  end
+
+  @doc """
   The footer: the row of the summaries where the table has one, and in a
   nested table its pages and its link to the full view.
   """

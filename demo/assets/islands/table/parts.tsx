@@ -8,6 +8,7 @@ import * as React from "react"
 
 import {COMPONENTS, Cell, type Components} from "./cells"
 import {ActionsCell, DataCell, Detail, Footer, HeaderCell, Line, Row, SummaryCell} from "./Grid"
+import {Editor, EDITORS, type EditorComponents} from "./Editors"
 import {Filter} from "./Filter"
 import {Pagination} from "./Pagination"
 
@@ -23,7 +24,9 @@ export const DEFAULT_PARTS = {
   Footer,
   SummaryCell,
   Pagination,
+  Editor,
   components: COMPONENTS as Components,
+  editors: EDITORS as EditorComponents,
 }
 
 export type Parts = typeof DEFAULT_PARTS

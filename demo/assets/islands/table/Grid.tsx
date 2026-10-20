@@ -17,6 +17,8 @@
 //     an editor or what was typed into it meanwhile, and gives the cell its
 //     own content back before it takes `aria-busy` away (`restore`). Then
 //     the cell is drawn from its item again, in place;
+//   * the editors are drawn into their templates' content, which the hook
+//     copies into a cell it opens (`Editors.tsx`);
 //   * the places a nested table and its heading line are moved into
 //     (`Ids.nested_cell/2`, `Ids.line_heading/2`) are drawn for every line
 //     of every row ahead of time, hidden while the line is closed, and
@@ -32,6 +34,7 @@ import {Commits, Strict, useMounted, type Live} from "./mounting"
 import {usePart} from "./parts"
 import type {Column, GridTexts, ItemCell} from "./cells"
 import {Failure} from "./cells"
+import {Editors, type EditorProps} from "./Editors"
 import {Filter, type FilterProps} from "./Filter"
 import {Pagination, type PaginationProps} from "./Pagination"
 
@@ -178,6 +181,8 @@ type GridProps = Live & {
   columns: Column[]
   row: RowProps
   footer: Footer
+  editors: EditorProps[]
+  failure: boolean
 }
 
 export function AshGrid(props: GridProps) {
@@ -189,7 +194,7 @@ export function AshGrid(props: GridProps) {
 }
 
 function Grid(props: GridProps) {
-  const {rows, texts, grid, table, head, filters, columns, row, footer} = props
+  const {rows, texts, grid, table, head, filters, columns, row, footer, editors, failure} = props
   const [held] = React.useState(heldStore)
   const ref = React.useRef<HTMLDivElement>(null)
   // The hook says which cell it edits as it opens the editor: the cell is
@@ -293,6 +298,7 @@ function Grid(props: GridProps) {
       <div id={`${id}-scrollbar`} aria-hidden="true" tabIndex={-1} hidden data-scrollbar="" className="ash-react-scrollbar">
         <div className="h-px"></div>
       </div>
+      <Editors table={id} editors={editors} failure={failure} />
     </Held.Provider>
   )
 }

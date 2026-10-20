@@ -13,10 +13,11 @@ defmodule DemoWeb.ReactKit do
       columns' components, the actions, the boxes, the expander), the lines
       of an expanded row with the places their nested tables are moved
       into, drawn ahead (the kit's note, C8), the footer with the summaries,
-      a nested table's pages and its link to the full view. Outside the
-      island, as markup of the LiveView's: the filter row's form, the
-      grid's sender (C9), and the editors' templates, which the kit's
-      `editor` part draws (`Kit.editor/1`);
+      a nested table's pages and its link to the full view, and the
+      templates of the editors (a column's, or its component's by the
+      component's module) and of a failed cell's message. Outside the
+      island, as markup of the LiveView's: the filter row's form and the
+      grid's sender (C9);
     * `columns` - the island `AshColumns`: "Columns" and its list;
     * `selection_line` - the island `AshSelectionLine`;
     * `status` - the island `AshStatus`;
@@ -35,16 +36,13 @@ defmodule DemoWeb.ReactKit do
   use AshDataTable.Kit, contract: 3
 
   alias AshDataTable.Attrs
-  alias AshDataTable.Ids
-  alias AshDataTable.Kit
-  alias AshDataTable.Kit.Words
   alias DemoWeb.ReactKit.Props
 
   # The grid's island, and beside it what LiveView draws: the filter row's
-  # form (the island's controls name it), the sender of the grid's events
-  # (LiveView mounts its hook and locks it, never the grid), and the
-  # templates of the editors and of a failed cell's message, which the hook
-  # copies into a cell.
+  # form (the island's controls name it) and the sender of the grid's
+  # events (LiveView mounts its hook and locks it, never the grid). The
+  # island draws the templates of the editors and of a failed cell's
+  # message, which the hook copies into a cell.
   def grid(assigns) do
     ~H"""
     <form :if={Attrs.filter_row?(@model)} {Attrs.filters(@id, @myself)}></form>
@@ -125,15 +123,9 @@ defmodule DemoWeb.ReactKit do
           @myself
         )
       }
+      editors={Props.editors(@id, @model, @editors, @asks?)}
+      failure={@editing? or @acting?}
     />
-    <template
-      :for={column <- @model.columns}
-      :if={column.editable?}
-      {Attrs.editor_template(@id, column, @asks?)}
-    >
-      <Kit.editor kit={@kit} id={Ids.editor(@id, column.name)} column={column} />
-    </template>
-    <template :if={@editing? or @acting?} id={"#{@id}-failure"} phx-no-format><Kit.part part={:failure} kit={@kit} id={nil} message={Words.message(:failure, %{message: ""})} text={Words.text(:failure, %{message: ""})} /></template>
     """
   end
 
