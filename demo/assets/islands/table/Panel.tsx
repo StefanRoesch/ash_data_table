@@ -172,6 +172,13 @@ const TYPED = ["text", "enum", "number", "date", "datetime", "plain"]
 export function Field({field}: {field: FieldProps}) {
   const Control = usePart("Control")
   const ListPart = usePart("List")
+  const PanelBox = usePart("PanelBox")
+  const Group = usePart("Group")
+  const Groups = usePart("Groups")
+  const Union = usePart("Union")
+  const FileField = usePart("FileField")
+  const ComponentEditor = usePart("ComponentEditor")
+  const Counter = usePart("Counter")
   const {id, editor, texts} = field
   const array = editor === "choices" || editor === "list"
   const group = editor === "group" || editor === "groups" || editor === "union"
@@ -300,15 +307,18 @@ export function Field({field}: {field: FieldProps}) {
   )
 }
 
-// The counter of a text: drawn anew where the server's value changes, as
-// the server would draw it; the hook counts again as it is typed.
-function Counter({id, field, value, className}: {id: string; field: FieldProps; value: string; className?: string}) {
+// The part `Counter`: the counter of a text, drawn anew where the server's
+// value changes, as the server would draw it; the hook counts again as it
+// is typed.
+export function Counter({id, field, value, className}: {id: string; field: FieldProps; value: string; className?: string}) {
   const Count = usePart("Count")
   const counted = field.counted!
   return <Count key={value} id={id} bundle={field.count} text={`${count(value, counted)}/${counted.max}`} className={className} />
 }
 
-function PanelBox({id, name, value = "true", checked, invalid, describedBy}: {id?: string; name: string; value?: string; checked: boolean; invalid: boolean; describedBy?: string}) {
+// The part `PanelBox`: a checkbox of the panel, checked as the server says
+// unless the person is in it.
+export function PanelBox({id, name, value = "true", checked, invalid, describedBy}: {id?: string; name: string; value?: string; checked: boolean; invalid: boolean; describedBy?: string}) {
   const ref = React.useRef<HTMLInputElement>(null)
   useServerChecked(ref, checked)
   return <input ref={ref} type="checkbox" id={id} name={name} value={value} aria-invalid={invalid ? "true" : undefined} aria-describedby={describedBy} className={box()} />
@@ -368,6 +378,7 @@ export function Control({field, describedBy}: {field: FieldProps; describedBy?: 
 // drawn once, never again while the panel is open.
 export const List = React.memo(
   function List({field}: {field: FieldProps}) {
+    const ListItem = usePart("ListItem")
     const texts = field.list || {add_value: "", value_label: "", remove_label: "", value_position: [], remove_value: []}
     const listId = `${field.id}-values`
     const values = list(field.value)
@@ -389,7 +400,9 @@ export const List = React.memo(
   () => true,
 )
 
-function ListItem({field, listId, value, position, valueLabel, removeLabel}: {
+// The part `ListItem`: one value of a list field, with its remove button;
+// with no position, the template the hook adds a value from.
+export function ListItem({field, listId, value, position, valueLabel, removeLabel}: {
   field: FieldProps
   listId: string
   value: string
@@ -427,9 +440,9 @@ function ListItem({field, listId, value, position, valueLabel, removeLabel}: {
   )
 }
 
-// The fields of one value made of fields: the entry that says it is there,
+// The part `MembersOf`: the fields of one value made of fields: the entry that says it is there,
 // the keys it sends back as they came, and a field per input.
-function MembersOf({members}: {members: Members}) {
+export function MembersOf({members}: {members: Members}) {
   const Field = usePart("Field")
   return (
     <>
@@ -444,7 +457,8 @@ function MembersOf({members}: {members: Members}) {
   )
 }
 
-function Errors({id, errors}: {id: string; errors: string[]}) {
+// The part `Errors`: what the action says about a group or one value of it.
+export function Errors({id, errors}: {id: string; errors: string[]}) {
   return (
     <div id={ids.error(id)} className="mb-1 text-xs">
       {errors.map((message, at) => (
@@ -456,7 +470,8 @@ function Errors({id, errors}: {id: string; errors: string[]}) {
   )
 }
 
-function GroupLabel({field}: {field: FieldProps}) {
+// The part `GroupLabel`: the label of a group or a union.
+export function GroupLabel({field}: {field: FieldProps}) {
   return (
     <span id={`${field.id}-label`} className="text-sm">
       <span data-label="">{field.label}</span>
@@ -466,9 +481,12 @@ function GroupLabel({field}: {field: FieldProps}) {
   )
 }
 
-// A value made of fields: its fields while it holds one, the button that
+// The part `Group`: a value made of fields, its fields while it holds one, the button that
 // takes it away where it may be left out, else the one that adds it.
-function Group({field}: {field: FieldProps}) {
+export function Group({field}: {field: FieldProps}) {
+  const GroupLabel = usePart("GroupLabel")
+  const Errors = usePart("Errors")
+  const MembersOf = usePart("MembersOf")
   const {id, texts} = field
   return (
     <div id={id} role="group" aria-labelledby={`${id}-label`} aria-describedby={field.invalid ? ids.error(id) : undefined} data-group="">
@@ -495,9 +513,11 @@ function Group({field}: {field: FieldProps}) {
   )
 }
 
-// A list of values made of fields: a group per value, each under a number
+// The part `Groups`: a list of values made of fields: a group per value, each under a number
 // of its own, with the button that takes it away; then the one that adds one.
-function Groups({field}: {field: FieldProps}) {
+export function Groups({field}: {field: FieldProps}) {
+  const Errors = usePart("Errors")
+  const MembersOf = usePart("MembersOf")
   const {id, texts} = field
   return (
     <div id={id} role="group" aria-labelledby={`${id}-label`} aria-describedby={field.invalid ? ids.error(id) : undefined} data-groups="">
@@ -532,9 +552,12 @@ function Groups({field}: {field: FieldProps}) {
   )
 }
 
-// A union: the choice of its kind and, under it, that kind's value.
-function Union({field}: {field: FieldProps}) {
+// The part `Union`: a union, the choice of its kind and, under it, that kind's value.
+export function Union({field}: {field: FieldProps}) {
   const Field = usePart("Field")
+  const GroupLabel = usePart("GroupLabel")
+  const Errors = usePart("Errors")
+  const MembersOf = usePart("MembersOf")
   const {id, texts} = field
   const kind = field.kind ?? ""
   const own: string[] = field.single ? [] : texts.errors
@@ -566,10 +589,10 @@ function Union({field}: {field: FieldProps}) {
   )
 }
 
-// A file: the island's own file input, which hands the files chosen to
+// The part `FileField`: a file, the island's own file input, which hands the files chosen to
 // LiveView's input of the field (`uploadTo`, with the panel's form, which
 // that input names), and a bar per file while it is sent.
-function FileField({field, describedBy}: {field: FieldProps; describedBy?: string}) {
+export function FileField({field, describedBy}: {field: FieldProps; describedBy?: string}) {
   const live = useLiveReact() as unknown as Live & {uploadTo: (target: Element, name: string, files: FileList) => void}
   const upload = field.upload!
   const ref = React.useRef<HTMLInputElement>(null)
@@ -615,11 +638,11 @@ function FileField({field, describedBy}: {field: FieldProps; describedBy?: strin
   )
 }
 
-// A field whose column's component edits: that component's editor (by its
+// The part `ComponentEditor`: a field whose column's component edits, that component's editor (by its
 // module, `reactKit({editors})`, as in a cell), on its control the field's
 // id, name and value, else the control of its type, with a warning in
 // development.
-function ComponentEditor({field, describedBy}: {field: FieldProps; describedBy?: string}) {
+export function ComponentEditor({field, describedBy}: {field: FieldProps; describedBy?: string}) {
   const components = usePart("editors")
   const Component = field.component ? components[field.component] : null
   const control: Bundle & Record<string, any> = {

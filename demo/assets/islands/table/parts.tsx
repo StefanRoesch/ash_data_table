@@ -16,7 +16,7 @@ import {Argument, ArgumentLine, Heading} from "./Heading"
 import {Filter} from "./Filter"
 import {Message} from "./Message"
 import {Pagination} from "./Pagination"
-import {Control, Field, List, Panel} from "./Panel"
+import {ComponentEditor, Control, Counter, Errors, Field, FileField, Group, GroupLabel, Groups, List, ListItem, MembersOf, Panel, PanelBox, Union} from "./Panel"
 import {Picker} from "./Picker"
 import {Confirm} from "./Confirm"
 import {Related} from "./Related"
@@ -54,7 +54,18 @@ export const DEFAULT_PARTS = {
   Panel,
   Field,
   Control,
+  PanelBox,
+  Counter,
   List,
+  ListItem,
+  Group,
+  Groups,
+  Union,
+  GroupLabel,
+  MembersOf,
+  Errors,
+  FileField,
+  ComponentEditor,
   Picker,
   components: COMPONENTS as Components,
   editors: EDITORS as EditorComponents,
