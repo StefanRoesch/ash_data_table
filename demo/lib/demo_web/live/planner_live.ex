@@ -176,7 +176,14 @@ defmodule DemoWeb.PlannerLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} time_zone={@time_zone}>
-      <h1 class="text-2xl font-semibold">{gettext("Sprint planner")}</h1>
+      <div class="space-y-2">
+        <h1 class="text-2xl font-semibold">{gettext("Sprint planner")}</h1>
+        <p id="planner-about" class="text-base-content/70">
+          {gettext(
+            "This page shows how the rest of a page can follow a table. Tick tasks below: the card adds up their hours. Edit or create a task: the feed lists it. “Clear selection” goes the other way: the page tells the table what to do."
+          )}
+        </p>
+      </div>
 
       <div class="grid gap-4 md:grid-cols-2">
         <section

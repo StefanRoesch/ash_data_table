@@ -58,7 +58,8 @@ defmodule DemoWeb.PlannerLiveTest do
 
   test "the card counts the selected tasks, their hours and the billable ones",
        %{conn: conn, world: world, a: a, b: b, c: c} do
-    {:ok, view, _html} = planner(conn, world.admin)
+    {:ok, view, html} = planner(conn, world.admin)
+    assert text(html, "#planner-about") =~ "how the rest of a page can follow a table"
     assert summary(view) =~ "No tasks selected"
     # the table's name is a heading of the page, and names its section
     assert has_element?(view, "#planner-tasks[aria-labelledby=task-name] h2#task-name", "Tasks")
@@ -121,6 +122,7 @@ defmodule DemoWeb.PlannerLiveTest do
   test "in German", %{conn: conn, world: world, a: a, b: b} do
     {:ok, view, html} = conn |> log_in(world.admin) |> in_locale("de") |> live("/tasks/planner")
     assert text(html, "h1") == "Sprintplanung"
+    assert text(html, "#planner-about") =~ "wie der Rest einer Seite einer Tabelle folgen kann"
 
     select(view, [a.id, b.id])
     save(view, b.id, "progress", "50")

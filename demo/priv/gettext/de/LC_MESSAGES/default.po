@@ -8,6 +8,9 @@ msgstr ""
 msgid "Sprint planner"
 msgstr "Sprintplanung"
 
+msgid "This page shows how the rest of a page can follow a table. Tick tasks below: the card adds up their hours. Edit or create a task: the feed lists it. “Clear selection” goes the other way: the page tells the table what to do."
+msgstr "Diese Seite zeigt, wie der Rest einer Seite einer Tabelle folgen kann. Wählen Sie unten Aufgaben aus: Die Karte zählt ihre Stunden zusammen. Bearbeiten oder legen Sie eine Aufgabe an: Die Liste nennt es. „Auswahl aufheben“ geht den anderen Weg: Die Seite sagt der Tabelle, was sie tun soll."
+
 msgid "Selected for the sprint"
 msgstr "Für den Sprint ausgewählt"
 
