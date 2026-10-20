@@ -1,6 +1,6 @@
 # A React/shadcn kit: design note
 
-Status: **accepted, 2026-10-18; stage 0 (R0) built 2026-10-19, with the fixes of its drift check, and done (owner's yes); stage 1 (R1, tooling) built 2026-10-19 (section 14), done once the owner says yes.** It carries the owner's decisions of 2026-10-18 (O1–O9 below) and of 2026-10-19 after stage 0 (section 13, which amends C1, C3, C6, C8, Q4 and section 3). The questions of section 10 were answered as recommended. The amendments to [target.md](target.md) are made (section 12). Code references are of `202ebe4`. The research and the spike are throwaway: `research.md` and `spike.md` in the session's scratchpad (`react-kit/`), and the spike's code on the branch `worktree-agent-ae45e1e4887377ba7` (commit `f9e43ff`, not on `main`). Words follow `CONTEXT.md`. The model for this note is [stage7-design.md](stage7-design.md).
+Status: **accepted, 2026-10-18; stage 0 (R0) built 2026-10-19, with the fixes of its drift check, and done (owner's yes); stage 1 (R1, tooling) built 2026-10-19 (section 14), done (owner's yes); stage 2 (R2, the React grid) built 2026-10-20 (section 15), done once its drift check and the owner say so.** It carries the owner's decisions of 2026-10-18 (O1–O9 below) and of 2026-10-19 after stage 0 (section 13, which amends C1, C3, C6, C8, Q4 and section 3). The questions of section 10 were answered as recommended. The amendments to [target.md](target.md) are made (section 12). Code references are of `202ebe4`. The research and the spike are throwaway: `research.md` and `spike.md` in the session's scratchpad (`react-kit/`), and the spike's code on the branch `worktree-agent-ae45e1e4887377ba7` (commit `f9e43ff`, not on `main`). Words follow `CONTEXT.md`. The model for this note is [stage7-design.md](stage7-design.md).
 
 ## 0. In one paragraph
 
@@ -288,6 +288,18 @@ What R2 built, per item of its line in target.md, and where it went its own way.
 - **`destroyed()` timing.** live_react unmounts an island's root only on the next `phx:page-loading-stop`. The kit's hook destroys every table hook mounted in an island as LiveView destroys the island's hook (`gone`); React's unmount later finds them destroyed (they are idempotent). It says so on `window` (`ash-react:gone`, the island's id), which `react.spec.ts` hears.
 - **What the hook owns** (C6). The boxes are drawn without `checked`; the Columns list's boxes ticked once by a ref, not React's `defaultChecked` (React puts that back after every change of the box, over the hook's); the filter's, the page size's and the width fields' controls are uncontrolled (the server's value set where it changes, unless the person is in the control); `aria-rowindex` once; the Columns button's name and count, the masked cell's value and button text drawn once. The expander's `aria-expanded` follows the row's detail item (lines while open), which the server sends whenever the row opens or closes; the row's own item is not sent again for it, and a value React drew last would not be drawn again after the hook's.
 - **The places of a nested table** (C8). The lines of an expanded row, with the cell a nested table is moved into and the place of its heading line, are drawn as the row's detail comes, hidden while the line is closed, never drawn again as another element.
+
+### Measured (2026-10-20)
+
+- **The default kit's bytes (the budget of 2 % per stage).** `demo/perf/baseline.mjs` on `/tasks` (the picker among its actions), `PERF_WIRE=1`, 15 repetitions, `b2e240a` (before R2, a temporary worktree) and R2 back to back, old, new, new, old (load 1.1 to 5.2, falling): bytes per action identical for all ten actions (page change 158,252, open the picker 40,163, open a nested table 42,009, cell save 8,605). Times, the mean of each pair's medians: −13 % (select a row) to +11 % (open the panel inline, 15.8 → 17.5 ms), page change +6.0 %, open the picker −3.8 %.
+- **M3, the React page against the default kit's** (`PERF_PAGE=/react/tasks`, one run, load 1.1; against the default kit's runs above), median bytes per action: page change 158,252 → 124,641 (0.79×; wire 11,977 → 10,673), open a nested table 0.72×, open the picker 0.86×, expand a row 0.68×, cell save 0.92×, cell save in a nested table 0.41×, open the panel 1.29×, select a row 591 → 1,646 (2.79×: the selection line's props as a patch, against the HEEx line's diff). No action over the note's flag of 1.5× for a page change. Times, medians, after rows drawn only where their item changed: page change 108 → 170 ms, cell save 70 → 131 ms, cell save in a nested table 55 → 170 ms, open a nested table 86 → 135 ms, expand a row 24 → 33 ms, open the picker 44 → 60 ms. React draws in the browser what LiveView patched; the saves are the slowest, to be looked at (open).
+- **The bundle** (one for every page, Q14), minified, gzip -9: JS 144,403 → 151,181 B (**+6.8 KB**), CSS 21,684 → 23,683 B (**+2.0 KB**), against R1's islands.
+
+### The suites, once each at the end (2026-10-20)
+
+- Root `mix test`: 1297 tests, 0 failures (load 1.8 → 1.6).
+- Demo `mix test`: 3089 tests, 0 failures (load 1.6 → 11.6).
+- The whole browser suite, both projects (`E2E_FIRST_PORT=4490 E2E_WORKERS=4`): 1708 passed, 0 failed, 0 flaky, in 22.0 min (5 setup, the default kit's 1006, the `react` project's 697; load 11.6 → 7.2).
 
 ### Changes in the library
 
