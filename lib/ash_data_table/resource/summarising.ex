@@ -38,10 +38,6 @@ defmodule AshDataTable.Resource.Summarising do
           | {:manual, atom}
           | {:unsupported, kind, module | nil}
 
-  @doc "The kinds of summary a column can have."
-  @spec kinds() :: [kind]
-  def kinds, do: @kinds
-
   @doc """
   Whether a column of `field` (an attribute, calculation, aggregate or
   relationship of the resource) can have a summary of `kind`.

@@ -32,13 +32,12 @@ import {useLiveReact} from "live_react"
 import {attrs, type Bundle} from "./props"
 import {Commits, Strict, useMountedWhile, useServerChecked, useServerValue, type Live} from "./mounting"
 import {usePart} from "./parts"
-import {Template, type EditorProps} from "./Editors"
+import {Template, type EditorProps, type Limits} from "./Editors"
 import {closeDialog} from "./Picker"
 import {box, button, input, select} from "./look"
 import {cn} from "../lib/utils"
 
 type Counted = {max: number; unit: string; "trim?": boolean; casing: string | null}
-type Limits = {min: string | null; max: string | null; step: string | null}
 type Members = {name: string; keys: {name: string; value: string}[]; fields: FieldProps[]}
 
 export type FieldProps = {

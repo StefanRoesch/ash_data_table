@@ -45,7 +45,7 @@ export type ArgumentProps = {
 
 export type ArgumentLineProps = {form: Bundle; nested: boolean; inputs: ArgumentProps[]}
 
-export type HeadingProps = {
+type HeadingProps = {
   id: string
   shown: boolean
   nested: boolean

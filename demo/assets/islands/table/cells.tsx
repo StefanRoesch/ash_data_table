@@ -135,7 +135,7 @@ export function Cell({id, column, cell, texts, components}: CellProps) {
 
 // ---- the columns' components ------------------------------------------------
 
-export type ComponentProps = {value: any; text: string | null; column: Column}
+type ComponentProps = {value: any; text: string | null; column: Column}
 export type Components = Record<string, React.ComponentType<ComponentProps>>
 
 // `AshDataTable.Components.Badge`: the text in a badge.
@@ -146,7 +146,7 @@ function Badge({text}: ComponentProps) {
 // Where the picture of a value is asked for, as
 // `AshDataTable.Components.Image.source/1` says: an `http://` or
 // `https://` address with a host, or a path that starts with one `/`.
-export function source(text: string | null): string | null {
+function source(text: string | null): string | null {
   if (typeof text !== "string") return null
   const value = text.trim()
   if (/[\s\\\x00-\x1f]/.test(value)) return null

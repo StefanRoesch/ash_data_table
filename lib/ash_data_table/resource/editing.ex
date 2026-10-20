@@ -362,18 +362,6 @@ defmodule AshDataTable.Resource.Editing do
   def editor(_cell_type, _type, _constraints), do: nil
 
   @doc """
-  Whether the action takes the field as an attribute it accepts: the field
-  itself, and for a belongs-to relationship its foreign key.
-  """
-  @spec accepts?(Ash.Resource.Actions.Update.t(), struct) :: boolean
-  def accepts?(action, %Ash.Resource.Attribute{name: name}), do: name in action.accept
-
-  def accepts?(action, %Ash.Resource.Relationships.BelongsTo{source_attribute: name}),
-    do: name in action.accept
-
-  def accepts?(_action, _field), do: false
-
-  @doc """
   The arguments the action cannot run without: required, and without a
   default. An inline edit supplies one value, the cell's, so an action with
   such an argument cannot serve one. Attributes the action requires are no

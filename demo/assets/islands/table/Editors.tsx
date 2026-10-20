@@ -43,7 +43,7 @@ export type EditorProps = {
   value?: string
 }
 
-export type EditorComponentProps = {editor: EditorProps}
+type EditorComponentProps = {editor: EditorProps}
 export type EditorComponents = Record<string, React.ComponentType<EditorComponentProps>>
 
 // A template, and what is drawn into its content.
