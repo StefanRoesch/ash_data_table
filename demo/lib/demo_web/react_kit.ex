@@ -103,7 +103,6 @@ defmodule DemoWeb.ReactKit do
           @row_count,
           @label,
           @full_view,
-          @summarised?,
           @summary,
           @summing?,
           @time_zone,

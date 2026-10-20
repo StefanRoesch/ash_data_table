@@ -45,7 +45,7 @@ defmodule DemoWeb.ReactKit.Props do
   """
   def head(id, model, state, geometry, selecting, expandable?, myself, texts) do
     %{
-      row: bundle(Attrs.row(Ids.head_row(id), "1")),
+      row: bundle(Attrs.head_row(id, geometry)),
       select:
         selecting &&
           bundle(
@@ -56,19 +56,20 @@ defmodule DemoWeb.ReactKit.Props do
       expander: expandable? && bundle(Attrs.header("#{id}-expander-head", geometry.lead)),
       actions:
         geometry.trail == 1 && bundle(Attrs.header("#{id}-actions-head", geometry.colcount)),
+      # where the columns stand: the island counts them (`geometry.colindex`)
+      lead: geometry.lead,
       columns:
-        for {column, index} <- Enum.with_index(model.columns) do
+        for column <- model.columns do
           %{
             id: Ids.header_cell(id, column.name),
             name: column.name,
             label: column.label,
-            colindex: geometry.lead + index + 1,
             attrs:
               bundle(
                 Attrs.column_header(
                   column,
                   state.sort,
-                  model.sticky_label? and column == model.label_column
+                  model.sticky_label? and label?(model, column)
                 )
               ),
             sort: column.sortable? && bundle(Attrs.sort(id, column, myself)),
@@ -94,20 +95,20 @@ defmodule DemoWeb.ReactKit.Props do
   def filters(id, model, filters, geometry, selecting, expandable?, myself) do
     if geometry.header_rows == 2 do
       %{
-        row: bundle(Attrs.row(Ids.filter_row(id), "2")),
+        row: bundle(Attrs.filter_row(id, geometry)),
         form: Ids.filters(id),
         select: selecting && bundle(Attrs.empty_cell("#{id}-select-filter", "1")),
         expander: expandable? && bundle(Attrs.empty_cell("#{id}-expander-filter", geometry.lead)),
         actions:
           geometry.trail == 1 &&
             bundle(Attrs.empty_cell("#{id}-actions-filter", geometry.colcount)),
+        lead: geometry.lead,
         columns:
-          for {column, index} <- Enum.with_index(model.columns) do
+          for column <- model.columns do
             shown = filters[column.name]
 
             %{
               id: "#{id}-filter-#{column.name}",
-              colindex: geometry.lead + index + 1,
               filter: column.operators != [] && filter(id, column, shown, myself)
             }
           end
@@ -287,7 +288,6 @@ defmodule DemoWeb.ReactKit.Props do
         row_count,
         label,
         full_view,
-        summarised?,
         summary,
         summing?,
         time_zone,
@@ -295,6 +295,7 @@ defmodule DemoWeb.ReactKit.Props do
         myself
       ) do
     full_view? = not is_nil(page) and not is_nil(full_view)
+    summarised? = geometry.summary?
 
     %{
       id: "#{id}-foot",
@@ -309,14 +310,14 @@ defmodule DemoWeb.ReactKit.Props do
             actions:
               geometry.trail == 1 &&
                 %{id: "#{id}-summaries-actions", colindex: geometry.colcount},
+            lead: geometry.lead,
             cells:
-              for {column, index} <- Enum.with_index(model.columns) do
+              for column <- model.columns do
                 held = summary && summary[column.name]
                 texts = Words.texts(:summary_cell, %{column: column})
 
                 %{
                   id: "#{id}-summary-#{column.name}",
-                  colindex: geometry.lead + index + 1,
                   attrs: bundle(Attrs.summary(column, summing?)),
                   kind: column.summary && texts.kind,
                   not_available: texts.not_available,
@@ -431,8 +432,12 @@ defmodule DemoWeb.ReactKit.Props do
 
   defp columns?(model), do: length(model.columns) > 1 and hideable(model) != []
 
-  defp hideable(%{label_column: nil} = model), do: model.columns
-  defp hideable(model), do: List.delete(model.columns, model.label_column)
+  defp hideable(model), do: Enum.reject(model.columns, &label?(model, &1))
+
+  # whether a column is the label column (by name: the model's copy of it
+  # is the same column)
+  defp label?(%{label_column: nil}, _column), do: false
+  defp label?(%{label_column: %{name: name}}, column), do: column.name == name
 
   @doc """
   The argument line (the part `argument_line`), nil for a table without

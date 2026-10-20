@@ -792,7 +792,6 @@ defmodule AshDataTable.Parts.Grid do
   attr :running, :any, required: true
   attr :selecting, :any, required: true
   attr :state, :any, required: true
-  attr :summarised?, :any, required: true
   attr :summary, :any, required: true
   attr :summing?, :any, required: true
   attr :time_zone, :any, required: true
@@ -828,7 +827,7 @@ defmodule AshDataTable.Parts.Grid do
         class={["table", @nested? && "w-auto"]}
       >
         <thead id={Ids.head(@id)}>
-          <tr {Attrs.row(Ids.head_row(@id), "1")}>
+          <tr {Attrs.head_row(@id, @geometry)}>
             <%!-- The first column, where rows can be selected: a box per row,
               and here the one that stands for the rows of the page. Its state
               is the hook's, as is that of every box under it. Where one row at a
@@ -865,7 +864,8 @@ defmodule AshDataTable.Parts.Grid do
                 Attrs.column_header(
                   column,
                   @state.sort,
-                  @model.sticky_label? and column == @model.label_column
+                  @model.sticky_label? and not is_nil(@model.label_column) and
+                    column.name == @model.label_column.name
                 )
               }
               button={column.sortable? && Attrs.sort(@id, column, @myself)}
@@ -883,7 +883,7 @@ defmodule AshDataTable.Parts.Grid do
             </th>
           </tr>
           <%!-- The filter row, where a column has a filter. --%>
-          <tr :if={@geometry.header_rows == 2} {Attrs.row(Ids.filter_row(@id), "2")}>
+          <tr :if={@geometry.header_rows == 2} {Attrs.filter_row(@id, @geometry)}>
             <td :if={@selecting} {Attrs.empty_cell("#{@id}-select-filter", "1")}></td>
             <td :if={@expandable?} {Attrs.empty_cell("#{@id}-expander-filter", @geometry.lead)}></td>
             <Kit.part
@@ -945,7 +945,7 @@ defmodule AshDataTable.Parts.Grid do
               messages={Words.messages(:row)}
             /></tbody>
         <Kit.part
-          :if={@nested? or @summarised?}
+          :if={@nested? or @geometry.summary?}
           part={:footer}
           kit={@kit}
           expandable?={@expandable?}
@@ -961,7 +961,6 @@ defmodule AshDataTable.Parts.Grid do
           row_count={@row_count}
           selecting={@selecting}
           state={@state}
-          summarised?={@summarised?}
           summary={@summary}
           summing?={@summing?}
           time_zone={@time_zone}

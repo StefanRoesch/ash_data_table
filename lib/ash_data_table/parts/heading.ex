@@ -144,7 +144,9 @@ defmodule AshDataTable.Parts.Heading do
 
   # The columns a person can hide: every column but the label column.
   defp hideable(%{label_column: nil} = model), do: model.columns
-  defp hideable(model), do: List.delete(model.columns, model.label_column)
+
+  defp hideable(%{label_column: %{name: name}} = model),
+    do: Enum.reject(model.columns, &(&1.name == name))
 
   # Whether the line offers create or table actions: not beside an error (a
   # table that could not read offers nothing), and not for a table limited

@@ -89,6 +89,25 @@ defmodule AshDataTable.Geometry do
   def rowindex(geometry, page, n), do: first_row(geometry, page) + n
 
   @doc false
+  # The row index of a header row: the column headers' row is the first of
+  # all, the filter row (where there is one) the last of the header rows;
+  # nil for a filter row the grid does not have.
+  @spec header_row(t, :columns | :filters) :: pos_integer | nil
+  def header_row(%__MODULE__{}, :columns), do: 1
+  def header_row(%__MODULE__{header_rows: 2}, :filters), do: 2
+  def header_row(%__MODULE__{}, :filters), do: nil
+
+  @doc false
+  # The row index of a row that stood at `rowindex` once a record's row was
+  # put in at `at` (`:added`: it and every row after it move down) or taken
+  # out from `at` (`:removed`: every row after it moves up). The hook
+  # numbers the rows the same way (`renumber`).
+  @spec shifted(pos_integer, :added | :removed, pos_integer) :: pos_integer
+  def shifted(rowindex, :added, at) when rowindex >= at, do: rowindex + 1
+  def shifted(rowindex, :removed, at) when rowindex > at, do: rowindex - 1
+  def shifted(rowindex, _change, _at), do: rowindex
+
+  @doc false
   # The rows of the grid in all pages (`aria-rowcount`): the header rows,
   # the records, and the footer row of the summaries where there is one.
   # Where the number of records is not known, -1, which ARIA reads as

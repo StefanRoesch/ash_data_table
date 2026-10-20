@@ -662,7 +662,12 @@ defmodule AshDataTable.Live.Core.Panel do
       Reading.put_row(socket, key, record)
     else
       first = Geometry.first_row(geometry, page)
-      rows = Map.new(rows, fn {key, row} -> {key, %{row | rowindex: row.rowindex + 1}} end)
+
+      rows =
+        Map.new(rows, fn {key, row} ->
+          {key, %{row | rowindex: Geometry.shifted(row.rowindex, :added, first)}}
+        end)
+
       rows = Map.put(rows, key, %{rowindex: first, pk: Reading.primary_key(model, record)})
 
       socket

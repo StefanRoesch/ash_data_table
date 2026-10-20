@@ -281,8 +281,8 @@ defmodule AshDataTable.Kit do
       `id`, `model` (its `label_column` and `editing?` among it), `rows`,
       `page`, `state`, `filters`, `pages?`, `label`, `labelledby`,
       `geometry` (where the columns and rows stand), `selecting`, `choose`,
-      `open`, `asks?`, `expandable?`, `busy?`, `running` (as `selection_line`'s), `row_count`, `full_view`, `summarised?`,
-      `summary`, `summing?`, `time_zone`, `nested?`, `myself`, and
+      `open`, `asks?`, `expandable?`, `busy?`, `running` (as
+      `selection_line`'s), `row_count`, `full_view`, `summary`, `summing?`, `time_zone`, `nested?`, `myself`, and
       `editors`: by column name, of each editable column whose cell has an
       editor in it (the kit's `editor`, or its component's), what the
       `editor` part is given of its control (`limits`, `counted`,
@@ -394,7 +394,7 @@ defmodule AshDataTable.Kit do
       `data-summaries`, a `summary_cell` per column), and in a nested table
       its pages (`data-pager`) and the `full_view`: `id`, `model`, `page`,
       `state`, `geometry`, `selecting`, `expandable?`, `pages?`,
-      `row_count`, `label`, `full_view`, `summarised?`, `summary`,
+      `row_count`, `label`, `full_view`, `summary`,
       `summing?`, `time_zone`, `nested?`, `myself`.
     * `summary_cell` - `id`, `column`, `colindex`, `summary` (`{:ok,
       value}`, `:unavailable` or nil), `summing?`, `time_zone`:
@@ -607,7 +607,8 @@ defmodule AshDataTable.Kit do
       `lead + index + 1`
     * `colcount` - every column: what a cell that spans the grid spans
     * `header_rows` - 1, or 2 with the filter row
-    * `summary?` - whether the grid has the footer row of summaries
+    * `summary?` - whether the grid has the footer row of summaries (a
+      column of the person's has a summary)
 
   ### `AshDataTable.Present.Panel`
 
@@ -867,9 +868,11 @@ defmodule AshDataTable.Kit do
   `AshDataTable.Geometry`, where the columns and rows stand) in place of
   `lead` and `acting?` (its `trail`); `grid` and `heading` are no longer
   given `label_column`, nor `grid` and `row` `editing?`: both are
-  `model`'s;
+  `model`'s; nor `grid` and `footer` `summarised?`, which is the
+  geometry's `summary?`;
   `Attrs.grid/6`, `Attrs.table/6` (in place of `Attrs.table/8`),
-  `Attrs.spanning/3` and `Attrs.summaries/3` take the geometry, and
+  `Attrs.spanning/3` and `Attrs.summaries/3` take the geometry, as the
+  new `Attrs.head_row/2` and `Attrs.filter_row/2` (the header rows) do, and
   `Attrs.colcount/3` and `Attrs.filter_row?/1` are gone (its `colcount`,
   its `header_rows`).
   """
@@ -1580,7 +1583,8 @@ defmodule AshDataTable.Kit do
         "Attrs.add_group/4 and Attrs.remove_group/4 put into their bundles: a kit no longer " <>
         "writes the names or the ids a value made of fields has inside the panel; and it gives " <>
         "grid, row, footer and full_view geometry (an AshDataTable.Geometry) in place of lead " <>
-        "and acting?, label_column and editing? as fields of model, Attrs.table/6 " <>
+        "and acting?, label_column and editing? as fields of model, summarised? as the " <>
+        "geometry's summary?, Attrs.head_row/2 and Attrs.filter_row/2, Attrs.table/6 " <>
         "in place of Attrs.table/8, and Attrs.grid/6, Attrs.spanning/3 and Attrs.summaries/3 " <>
         "the geometry; Attrs.colcount/3 and Attrs.filter_row?/1 are gone (colcount, header_rows)"
 

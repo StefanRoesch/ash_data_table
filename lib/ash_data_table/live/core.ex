@@ -326,8 +326,6 @@ defmodule AshDataTable.Live.Core do
      )
      |> put(missing: missing, refused: refused)
      |> put(lines: lines(table(socket).entry.lines, model, state, refused))
-     # whether the grid has a footer row: a column of this person's has a summary
-     |> put(summarised?: Model.summarised(model) != [])
      # the table actions are offered once the table has read, as create is
      |> put(offered: model.table_actions)
      |> put(depth_limit: depth_limit)
@@ -464,9 +462,6 @@ defmodule AshDataTable.Live.Core do
     %{
       model
       | columns: columns,
-        # the label column is one of the columns, in their words too
-        label_column:
-          model.label_column && Enum.find(columns, &(&1.name == model.label_column.name)),
         arguments: arguments,
         relationships: relationships,
         actions: Enum.map(model.actions, action),

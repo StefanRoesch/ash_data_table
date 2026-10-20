@@ -84,7 +84,6 @@ defmodule AshDataTable.Parts.Summary do
   attr :row_count, :any, required: true
   attr :selecting, :any, required: true
   attr :state, :any, required: true
-  attr :summarised?, :any, required: true
   attr :summary, :any, required: true
   attr :summing?, :any, required: true
   attr :time_zone, :any, required: true
@@ -95,7 +94,7 @@ defmodule AshDataTable.Parts.Summary do
       id={"#{@id}-foot"}
       class="font-normal text-base-content"
       hidden={
-        not (@summarised? and not is_nil(@page)) and
+        not (@geometry.summary? and not is_nil(@page)) and
           not (@nested? and (@pages? or Parts.Related.full_view?(@page, @full_view)))
       }
     >
@@ -107,7 +106,6 @@ defmodule AshDataTable.Parts.Summary do
         model={@model}
         page={@page}
         selecting={@selecting}
-        summarised?={@summarised?}
         summary={@summary}
         summing?={@summing?}
         time_zone={@time_zone}
@@ -171,7 +169,6 @@ defmodule AshDataTable.Parts.Summary do
   attr :model, :any, required: true
   attr :page, :any, required: true
   attr :selecting, :any, required: true
-  attr :summarised?, :any, required: true
   attr :summary, :any, required: true
   attr :summing?, :any, required: true
   attr :time_zone, :any, required: true
@@ -184,7 +181,7 @@ defmodule AshDataTable.Parts.Summary do
     reads it with its table keys. A cell under a column without a summary is
     empty. See "Footer summaries" at the top. --%>
     <tr
-      :if={@summarised? and @page}
+      :if={@geometry.summary? and @page}
       {Attrs.summaries(@id, @geometry, @page)}
     >
       <td

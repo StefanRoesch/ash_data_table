@@ -110,6 +110,47 @@ defmodule AshDataTable.GeometryTest do
     end
   end
 
+  describe "the header rows" do
+    test "the column headers' row is the first; the filter row, where there is one, the last" do
+      assert Geometry.header_row(
+               Geometry.of(model(false, false, false), nil, false, nil),
+               :columns
+             ) == 1
+
+      assert Geometry.header_row(
+               Geometry.of(model(false, false, false), nil, false, nil),
+               :filters
+             ) == nil
+
+      assert Geometry.header_row(
+               Geometry.of(model(true, false, false), nil, false, nil),
+               :columns
+             ) == 1
+
+      assert Geometry.header_row(
+               Geometry.of(model(true, false, false), nil, false, nil),
+               :filters
+             ) == 2
+    end
+  end
+
+  describe "a row index once a row was put in or taken out" do
+    # rows 3, 4, 5 of a page from row 3
+    test "a row put in at the top moves every row down by one" do
+      assert Enum.map([3, 4, 5], &Geometry.shifted(&1, :added, 3)) == [4, 5, 6]
+    end
+
+    test "a row put in further down moves only the rows from it on" do
+      assert Enum.map([3, 4, 5], &Geometry.shifted(&1, :added, 4)) == [3, 5, 6]
+    end
+
+    test "a row taken out moves only the rows after it up by one" do
+      assert Enum.map([3, 5], &Geometry.shifted(&1, :removed, 4)) == [3, 4]
+      assert Enum.map([4, 5], &Geometry.shifted(&1, :removed, 3)) == [3, 4]
+      assert Geometry.shifted(3, :removed, 5) == 3
+    end
+  end
+
   describe "the rare shapes" do
     test "a picker's table: one record chosen at a time, no expander, no actions" do
       geometry = Geometry.of(model(true, false, false), :single, false, nil)

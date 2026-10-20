@@ -37,7 +37,7 @@ defmodule DemoWeb.DivKit do
         data-kit="div"
       >
         <div id={Ids.head(@id)} role="rowgroup" class="table-header-group font-semibold">
-          <div {Attrs.row(Ids.head_row(@id), "1")} class="table-row">
+          <div {Attrs.head_row(@id, @geometry)} class="table-row">
             <div
               :if={@selecting}
               {Attrs.header("#{@id}-select-head", "1", %{"data-select-page" => @selecting == :multi})}
@@ -69,7 +69,8 @@ defmodule DemoWeb.DivKit do
                 Attrs.column_header(
                   column,
                   @state.sort,
-                  @model.sticky_label? and column == @model.label_column
+                  @model.sticky_label? and not is_nil(@model.label_column) and
+                    column.name == @model.label_column.name
                 )
               }
               button={column.sortable? && Attrs.sort(@id, column, @myself)}
@@ -88,7 +89,7 @@ defmodule DemoWeb.DivKit do
           </div>
           <div
             :if={@geometry.header_rows == 2}
-            {Attrs.row(Ids.filter_row(@id), "2")}
+            {Attrs.filter_row(@id, @geometry)}
             class="table-row"
           >
             <div :if={@selecting} {Attrs.empty_cell("#{@id}-select-filter", "1")} class="table-cell">
@@ -157,7 +158,7 @@ defmodule DemoWeb.DivKit do
               messages={Words.messages(:row)}
             /></div>
         <Kit.part
-          :if={@nested? or @summarised?}
+          :if={@nested? or @geometry.summary?}
           part={:footer}
           kit={@kit}
           expandable?={@expandable?}
@@ -173,7 +174,6 @@ defmodule DemoWeb.DivKit do
           row_count={@row_count}
           selecting={@selecting}
           state={@state}
-          summarised?={@summarised?}
           summary={@summary}
           summing?={@summing?}
           time_zone={@time_zone}
@@ -375,11 +375,15 @@ defmodule DemoWeb.DivKit do
       role="rowgroup"
       class="table-footer-group"
       hidden={
-        not (@summarised? and not is_nil(@page)) and
+        not (@geometry.summary? and not is_nil(@page)) and
           not (@nested? and (@pages? or (not is_nil(@page) and not is_nil(@full_view))))
       }
     >
-      <div :if={@summarised? and @page} {Attrs.summaries(@id, @geometry, @page)} class="table-row">
+      <div
+        :if={@geometry.summary? and @page}
+        {Attrs.summaries(@id, @geometry, @page)}
+        class="table-row"
+      >
         <div
           :if={@selecting}
           id={"#{@id}-summaries-select"}

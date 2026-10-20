@@ -205,13 +205,12 @@ defmodule AshDataTable.Live.Entry do
     # on its way, `summed` what the last question was of, and `summary_due`
     # that there is one to ask once this update is done (`tidy/1`):
     # `:changed` after a read, `:force` after something was written or
-    # announced. `summarised?`: whether the grid has a footer row, a column
-    # of this person's has a summary.
+    # announced. Whether the grid has a footer row at all is the geometry's
+    # (`summary?`: a column of this person's has a summary).
     summary: nil,
     summing?: false,
     summed: nil,
-    summary_due: nil,
-    summarised?: false
+    summary_due: nil
   ]
 
   @type t :: %__MODULE__{}

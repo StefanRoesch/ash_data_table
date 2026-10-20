@@ -818,7 +818,10 @@ defmodule AshDataTable.Model do
         %{column | arguments: Map.merge(column.fixed, asked)}
       end
 
-    # the label column is one of the columns: in step with them
+    # the label column is one of the columns, a copy: derived again from
+    # them as they are now, after `Live.Core.in_words/1` put them into
+    # words, on every way the core puts a model into a table (both settle
+    # their state's arguments through here, `Core.Reading.settle/4`)
     met(%{model | read_arguments: read, columns: columns})
   end
 

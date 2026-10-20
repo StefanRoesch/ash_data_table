@@ -327,7 +327,6 @@ defmodule AshDataTable.Live.Drawing do
         running={@entry.running && @entry.running.action}
         selecting={@entry.selecting}
         state={@entry.state}
-        summarised?={@entry.summarised?}
         summary={@entry.summary}
         summing?={@entry.summing?}
         time_zone={@time_zone}

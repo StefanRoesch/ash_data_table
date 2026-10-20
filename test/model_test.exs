@@ -132,6 +132,21 @@ defmodule AshDataTable.ModelTest do
       assert Model.keeps_one?(model)
     end
 
+    test "the label column stays one of the columns as they are rewritten after `for_actor/2`" do
+      model = met(Model.build(AshDataTable.Test.Private.Minute))
+
+      # as `Live.Core.in_words/1` puts the columns into words: another label
+      worded = %{model | columns: Enum.map(model.columns, &%{&1 | label: "#{&1.label}!"})}
+      supplied = Model.supply(worded, %{})
+      assert supplied.label_column in supplied.columns
+      assert supplied.label_column.label == "Title!"
+
+      # the way the core goes, every time: `in_words/1`, then `supply/2`
+      # (`Core.Reading.settle/4`)
+      core = model |> AshDataTable.Live.Core.in_words() |> Model.supply(%{})
+      assert core.label_column in core.columns
+    end
+
     test "are all of them where the table has no column of its label" do
       model = Model.build(AshDataTable.Test.Private.Minute)
       # as for a person who does not see the label's field

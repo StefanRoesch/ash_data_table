@@ -124,6 +124,9 @@ documented in a moduledoc or a JS file of the package and checked by a test:
   contents they write after the kit drew an element, which a kit renders
   never, once, or only as the table gives them.
 - **The ids** (`AshDataTable.Ids`, mirrored by `assets/js/ids.js`).
+- **The geometry** (`AshDataTable.Geometry`, mirrored by
+  `assets/js/geometry.js`): where the columns and rows stand. The islands
+  are given `lead` and place each column's cell with `geometry.colindex`.
 - **The places what opens is moved into**: a nested table, its heading
   line, the picker's table, a picker a field opened and the question's copy
   are moved by LiveView (`Phoenix.Component.portal/1`) into a place a part

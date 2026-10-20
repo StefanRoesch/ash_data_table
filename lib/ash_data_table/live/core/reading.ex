@@ -150,8 +150,11 @@ defmodule AshDataTable.Live.Core.Reading do
   # sort a person chose says nothing about which records match.
   def summarise(socket) when is_nil(Current.entry(socket, :summary_due)), do: socket
 
-  def summarise(socket) when not Current.entry(socket, :summarised?),
-    do: Core.put(socket, summary_due: nil)
+  # (whether the grid has a footer row is the geometry's)
+  def summarise(socket)
+      when not is_map(Current.entry(socket, :geometry)) or
+             not :erlang.map_get(:summary?, Current.entry(socket, :geometry)),
+      do: Core.put(socket, summary_due: nil)
 
   # while an argument the read action requires is empty nothing is read,
   # and nothing summed
@@ -576,7 +579,7 @@ defmodule AshDataTable.Live.Core.Reading do
       rows
       |> Map.delete(key)
       |> Map.new(fn {key, row} ->
-        {key, if(row.rowindex > removed, do: %{row | rowindex: row.rowindex - 1}, else: row)}
+        {key, %{row | rowindex: Geometry.shifted(row.rowindex, :removed, removed)}}
       end)
 
     socket =

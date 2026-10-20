@@ -249,10 +249,12 @@ given `geometry`, an `AshDataTable.Geometry` whose fields say how many columns
 come before the data columns (`lead`: the box at 1, the expander at `lead`),
 whether the actions cell comes after them (`trail`, at `colcount`), how many
 columns there are in all (`colcount`, what a cell spans that spans the grid),
-and whether there is a filter row (`header_rows` 2). A cell drawn once per
-column is given its `colindex`; the bundles of the table, a spanning cell and
-the footer row (`Attrs.table/6`, `Attrs.spanning/3`, `Attrs.summaries/3`)
-take the geometry and count the rows themselves. The column a record is
+whether there is a filter row (`header_rows` 2) and a footer row of summaries
+(`summary?`). A cell drawn once per column is given its `colindex`; the
+bundles of the table, the header rows, a spanning cell and the footer row
+(`Attrs.table/6`, `Attrs.head_row/2`, `Attrs.filter_row/2`,
+`Attrs.spanning/3`, `Attrs.summaries/3`) take the geometry and count the
+rows themselves. The column a record is
 called by and whether a column can be edited are the model's
 (`model.label_column`, `model.editing?`).
 
@@ -334,7 +336,8 @@ column, with the id `AshDataTable.Ids` makes for it:
     Attrs.column_header(
       column,
       @state.sort,
-      @model.sticky_label? and column == @model.label_column
+      @model.sticky_label? and not is_nil(@model.label_column) and
+        column.name == @model.label_column.name
     )
   }
   button={column.sortable? && Attrs.sort(@id, column, @myself)}
@@ -541,7 +544,9 @@ changed.
   `kind_id`, and passes the ids to the group bundles, in place of the names
   and ids it wrote itself. And it gives `grid`, `row`, `footer` and
   `full_view` the `geometry` in place of `lead` and `acting?` (its
-  `trail`), `label_column` and `editing?` as fields of `model`;
+  `trail`), `label_column` and `editing?` as fields of `model`, and
+  `geometry.summary?` in place of `summarised?`; the header rows'
+  bundles are `Attrs.head_row/2` and `Attrs.filter_row/2`;
   `Attrs.table/6` (in place of `/8`), `Attrs.grid/6`, `Attrs.spanning/3` and
   `Attrs.summaries/3` take the geometry, and `Attrs.colcount/3` and
   `Attrs.filter_row?/1` are gone: a grid of your own reads `colcount` and

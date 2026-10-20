@@ -1026,6 +1026,19 @@ defmodule AshDataTable.Attrs do
   def row(id, rowindex \\ nil), do: %{"id" => id, "role" => "row", "aria-rowindex" => rowindex}
 
   @doc """
+  The row of the column headers (`ID-head-row`), the first of the grid's
+  rows, as `geometry` numbers it.
+  """
+  def head_row(id, geometry), do: row(Ids.head_row(id), Geometry.header_row(geometry, :columns))
+
+  @doc """
+  The filter row (`ID-filter-row`), the last of the header rows, as
+  `geometry` numbers it; drawn only where its `header_rows` is 2.
+  """
+  def filter_row(id, geometry),
+    do: row(Ids.filter_row(id), Geometry.header_row(geometry, :filters))
+
+  @doc """
   An empty cell that is no record's: under the boxes, the expanders and
   the actions in the filter row. `colindex` is where it stands. No Tab
   stop: it holds nothing to use.

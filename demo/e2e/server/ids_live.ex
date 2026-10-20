@@ -18,6 +18,8 @@ defmodule DemoWeb.E2E.IdsLive do
   use DemoWeb, :live_view
 
   alias AshDataTable.Attrs
+  # Its functions are the table's own (`@doc false`): this page calls them
+  # on purpose, to compare the server's counts with the browser's.
   alias AshDataTable.Geometry
   alias AshDataTable.Ids
 

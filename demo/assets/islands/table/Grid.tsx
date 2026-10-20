@@ -80,7 +80,6 @@ type HeadColumn = {
   id: string
   name: string
   label: string
-  colindex: number
   attrs: Bundle
   sort: Bundle | false
   mark: string
@@ -95,10 +94,11 @@ type Head = {
   select_row: string | false
   expander: Bundle | false
   actions: Bundle | false
+  lead: number
   columns: HeadColumn[]
 }
 
-type FilterCellProps = {id: string; colindex: number; filter: FilterProps["filter"] | false}
+type FilterCellProps = {id: string; filter: FilterProps["filter"] | false}
 
 type Filters = null | {
   row: Bundle
@@ -106,6 +106,7 @@ type Filters = null | {
   select: Bundle | false
   expander: Bundle | false
   actions: Bundle | false
+  lead: number
   columns: FilterCellProps[]
 }
 
@@ -126,7 +127,6 @@ export type RowProps = {
 
 type SummaryCell = {
   id: string
-  colindex: number
   attrs: Bundle
   kind: string | null
   not_available: string
@@ -146,6 +146,7 @@ type Footer = {
         select: false | {id: string; colindex: number}
         expander: false | {id: string; colindex: number}
         actions: false | {id: string; colindex: number}
+        lead: number
         cells: SummaryCell[]
       }
   pager: false | {cell: Bundle; row: Bundle; pagination: PaginationProps["pagination"]}
@@ -267,7 +268,9 @@ export function Grid(props: GridProps) {
                     <span className="sr-only">{texts.related_records}</span>
                   </th>
                 )}
-                {head.columns.map(column => <HeaderCell key={column.id} column={column} />)}
+                {head.columns.map((column, index) => (
+                  <HeaderCell key={column.id} column={column} colindex={geometry.colindex(index, head.lead)} />
+                ))}
                 {head.actions && (
                   <th {...attrs(head.actions)} className="whitespace-nowrap">{texts.actions}</th>
                 )}
@@ -276,7 +279,9 @@ export function Grid(props: GridProps) {
                 <tr {...attrs(filters.row)}>
                   {filters.select && <td {...attrs(filters.select)}></td>}
                   {filters.expander && <td {...attrs(filters.expander)}></td>}
-                  {filters.columns.map(cell => <FilterCell key={cell.id} cell={cell} table={id} form={filters.form} />)}
+                  {filters.columns.map((cell, index) => (
+                    <FilterCell key={cell.id} cell={cell} colindex={geometry.colindex(index, filters.lead)} table={id} form={filters.form} />
+                  ))}
                   {filters.actions && <td {...attrs(filters.actions)}></td>}
                 </tr>
               )}
@@ -308,9 +313,10 @@ export function Grid(props: GridProps) {
 
 // The part `HeaderCell`: a column's header, its label in its sort button
 // where it sorts, the lock of a column no row may be edited in, the handle.
-export function HeaderCell({column}: {column: HeadColumn}) {
+// `colindex` is where it stands (`geometry.colindex`).
+export function HeaderCell({column, colindex}: {column: HeadColumn; colindex: number}) {
   return (
-    <th id={column.id} role="columnheader" scope="col" aria-colindex={column.colindex} aria-label={column.label} {...attrs(column.attrs)} className="relative whitespace-nowrap">
+    <th id={column.id} role="columnheader" scope="col" aria-colindex={colindex} aria-label={column.label} {...attrs(column.attrs)} className="relative whitespace-nowrap">
       {column.sort ? (
         <button {...attrs(column.sort)} className="ash-react-sort">
           {column.label}
@@ -337,11 +343,11 @@ export function Resizer({id}: {id: string}) {
 }
 
 // The part `FilterCell`: a column's cell of the filter row, its filter in
-// it where the column filters.
-export function FilterCell({cell, table, form}: {cell: FilterCellProps; table: string; form: string}) {
+// it where the column filters; `colindex` is where it stands.
+export function FilterCell({cell, colindex, table, form}: {cell: FilterCellProps; colindex: number; table: string; form: string}) {
   const Filter = usePart("Filter")
   return (
-    <td id={cell.id} role="cell" aria-colindex={cell.colindex} data-filter={cell.filter ? "" : undefined}>
+    <td id={cell.id} role="cell" aria-colindex={colindex} data-filter={cell.filter ? "" : undefined}>
       {cell.filter && <Filter id={cell.id} table={table} form={form} filter={cell.filter} />}
     </td>
   )
@@ -559,7 +565,9 @@ export function Footer({footer}: {footer: Footer}) {
         <tr {...attrs(summaries.row)}>
           {summaries.select && <td id={summaries.select.id} role="cell" aria-colindex={summaries.select.colindex}></td>}
           {summaries.expander && <td id={summaries.expander.id} role="cell" aria-colindex={summaries.expander.colindex}></td>}
-          {summaries.cells.map(cell => <SummaryCellPart key={cell.id} cell={cell} />)}
+          {summaries.cells.map((cell, index) => (
+            <SummaryCellPart key={cell.id} cell={cell} colindex={geometry.colindex(index, summaries.lead)} />
+          ))}
           {summaries.actions && <td id={summaries.actions.id} role="cell" aria-colindex={summaries.actions.colindex}></td>}
         </tr>
       )}
@@ -591,10 +599,11 @@ export function FullView({full_view}: {full_view: Exclude<Footer["full_view"], f
 }
 
 // The part `SummaryCell`: what a column's summary is and its number; a dash,
-// read as "Not available", where it cannot be shown.
-export function SummaryCell({cell}: {cell: SummaryCell}) {
+// read as "Not available", where it cannot be shown; `colindex` is where
+// it stands.
+export function SummaryCell({cell, colindex}: {cell: SummaryCell; colindex: number}) {
   return (
-    <td id={cell.id} role="cell" aria-colindex={cell.colindex} {...attrs(cell.attrs)} className="whitespace-nowrap">
+    <td id={cell.id} role="cell" aria-colindex={colindex} {...attrs(cell.attrs)} className="whitespace-nowrap">
       {cell.kind && (
         <>
           <span data-summary-kind="" className="text-xs">{cell.kind + " "}</span>
