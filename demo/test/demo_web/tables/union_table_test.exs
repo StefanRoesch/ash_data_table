@@ -233,17 +233,11 @@ defmodule DemoWeb.Tables.UnionTableTest do
 
       assert %{control: "group", value: false} = field(html, "content._union_value.lid")
 
-      assert [push] = attribute(html, "[id='gift-panel-f-content-f-lid-add']", "phx-click")
+      assert ["ash_data_table:gift:panel_add"] =
+               attribute(html, "[id='gift-panel-f-content-f-lid-add']", "phx-click")
 
-      assert [
-               [
-                 "push",
-                 %{"event" => "ash_data_table:gift:panel_add", "value" => %{"path" => path}}
-               ]
-             ] =
-               Jason.decode!(push)
-
-      assert path == ["content", "_union_value", "lid"]
+      assert [path] = attribute(html, "[id='gift-panel-f-content-f-lid-add']", "phx-value-path")
+      assert Jason.decode!(path) == ["content", "_union_value", "lid"]
 
       html = add_group(view, "gift", ["content", "_union_value", "lid"])
       assert_push_event view, "ash_data_table:focus", %{cell: "gift-panel-f-content-f-lid"}

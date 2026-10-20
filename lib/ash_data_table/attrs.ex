@@ -211,17 +211,17 @@ defmodule AshDataTable.Attrs do
       name: "panel_add",
       by: :bundle,
       bundle: "add_group/3",
-      payload: "`{path}`",
+      payload: "`{path}`, the names as a JSON list",
       reply: "none (focus: `ash_data_table:focus`)",
-      example: %{"path" => ["stops"]}
+      example: %{"path" => ~s(["stops"])}
     },
     %{
       name: "panel_remove",
       by: :bundle,
       bundle: "remove_group/3",
-      payload: "`{path}`",
+      payload: "`{path}`, the names as a JSON list",
       reply: "none (focus: `ash_data_table:focus`)",
-      example: %{"path" => ["stops", "0"]}
+      example: %{"path" => ~s(["stops","0"])}
     },
     %{
       name: "panel_unpick",
@@ -1686,24 +1686,25 @@ defmodule AshDataTable.Attrs do
 
   @doc """
   The button that adds a group of fields: `panel_add` with the way to it,
-  the names it is sent under (`path`, a list, which a `phx-value-*` cannot
-  hold: `JS.push/2` with it as its value). The server says where focus
-  goes then (`ash_data_table:focus`).
+  the names it is sent under (`path`, a list, sent as its JSON in
+  `phx-value-path`: a `phx-value-*` holds text). The server says where
+  focus goes then (`ash_data_table:focus`).
   """
-  def add_group(table, path, target),
-    do: %{
-      "phx-click" => JS.push(event(table, "panel_add"), value: %{path: path}, target: target)
-    }
+  def add_group(table, path, target), do: group(event(table, "panel_add"), path, target)
 
   @doc """
   The button that takes a group of fields away (`data-remove-group`, by
   which the panel's hook does not open on it): `panel_remove` with the way
   to it, as `add_group/3`.
   """
-  def remove_group(table, path, target) do
+  def remove_group(table, path, target),
+    do: Map.put(group(event(table, "panel_remove"), path, target), "data-remove-group", true)
+
+  defp group(event, path, target) do
     %{
-      "phx-click" => JS.push(event(table, "panel_remove"), value: %{path: path}, target: target),
-      "data-remove-group" => true
+      "phx-click" => event,
+      "phx-value-path" => Phoenix.json_library().encode!(path),
+      "phx-target" => target
     }
   end
 

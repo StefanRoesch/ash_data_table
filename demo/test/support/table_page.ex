@@ -448,13 +448,13 @@ defmodule DemoWeb.TablePage do
   @doc """
   Uses the button of the open panel that adds a value to a field made of
   groups, as the panel's hook does: one `panel_add` event with the way to
-  the field, as the names it is sent under. Returns the page.
+  the field, the names it is sent under as a JSON list. Returns the page.
 
       add_group(view, "project", ["client"])
       add_group(view, "project", ["milestones"])
   """
   def add_group(view, id \\ "task", path) do
-    send_event(view, id, "panel_add", %{"path" => path})
+    send_event(view, id, "panel_add", %{"path" => Jason.encode!(path)})
   end
 
   @doc """
@@ -465,7 +465,7 @@ defmodule DemoWeb.TablePage do
       remove_group(view, "project", ["milestones", "0"])
   """
   def remove_group(view, id \\ "task", path) do
-    send_event(view, id, "panel_remove", %{"path" => path})
+    send_event(view, id, "panel_remove", %{"path" => Jason.encode!(path)})
   end
 
   @doc """

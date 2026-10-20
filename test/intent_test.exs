@@ -124,14 +124,16 @@ defmodule AshDataTable.IntentTest do
 
     assert parse("panel_submit", %{}) == {:ok, {:panel_submit, %{}}}
 
-    assert parse("panel_add", %{"path" => ["place", "f", "x"]}) ==
+    assert parse("panel_add", %{"path" => ~s(["place","f","x"])}) ==
              {:ok, {:panel_add, ["place", "f", "x"]}}
 
-    assert parse("panel_remove", %{"path" => ["milestones", "0"]}) ==
+    assert parse("panel_remove", %{"path" => ~s(["milestones","0"])}) ==
              {:ok, {:panel_remove, ["milestones", "0"]}}
 
-    assert parse("panel_add", %{"path" => []}) == :malformed
-    assert parse("panel_add", %{"path" => ["place", 0]}) == :malformed
+    assert parse("panel_add", %{"path" => "[]"}) == :malformed
+    assert parse("panel_add", %{"path" => ~s(["place",0])}) == :malformed
+    assert parse("panel_add", %{"path" => "not json"}) == :malformed
+    assert parse("panel_add", %{"path" => ["place"]}) == :malformed
     assert parse("panel_add", %{"path" => "place"}) == :malformed
 
     assert parse("panel_unpick", %{"input" => "labels", "key" => "7"}) ==

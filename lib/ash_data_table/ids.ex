@@ -136,7 +136,7 @@ defmodule AshDataTable.Ids do
 
   @doc """
   The place inside the action panel that what opens in it is moved into
-  (`Phoenix.Component.portal/1`): the picker a field opened, where the
+  (a portal): the picker a field opened, where the
   panel is modal and the picker inline, and the question's copy:
   `ID-panel-place`.
   """
