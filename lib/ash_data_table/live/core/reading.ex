@@ -12,6 +12,7 @@ defmodule AshDataTable.Live.Core.Reading do
   alias AshDataTable.Errors
   alias AshDataTable.Event
   alias AshDataTable.Format
+  alias AshDataTable.Geometry
   alias AshDataTable.Ids
   alias AshDataTable.Item
   alias AshDataTable.Live.Core
@@ -291,7 +292,7 @@ defmodule AshDataTable.Live.Core.Reading do
   end
 
   defp shown(socket, {:ok, %Query.Page{} = page}, _read) do
-    %{id: id, model: model} = Core.table(socket).entry
+    %{id: id, model: model, geometry: geometry} = Core.table(socket).entry
 
     rows =
       page.records
@@ -303,10 +304,8 @@ defmodule AshDataTable.Live.Core.Reading do
           key: key,
           record: record,
           names: names(model, record, key),
-          # 1-based, the header rows counted. Under offset pagination it
-          # runs through all pages; a keyset page does not know how many
-          # records lie before it, and counts from its own top.
-          rowindex: (page.offset || 0) + index + Present.header_rows(model) + 1
+          # 1-based, the header rows counted (`Geometry.rowindex/3`)
+          rowindex: Geometry.rowindex(geometry, page, index)
         }
       end)
 
@@ -463,7 +462,6 @@ defmodule AshDataTable.Live.Core.Reading do
 
     Item.row(entry.model, Present.row(entry.model, record, attributes), %{
       time_zone: caller.time_zone,
-      editing?: entry.editing?,
       selecting: entry.selecting
     })
   end

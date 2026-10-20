@@ -182,17 +182,17 @@ defmodule AshDataTable.Parts.Related do
 
   # The link to the full view is the last row of a nested table's grid,
   # after its pages: a Tab stop, followed with Enter.
-  attr :acting?, :any, required: true
   attr :full_view, :any, required: true
+  # where the columns stand (`AshDataTable.Geometry`): the link spans them
+  attr :geometry, :map, required: true
   attr :id, :any, required: true
   attr :label, :any, required: true
-  attr :lead, :any, required: true
   attr :model, :any, required: true
 
   def full_view(assigns) do
     ~H"""
     <tr {Attrs.row("#{@id}-view-row")}>
-      <td {Attrs.spanning("#{@id}-view", Attrs.colcount(@model, @lead, @acting?), %{"data-view" => true})}>
+      <td {Attrs.spanning("#{@id}-view", @geometry, %{"data-view" => true})}>
         <.link
           id={"#{@id}-full-view"}
           navigate={@full_view}

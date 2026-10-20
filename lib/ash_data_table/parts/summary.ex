@@ -6,10 +6,10 @@ defmodule AshDataTable.Parts.Summary do
   use Phoenix.Component
 
   alias AshDataTable.Attrs
+  alias AshDataTable.Geometry
   alias AshDataTable.Kit
   alias AshDataTable.Kit.Words
   alias AshDataTable.Parts
-  alias AshDataTable.Parts.Common
 
   # The summary of a column in the footer row: what it is ("Sum") and the
   # number, as a cell of the column shows a value. The space between them is
@@ -69,13 +69,13 @@ defmodule AshDataTable.Parts.Summary do
   # The pages of a nested table are a last row of its grid, its buttons Tab
   # stops as a table's on the page are. The element stays where it is once
   # it is there, as every child of a stream's container with an id does.
-  attr :acting?, :any, required: true
   attr :expandable?, :any, required: true
   attr :full_view, :any, required: true
+  # where the columns and rows stand (`AshDataTable.Geometry`)
+  attr :geometry, :map, required: true
   attr :id, :any, required: true
   attr :kit, :atom, required: true
   attr :label, :any, required: true
-  attr :lead, :any, required: true
   attr :model, :any, required: true
   attr :myself, :any, required: true
   attr :nested?, :any, required: true
@@ -100,11 +100,10 @@ defmodule AshDataTable.Parts.Summary do
       }
     >
       <.summaries
-        acting?={@acting?}
         expandable?={@expandable?}
+        geometry={@geometry}
         id={@id}
         kit={@kit}
-        lead={@lead}
         model={@model}
         page={@page}
         selecting={@selecting}
@@ -117,7 +116,7 @@ defmodule AshDataTable.Parts.Summary do
         :if={@nested? and @pages?}
         {Attrs.row("#{@id}-foot-row")}
       >
-        <td {Attrs.spanning("#{@id}-pager", Attrs.colcount(@model, @lead, @acting?), %{"data-pager" => true})}>
+        <td {Attrs.spanning("#{@id}-pager", @geometry, %{"data-pager" => true})}>
           <Kit.part
             part={:pagination}
             kit={@kit}
@@ -153,11 +152,10 @@ defmodule AshDataTable.Parts.Summary do
         :if={@nested? and Parts.Related.full_view?(@page, @full_view)}
         part={:full_view}
         kit={@kit}
-        acting?={@acting?}
         full_view={@full_view}
+        geometry={@geometry}
         id={@id}
         label={@label}
-        lead={@lead}
         model={@model}
         texts={Words.texts(:full_view, %{label: @label})}
         messages={Words.messages(:full_view, %{label: @label})}
@@ -166,11 +164,10 @@ defmodule AshDataTable.Parts.Summary do
     """
   end
 
-  attr :acting?, :any, required: true
   attr :expandable?, :any, required: true
+  attr :geometry, :map, required: true
   attr :id, :any, required: true
   attr :kit, :atom, required: true
-  attr :lead, :any, required: true
   attr :model, :any, required: true
   attr :page, :any, required: true
   attr :selecting, :any, required: true
@@ -188,7 +185,7 @@ defmodule AshDataTable.Parts.Summary do
     empty. See "Footer summaries" at the top. --%>
     <tr
       :if={@summarised? and @page}
-      {Attrs.summaries(@id, @model, @page)}
+      {Attrs.summaries(@id, @geometry, @page)}
     >
       <td
         :if={@selecting}
@@ -201,7 +198,7 @@ defmodule AshDataTable.Parts.Summary do
         :if={@expandable?}
         id={"#{@id}-summaries-expander"}
         role="cell"
-        aria-colindex={@lead}
+        aria-colindex={@geometry.lead}
       >
       </td>
       <Kit.part
@@ -210,7 +207,7 @@ defmodule AshDataTable.Parts.Summary do
         kit={@kit}
         id={"#{@id}-summary-#{column.name}"}
         column={column}
-        colindex={Common.colindex(index, @lead)}
+        colindex={Geometry.colindex(@geometry, index)}
         summary={@summary && @summary[column.name]}
         summing?={@summing?}
         time_zone={@time_zone}
@@ -227,10 +224,10 @@ defmodule AshDataTable.Parts.Summary do
         locale={Words.locale()}
       />
       <td
-        :if={@acting?}
+        :if={@geometry.trail == 1}
         id={"#{@id}-summaries-actions"}
         role="cell"
-        aria-colindex={length(@model.columns) + @lead + 1}
+        aria-colindex={@geometry.colcount}
       >
       </td>
     </tr>

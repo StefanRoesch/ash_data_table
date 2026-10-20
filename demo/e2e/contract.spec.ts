@@ -8,6 +8,10 @@ import { expect, test } from "./support/fixtures"
 //   * `assets/js/ids.js` makes every id `AshDataTable.Ids` makes, function
 //     by function: /e2e/ids renders a sample of each, with what the server
 //     made of it;
+//   * `assets/js/geometry.js` counts the grid's columns and rows as
+//     `AshDataTable.Geometry` does: /e2e/ids renders a sample of each of
+//     its functions too, and grids' elements with the attributes the
+//     bundles write, which `lead` and `firstRow` read;
 //   * `mountGrid` and `liveViewTransport` mount the grid's hook by hand on
 //     a grid that has no `phx-hook` (/e2e/markers?mount=1, the demo's hook
 //     `MountedGrid`): an edit and its save work from the keyboard, `onEdit`
@@ -17,6 +21,8 @@ import { expect, test } from "./support/fixtures"
 type Ids = Record<string, (...args: unknown[]) => string>
 
 const library = path.resolve(import.meta.dirname, "../../assets/js/ids.js")
+const geometryLibrary = path.resolve(import.meta.dirname, "../../assets/js/geometry.js")
+const markersLibrary = path.resolve(import.meta.dirname, "../../assets/js/markers.js")
 const camel = (name: string) => name.replace(/_(\w)/g, (_all, letter: string) => letter.toUpperCase())
 
 test("ids.js makes every id AshDataTable.Ids makes, and has no function it lacks", async ({ page }) => {
@@ -41,6 +47,47 @@ test("ids.js makes every id AshDataTable.Ids makes, and has no function it lacks
   // (the module as Node gives it: its exports, besides what the interop adds)
   const exported = Object.keys(ids).filter((name) => name !== "default" && typeof ids[name] === "function")
   expect(exported.sort()).toEqual([...sampled].map(camel).sort())
+})
+
+type Grid = { dataset: { lead?: string }; querySelector: (selector: string) => { dataset: { firstRow?: string } } | null }
+
+test("geometry.js counts the columns and rows as AshDataTable.Geometry does, and has no function it lacks", async ({ page }) => {
+  const geometry: Record<string, (...args: unknown[]) => number> = await import(geometryLibrary)
+  const { TABLE }: { TABLE: string } = await import(markersLibrary)
+  await page.goto("/e2e/ids")
+
+  const samples: { function: string; args?: unknown[]; grid?: string; value: number }[] = JSON.parse(
+    (await page.locator("#geometry").textContent()) ?? "[]",
+  )
+  expect(samples.length).toBeGreaterThan(0)
+
+  // a grid's element as the hooks read it: its `data-lead`, and its
+  // table's `data-first-row`, found as geometry.js finds it
+  const grid = async (id: string): Promise<Grid> => {
+    const read = await page.evaluate(
+      ([id, table]) => {
+        const element = document.getElementById(id) as HTMLElement
+        const found = element.querySelector(table) as HTMLElement | null
+        return { lead: element.dataset.lead, firstRow: found ? found.dataset.firstRow : null }
+      },
+      [id, TABLE],
+    )
+    return {
+      dataset: { lead: read.lead },
+      querySelector: (selector) => (selector === TABLE && read.firstRow != null ? { dataset: { firstRow: read.firstRow } } : null),
+    }
+  }
+
+  for (const sample of samples) {
+    const counted = geometry[camel(sample.function)]
+    expect(counted, `geometry.js has no ${camel(sample.function)}`).toBeDefined()
+    const args = sample.grid ? [await grid(sample.grid)] : (sample.args ?? [])
+    expect(counted(...args), `${sample.function}(${JSON.stringify(sample.grid ?? sample.args)})`).toBe(sample.value)
+  }
+
+  const sampled = new Set(samples.map((sample) => camel(sample.function)))
+  const exported = Object.keys(geometry).filter((name) => name !== "default" && typeof geometry[name] === "function")
+  expect(exported.sort()).toEqual([...sampled].sort())
 })
 
 test.describe("the grid's hook mounted by hand", () => {

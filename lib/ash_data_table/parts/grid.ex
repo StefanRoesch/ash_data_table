@@ -10,6 +10,7 @@ defmodule AshDataTable.Parts.Grid do
   use Phoenix.Component
 
   alias AshDataTable.Attrs
+  alias AshDataTable.Geometry
   alias AshDataTable.Ids
   alias AshDataTable.Kit
   alias AshDataTable.Kit.Words
@@ -442,11 +443,10 @@ defmodule AshDataTable.Parts.Grid do
   attr :columns, :list, required: true
   attr :label, :atom, required: true
   attr :actions, :list, required: true
-  attr :lead, :integer, required: true
+  # where the columns stand (`AshDataTable.Geometry`)
+  attr :geometry, :map, required: true
   attr :selecting, :any, required: true
   attr :expandable?, :boolean, required: true
-  attr :acting?, :boolean, required: true
-  attr :editing?, :boolean, required: true
   attr :open, :any, required: true
   attr :asks?, :boolean, required: true
   attr :time_zone, :string, required: true
@@ -470,10 +470,10 @@ defmodule AshDataTable.Parts.Grid do
       :if={@expandable?}
       id={Ids.expander(@dom_id)}
       role="cell"
-      aria-colindex={@lead}
+      aria-colindex={@geometry.lead}
       data-expander
     ><button type="button" aria-expanded={to_string(@row.open)} aria-label={@texts.related_records}></button></td><td
-      :for={{column, colindex, cell} <- cells(@columns, @lead, @row, @label, :before)}
+      :for={{column, colindex, cell} <- cells(@columns, @geometry, @row, @label, :before)}
       id={Ids.cell(@dom_id, column.name)}
       role="cell"
       aria-colindex={colindex}
@@ -500,7 +500,7 @@ defmodule AshDataTable.Parts.Grid do
       messages={Words.messages(:cell, %{column: column, cell: cell})}
       locale={Words.locale()}
     /></td><th
-      :for={{column, colindex, cell} <- cells(@columns, @lead, @row, @label, :label)}
+      :for={{column, colindex, cell} <- cells(@columns, @geometry, @row, @label, :label)}
       id={Ids.cell(@dom_id, column.name)}
       scope="row"
       role="rowheader"
@@ -529,7 +529,7 @@ defmodule AshDataTable.Parts.Grid do
       messages={Words.messages(:cell, %{column: column, cell: cell})}
       locale={Words.locale()}
     /></th><td
-      :for={{column, colindex, cell} <- cells(@columns, @lead, @row, @label, :after)}
+      :for={{column, colindex, cell} <- cells(@columns, @geometry, @row, @label, :after)}
       id={Ids.cell(@dom_id, column.name)}
       role="cell"
       aria-colindex={colindex}
@@ -556,11 +556,11 @@ defmodule AshDataTable.Parts.Grid do
       messages={Words.messages(:cell, %{column: column, cell: cell})}
       locale={Words.locale()}
     /></td><Kit.part
-      :if={@acting?}
+      :if={@geometry.trail == 1}
       part={:actions_cell}
       kit={@kit}
       id={Ids.actions_cell(@dom_id)}
-      colindex={length(@columns) + @lead + 1}
+      colindex={@geometry.colcount}
       row={@row}
       actions={@actions}
       open={@open}
@@ -573,7 +573,7 @@ defmodule AshDataTable.Parts.Grid do
   # or after it: each column, where it stands, and what the row's item
   # (`AshDataTable.Item`) says of the cell. Without a label column every
   # cell is before it.
-  defp cells(columns, lead, row, label, part) do
+  defp cells(columns, geometry, row, label, part) do
     {before, rest} = Enum.split_while(columns, &(&1.name != label))
     {labelled, behind} = Enum.split(rest, 1)
 
@@ -586,7 +586,7 @@ defmodule AshDataTable.Parts.Grid do
     {columns, from} = taken[part]
 
     for {column, index} <- Enum.with_index(columns, from),
-        do: {column, Common.colindex(index, lead), row.cells[column.name]}
+        do: {column, Geometry.colindex(geometry, index), row.cells[column.name]}
   end
 
   # What a cell of a record holds: the
@@ -764,24 +764,22 @@ defmodule AshDataTable.Parts.Grid do
 
   defp escape(text), do: text |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 
-  attr :acting?, :any, required: true
   attr :open, :string, required: true
   # whether the hook asks the question of a row action; in controlled mode
   # the host does (`AshDataTable.Live.Core.Requests`)
   attr :asks?, :boolean, required: true
   attr :busy?, :any, required: true
   attr :choose, :any, required: true
-  attr :editing?, :any, required: true
   attr :expandable?, :any, required: true
   # what each column's filter shows: `filter`, `rejected?`, `applied?`
   attr :filters, :map, required: true
   attr :full_view, :any, required: true
+  # where the columns and rows stand (`AshDataTable.Geometry`)
+  attr :geometry, :map, required: true
   attr :id, :any, required: true
   attr :kit, :atom, required: true
   attr :label, :any, required: true
-  attr :label_column, :any, required: true
   attr :labelledby, :any, required: true
-  attr :lead, :any, required: true
   attr :model, :any, required: true
   attr :myself, :any, required: true
   attr :nested?, :any, required: true
@@ -804,7 +802,7 @@ defmodule AshDataTable.Parts.Grid do
     ~H"""
     <%!-- The form of the filter row, where there is one. A form cannot sit
     inside a table around its cells, so the controls name it instead. --%>
-    <form :if={Attrs.filter_row?(@model)} {Attrs.filters(@id, @myself)}></form>
+    <form :if={@geometry.header_rows == 2} {Attrs.filters(@id, @myself)}></form>
     <%!-- The grid is the table's own scroll area: every table scrolls
     sideways in its own, a nested table as the table on the page (see
     "scrolling sideways" in the hook). A nested table that is scrolled to
@@ -822,11 +820,11 @@ defmodule AshDataTable.Parts.Grid do
       {@texts.skip_table}
     </a>
     <div
-      {Attrs.grid(@id, @myself, @lead, @selecting, @choose, @texts)}
+      {Attrs.grid(@id, @myself, @geometry, @selecting, @choose, @texts)}
       class={@kit.class(:grid, %{nested?: @nested?})}
     >
       <table
-        {Attrs.table(@id, @label, @labelledby, @model, @page, @summarised?, Attrs.colcount(@model, @lead, @acting?), @busy? or not is_nil(@running))}
+        {Attrs.table(@id, @label, @labelledby, @geometry, @page, @busy? or not is_nil(@running))}
         class={["table", @nested? && "w-auto"]}
       >
         <thead id={Ids.head(@id)}>
@@ -851,7 +849,7 @@ defmodule AshDataTable.Parts.Grid do
             </th>
             <th
               :if={@expandable?}
-              {Attrs.header("#{@id}-expander-head", @lead)}
+              {Attrs.header("#{@id}-expander-head", @geometry.lead)}
               class="w-0"
             >
               <span class="sr-only">{@texts.related_records}</span>
@@ -862,39 +860,39 @@ defmodule AshDataTable.Parts.Grid do
               kit={@kit}
               id={Ids.header_cell(@id, column.name)}
               column={column}
-              colindex={Common.colindex(index, @lead)}
+              colindex={Geometry.colindex(@geometry, index)}
               attrs={
                 Attrs.column_header(
                   column,
                   @state.sort,
-                  @model.sticky_label? and column == @label_column
+                  @model.sticky_label? and column == @model.label_column
                 )
               }
               button={column.sortable? && Attrs.sort(@id, column, @myself)}
               sort={@state.sort}
               resizer={"#{@id}-resize-#{column.name}"}
-              texts={Words.texts(:header_cell, %{column: column, editing?: @editing?})}
-              messages={Words.messages(:header_cell, %{column: column, editing?: @editing?})}
+              texts={Words.texts(:header_cell, %{column: column, editing?: @model.editing?})}
+              messages={Words.messages(:header_cell, %{column: column, editing?: @model.editing?})}
             />
             <th
-              :if={@acting?}
-              {Attrs.header("#{@id}-actions-head", length(@model.columns) + @lead + 1)}
+              :if={@geometry.trail == 1}
+              {Attrs.header("#{@id}-actions-head", @geometry.colcount)}
               class="whitespace-nowrap"
             >
               {@texts.actions}
             </th>
           </tr>
           <%!-- The filter row, where a column has a filter. --%>
-          <tr :if={Attrs.filter_row?(@model)} {Attrs.row(Ids.filter_row(@id), "2")}>
+          <tr :if={@geometry.header_rows == 2} {Attrs.row(Ids.filter_row(@id), "2")}>
             <td :if={@selecting} {Attrs.empty_cell("#{@id}-select-filter", "1")}></td>
-            <td :if={@expandable?} {Attrs.empty_cell("#{@id}-expander-filter", @lead)}></td>
+            <td :if={@expandable?} {Attrs.empty_cell("#{@id}-expander-filter", @geometry.lead)}></td>
             <Kit.part
               :for={{column, index} <- Enum.with_index(@model.columns)}
               part={:filter_cell}
               kit={@kit}
               id={"#{@id}-filter-#{column.name}"}
               column={column}
-              colindex={Common.colindex(index, @lead)}
+              colindex={Geometry.colindex(@geometry, index)}
               table={@id}
               form={Ids.filters(@id)}
               filter={@filters[column.name].filter}
@@ -903,8 +901,8 @@ defmodule AshDataTable.Parts.Grid do
               target={@myself}
             />
             <td
-              :if={@acting?}
-              {Attrs.empty_cell("#{@id}-actions-filter", length(@model.columns) + @lead + 1)}
+              :if={@geometry.trail == 1}
+              {Attrs.empty_cell("#{@id}-actions-filter", @geometry.colcount)}
             >
             </td>
           </tr>
@@ -925,7 +923,7 @@ defmodule AshDataTable.Parts.Grid do
               id={@id}
               row={row}
               model={@model}
-              colspan={length(@model.columns) + @lead + Common.trail(@acting?)}
+              colspan={@geometry.colcount}
               myself={@myself}
             /><Kit.part
               :if={!Attrs.detail?(row)}
@@ -935,13 +933,11 @@ defmodule AshDataTable.Parts.Grid do
               row={row}
               id={@id}
               columns={@model.columns}
-              label={@label_column && @label_column.name}
+              label={@model.label_column && @model.label_column.name}
               actions={@model.actions}
-              lead={@lead}
+              geometry={@geometry}
               selecting={@selecting}
               expandable?={@expandable?}
-              acting?={@acting?}
-              editing?={@editing?}
               open={@open}
               asks?={@asks?}
               time_zone={@time_zone}
@@ -952,12 +948,11 @@ defmodule AshDataTable.Parts.Grid do
           :if={@nested? or @summarised?}
           part={:footer}
           kit={@kit}
-          acting?={@acting?}
           expandable?={@expandable?}
           full_view={@full_view}
+          geometry={@geometry}
           id={@id}
           label={@label}
-          lead={@lead}
           model={@model}
           myself={@myself}
           nested?={@nested?}
@@ -993,7 +988,7 @@ defmodule AshDataTable.Parts.Grid do
       <%!-- The message of a cell whose save failed, for the one case in which
       the hook has to mark the cell itself: the record is gone, so there is
       no row to send. --%>
-      <template :if={@editing? or @acting?} id={"#{@id}-failure"} phx-no-format><Kit.part part={:failure} kit={@kit} id={nil} message={Words.message(:failure, %{message: ""})} text={Words.text(:failure, %{message: ""})} /></template>
+      <template :if={@model.editing? or @geometry.trail == 1} id={"#{@id}-failure"} phx-no-format><Kit.part part={:failure} kit={@kit} id={nil} message={Words.message(:failure, %{message: ""})} text={Words.text(:failure, %{message: ""})} /></template>
     </div>
     <%!-- The scrollbar of the grid once more, for when the grid's own is
     below the window: the hook shows it at the bottom edge of the window, as

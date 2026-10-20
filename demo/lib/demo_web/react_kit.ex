@@ -74,7 +74,7 @@ defmodule DemoWeb.ReactKit do
   # message, which the hook copies into a cell.
   def grid(assigns) do
     ~H"""
-    <form :if={Attrs.filter_row?(@model)} {Attrs.filters(@id, @myself)}></form>
+    <form :if={@geometry.header_rows == 2} {Attrs.filters(@id, @myself)}></form>
     <div {Attrs.sender(@id)}></div>
     <LiveReact.react
       id={"#{@id}-grid-island"}
@@ -84,64 +84,21 @@ defmodule DemoWeb.ReactKit do
       texts={@texts}
       skip={Props.skip(@id)}
       scrollbar={Props.scrollbar(@id)}
-      grid={Props.grid(@id, @myself, @lead, @selecting, @choose, @texts)}
-      table={
-        Props.table(
-          @id,
-          @label,
-          @labelledby,
-          @model,
-          @page,
-          @summarised?,
-          @lead,
-          @acting?,
-          @busy?,
-          @running
-        )
-      }
-      head={
-        Props.head(
-          @id,
-          @model,
-          @state,
-          @label_column,
-          @lead,
-          @selecting,
-          @expandable?,
-          @acting?,
-          @editing?,
-          @myself,
-          @texts
-        )
-      }
-      filters={
-        Props.filters(@id, @model, @filters, @lead, @selecting, @expandable?, @acting?, @myself)
-      }
+      grid={Props.grid(@id, @myself, @geometry, @selecting, @choose, @texts)}
+      table={Props.table(@id, @label, @labelledby, @geometry, @page, @busy?, @running)}
+      head={Props.head(@id, @model, @state, @geometry, @selecting, @expandable?, @myself, @texts)}
+      filters={Props.filters(@id, @model, @filters, @geometry, @selecting, @expandable?, @myself)}
       columns={Props.columns(@model, @texts)}
-      row={
-        Props.row(
-          @id,
-          @model,
-          @label_column,
-          @lead,
-          @selecting,
-          @expandable?,
-          @acting?,
-          @open,
-          @asks?,
-          @nested?
-        )
-      }
+      row={Props.row(@id, @model, @geometry, @selecting, @expandable?, @open, @asks?, @nested?)}
       footer={
         Props.footer(
           @id,
           @model,
           @page,
           @state,
-          @lead,
+          @geometry,
           @selecting,
           @expandable?,
-          @acting?,
           @pages?,
           @row_count,
           @label,
@@ -155,7 +112,7 @@ defmodule DemoWeb.ReactKit do
         )
       }
       editors={Props.editors(@id, @model, @editors, @asks?)}
-      failure={@editing? or @acting?}
+      failure={@model.editing? or @geometry.trail == 1}
     />
     """
   end
@@ -172,7 +129,6 @@ defmodule DemoWeb.ReactKit do
           @id,
           @heading,
           @label,
-          @label_column,
           @model,
           @offered,
           @page,
@@ -181,7 +137,7 @@ defmodule DemoWeb.ReactKit do
           @myself
         )
       }
-      columns={Props.heading_columns(@id, @model, @label_column, @state, @label, @nested?)}
+      columns={Props.heading_columns(@id, @model, @state, @label, @nested?)}
       arguments={Props.arguments(@id, @model, @arguments, @nested?, @myself)}
     />
     """

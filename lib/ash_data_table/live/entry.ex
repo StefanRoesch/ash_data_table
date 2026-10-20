@@ -133,15 +133,17 @@ defmodule AshDataTable.Live.Entry do
     # the model its resource and block say, which the `AshDataTable.Table`
     # keeps for the whole tree (`models`,
     # `AshDataTable.Live.Core.Nesting.built/1`); and what the live core
-    # derives from it there: whether a column can be edited, whether the
-    # rows have an actions cell, the table actions offered, whether rows
-    # expand and the column that stays in view.
+    # derives from it there: the table actions offered, whether rows
+    # expand, and where the columns and rows stand in the grid
+    # (`AshDataTable.Geometry`: the box and the expander before the data
+    # columns, the actions cell after them, the header rows, the footer
+    # row), made with the model and what is selected. Whether a column can
+    # be edited and the column that stays in view are the model's
+    # (`editing?`, `label_column`).
     model: nil,
-    editing?: false,
-    acting?: false,
     offered: [],
     expandable?: false,
-    label_column: nil,
+    geometry: nil,
     # The action panel, while it is open: the one action a person is giving
     # the inputs of, with its form. At most one per table; a new read
     # closes it.
@@ -170,7 +172,6 @@ defmodule AshDataTable.Live.Entry do
     # every record that matches (`all?`). `selected_under` is what they were
     # selected under: the filters, the arguments and what the table is
     # limited to.
-    # `lead` is the number of columns before the first data column.
     selecting: nil,
     # What the button of the page's "Open" says in every row's actions
     # cell, first among its buttons (`open` of the table on the page, never
@@ -180,7 +181,6 @@ defmodule AshDataTable.Live.Entry do
     all?: false,
     selected_under: nil,
     bulk: [],
-    lead: 0,
     # The action that is running on the selected rows, while it does, with
     # who started it (`%{action: action, by: AshDataTable.Caller.who/1}`),
     # and what the last one came to, until the person selects something else.

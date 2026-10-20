@@ -24,6 +24,10 @@ defmodule AshDataTable.ArchitectureTest do
     * no cycle holds files of two parts, and no cycle has a compile edge
       but those Spark requires (an extension and its entities, verifiers and
       transformers; an info module and its extension) (5.4, V10);
+    * the bundles (`attrs.ex`) are in no cycle: the parts spread them, and
+      they call no part; where a column or a row stands they ask
+      `AshDataTable.Geometry` (stage 9c, which ended the cycle of `Attrs`
+      and `Parts.Common`);
     * no file of 2a names LiveView, `Phoenix.Component`, `Phoenix.HTML`,
       `Phoenix.PubSub`, Gettext or a module of the words, which xref cannot see, also not
       inside a multi-alias (`alias AshDataTable.{Format, Text}`). A router
@@ -181,12 +185,16 @@ defmodule AshDataTable.ArchitectureTest do
     cycles =
       for cycle <- cycles(graph), reason = cycle_problem(cycle, graph), do: reason
 
+    bundles =
+      for cycle <- cycles(graph), (@lib <> "/attrs.ex") in cycle, do: Enum.join(cycle, ", ")
+
     report([
       {"files no rule places", unplaced},
       {"dependencies the parts do not allow (5.1)", Enum.sort(wrong)},
       {"compile-connected files outside the declaration (5.3)", Enum.sort(connected)},
       {"verifiers or transformers reading what is not pure (5.3, rule 1)", Enum.sort(impure)},
       {"cycles across parts or with a compile edge Spark does not need (5.4)", cycles},
+      {"the bundles in a cycle (9c)", bundles},
       {"2a naming LiveView, PubSub, Gettext or the words (5.5)", data_layer_mentions()},
       {"reads from Ash outside Query, Record, Pick and Bulk (S1)", reads()}
     ])

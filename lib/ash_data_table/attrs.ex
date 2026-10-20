@@ -296,7 +296,7 @@ defmodule AshDataTable.Attrs do
   its id, its ARIA role and states, the `data-*` markers, `phx-*` and
   `phx-hook`. A part spreads the bundle on whatever element it draws:
 
-      <div {AshDataTable.Attrs.grid(@id, @myself, @lead, @selecting, @choose, @texts)} class="my-grid">
+      <div {AshDataTable.Attrs.grid(@id, @myself, @geometry, @selecting, @choose, @texts)} class="my-grid">
 
   and is called with the values a part is given, as `AshDataTable.Kit.Default`'s
   parts call them. Where a part is drawn per row, cell or column, the bundle
@@ -402,7 +402,8 @@ defmodule AshDataTable.Attrs do
   #     has its own;
   #   * the header has two rows, the column headers and the filter row, which
   #     are not part of the stream; a table none of whose columns has a
-  #     filter has no filter row and no form (`filter_row?/1`). The controls
+  #     filter has no filter row and no form (the geometry's `header_rows`
+  #     is 1, `AshDataTable.Geometry`). The controls
   #     of the filter row belong to the form `ID-filters`, which sits outside
   #     the table;
   #   * ids are stable and built from names, never from positions:
@@ -423,10 +424,11 @@ defmodule AshDataTable.Attrs do
   #     after them "Reset widths" (`reset_widths/1`). Which columns are
   #     hidden and how wide they are is the hook's, and the server never
   #     hears of it: a hidden column is rendered as any other;
-  #   * `aria-colindex` is computed through `colindex/2`, which counts the
-  #     leading columns in when the table has them: the boxes that select a
-  #     row, then the expanders; the actions column goes after the last
-  #     data column;
+  #   * `aria-colindex` and `aria-rowindex` are counted by the table's
+  #     geometry (`AshDataTable.Geometry`, mirrored by `assets/js/geometry.js`),
+  #     which counts the leading columns in when the table has them: the
+  #     boxes that select a row, then the expanders; the actions column goes
+  #     after the last data column;
   #   * a column's component renders inside the cell, never the cell: the
   #     `<td>`, its id and what it says of itself are the table's. The
   #     component is called for a value that is there and that the person
@@ -883,10 +885,9 @@ defmodule AshDataTable.Attrs do
   # what they showed and are `aria-busy`. An answer that fails puts the dash
   # into every cell and is logged; the rows are not touched.
 
+  alias AshDataTable.Geometry
   alias AshDataTable.Ids
   alias AshDataTable.Model.Limits
-  alias AshDataTable.Parts.Common
-  alias AshDataTable.Present
   alias Phoenix.LiveView.JS
 
   @markers ~w(
@@ -944,8 +945,8 @@ defmodule AshDataTable.Attrs do
   The element of a grid's hook. `data-ash-data-table` marks it, for the
   hooks of the tables nested in it and around it; `data-table` is the
   table's id; `data-lead` the number of columns before the first data
-  column; `data-select` whether rows can be selected, and how many at a
-  time; `data-choose` that the table is one to choose a record from, and
+  column (the `lead` of `geometry`, `AshDataTable.Geometry`); `data-select`
+  whether rows can be selected, and how many at a time; `data-choose` that the table is one to choose a record from, and
   `data-chosen-rows`, where several are chosen, which rows are selected as
   it opens; `data-show-whole` and `data-show-less` what the button says
   that shows a cell's whole text and cuts it off again, and
@@ -956,7 +957,7 @@ defmodule AshDataTable.Attrs do
   which a browser may make of an element that scrolls: the stops are the
   controls and the editable cells in it.
   """
-  def grid(id, myself, lead, selecting, choose, texts) do
+  def grid(id, myself, %{lead: lead}, selecting, choose, texts) do
     %{
       "id" => "#{id}-grid",
       "phx-hook" => "AshDataTable.Grid",
@@ -998,35 +999,25 @@ defmodule AshDataTable.Attrs do
   end
 
   @doc """
-  The table itself (`role="table"`), whose rows are a stream. `model` says
-  how many header rows it has (one, and the filter row where a column has
-  a filter).
+  The table itself (`role="table"`), whose rows are a stream: how many
+  rows and columns it has in all pages (`aria-rowcount`, -1 where the
+  number of records is not known; `aria-colcount`) and the row index of
+  the page's first record (`data-first-row`), as `geometry` counts them
+  for `page`.
   """
-  def table(id, label, labelledby, model, page, summarised?, colcount, busy?) do
+  def table(id, label, labelledby, geometry, page, busy?) do
     %{
       "id" => "#{id}-table",
       "role" => "table",
       "aria-label" => is_nil(labelledby) && label,
       "aria-labelledby" => labelledby,
-      "aria-rowcount" => rowcount(model, page, summarised?),
-      "aria-colcount" => colcount,
+      "aria-rowcount" => Geometry.rowcount(geometry, page),
+      "aria-colcount" => geometry.colcount,
       "aria-busy" => busy? && "true",
-      "data-first-row" => Present.first_row(model, page),
+      "data-first-row" => Geometry.first_row(geometry, page),
       "phx-update" => "stream"
     }
   end
-
-  # The rows of the grid in all pages: the header rows, the records, and the
-  # footer row of the summaries where there is one. -1 says "unknown".
-  defp rowcount(model, %{total: total}, summarised?) when is_integer(total),
-    do: total + Present.header_rows(model) + if(summarised?, do: 1, else: 0)
-
-  defp rowcount(_model, _page, _summarised?), do: -1
-
-  # How many columns the grid has: those before the data columns, the data
-  # columns and the actions.
-  @doc "How many columns the grid has."
-  def colcount(model, lead, acting?), do: length(model.columns) + lead + Common.trail(acting?)
 
   @doc """
   A row of the grid that is no record's: the header row, the filter row,
@@ -1042,13 +1033,13 @@ defmodule AshDataTable.Attrs do
   def empty_cell(id, colindex), do: %{"id" => id, "role" => "cell", "aria-colindex" => colindex}
 
   @doc """
-  A cell that spans the table: a line, the cell a nested table is in, the
-  pages of a nested table, its link to the full view. No Tab stop itself:
-  the controls in it are.
+  A cell that spans the grid, every column `geometry` counts: the pages of
+  a nested table, its link to the full view. No Tab stop itself: the
+  controls in it are.
   """
-  def spanning(id, colspan, more) do
+  def spanning(id, %{colcount: colcount}, more) do
     Map.merge(
-      %{"id" => id, "role" => "cell", "colspan" => colspan, "aria-colindex" => "1"},
+      %{"id" => id, "role" => "cell", "colspan" => colcount, "aria-colindex" => "1"},
       more
     )
   end
@@ -1209,11 +1200,11 @@ defmodule AshDataTable.Attrs do
   end
 
   @doc """
-  The footer row of the summaries, the last of all rows, and the summary
-  of a column in it.
+  The footer row of the summaries, the last of all rows (its row index as
+  `geometry` counts it for `page`), and the summary of a column in it.
   """
-  def summaries(id, model, page) do
-    Map.put(row("#{id}-summaries", Common.summary_rowindex(model, page)), "data-summaries", true)
+  def summaries(id, geometry, page) do
+    Map.put(row("#{id}-summaries", Geometry.summary_row(geometry, page)), "data-summaries", true)
   end
 
   @doc """
@@ -1406,13 +1397,6 @@ defmodule AshDataTable.Attrs do
       "phx-target" => target
     }
   end
-
-  @doc """
-  Whether the grid has a filter row and its form: where a column of the
-  model has a filter. A table without one draws neither; its header is the
-  row of the column headers alone, and the row indexes count one header row.
-  """
-  def filter_row?(model), do: Present.filter_row?(model)
 
   @doc """
   The form of the filter row, which its controls name (`form`).

@@ -132,7 +132,6 @@ defmodule AshDataTable.Live.Drawing do
       id={@entry.id}
       arguments={Kit.arguments(@entry.id, @entry.model, @entry.lines, @entry.state, @entry.refused)}
       label={@entry.label}
-      label_column={@entry.label_column}
       model={@entry.model}
       myself={@myself}
       nested?={@entry.nested?}
@@ -307,20 +306,17 @@ defmodule AshDataTable.Live.Drawing do
       <Kit.part
         part={:grid}
         kit={@options.kit}
-        acting?={@entry.acting?}
         open={@entry.open_label}
         asks?={:confirm not in @options.controlled}
         busy?={@entry.busy?}
         choose={@entry.choose}
-        editing?={@entry.editing?}
         expandable?={@entry.expandable?}
         full_view={@entry.full_view}
+        geometry={@entry.geometry}
         filters={filters(@entry.model, @entry.rejected, @entry.pending, @entry.state)}
         id={@entry.id}
         label={@entry.label}
-        label_column={@entry.label_column}
         labelledby={@entry.labelledby}
-        lead={@entry.lead}
         model={@entry.model}
         myself={@myself}
         nested?={@entry.nested?}

@@ -16,6 +16,7 @@ defmodule AshDataTable.Live.Core do
   import Phoenix.LiveView, only: [put_private: 3]
 
   alias AshDataTable.Caller
+  alias AshDataTable.Geometry
   alias AshDataTable.Intent
   alias AshDataTable.Live.Core.Bulk
   alias AshDataTable.Live.Core.Cells
@@ -314,7 +315,7 @@ defmodule AshDataTable.Live.Core do
 
     {:ok,
      socket
-     |> put(model: model, state: state, editing?: Enum.any?(model.columns, & &1.editable?))
+     |> put(model: model, state: state)
      |> put(
        pending:
          awaited(
@@ -325,20 +326,19 @@ defmodule AshDataTable.Live.Core do
      )
      |> put(missing: missing, refused: refused)
      |> put(lines: lines(table(socket).entry.lines, model, state, refused))
-     # whether the rows have an actions cell: the last column of the grid,
-     # for the row actions and the page's "Open"
-     |> put(acting?: model.actions != [] or not is_nil(table(socket).entry.open_label))
      # whether the grid has a footer row: a column of this person's has a summary
      |> put(summarised?: Model.summarised(model) != [])
      # the table actions are offered once the table has read, as create is
      |> put(offered: model.table_actions)
      |> put(depth_limit: depth_limit)
      |> put(expandable?: expandable?)
-     # the column that stays in view when the table scrolls sideways
-     |> put(label_column: Model.label_column(model))
+     # where the columns and rows stand: the box and the expander before
+     # the data columns, the actions cell (row actions, the page's "Open")
+     # after them, the header rows and the footer row
+     |> put(geometry: Geometry.of(model, selecting, expandable?, table(socket).entry.open_label))
      # the actions offered for the selected rows are this person's row
      # actions that run on several records
-     |> put(selecting: selecting, lead: lead(selecting, expandable?))
+     |> put(selecting: selecting)
      |> put(bulk: if(selecting == :multi, do: Model.bulk_actions(model), else: []))
      # before the read: what changes from here on is heard
      |> Updates.listen()
@@ -464,6 +464,9 @@ defmodule AshDataTable.Live.Core do
     %{
       model
       | columns: columns,
+        # the label column is one of the columns, in their words too
+        label_column:
+          model.label_column && Enum.find(columns, &(&1.name == model.label_column.name)),
         arguments: arguments,
         relationships: relationships,
         actions: Enum.map(model.actions, action),
@@ -789,10 +792,4 @@ defmodule AshDataTable.Live.Core do
       more
     )
   end
-
-  # The columns before the first data column: the boxes that select a row,
-  # where rows can be selected, and after them the expanders, when the rows
-  # have them.
-  defp lead(selecting, expandable?),
-    do: if(selecting, do: 1, else: 0) + if(expandable?, do: 1, else: 0)
 end

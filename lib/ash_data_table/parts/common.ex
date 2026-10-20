@@ -1,15 +1,14 @@
 defmodule AshDataTable.Parts.Common do
   @moduledoc false
-  # The small helpers that several parts draw with: the place of a column
-  # and of a row in the grid, a table's root element and the message of a
-  # failure (`Kit.Default`'s parts `root` and `failure`). It calls no other
-  # part by name, so that the parts do not call each other in a circle. It
-  # spreads `Attrs`' bundles, and `Attrs` names events and counts places
-  # with it.
+  # The small helpers that several parts draw with: a column's component,
+  # a table's root element and the message of a failure (`Kit.Default`'s
+  # parts `root` and `failure`). It calls no other part by name, so that
+  # the parts do not call each other in a circle, and it spreads `Attrs`'
+  # bundles, which call nothing of the parts. Where a column or a row
+  # stands is the table's geometry's (`AshDataTable.Geometry`).
   use Phoenix.Component
 
   alias AshDataTable.Attrs
-  alias AshDataTable.Present
 
   # A function of a column's component (`AshDataTable.Component`), which
   # is known at runtime only: called as LiveView's `Phoenix.Component` docs
@@ -52,21 +51,6 @@ defmodule AshDataTable.Parts.Common do
     </div>
     """
   end
-
-  # The columns after the last data column: the actions, when the rows have
-  # them.
-  def trail(true), do: 1
-  def trail(false), do: 0
-
-  # 1-based position of a data column among all columns of the grid.
-  def colindex(index, lead), do: lead + index + 1
-
-  # The footer row of the summaries is the last row of all: after the
-  # records of every page. Where their number is not known it says nothing.
-  def summary_rowindex(model, %{total: total}) when is_integer(total),
-    do: total + Present.header_rows(model) + 1
-
-  def summary_rowindex(_model, _page), do: nil
 
   # The message of a cell whose save failed, or of a row whose action
   # failed: in the cell, under what it shows, and the row as high as it

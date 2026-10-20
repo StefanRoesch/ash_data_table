@@ -18,7 +18,9 @@
 // `mountGrid`, `mountPanel`, `mountPicker`, `mountPagination` and
 // `liveViewTransport` (mount.js), the attributes the hooks own (`OWNED`,
 // `CHILDREN`, owned.js), the DOM ids of `AshDataTable.Ids` (`ids`,
-// ids.js) and how a counter counts a text (`count`).
+// ids.js), where the columns and rows stand as `AshDataTable.Geometry`
+// counts them (`geometry`, geometry.js) and how a counter counts a text
+// (`count`).
 
 import grid from "./grid/index.js"
 import pagination from "./pagination.js"
@@ -37,6 +39,7 @@ export const Sender = hook(sender, "sender")
 export {liveViewTransport, mountGrid, mountPagination, mountPanel, mountPicker} from "./mount.js"
 export {CHILDREN, OWNED} from "./owned.js"
 export * as ids from "./ids.js"
+export * as geometry from "./geometry.js"
 
 /**
  * How long `text` is, counted as Ash counts it by the `counted` a part is

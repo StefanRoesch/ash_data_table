@@ -46,6 +46,7 @@ defmodule AshDataTable.KitTest do
                AshDataTable.Present.Panel,
                AshDataTable.Present.Field,
                AshDataTable.Present.Picker,
+               AshDataTable.Geometry,
                AshDataTable.Model,
                AshDataTable.Model.Column,
                AshDataTable.Model.Field,

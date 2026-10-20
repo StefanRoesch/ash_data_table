@@ -242,6 +242,20 @@ which `Attrs.add_group/4` and `Attrs.remove_group/4` put into their bundles.
 What those entries are called and hold, and these ids, are the table's: a
 part draws them as it is given them, and writes no name or id of its own.
 
+Where a cell stands (`aria-colindex`, as the summary cell above writes it) and
+how many columns and rows the grid has are the table's too: the parts that
+place more than one cell or row (`grid`, `row`, `footer`, `full_view`) are
+given `geometry`, an `AshDataTable.Geometry` whose fields say how many columns
+come before the data columns (`lead`: the box at 1, the expander at `lead`),
+whether the actions cell comes after them (`trail`, at `colcount`), how many
+columns there are in all (`colcount`, what a cell spans that spans the grid),
+and whether there is a filter row (`header_rows` 2). A cell drawn once per
+column is given its `colindex`; the bundles of the table, a spanning cell and
+the footer row (`Attrs.table/6`, `Attrs.spanning/3`, `Attrs.summaries/3`)
+take the geometry and count the rows themselves. The column a record is
+called by and whether a column can be edited are the model's
+(`model.label_column`, `model.editing?`).
+
 **Tab stops.** A table is a table (`role="table"`), not an ARIA grid: the
 browser moves the focus with Tab, from control to control in the order they
 stand in, nested tables included. So a part writes no `tabindex` on a
@@ -315,19 +329,19 @@ column, with the id `AshDataTable.Ids` makes for it:
   kit={@kit}
   id={Ids.header_cell(@id, column.name)}
   column={column}
-  colindex={@lead + index + 1}
+  colindex={@geometry.lead + index + 1}
   attrs={
     Attrs.column_header(
       column,
       @state.sort,
-      @model.sticky_label? and column == @label_column
+      @model.sticky_label? and column == @model.label_column
     )
   }
   button={column.sortable? && Attrs.sort(@id, column, @myself)}
   sort={@state.sort}
   resizer={"#{@id}-resize-#{column.name}"}
-  texts={Words.texts(:header_cell, %{column: column, editing?: @editing?})}
-  messages={Words.messages(:header_cell, %{column: column, editing?: @editing?})}
+  texts={Words.texts(:header_cell, %{column: column, editing?: @model.editing?})}
+  messages={Words.messages(:header_cell, %{column: column, editing?: @model.editing?})}
 />
 ```
 
@@ -382,7 +396,9 @@ write through the server's checks. What such a kit relies on is public:
   kit draws (a busy cell, a failed one, a box's state);
   `assets/js/owned.js` lists them, and what a kit may render of each.
 - **Ids.** `assets/js/ids.js` makes the ids of `AshDataTable.Ids`, function
-  by function.
+  by function, and `assets/js/geometry.js` counts the columns and rows as
+  `AshDataTable.Geometry` does (`colindex(index, lead)`, `rowindex(first,
+  n)`, and `lead(grid)`, `firstRow(grid)` of the grid's element).
 - **Two rules of the `Kit` moduledoc.** The place a nested table is moved
   into must be in the page before the patch that opens it: a kit that
   draws after LiveView's patch draws the place of every line of an expanded
@@ -393,7 +409,7 @@ write through the server's checks. What such a kit relies on is public:
 The demo checks the JS entries in the browser
 ([`demo/e2e/contract.spec.ts`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/e2e/contract.spec.ts)):
 the grid's hook mounted by hand on a grid of `div`s and a pagination's beside it,
-and `ids.js` against the server's ids. Its hook mounts the grid so:
+and `ids.js` and `geometry.js` against the server's. Its hook mounts the grid so:
 
 <!-- source: demo/assets/js/mounted_grid.js -->
 ```javascript
@@ -523,7 +539,13 @@ changed.
   field of your own spreads each entry of `hidden` on an
   `<input type="hidden">`, names the kind's choice `kind_name` with the id
   `kind_id`, and passes the ids to the group bundles, in place of the names
-  and ids it wrote itself.
+  and ids it wrote itself. And it gives `grid`, `row`, `footer` and
+  `full_view` the `geometry` in place of `lead` and `acting?` (its
+  `trail`), `label_column` and `editing?` as fields of `model`;
+  `Attrs.table/6` (in place of `/8`), `Attrs.grid/6`, `Attrs.spanning/3` and
+  `Attrs.summaries/3` take the geometry, and `Attrs.colcount/3` and
+  `Attrs.filter_row?/1` are gone: a grid of your own reads `colcount` and
+  `header_rows`.
 
 ## Not in the first version
 

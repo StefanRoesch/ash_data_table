@@ -142,17 +142,13 @@ defmodule AshDataTable.Item do
 
   @doc """
   The item of a record's row, of a `Present.Row` (scrubbed): `model` the
-  table's, `table` what the table says of all its rows: `time_zone` (the
-  page's), `editing?` (whether the table offers editing at all) and
-  `selecting` (`:single`, `:multi` or nil). Its texts are said in the
+  table's (its `editing?`: whether the table offers editing at all),
+  `table` what the table says of all its rows: `time_zone` (the page's)
+  and `selecting` (`:single`, `:multi` or nil). Its texts are said in the
   locale of this process.
   """
   @spec row(map, struct, map) :: t
-  def row(model, %Present.Row{} = row, %{
-        time_zone: zone,
-        editing?: editing?,
-        selecting: selecting
-      }) do
+  def row(model, %Present.Row{} = row, %{time_zone: zone, selecting: selecting}) do
     %{
       dom_id: row.dom_id,
       key: row.key,
@@ -168,7 +164,7 @@ defmodule AshDataTable.Item do
         }),
       cells:
         Map.new(model.columns, fn column ->
-          {column.name, cell(column, row.cells[column.name], row.dom_id, zone, editing?)}
+          {column.name, cell(column, row.cells[column.name], row.dom_id, zone, model.editing?)}
         end)
     }
   end

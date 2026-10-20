@@ -101,36 +101,43 @@ defmodule AshDataTable.ModelTest do
     end
   end
 
+  # the label column is a fact of the model a person meets
+  defp met(model), do: Model.for_actor(model, authorize?: false)
+
+  # what `for_actor/2` left of a model, without the facts it adds of it
+  # (`editing?`, `label_column`)
+  defp unmet(model), do: %{model | editing?: false, label_column: nil}
+
   describe "the columns a person can hide" do
     test "are all but the column of the label, in the table's order" do
-      model = Model.build(AshDataTable.Test.Private.Minute)
+      model = met(Model.build(AshDataTable.Test.Private.Minute))
 
       assert column_names(model) == [:title, :shouted, :folder]
-      assert Model.label_column(model).name == :title
+      assert model.label_column.name == :title
       refute Model.keeps_one?(model)
     end
 
     test "the label's column stays wherever it stands among the columns" do
-      model = Model.build(AshDataTable.Test.Referring.Member)
+      model = met(Model.build(AshDataTable.Test.Referring.Member))
 
       assert column_names(model) == [:id, :name, :away?]
-      assert Model.label_column(model).name == :name
+      assert model.label_column.name == :name
       refute Model.keeps_one?(model)
     end
 
     test "are all of them in a table without a label, of which one has to stay" do
-      model = Model.build(AshDataTable.Test.Task)
+      model = met(Model.build(AshDataTable.Test.Task))
 
-      assert Model.label_column(model) == nil
+      assert model.label_column == nil
       assert Model.keeps_one?(model)
     end
 
     test "are all of them where the table has no column of its label" do
       model = Model.build(AshDataTable.Test.Private.Minute)
       # as for a person who does not see the label's field
-      model = %{model | columns: Enum.reject(model.columns, &(&1.name == :title))}
+      model = met(%{model | columns: Enum.reject(model.columns, &(&1.name == :title))})
 
-      assert Model.label_column(model) == nil
+      assert model.label_column == nil
       assert Model.keeps_one?(model)
     end
   end
@@ -1729,14 +1736,14 @@ defmodule AshDataTable.ModelTest do
     end
 
     test "are all of the table's without authorization", %{model: model} do
-      assert Model.for_actor(model, actor: @viewer, authorize?: false) == model
-      assert Model.for_actor(model, authorize?: false) == model
+      assert unmet(Model.for_actor(model, actor: @viewer, authorize?: false)) == model
+      assert unmet(Model.for_actor(model, authorize?: false)) == model
     end
 
     test "are all of the table's for a resource without policies" do
       model = Model.build(AshDataTable.Test.Editing)
 
-      assert Model.for_actor(model, actor: nil) == model
+      assert unmet(Model.for_actor(model, actor: nil)) == model
     end
 
     test "leave the model built from the resource as it was", %{model: model} do
@@ -2057,7 +2064,7 @@ defmodule AshDataTable.ModelTest do
     end
 
     test "are all of the table's without authorization", %{model: model} do
-      assert Model.for_actor(model, actor: nil, authorize?: false) == model
+      assert unmet(Model.for_actor(model, actor: nil, authorize?: false)) == model
     end
   end
 
@@ -2214,7 +2221,7 @@ defmodule AshDataTable.ModelTest do
     end
 
     test "are all of the table's without authorization", %{model: model} do
-      assert Model.for_actor(model, actor: nil, authorize?: false) == model
+      assert unmet(Model.for_actor(model, actor: nil, authorize?: false)) == model
     end
 
     test "do not ask for the label of a destination the person cannot read", %{model: model} do
@@ -3480,7 +3487,7 @@ defmodule AshDataTable.ModelTest do
     end
 
     test "are all the model's without authorization", %{model: model} do
-      assert Model.for_actor(model, actor: nil, authorize?: false) == model
+      assert unmet(Model.for_actor(model, actor: nil, authorize?: false)) == model
     end
   end
 

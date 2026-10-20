@@ -22,17 +22,17 @@ defmodule DemoWeb.DivKit do
 
   def grid(assigns) do
     ~H"""
-    <form :if={Attrs.filter_row?(@model)} {Attrs.filters(@id, @myself)}></form>
+    <form :if={@geometry.header_rows == 2} {Attrs.filters(@id, @myself)}></form>
     <div {Attrs.sender(@id)}></div>
     <a {Attrs.skip(@id)} class="link absolute z-30 bg-base-100 not-focus:sr-only">
       {@texts.skip_table}
     </a>
     <div
-      {Attrs.grid(@id, @myself, @lead, @selecting, @choose, @texts)}
+      {Attrs.grid(@id, @myself, @geometry, @selecting, @choose, @texts)}
       class={@kit.class(:grid, %{nested?: @nested?})}
     >
       <div
-        {Attrs.table(@id, @label, @labelledby, @model, @page, @summarised?, Attrs.colcount(@model, @lead, @acting?), @busy? or not is_nil(@running))}
+        {Attrs.table(@id, @label, @labelledby, @geometry, @page, @busy? or not is_nil(@running))}
         class="table w-full border-collapse text-sm"
         data-kit="div"
       >
@@ -53,7 +53,7 @@ defmodule DemoWeb.DivKit do
             </div>
             <div
               :if={@expandable?}
-              {Attrs.header("#{@id}-expander-head", @lead)}
+              {Attrs.header("#{@id}-expander-head", @geometry.lead)}
               class="table-cell w-0 px-2 py-1"
             >
               <span class="sr-only">{@texts.related_records}</span>
@@ -64,34 +64,38 @@ defmodule DemoWeb.DivKit do
               kit={@kit}
               id={Ids.header_cell(@id, column.name)}
               column={column}
-              colindex={@lead + index + 1}
+              colindex={@geometry.lead + index + 1}
               attrs={
                 Attrs.column_header(
                   column,
                   @state.sort,
-                  @model.sticky_label? and column == @label_column
+                  @model.sticky_label? and column == @model.label_column
                 )
               }
               button={column.sortable? && Attrs.sort(@id, column, @myself)}
               sort={@state.sort}
               resizer={"#{@id}-resize-#{column.name}"}
-              texts={Words.texts(:header_cell, %{column: column, editing?: @editing?})}
-              messages={Words.messages(:header_cell, %{column: column, editing?: @editing?})}
+              texts={Words.texts(:header_cell, %{column: column, editing?: @model.editing?})}
+              messages={Words.messages(:header_cell, %{column: column, editing?: @model.editing?})}
             />
             <div
-              :if={@acting?}
-              {Attrs.header("#{@id}-actions-head", length(@model.columns) + @lead + 1)}
+              :if={@geometry.trail == 1}
+              {Attrs.header("#{@id}-actions-head", @geometry.colcount)}
               class="table-cell px-2 py-1"
             >
               {@texts.actions}
             </div>
           </div>
-          <div :if={Attrs.filter_row?(@model)} {Attrs.row(Ids.filter_row(@id), "2")} class="table-row">
+          <div
+            :if={@geometry.header_rows == 2}
+            {Attrs.row(Ids.filter_row(@id), "2")}
+            class="table-row"
+          >
             <div :if={@selecting} {Attrs.empty_cell("#{@id}-select-filter", "1")} class="table-cell">
             </div>
             <div
               :if={@expandable?}
-              {Attrs.empty_cell("#{@id}-expander-filter", @lead)}
+              {Attrs.empty_cell("#{@id}-expander-filter", @geometry.lead)}
               class="table-cell"
             >
             </div>
@@ -101,7 +105,7 @@ defmodule DemoWeb.DivKit do
               kit={@kit}
               id={"#{@id}-filter-#{column.name}"}
               column={column}
-              colindex={@lead + index + 1}
+              colindex={@geometry.lead + index + 1}
               table={@id}
               form={Ids.filters(@id)}
               filter={@filters[column.name].filter}
@@ -110,8 +114,8 @@ defmodule DemoWeb.DivKit do
               target={@myself}
             />
             <div
-              :if={@acting?}
-              {Attrs.empty_cell("#{@id}-actions-filter", length(@model.columns) + @lead + 1)}
+              :if={@geometry.trail == 1}
+              {Attrs.empty_cell("#{@id}-actions-filter", @geometry.colcount)}
               class="table-cell"
             >
             </div>
@@ -131,7 +135,7 @@ defmodule DemoWeb.DivKit do
               id={@id}
               row={row}
               model={@model}
-              colspan={length(@model.columns) + @lead + if(@acting?, do: 1, else: 0)}
+              colspan={@geometry.colcount}
               myself={@myself}
             /><Kit.part
               :if={!Attrs.detail?(row)}
@@ -141,13 +145,11 @@ defmodule DemoWeb.DivKit do
               row={row}
               id={@id}
               columns={@model.columns}
-              label={@label_column && @label_column.name}
+              label={@model.label_column && @model.label_column.name}
               actions={@model.actions}
-              lead={@lead}
+              geometry={@geometry}
               selecting={@selecting}
               expandable?={@expandable?}
-              acting?={@acting?}
-              editing?={@editing?}
               open={@open}
               asks?={@asks?}
               time_zone={@time_zone}
@@ -158,12 +160,11 @@ defmodule DemoWeb.DivKit do
           :if={@nested? or @summarised?}
           part={:footer}
           kit={@kit}
-          acting?={@acting?}
           expandable?={@expandable?}
           full_view={@full_view}
+          geometry={@geometry}
           id={@id}
           label={@label}
-          lead={@lead}
           model={@model}
           myself={@myself}
           nested?={@nested?}
@@ -190,7 +191,7 @@ defmodule DemoWeb.DivKit do
           column={column}
         />
       </template>
-      <template :if={@editing? or @acting?} id={"#{@id}-failure"} phx-no-format><Kit.part part={:failure} kit={@kit} id={nil} message={Words.message(:failure, %{message: ""})} text={Words.text(:failure, %{message: ""})} /></template>
+      <template :if={@model.editing? or @geometry.trail == 1} id={"#{@id}-failure"} phx-no-format><Kit.part part={:failure} kit={@kit} id={nil} message={Words.message(:failure, %{message: ""})} text={Words.text(:failure, %{message: ""})} /></template>
     </div>
     <div {Attrs.scrollbar(@id)} class="fixed z-10 overflow-x-scroll overflow-y-hidden">
       <div class="h-px"></div>
@@ -253,22 +254,22 @@ defmodule DemoWeb.DivKit do
       :if={@expandable?}
       id={Ids.expander(@dom_id)}
       role="cell"
-      aria-colindex={@lead}
+      aria-colindex={@geometry.lead}
       data-expander
       class="table-cell px-2 py-1"
     ><button type="button" aria-expanded={to_string(@row.open)} aria-label={@texts.related_records}></button></div><div
       :for={{column, index} <- Enum.with_index(@columns)}
       id={Ids.cell(@dom_id, column.name)}
       role={if column.name == @label, do: "rowheader", else: "cell"}
-      aria-colindex={@lead + index + 1}
+      aria-colindex={@geometry.lead + index + 1}
       {Attrs.cell(column, @row.cells[column.name])}
       class="table-cell px-2 py-1"
     ><Kit.cell kit={@kit} id={Ids.cell(@dom_id, column.name)} column={column} cell={@row.cells[column.name]} time_zone={@time_zone} /></div><Kit.part
-      :if={@acting?}
+      :if={@geometry.trail == 1}
       part={:actions_cell}
       kit={@kit}
       id={Ids.actions_cell(@dom_id)}
-      colindex={length(@columns) + @lead + 1}
+      colindex={@geometry.colcount}
       row={@row}
       actions={@actions}
       open={@open}
@@ -378,7 +379,7 @@ defmodule DemoWeb.DivKit do
           not (@nested? and (@pages? or (not is_nil(@page) and not is_nil(@full_view))))
       }
     >
-      <div :if={@summarised? and @page} {Attrs.summaries(@id, @model, @page)} class="table-row">
+      <div :if={@summarised? and @page} {Attrs.summaries(@id, @geometry, @page)} class="table-row">
         <div
           :if={@selecting}
           id={"#{@id}-summaries-select"}
@@ -391,7 +392,7 @@ defmodule DemoWeb.DivKit do
           :if={@expandable?}
           id={"#{@id}-summaries-expander"}
           role="cell"
-          aria-colindex={@lead}
+          aria-colindex={@geometry.lead}
           class="table-cell"
         >
         </div>
@@ -401,7 +402,7 @@ defmodule DemoWeb.DivKit do
           kit={@kit}
           id={"#{@id}-summary-#{column.name}"}
           column={column}
-          colindex={@lead + index + 1}
+          colindex={@geometry.lead + index + 1}
           summary={@summary && @summary[column.name]}
           summing?={@summing?}
           time_zone={@time_zone}
@@ -418,10 +419,10 @@ defmodule DemoWeb.DivKit do
           locale={Words.locale()}
         />
         <div
-          :if={@acting?}
+          :if={@geometry.trail == 1}
           id={"#{@id}-summaries-actions"}
           role="cell"
-          aria-colindex={length(@model.columns) + @lead + 1}
+          aria-colindex={@geometry.colcount}
           class="table-cell"
         >
         </div>
@@ -432,7 +433,7 @@ defmodule DemoWeb.DivKit do
         class="table-row"
       >
         <div
-          {Attrs.spanning("#{@id}-pager", Attrs.colcount(@model, @lead, @acting?), %{"data-pager" => true})}
+          {Attrs.spanning("#{@id}-pager", @geometry, %{"data-pager" => true})}
           class="table-cell px-2 py-1"
         >
           <Kit.part
@@ -470,11 +471,10 @@ defmodule DemoWeb.DivKit do
         :if={@nested? and not is_nil(@page) and not is_nil(@full_view)}
         part={:full_view}
         kit={@kit}
-        acting?={@acting?}
         full_view={@full_view}
+        geometry={@geometry}
         id={@id}
         label={@label}
-        lead={@lead}
         model={@model}
         texts={Words.texts(:full_view, %{label: @label})}
         messages={Words.messages(:full_view, %{label: @label})}
@@ -504,7 +504,7 @@ defmodule DemoWeb.DivKit do
     ~H"""
     <div {Attrs.row("#{@id}-view-row")} class="table-row">
       <div
-        {Attrs.spanning("#{@id}-view", Attrs.colcount(@model, @lead, @acting?), %{"data-view" => true})}
+        {Attrs.spanning("#{@id}-view", @geometry, %{"data-view" => true})}
         class="table-cell px-2 py-1"
       >
         <.link

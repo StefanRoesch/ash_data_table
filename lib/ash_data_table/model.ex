@@ -28,7 +28,11 @@ defmodule AshDataTable.Model do
   #   * `max_depth`, how deep a person can expand from this table when it is
   #     the one on the page;
   #   * `via`, the relationship a nested table is reached through, nil for a
-  #     table of its own.
+  #     table of its own;
+  #   * `editing?` and `label_column`, facts of the model a person meets,
+  #     set by `for_actor/2` (false and nil before): whether a column of it
+  #     can be edited, and the column of the attribute a record is called by
+  #     (`label_column/1`), nil where the table has none.
   #
   # ## Columns
   #
@@ -312,7 +316,9 @@ defmodule AshDataTable.Model do
     on_forbidden: :not_found,
     live?: false,
     sticky_label?: false,
-    time_zone: "Etc/UTC"
+    time_zone: "Etc/UTC",
+    editing?: false,
+    label_column: nil
   ]
 
   @type t :: %__MODULE__{
@@ -334,7 +340,9 @@ defmodule AshDataTable.Model do
           via: Relationship.t() | nil,
           live?: boolean,
           sticky_label?: boolean,
-          time_zone: AshDataTable.Zone.t()
+          time_zone: AshDataTable.Zone.t(),
+          editing?: boolean,
+          label_column: Column.t() | nil
         }
 
   @doc """
@@ -499,7 +507,7 @@ defmodule AshDataTable.Model do
     * `:actor` and `:tenant` - used when no scope is given. Without an actor
       nobody is asking: a person who is not logged in;
     * `:authorize?` - defaults to `true`. With `false` nothing is asked and
-      the model comes back as it is.
+      the model comes back with all it has (and the facts below).
 
   The table adds no rule of its own. It asks Ash, once per call and without
   reading a record or running a query:
@@ -550,6 +558,14 @@ defmodule AshDataTable.Model do
       when the action runs on several records at once (`bulk_inputs/1`).
 
   A question Ash cannot answer is taken as "never".
+
+  The model it gives says, besides, what follows from that for the
+  person: `editing?`, whether a column of it can be edited, and
+  `label_column`, the column of the attribute a record is called by (the
+  resource's `label_field`), if the table has it for them: the column
+  that cannot be hidden, and the one that stays in view when the table
+  scrolls sideways where the table says `sticky_label? true`. Both with
+  `authorize?: false` too.
   """
   @spec for_actor(%__MODULE__{}, keyword) :: t
   def for_actor(%__MODULE__{} = model, opts) do
@@ -611,10 +627,20 @@ defmodule AshDataTable.Model do
 
       %{model | columns: columns, relationships: relationships, arguments: arguments}
       |> runnable(opts)
+      |> met()
     else
-      model
+      met(model)
     end
   end
+
+  # What follows for the person from the model they meet, of its columns
+  # as they are now (`supply/2` gives them their arguments again).
+  defp met(model),
+    do: %{
+      model
+      | editing?: Enum.any?(model.columns, & &1.editable?),
+        label_column: label_column(model)
+    }
 
   # The row actions, the table actions and the create action as this person
   # meets them: without an action they can never run, and without the
@@ -792,7 +818,8 @@ defmodule AshDataTable.Model do
         %{column | arguments: Map.merge(column.fixed, asked)}
       end
 
-    %{model | read_arguments: read, columns: columns}
+    # the label column is one of the columns: in step with them
+    met(%{model | read_arguments: read, columns: columns})
   end
 
   @doc """
@@ -928,18 +955,14 @@ defmodule AshDataTable.Model do
   @doc """
   Whether nothing but a rule keeps the table from being left without a
   column: it has no column of its label, which stays whatever is hidden.
+  Of the model `for_actor/2` gives.
   """
   @spec keeps_one?(t) :: boolean
-  def keeps_one?(%__MODULE__{} = model), do: is_nil(label_column(model))
+  def keeps_one?(%__MODULE__{label_column: label_column}), do: is_nil(label_column)
 
-  @doc """
-  The column of the attribute a record is called by (the resource's
-  `label_field`), if the table has it: the column that cannot be hidden, and
-  the one that stays in view when the table scrolls sideways where the table
-  says `sticky_label? true` (the model's `sticky_label?`).
-  """
-  @spec label_column(t) :: Column.t() | nil
-  def label_column(%__MODULE__{resource: resource, columns: columns}) do
+  # The column of the attribute a record is called by, of the columns the
+  # model has (`for_actor/2`'s `label_column`).
+  defp label_column(%__MODULE__{resource: resource, columns: columns}) do
     case Referencing.label_field(resource) do
       {:ok, %{name: name}} ->
         Enum.find(columns, &(&1.kind == :attribute and &1.name == name))

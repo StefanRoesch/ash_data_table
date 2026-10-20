@@ -30,26 +30,12 @@ defmodule DemoWeb.ReactKit.Props do
   def scrollbar(id), do: bundle(Attrs.scrollbar(id))
 
   @doc "The grid's element (`Attrs.grid/6`)."
-  def grid(id, myself, lead, selecting, choose, texts),
-    do: bundle(Attrs.grid(id, myself, lead, selecting, choose, texts))
+  def grid(id, myself, geometry, selecting, choose, texts),
+    do: bundle(Attrs.grid(id, myself, geometry, selecting, choose, texts))
 
-  @doc "The `role=table` element (`Attrs.table/8`)."
-  def table(id, label, labelledby, model, page, summarised?, lead, acting?, busy?, running) do
-    colcount = Attrs.colcount(model, lead, acting?)
-
-    bundle(
-      Attrs.table(
-        id,
-        label,
-        labelledby,
-        model,
-        page,
-        summarised?,
-        colcount,
-        busy? or not is_nil(running)
-      )
-    )
-  end
+  @doc "The `role=table` element (`Attrs.table/6`)."
+  def table(id, label, labelledby, geometry, page, busy?, running),
+    do: bundle(Attrs.table(id, label, labelledby, geometry, page, busy? or not is_nil(running)))
 
   @doc """
   The header: its row, the headers of the boxes, the expanders and the
@@ -57,19 +43,7 @@ defmodule DemoWeb.ReactKit.Props do
   button (`Attrs.sort/3`, nil where it does not sort), the mark of the sort
   and the lock's name (`texts.read_only`).
   """
-  def head(
-        id,
-        model,
-        state,
-        label_column,
-        lead,
-        selecting,
-        expandable?,
-        acting?,
-        editing?,
-        myself,
-        texts
-      ) do
+  def head(id, model, state, geometry, selecting, expandable?, myself, texts) do
     %{
       row: bundle(Attrs.row(Ids.head_row(id), "1")),
       select:
@@ -79,28 +53,29 @@ defmodule DemoWeb.ReactKit.Props do
           ),
       select_page: selecting == :multi && texts.select_page,
       select_row: selecting == :single && texts.select_row,
-      expander: expandable? && bundle(Attrs.header("#{id}-expander-head", lead)),
+      expander: expandable? && bundle(Attrs.header("#{id}-expander-head", geometry.lead)),
       actions:
-        acting? && bundle(Attrs.header("#{id}-actions-head", length(model.columns) + lead + 1)),
+        geometry.trail == 1 && bundle(Attrs.header("#{id}-actions-head", geometry.colcount)),
       columns:
         for {column, index} <- Enum.with_index(model.columns) do
           %{
             id: Ids.header_cell(id, column.name),
             name: column.name,
             label: column.label,
-            colindex: lead + index + 1,
+            colindex: geometry.lead + index + 1,
             attrs:
               bundle(
                 Attrs.column_header(
                   column,
                   state.sort,
-                  model.sticky_label? and column == label_column
+                  model.sticky_label? and column == model.label_column
                 )
               ),
             sort: column.sortable? && bundle(Attrs.sort(id, column, myself)),
             mark: mark(state.sort, column),
             resizer: "#{id}-resize-#{column.name}",
-            read_only: Words.texts(:header_cell, %{column: column, editing?: editing?}).read_only
+            read_only:
+              Words.texts(:header_cell, %{column: column, editing?: model.editing?}).read_only
           }
         end
     }
@@ -111,28 +86,28 @@ defmodule DemoWeb.ReactKit.Props do
   defp mark(_sort, _column), do: ""
 
   @doc """
-  The filter row, nil where the table has none (`Attrs.filter_row?/1`):
+  The filter row, nil where the table has none (the geometry's `header_rows` 1):
   its row, its empty cells, and per column its cell and, where the column
   filters, what its filter shows (`filters`, which `AshDataTable.Live.Drawing`
   gives the grid: `filter`, `rejected?`, `applied?`) and says.
   """
-  def filters(id, model, filters, lead, selecting, expandable?, acting?, myself) do
-    if Attrs.filter_row?(model) do
+  def filters(id, model, filters, geometry, selecting, expandable?, myself) do
+    if geometry.header_rows == 2 do
       %{
         row: bundle(Attrs.row(Ids.filter_row(id), "2")),
         form: Ids.filters(id),
         select: selecting && bundle(Attrs.empty_cell("#{id}-select-filter", "1")),
-        expander: expandable? && bundle(Attrs.empty_cell("#{id}-expander-filter", lead)),
+        expander: expandable? && bundle(Attrs.empty_cell("#{id}-expander-filter", geometry.lead)),
         actions:
-          acting? &&
-            bundle(Attrs.empty_cell("#{id}-actions-filter", length(model.columns) + lead + 1)),
+          geometry.trail == 1 &&
+            bundle(Attrs.empty_cell("#{id}-actions-filter", geometry.colcount)),
         columns:
           for {column, index} <- Enum.with_index(model.columns) do
             shown = filters[column.name]
 
             %{
               id: "#{id}-filter-#{column.name}",
-              colindex: lead + index + 1,
+              colindex: geometry.lead + index + 1,
               filter: column.operators != [] && filter(id, column, shown, myself)
             }
           end
@@ -217,20 +192,21 @@ defmodule DemoWeb.ReactKit.Props do
 
   @doc """
   What every row is drawn with besides its item: the columns before the
-  data columns (`lead`), whether its rows are selected, expanded and have
-  actions, the label column (whose cell is the row's header), the row
-  actions with what varies of their buttons (`Attrs.action/2`), "Open", the
-  relationships of its lines and how wide a line is.
+  data columns (the geometry's `lead`), whether its rows are selected,
+  expanded and have actions, the label column (whose cell is the row's
+  header), the row actions with what varies of their buttons
+  (`Attrs.action/2`), "Open", the relationships of its lines, how wide a
+  line is and where the actions cell stands (the geometry's `colcount`).
   """
-  def row(id, model, label_column, lead, selecting, expandable?, acting?, open, asks?, nested?) do
+  def row(id, model, geometry, selecting, expandable?, open, asks?, nested?) do
     %{
       id: id,
-      lead: lead,
+      lead: geometry.lead,
       selecting: selecting,
       expandable: expandable?,
-      acting: acting?,
+      acting: geometry.trail == 1,
       nested: nested?,
-      label: label_column && label_column.name,
+      label: model.label_column && model.label_column.name,
       open: open,
       actions:
         for action <- model.actions do
@@ -241,8 +217,8 @@ defmodule DemoWeb.ReactKit.Props do
           relationship <- model.relationships,
           do: %{name: relationship.name, label: relationship.label}
         ),
-      colspan: Attrs.colcount(model, lead, acting?),
-      actions_colindex: length(model.columns) + lead + 1
+      colspan: geometry.colcount,
+      actions_colindex: geometry.colcount
     }
   end
 
@@ -304,10 +280,9 @@ defmodule DemoWeb.ReactKit.Props do
         model,
         page,
         state,
-        lead,
+        geometry,
         selecting,
         expandable?,
-        acting?,
         pages?,
         row_count,
         label,
@@ -328,12 +303,12 @@ defmodule DemoWeb.ReactKit.Props do
       summaries:
         summarised? && page &&
           %{
-            row: bundle(Attrs.summaries(id, model, page)),
+            row: bundle(Attrs.summaries(id, geometry, page)),
             select: selecting && %{id: "#{id}-summaries-select", colindex: 1},
-            expander: expandable? && %{id: "#{id}-summaries-expander", colindex: lead},
+            expander: expandable? && %{id: "#{id}-summaries-expander", colindex: geometry.lead},
             actions:
-              acting? &&
-                %{id: "#{id}-summaries-actions", colindex: length(model.columns) + lead + 1},
+              geometry.trail == 1 &&
+                %{id: "#{id}-summaries-actions", colindex: geometry.colcount},
             cells:
               for {column, index} <- Enum.with_index(model.columns) do
                 held = summary && summary[column.name]
@@ -341,7 +316,7 @@ defmodule DemoWeb.ReactKit.Props do
 
                 %{
                   id: "#{id}-summary-#{column.name}",
-                  colindex: lead + index + 1,
+                  colindex: geometry.lead + index + 1,
                   attrs: bundle(Attrs.summary(column, summing?)),
                   kind: column.summary && texts.kind,
                   not_available: texts.not_available,
@@ -363,12 +338,7 @@ defmodule DemoWeb.ReactKit.Props do
       pager:
         nested? && pages? &&
           %{
-            cell:
-              bundle(
-                Attrs.spanning("#{id}-pager", Attrs.colcount(model, lead, acting?), %{
-                  "data-pager" => true
-                })
-              ),
+            cell: bundle(Attrs.spanning("#{id}-pager", geometry, %{"data-pager" => true})),
             row: bundle(Attrs.row("#{id}-foot-row")),
             pagination:
               pagination(
@@ -391,12 +361,7 @@ defmodule DemoWeb.ReactKit.Props do
         nested? && full_view? &&
           %{
             row: bundle(Attrs.row("#{id}-view-row")),
-            cell:
-              bundle(
-                Attrs.spanning("#{id}-view", Attrs.colcount(model, lead, acting?), %{
-                  "data-view" => true
-                })
-              ),
+            cell: bundle(Attrs.spanning("#{id}-view", geometry, %{"data-view" => true})),
             id: "#{id}-full-view",
             path: full_view,
             texts: Words.texts(:full_view, %{label: label})
@@ -414,13 +379,12 @@ defmodule DemoWeb.ReactKit.Props do
   `Attrs.table_action/3`), offered beside rows only and not by a table
   limited to related records, which offers them above its grid.
   """
-  def heading(id, heading, label, label_column, model, offered, page, related, nested?, myself) do
+  def heading(id, heading, label, model, offered, page, related, nested?, myself) do
     acts? = not is_nil(page) and (not is_nil(model.create) or offered != []) and is_nil(related)
 
     %{
       id: "#{id}-header",
-      shown:
-        nested? or !!heading or columns?(model, label_column) or model.arguments != [] or acts?,
+      shown: nested? or !!heading or columns?(model) or model.arguments != [] or acts?,
       nested: nested?,
       name:
         heading && not nested? &&
@@ -444,19 +408,19 @@ defmodule DemoWeb.ReactKit.Props do
   person can hide (one column, or only the label column): what
   `columns_list/6` gives of the columns but the label column.
   """
-  def heading_columns(id, model, label_column, state, label, nested?) do
-    if columns?(model, label_column) do
-      hideable = hideable(model, label_column)
+  def heading_columns(id, model, state, label, nested?) do
+    if columns?(model) do
+      hideable = hideable(model)
 
       columns_list(
         id,
         hideable,
-        label_column,
-        is_nil(label_column),
+        model.label_column,
+        is_nil(model.label_column),
         state,
         Words.texts(:columns, %{
           columns: hideable,
-          label_column: label_column,
+          label_column: model.label_column,
           state: state,
           label: label,
           nested?: nested?
@@ -465,11 +429,10 @@ defmodule DemoWeb.ReactKit.Props do
     end
   end
 
-  defp columns?(model, label_column),
-    do: length(model.columns) > 1 and hideable(model, label_column) != []
+  defp columns?(model), do: length(model.columns) > 1 and hideable(model) != []
 
-  defp hideable(model, nil), do: model.columns
-  defp hideable(model, label_column), do: List.delete(model.columns, label_column)
+  defp hideable(%{label_column: nil} = model), do: model.columns
+  defp hideable(model), do: List.delete(model.columns, model.label_column)
 
   @doc """
   The argument line (the part `argument_line`), nil for a table without

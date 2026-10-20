@@ -199,9 +199,9 @@ defmodule AshDataTable.Kit do
     * `heading` - the heading line (`ID-header`): the table's name, the
       `columns` part, the `argument_line` part, and its create
       (`ID-create`) and table actions (`data-table-action`): `id`,
-      `heading`, `label`, `label_column` (the `Model.Column` a record is
-      called by, nil for none: the one column `columns` cannot hide),
-      `model`, `offered` (the table actions), `page`, `related`, `state`
+      `heading`, `label`, `model` (its `label_column`, the `Model.Column`
+      a record is called by, nil for none: the one column `columns` cannot
+      hide), `offered` (the table actions), `page`, `related`, `state`
       (for its `columns`), `arguments` (as `argument_line`'s), `nested?`,
       `myself`. A nested
       table's is drawn in a portal of its own onto its line
@@ -264,8 +264,9 @@ defmodule AshDataTable.Kit do
       before the header row (`Attrs.skip/1`, seen only while it has the
       focus, its text `texts.skip_table`), the `role=table` element `ID-table`
       (`data-first-row`) with `ID-head` and its two rows, the filter row's
-      form `ID-filters` (the filter row and its form only where
-      `Attrs.filter_row?/1` says so: else `ID-head` has one row), a `role=rowgroup` element per item of the stream
+      form `ID-filters` (the filter row and its form only where the
+      `geometry`'s `header_rows` is 2: else `ID-head` has one row), a
+      `role=rowgroup` element per item of the stream
       `rows` (with the item's `attrs`), the `footer`, a
       `<template>` per editable column (`Attrs.editor_template/3`:
       `ID-editor-FIELD`, `data-editor`, `data-commit`, and `data-confirm`
@@ -277,10 +278,10 @@ defmodule AshDataTable.Kit do
       LiveView's, outside any element whose content a client framework
       owns (a React island): LiveView mounts its hook, the grid's events
       are pushed through it, and LiveView locks it, never the grid. Given:
-      `id`, `model`, `rows`, `page`, `state`, `filters`, `pages?`, `label`,
-      `labelledby`, `label_column`, `lead`, `selecting`, `choose`,
-      `open`, `asks?`, `acting?`, `editing?`, `expandable?`,
-      `busy?`, `running` (as `selection_line`'s), `row_count`, `full_view`, `summarised?`,
+      `id`, `model` (its `label_column` and `editing?` among it), `rows`,
+      `page`, `state`, `filters`, `pages?`, `label`, `labelledby`,
+      `geometry` (where the columns and rows stand), `selecting`, `choose`,
+      `open`, `asks?`, `expandable?`, `busy?`, `running` (as `selection_line`'s), `row_count`, `full_view`, `summarised?`,
       `summary`, `summing?`, `time_zone`, `nested?`, `myself`, and
       `editors`: by column name, of each editable column whose cell has an
       editor in it (the kit's `editor`, or its component's), what the
@@ -352,8 +353,8 @@ defmodule AshDataTable.Kit do
       `table`, `applied?`, `rejected?`, `target`.
     * `row` - a record's row: `id`, `dom_id`, `row` (its item,
       `AshDataTable.Item`), `columns`, `label` (the name of the column a
-      record is called by, or nil), `lead`, `selecting`, `expandable?`,
-      `editing?`, `acting?`, `actions`, `asks?`, `open`, `time_zone`:
+      record is called by, or nil), `geometry`, `selecting`, `expandable?`,
+      `actions`, `asks?`, `open`, `time_zone`:
       `role="row"`, `aria-rowindex`; its cells `role="cell"` (the `label`
       column's `role="rowheader"`, which names the row), `aria-colindex`,
       the box's `data-selector` (`Ids.selector/1`), the expander's
@@ -392,7 +393,7 @@ defmodule AshDataTable.Kit do
     * `footer` - `ID-foot`, with the row of the summaries (`ID-summaries`,
       `data-summaries`, a `summary_cell` per column), and in a nested table
       its pages (`data-pager`) and the `full_view`: `id`, `model`, `page`,
-      `state`, `lead`, `selecting`, `expandable?`, `acting?`, `pages?`,
+      `state`, `geometry`, `selecting`, `expandable?`, `pages?`,
       `row_count`, `label`, `full_view`, `summarised?`, `summary`,
       `summing?`, `time_zone`, `nested?`, `myself`.
     * `summary_cell` - `id`, `column`, `colindex`, `summary` (`{:ok,
@@ -400,7 +401,7 @@ defmodule AshDataTable.Kit do
       `role="cell"`, `aria-colindex`.
     * `full_view` - the link to a nested table's full view (`data-view`,
       `ID-full-view`): `id`, `full_view` (its path), `label`, `model`,
-      `lead`, `acting?`.
+      `geometry` (the link's cell spans its `colcount`).
     * `editor` - the editor of a column in its template, for a single
       value (an array, a map cell and a union are edited in the panel, a
       reference in the picker): one control, `data-control` where there
@@ -593,6 +594,21 @@ defmodule AshDataTable.Kit do
   the record a table is limited to), `full_view` (a path) and `running`
   (an `AshDataTable.Model.Action`, or nil).
 
+  ### `AshDataTable.Geometry`
+
+  Where the columns and rows stand in the grid (`geometry`), as the table
+  counts them (`aria-colindex`, `aria-rowindex`, `aria-colcount`); the
+  module's moduledoc says how each is placed:
+
+    * `lead` - the columns before the data columns (the box at 1, the
+      expander at `lead`; the grid's `data-lead`)
+    * `trail` - 1 where the rows have an actions cell, at `colcount`; else 0
+    * `columns` - the data columns; the one at `index` (from 0) stands at
+      `lead + index + 1`
+    * `colcount` - every column: what a cell that spans the grid spans
+    * `header_rows` - 1, or 2 with the filter row
+    * `summary?` - whether the grid has the footer row of summaries
+
   ### `AshDataTable.Present.Panel`
 
     * `title`, `submit`, `question` - messages (`question` nil for none)
@@ -651,6 +667,10 @@ defmodule AshDataTable.Kit do
     * `live?` - whether it follows live updates
     * `sticky_label?` - a presentation hint: the label column stays in view
     * `time_zone` - the page's zone
+    * `editing?` - whether a column of it can be edited
+    * `label_column` - the `AshDataTable.Model.Column` a record is called
+      by, nil for none: it cannot be hidden, and stays in view where
+      `sticky_label?`
 
   ### `AshDataTable.Model.Column`
 
@@ -842,7 +862,16 @@ defmodule AshDataTable.Kit do
   its `members` hold `hidden` in place of `keys`; `Attrs.add_group/4` and
   `Attrs.remove_group/4` take the button's id and put it into the
   bundle. A kit no longer writes the names or the ids a value made of
-  fields has inside the panel.
+  fields has inside the panel. Stage 9c: the parts `grid`, `row`,
+  `footer` and `full_view` are given `geometry` (an
+  `AshDataTable.Geometry`, where the columns and rows stand) in place of
+  `lead` and `acting?` (its `trail`); `grid` and `heading` are no longer
+  given `label_column`, nor `grid` and `row` `editing?`: both are
+  `model`'s;
+  `Attrs.grid/6`, `Attrs.table/6` (in place of `Attrs.table/8`),
+  `Attrs.spanning/3` and `Attrs.summaries/3` take the geometry, and
+  `Attrs.colcount/3` and `Attrs.filter_row?/1` are gone (its `colcount`,
+  its `header_rows`).
   """
 
   use Phoenix.Component
@@ -1549,7 +1578,11 @@ defmodule AshDataTable.Kit do
         "(hidden; members' hidden in place of keys), of a union kind_id, kind_name and " <>
         "kind_path, and the ids of its buttons (add_id, remove_id, an item's remove_id), which " <>
         "Attrs.add_group/4 and Attrs.remove_group/4 put into their bundles: a kit no longer " <>
-        "writes the names or the ids a value made of fields has inside the panel"
+        "writes the names or the ids a value made of fields has inside the panel; and it gives " <>
+        "grid, row, footer and full_view geometry (an AshDataTable.Geometry) in place of lead " <>
+        "and acting?, label_column and editing? as fields of model, Attrs.table/6 " <>
+        "in place of Attrs.table/8, and Attrs.grid/6, Attrs.spanning/3 and Attrs.summaries/3 " <>
+        "the geometry; Attrs.colcount/3 and Attrs.filter_row?/1 are gone (colcount, header_rows)"
 
   defp changed(_contract), do: "."
 

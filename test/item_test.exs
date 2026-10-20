@@ -18,9 +18,10 @@ defmodule AshDataTable.ItemTest do
   # every sensitive value of the vault (`Vaults.vault/1`), and what was typed for one
   @secrets ~r/tok-123|4711|hunter2|swordfish|letmein|wax|B-7|2027|typed-secret/
 
-  @table %{time_zone: "Etc/UTC", editing?: true, selecting: :multi}
+  @table %{time_zone: "Etc/UTC", selecting: :multi}
 
-  defp model, do: Model.build(Vault)
+  # as the person meets it: whether a column can be edited is the model's
+  defp model, do: Vault |> Model.build() |> Model.for_actor(authorize?: false)
 
   defp item(record, failed \\ nil, more \\ %{}) do
     model = model()
@@ -173,9 +174,9 @@ defmodule AshDataTable.ItemTest do
     assert item(vault()).attrs == %{}
 
     # a table that offers no editing says nothing of it
-    model = model()
+    model = %{model() | editing?: false}
     row = Present.row(model, vault(), %{id: "v", key: "k1", rowindex: 3, names: nil})
-    read_only = Item.row(model, row, %{@table | editing?: false})
+    read_only = Item.row(model, row, @table)
     assert Enum.all?(read_only.cells, fn {_name, cell} -> cell.attrs == %{} end)
   end
 
@@ -212,7 +213,7 @@ defmodule AshDataTable.ItemTest do
     }
 
     test "a yes or no holds its value beside its text, for the mark" do
-      model = %{columns: [@flag], relationships: []}
+      model = %{editing?: true, columns: [@flag], relationships: []}
 
       row = %Present.Row{
         key: "1",
@@ -240,7 +241,7 @@ defmodule AshDataTable.ItemTest do
     }
 
     defp union_cell(value) do
-      model = %{columns: [@union], relationships: []}
+      model = %{editing?: true, columns: [@union], relationships: []}
 
       row = %Present.Row{
         key: "1",

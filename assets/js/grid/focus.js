@@ -3,6 +3,7 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
+import * as geometry from "../geometry.js"
 import {filterRow as filterRowId, head as headId, row as rowId} from "../ids.js"
 import {FOCUSABLE} from "../panel.js"
 import {ACTION, ACTIONS, DIALOG, EXPANDER, GRID, HANDLE, LINE, NESTED, OPEN, OPENED, REVEAL, ROWGROUP, SELECTOR, SELECT_PAGE, TABLE, WHOLE} from "../markers.js"
@@ -19,7 +20,7 @@ export default {
   },
 
   // The number of columns before the first data column.
-  lead() { return Number(this.el.dataset.lead || 0) },
+  lead() { return geometry.lead(this.el) },
 
   // The table itself: the first in this element, as the tables nested
   // in it stand in its cells.
@@ -54,17 +55,16 @@ export default {
   // The server numbers them when it reads a page, and sends a row
   // again only when that row changes: after a row was added at the
   // top or taken out, the others are numbered here, from the first
-  // row's index on, in the order they stand in. The server counts
-  // the same way for the rows it sends later.
+  // row's index on, in the order they stand in (geometry.js, as
+  // `AshDataTable.Geometry` counts the rows it sends later).
   renumber() {
-    const table = this.table()
-    let index = table && Number(table.dataset.firstRow)
-    if (!index) return
-    for (const body of this.records()) {
+    const first = geometry.firstRow(this.el)
+    if (!first) return
+    this.records().forEach((body, n) => {
       const row = firstRow(body)
-      if (row.getAttribute("aria-rowindex") !== String(index)) row.setAttribute("aria-rowindex", String(index))
-      index++
-    }
+      const index = String(geometry.rowindex(first, n))
+      if (row.getAttribute("aria-rowindex") !== index) row.setAttribute("aria-rowindex", index)
+    })
   },
 
   // LiveView puts a stream's items before the other children of its

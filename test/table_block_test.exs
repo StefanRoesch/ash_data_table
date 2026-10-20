@@ -8746,7 +8746,7 @@ defmodule AshDataTable.TableBlockTest do
 
       kept = AshDataTable.Model.build(AshDataTable.TableBlockTest.Sticky, table: :kept)
       assert kept.sticky_label?
-      assert AshDataTable.Model.label_column(kept).name == :name
+      assert AshDataTable.Model.for_actor(kept, authorize?: false).label_column.name == :name
     end
 
     test "on a table of a resource without a `label_field` is an error" do

@@ -8,6 +8,7 @@ defmodule AshDataTable.Live.Core.Panel do
   alias AshDataTable.Act
   alias AshDataTable.Event
   alias AshDataTable.Format
+  alias AshDataTable.Geometry
   alias AshDataTable.GroupValue
   alias AshDataTable.Ids
   alias AshDataTable.Live.Core
@@ -21,7 +22,6 @@ defmodule AshDataTable.Live.Core.Panel do
   alias AshDataTable.Model
   alias AshDataTable.Operation
   alias AshDataTable.Pick
-  alias AshDataTable.Present
   alias AshDataTable.Text
 
   require AshDataTable.Live.Current, as: Current
@@ -655,13 +655,13 @@ defmodule AshDataTable.Live.Core.Panel do
   # one more: this record is there for certain, though a new read may not
   # find it on this page, or under these filters at all.
   defp add_row(socket, record) do
-    %{id: id, model: model, rows: rows, page: page} = Core.table(socket).entry
+    %{id: id, model: model, rows: rows, page: page, geometry: geometry} = Core.table(socket).entry
     key = Reading.row_key(model, record, map_size(rows))
 
     if is_map_key(rows, key) do
       Reading.put_row(socket, key, record)
     else
-      first = Present.first_row(model, page)
+      first = Geometry.first_row(geometry, page)
       rows = Map.new(rows, fn {key, row} -> {key, %{row | rowindex: row.rowindex + 1}} end)
       rows = Map.put(rows, key, %{rowindex: first, pk: Reading.primary_key(model, record)})
 

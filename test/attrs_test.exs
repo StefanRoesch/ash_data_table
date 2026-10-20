@@ -26,7 +26,7 @@ defmodule AshDataTable.AttrsTest do
   test "a bundle of the table turns into props of text alone" do
     props =
       Attrs.props(
-        Attrs.grid("t", nil, 1, :multi, nil, %{
+        Attrs.grid("t", nil, %AshDataTable.Geometry{lead: 1}, :multi, nil, %{
           show_whole: "All",
           show_less: "Less",
           show_whole_of: "All of {column}",

@@ -588,16 +588,17 @@ defmodule AshDataTable.KitCase do
       })
 
     # a row of the grid: parsed inside one
+    part_model = AshDataTable.Model.build(Resource.Part, [])
+
     full_view =
       Phoenix.LiveViewTest.render_component(&AshDataTable.Kit.part/1, %{
         part: :full_view,
         kit: kit,
-        acting?: false,
         full_view: "/parts?of=Anchor",
+        geometry: AshDataTable.Geometry.of(part_model, nil, false, nil),
         id: nested,
         label: "Parts",
-        lead: 0,
-        model: AshDataTable.Model.build(Resource.Part, []),
+        model: part_model,
         texts: AshDataTable.Kit.Words.texts(:full_view, %{label: "Parts"}),
         messages: AshDataTable.Kit.Words.messages(:full_view, %{label: "Parts"})
       })

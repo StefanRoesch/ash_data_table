@@ -25,7 +25,7 @@
 //     never drawn again as another element (the kit's note, C8).
 import * as React from "react"
 import {flushSync} from "react-dom"
-import {ids, mountGrid} from "ash_data_table"
+import {geometry, ids, mountGrid} from "ash_data_table"
 import {Link} from "live_react"
 
 import {box, button} from "./look"
@@ -385,7 +385,7 @@ export function Row({item, open, row, columns, texts}: {item: RowItem; open: boo
           id={ids.cell(dom, column.name)}
           column={column}
           cell={item.cells[column.name]}
-          colindex={row.lead + index + 1}
+          colindex={geometry.colindex(index, row.lead)}
           header={column.name === row.label}
           texts={texts}
         />
