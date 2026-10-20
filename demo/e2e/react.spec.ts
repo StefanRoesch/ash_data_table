@@ -59,7 +59,7 @@ test.describe("the React kit on /react/tasks", () => {
     await tasks.reads(() => tasks.sortButton("title").click())
     await expect(tasks.header("title")).toHaveAttribute("aria-sort", "ascending")
 
-    await retype(tasks, FIRST, "title", "Saved through React")
+    await retype(tasks, await tasks.rowKey(1), "title", "Saved through React")
     expect(await pushed.count("save")).toBe(1)
   })
 
@@ -68,7 +68,7 @@ test.describe("the React kit on /react/tasks", () => {
     await tasks.open()
     await pushed.clear()
     await tasks.box(FIRST).check()
-    await expect(page.locator("#task-selected")).toHaveText("1 row selected")
+    await expect(page.locator("#task-selected")).toHaveText("1 selected")
     expect(await pushed.count("select")).toBe(1)
   })
 
@@ -144,7 +144,7 @@ test.describe("the React kit on /react/tasks", () => {
 
     await tagged.reads(() => tagged.sortButton("title").click())
     await expect(tagged.header("title")).toHaveAttribute("aria-sort", "ascending")
-    await retype(tagged, FIRST, "title", "Saved in a component")
+    await retype(tagged, await tagged.rowKey(1), "title", "Saved in a component")
     expect(await pushed.count("save")).toBe(1)
   })
 
