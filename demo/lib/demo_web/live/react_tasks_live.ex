@@ -6,9 +6,9 @@ defmodule DemoWeb.ReactTasksLive do
   only: the grid, the heading line (with "Columns" and the argument line),
   what a table limited to related records says, the messages in place of
   the rows, the line above the grid (the selection line), the live region
-  (the status) and the pagination; the panel, the picker and the question
-  are still the default kit's (R3). Its sort, filters and page are in the
-  URL, as on /tasks.
+  (the status), the pagination, the question, the action panel and the
+  picker. Its sort, filters and page are in the URL, as on /tasks. The
+  front page links to it.
   """
   use DemoWeb, :live_view
 

@@ -90,6 +90,7 @@ defmodule AshDataTable.MixProject do
         "documentation/topics/controlled-mode.md",
         "documentation/topics/custom-components.md",
         "documentation/topics/kits.md",
+        "documentation/topics/react-kit.md",
         "documentation/topics/keyboard-and-accessibility.md",
         "documentation/topics/messages-and-translations.md",
         "documentation/topics/testing.md",

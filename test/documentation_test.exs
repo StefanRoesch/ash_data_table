@@ -41,7 +41,7 @@ defmodule AshDataTable.DocumentationTest do
   @elisions ["# ...", "// ...", "/* ... */", "<%!-- ... --%>"]
 
   describe "the set of guides" do
-    test "is the tutorial and the thirty-two topic guides" do
+    test "is the tutorial and the thirty-three topic guides" do
       assert Enum.filter(@guides, &String.starts_with?(&1, "documentation/tutorials/")) ==
                ["documentation/tutorials/get-started-with-ash-data-table.md"]
 
@@ -57,7 +57,7 @@ defmodule AshDataTable.DocumentationTest do
                   maps-and-embedded-resources
                   messages-and-translations
                   mistakes-at-compile-time named-tables nested-tables
-                  reading-sorting-and-pagination
+                  react-kit reading-sorting-and-pagination
                   row-actions-and-create selecting-rows-and-bulk-actions sensitive-columns
                   state-in-the-url table-actions testing time-zones unions)
     end

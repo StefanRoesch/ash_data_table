@@ -498,7 +498,8 @@ changed.
 
 ## Not in the first version
 
-No kit for another UI technology ships with the library; a React kit is
-being built in the demo, on the contract of "A kit that draws in the
-browser". No kit other than the default and the demo's. See the
+No kit for another UI technology ships with the library; the demo has a
+React kit, built on the contract of "A kit that draws in the browser" (see
+[A kit drawn in React](react-kit.md)). No kit other than the default and
+the demo's. See the
 [specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

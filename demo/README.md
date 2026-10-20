@@ -710,26 +710,34 @@ them comes back too, whatever it holds.
 
 ### React islands
 
-http://localhost:4478/react/tasks is the table of /tasks drawn with the
-demo's React kit (`DemoWeb.ReactKit`, stage 8 of the refactor,
-`docs/architecture/react-kit-design.md`), attached to a LiveView of the
-demo's own (`DemoWeb.ReactTasksLive`): its heading line (the name,
-"Columns", the argument line, create and the table actions), grid, line
-above the grid, live region, pagination, what a table limited to related
-records says, and the messages in place of the rows are React islands drawn
-with shadcn/ui (`AshHeading`, `AshGrid`, `AshSelectionLine`, `AshStatus`,
-`AshPagination`, `AshRelated`, `AshMessage`), on the table's own hooks
-(`mountGrid`, `mountPagination`), nested tables alike; every part an island
-draws is replaceable by name (`reactKit({Cell: …})`,
-`assets/islands/table/parts.tsx`). Only the root (an element that draws
-nothing to be seen), the panel, the picker and the question are still the
-default kit's. What each island is
-given is picked by `DemoWeb.ReactKit.Props`, plain data only
-(`test/demo_web/react_kit_test.exs` encodes it to JSON); the islands are in
-`assets/islands/table/`, their look in `assets/css/react_kit.css`.
-`e2e/react.spec.ts` checks what only the React kit has, and the browser
-tests' project `react` runs the grid specs with every table drawn by it
-(`e2e/playwright.config.ts`, `x-demo-kit`, `DemoWeb.E2E.ChosenKit`).
+http://localhost:4478/react/tasks (linked from the front page) is the table
+of /tasks drawn with the demo's React kit (`DemoWeb.ReactKit`, stage 8 of
+the refactor, `docs/architecture/react-kit-design.md`; the guide
+`documentation/topics/react-kit.md`), attached to a LiveView of the demo's
+own (`DemoWeb.ReactTasksLive`). Every part of it is a React island drawn
+with shadcn/ui: its heading line (the name, "Columns", the argument line,
+create and the table actions), grid, line above the grid, live region,
+pagination, what a table limited to related records says, the messages in
+place of the rows, the question, the action panel and the picker
+(`AshHeading`, `AshGrid`, `AshSelectionLine`, `AshStatus`,
+`AshPagination`, `AshRelated`, `AshMessage`, `AshConfirm`, `AshPanel`,
+`AshPicker`), on the table's own hooks (`mountGrid`, `mountPagination`,
+`mountPanel`, `mountPicker`), nested tables alike. The panel and the
+picker are native `<dialog>`s (or regions in the page), drawn closed too
+with the places what opens in them is moved into; a file field hands its
+files to LiveView's own file input beside the island (`uploadTo`). Every
+part an island draws is replaceable by name (`reactKit({Cell: …})`,
+`assets/islands/table/parts.tsx`). Only the root, an element that draws
+nothing to be seen, is the default kit's. What each island is given is
+picked by `DemoWeb.ReactKit.Props`, plain data only
+(`test/demo_web/react_kit_test.exs` encodes it to JSON;
+`test/demo_web/kits/react_kit_case_test.exs` runs `AshDataTable.KitCase`
+with `client: true` over it); the islands are in `assets/islands/table/`,
+their look in `assets/css/react_kit.css`. `e2e/react.spec.ts` checks what
+only the React kit has; the browser tests' project `react` runs the whole
+suite with every table drawn by it (`e2e/playwright.config.ts`,
+`x-demo-kit`, `DemoWeb.E2E.ChosenKit`), `e2e/kit_check.spec.ts` among it,
+which drives `KitCase`'s states in the browser and checks what was drawn.
 
 How it is put together, as a recipe:
 
@@ -1094,6 +1102,7 @@ transaction of its own as well, with nothing started or stopped
 | `open.spec.ts` | "Open" offered by the page (`/e2e/opened`): the keyboard reaches it first in the actions cell, and Enter tells the page the row |
 | `controlled.spec.ts` | controlled mode: the page draws the panel of a row action and runs it through the table (`/e2e/controlled`); the questions of a column and of a nested table and the picker drawn by the page (`/e2e/controlled/kit`) |
 | `kit.spec.ts` | a kit of one's own (`/e2e/kit`, the demo's kit of `div`s): the action panel, the picker and the question in the page or over it, and mixed; focus, Escape, Cancel and Tab; one question at a time; the grid of `div`s; axe |
+| `kit_check.spec.ts` | the kit check in the browser (`/e2e/kit/states`, the table `AshDataTable.KitCase` draws, with the kit the request asks for): each of `KitCase`'s twenty states in each of its four presentations, reached by the table's controls, and what the browser drew checked by `KitCase.problems/4` (`/e2e/kit/check`); LiveView's client debug on, and no development check of the hooks' or the React kit's on the console |
 | `markers.spec.ts` | the grid's hook finds the table's elements by their markers alone (`/e2e/markers`, a grid with no `table`, `tr` or `td`): the Tab order past read-only cells and over a nested table, editing, selecting with the boxes, widths by the handle and the width field, the whole text's "Show all" and its name, a nested table, a hidden column; a question that is missing runs nothing; the development check, which names on the console what a part lacks while the client debug is on |
 | `sandbox.spec.ts` | that every test runs in a database transaction of its own: two tests that change one title side by side, each seeing its own, and nothing left of a write once its transaction ends |
 
@@ -1125,7 +1134,9 @@ How they are built (`e2e/support`):
   (`/e2e/imports`), tables attached to a LiveView (`/e2e/attached`), "Open"
   (`/e2e/opened`), controlled mode (`/e2e/controlled`,
   `/e2e/controlled/kit`), a grid of `div`s that carries the markers
-  (`/e2e/markers`), the demo's kit of `div`s (`/e2e/kit`), and `/tasks` with
+  (`/e2e/markers`), the demo's kit of `div`s (`/e2e/kit`), the kit check's
+  states and its check (`/e2e/kit/states`, `/e2e/kit/check`, and the parts'
+  table `/e2e/kit/parts`), and `/tasks` with
   its action panel, picker and question in the page
   (`/e2e/inline/tasks`, `presentation: [panel: :inline, picker: :inline,
   confirm: :inline]`).
