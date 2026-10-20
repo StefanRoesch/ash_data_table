@@ -1,0 +1,65 @@
+## The German texts of the demo's own pages: the sprint planner
+## (`DemoWeb.PlannerLive`). The tables' texts are in `ash_data_table.po`.
+msgid ""
+msgstr ""
+"Language: de\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Sprint planner"
+msgstr "Sprintplanung"
+
+msgid "Selected for the sprint"
+msgstr "Für den Sprint ausgewählt"
+
+msgid "No tasks selected. Tick rows in the table below."
+msgstr "Keine Aufgaben ausgewählt. Wählen Sie Zeilen in der Tabelle unten aus."
+
+msgid "Tasks"
+msgstr "Aufgaben"
+
+msgid "Estimate"
+msgstr "Schätzung"
+
+msgid "Billable"
+msgstr "Abrechenbar"
+
+msgid "%{hours} h"
+msgstr "%{hours} Std."
+
+msgid "%{hours} h + %{unknown} unknown"
+msgstr "%{hours} Std. + %{unknown} unbekannt"
+
+msgid "%{billable} + %{unknown} unknown"
+msgstr "%{billable} + %{unknown} unbekannt"
+
+msgid "Clear selection"
+msgstr "Auswahl aufheben"
+
+msgid "Last changes"
+msgstr "Letzte Änderungen"
+
+msgid "Nothing changed yet."
+msgstr "Noch nichts geändert."
+
+msgid "%{columns} of “%{title}” saved"
+msgstr "%{columns} von „%{title}“ gespeichert"
+
+msgid "%{columns} of a task saved"
+msgstr "%{columns} einer Aufgabe gespeichert"
+
+msgid "Task “%{title}” created"
+msgstr "Aufgabe „%{title}“ angelegt"
+
+msgid "A task was created"
+msgstr "Eine Aufgabe wurde angelegt"
+
+msgid "1 task deleted"
+msgstr "1 Aufgabe gelöscht"
+
+msgid "%{action}: 1 task done"
+msgid_plural "%{action}: %{count} tasks done"
+msgstr[0] "%{action}: 1 Aufgabe erledigt"
+msgstr[1] "%{action}: %{count} Aufgaben erledigt"
+
+msgid "%{action}: %{done} done, %{failed} failed"
+msgstr "%{action}: %{done} erledigt, %{failed} fehlgeschlagen"

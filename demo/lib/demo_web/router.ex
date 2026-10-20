@@ -62,6 +62,9 @@ defmodule DemoWeb.Router do
       live "/", HomeLive
       # Two tables placed in a LiveView of the demo's own.
       live "/dashboard", DashboardLive
+      # The tasks attached to a page that hears their events and clears
+      # their selection.
+      live "/tasks/planner", PlannerLive
 
       ash_data_table "/tasks", Demo.Tracker.Task
       ash_data_table "/projects", Demo.Tracker.Project

@@ -118,7 +118,9 @@ defmodule DemoWeb.HomeLive do
         <p id="embedded" class="text-base-content/70">
           Every table below is a page of its own. The
           <.link navigate={~p"/dashboard"} class="link">dashboard</.link>
-          shows two tables placed in a LiveView of the demo's own.
+          shows two tables placed in a LiveView of the demo's own. The
+          <.link navigate={~p"/tasks/planner"} class="link">sprint planner</.link>
+          hears what happens in the table of the tasks and tells it what to do.
         </p>
         <p id="named" class="text-base-content/70">
           A resource can have several tables: its default table and named ones. The page

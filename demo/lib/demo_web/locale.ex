@@ -8,7 +8,9 @@ defmodule DemoWeb.Locale do
   That is all a host does for `ash_data_table` to translate: the table looks its
   texts up in the locale of the process it runs in, in the backend named by
   `config :ash_data_table, gettext_backend: DemoWeb.Gettext`. Only the tables are
-  translated here; the demo's own pages stay in English.
+  translated here, and the sprint planner (`DemoWeb.PlannerLive`, its texts in
+  `priv/gettext/de/LC_MESSAGES/default.po`); the demo's other pages stay in
+  English.
   """
   import Plug.Conn
 

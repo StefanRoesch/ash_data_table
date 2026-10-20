@@ -1,0 +1,136 @@
+## This file is a PO Template file.
+##
+## "msgid"s here are often extracted from source code.
+## Add new messages manually only if they're dynamic
+## messages that can't be statically extracted.
+##
+## Run "mix gettext.extract" to bring this file up to
+## date. Leave "msgstr"s empty as changing them here has no
+## effect: edit them in PO (.po) files instead.
+#
+msgid ""
+msgstr ""
+
+#: lib/demo_web/live/planner_live.ex:107
+#, elixir-autogen, elixir-format
+msgid "%{action}: %{done} done, %{failed} failed"
+msgstr ""
+
+#: lib/demo_web/live/planner_live.ex:101
+#, elixir-autogen, elixir-format
+msgid "%{action}: 1 task done"
+msgid_plural "%{action}: %{count} tasks done"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/demo_web/live/planner_live.ex:265
+#, elixir-autogen, elixir-format
+msgid "%{billable} + %{unknown} unknown"
+msgstr ""
+
+#: lib/demo_web/live/planner_live.ex:97
+#, elixir-autogen, elixir-format
+msgid "%{columns} of a task saved"
+msgstr ""
+
+#: lib/demo_web/live/planner_live.ex:96
+#, elixir-autogen, elixir-format
+msgid "%{columns} of “%{title}” saved"
+msgstr ""
+
+#: lib/demo_web/live/planner_live.ex:258
+#, elixir-autogen, elixir-format
+msgid "%{hours} h"
+msgstr ""
+
+#: lib/demo_web/live/planner_live.ex:259
+#, elixir-autogen, elixir-format
+msgid "%{hours} h + %{unknown} unknown"
+msgstr ""
+
+#: lib/demo_web/live/planner_live.ex:82
+#, elixir-autogen, elixir-format
+msgid "1 task deleted"
+msgstr ""
+
+#: lib/demo_web/live/planner_live.ex:75
+#, elixir-autogen, elixir-format
+msgid "A task was created"
+msgstr ""
+
+#: lib/demo_web/components/core_components.ex:368
+#, elixir-autogen, elixir-format
+msgid "Actions"
+msgstr ""
+
+#: lib/demo_web/components/layouts.ex:177
+#: lib/demo_web/components/layouts.ex:189
+#, elixir-autogen, elixir-format
+msgid "Attempting to reconnect"
+msgstr ""
+
+#: lib/demo_web/live/planner_live.ex:248
+#, elixir-autogen, elixir-format
+msgid "Billable"
+msgstr ""
+
+#: lib/demo_web/live/planner_live.ex:195
+#, elixir-autogen, elixir-format
+msgid "Clear selection"
+msgstr ""
+
+#: lib/demo_web/live/planner_live.ex:246
+#, elixir-autogen, elixir-format
+msgid "Estimate"
+msgstr ""
+
+#: lib/demo_web/live/planner_live.ex:207
+#, elixir-autogen, elixir-format
+msgid "Last changes"
+msgstr ""
+
+#: lib/demo_web/live/planner_live.ex:236
+#, elixir-autogen, elixir-format
+msgid "No tasks selected. Tick rows in the table below."
+msgstr ""
+
+#: lib/demo_web/live/planner_live.ex:212
+#, elixir-autogen, elixir-format
+msgid "Nothing changed yet."
+msgstr ""
+
+#: lib/demo_web/live/planner_live.ex:184
+#, elixir-autogen, elixir-format
+msgid "Selected for the sprint"
+msgstr ""
+
+#: lib/demo_web/components/layouts.ex:184
+#, elixir-autogen, elixir-format
+msgid "Something went wrong!"
+msgstr ""
+
+#: lib/demo_web/live/planner_live.ex:32
+#: lib/demo_web/live/planner_live.ex:174
+#, elixir-autogen, elixir-format
+msgid "Sprint planner"
+msgstr ""
+
+#: lib/demo_web/live/planner_live.ex:74
+#, elixir-autogen, elixir-format
+msgid "Task “%{title}” created"
+msgstr ""
+
+#: lib/demo_web/live/planner_live.ex:244
+#, elixir-autogen, elixir-format
+msgid "Tasks"
+msgstr ""
+
+#: lib/demo_web/components/layouts.ex:172
+#, elixir-autogen, elixir-format
+msgid "We can't find the internet"
+msgstr ""
+
+#: lib/demo_web/components/core_components.ex:74
+#, elixir-autogen, elixir-format
+msgid "close"
+msgstr ""

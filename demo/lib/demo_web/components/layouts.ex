@@ -112,7 +112,7 @@ defmodule DemoWeb.Layouts do
   @doc """
   The language switcher: a form that posts the chosen locale to
   `DemoWeb.LocaleController`, which stores it in the session. Only the tables
-  are translated.
+  and the sprint planner are translated.
   """
   attr :return_to, :string, default: nil
 
