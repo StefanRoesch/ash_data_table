@@ -147,6 +147,10 @@ _Avoid_: Slot, widget, sub-component
 The attributes the table's behaviour in the browser needs on one element of a part (its id, role, ARIA and data attributes, its events), made by the library for the part to spread on whatever element it draws.
 _Avoid_: Props, attribute set
 
+**Projection**:
+What a part is given to draw: plain data holding its values, its finished texts and its bundles, made by the library and the same for every kit, so that a kit only draws.
+_Avoid_: View model, props, assigns
+
 **Marker**:
 An ARIA role or a data attribute by which the table's behaviour in the browser finds an element, so that it never depends on a tag name.
 _Avoid_: Selector, hook class
