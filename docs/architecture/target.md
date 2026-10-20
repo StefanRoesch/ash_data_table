@@ -1031,3 +1031,15 @@ Shaped in [react-kit-design.md](react-kit-design.md). Built as R0–R5, each wit
 - [x] R3, panel, picker and question as React kit parts (native dialog or region, opened by the hooks), uploads, slots by portal into targets drawn before they open; controlled mode still works. Done 2026-10-20 (owner's yes after the drift check, its fix-up and #53; as built in react-kit-design.md §16).
 - [x] R4, verification: `KitCase` with `client: true` (the secret check over what React is given); a browser-side kit check over `KitCase`'s states and presentations; the whole browser suite as a second project against the React kit. Done 2026-10-20 (owner's yes after the drift check, its fix-up and #53; as built in react-kit-design.md §16).
 - [x] R5, the guide and the demo page `/react/tasks`; the package import verified from a fresh host app (`deps/` on `NODE_PATH`). Done 2026-10-20 (owner's yes after the drift check, its fix-up and #53; as built in react-kit-design.md §16).
+
+### Stage 9: deepening the modules (D-deepen)
+
+Shaped in [deepening-design.md](deepening-design.md) (the architecture review of 2026-10-20; owner, 2026-10-20: all six candidates, in this order; the note's 33 questions answered as recommended, 2026-10-20). Each stage R-style with its own drift check and its own single run of the suites; bytes within 2 % on `/tasks`, times within 20 %; kit contract 6 once; the quality gate once at the end.
+
+- [ ] 9a, `KitCase` with `Kit.Default` in the root suite on `AshDataTable.Test.LiveHost`.
+- [ ] 9b, `AshDataTable.GroupValue`: the group value's encoding both ways, one owner; kits get the hidden entries as bundles; contract 6 opens.
+- [ ] 9c, `AshDataTable.Geometry` and `assets/js/geometry.js`: one grid geometry value per table; the `Attrs` ↔ `Parts.Common` cycle goes; `lead`, `acting?`, `editing?`, `label_column` leave `Live.Entry`.
+- [ ] 9d, `AshDataTable.Panel`: the action panel with a closed set of kinds; `Act` runs actions only; `spent`, `running_files` leave `Live.Entry`; the `Requests` cycle goes; #56 closed.
+- [ ] 9e, `Live.Core.Opener` with the table's and the host's adapters, replacing the inline `controlled?` branches and the drawing's `hosted?`.
+- [ ] 9f, `AshDataTable.Kit.Projection`: a finished projection per part, `Kit.Words` and `Kit.fields/arguments/editors` folded in; every kit only draws; ADR 0004; #57 closed.
+- [ ] 9g, the core's step as (Table, intent) → (Table, effects), as sized again at its checkpoint.

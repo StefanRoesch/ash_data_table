@@ -265,7 +265,7 @@ Kit contract 6 is completed here: the moduledoc of `Kit` lists each part's proje
 
 ## 11. Proposed amendment to target.md
 
-To be added to §9 after the owner's yes (not made yet):
+Added to target.md after the owner's yes (2026-10-20):
 
 > ### Stage 9: deepening the modules (D-deepen)
 >
@@ -282,6 +282,8 @@ To be added to §9 after the owner's yes (not made yet):
 §4 (module matrix) and §6 (`Present` stays no seam; `GroupValue` ↔ the hidden inputs, `Geometry` ↔ `geometry.js` as kept couplings) are amended by each stage as it is built.
 
 ## 12. Open questions for the owner
+
+**Answered by the owner 2026-10-20: all 33 as recommended** ("as recommended, proceed"). Stage 9 is in target.md.
 
 Every decision a builder would otherwise take. ➡️ is the recommendation.
 
