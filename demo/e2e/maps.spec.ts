@@ -32,6 +32,67 @@ function box(within: Locator, name: string): Locator {
   return within.getByRole("textbox", { name, exact: true })
 }
 
+/**
+ * Holds back what the server sends while "Hafen AG" is typed into the
+ * client's Name (`typeHafenAg`), and once focus is on Email lets through
+ * what it sent up to its answer to the change that sent "Ha", and waits
+ * until the page has taken that answer in. `releaseAll` lets the rest
+ * through and holds nothing more.
+ */
+async function lateAnswerToHa(page: Page) {
+  let holding = false
+  let ha: string | null = null // the ref of the change that sent "Ha"
+  const held: Array<{ ref: string | null; send: () => void }> = []
+  await page.routeWebSocket(/\/live\/websocket/, (ws) => {
+    const server = ws.connectToServer()
+    ws.onMessage((message) => {
+      if (holding && typeof message === "string") {
+        const [, ref, , event, payload] = JSON.parse(message)
+        const sent = event === "event" && payload.type === "form" ? [...new URLSearchParams(payload.value)] : []
+        if (sent.some(([name, value]) => name.endsWith("[name]") && value === "Ha")) ha = ref
+      }
+      server.send(message)
+    })
+    server.onMessage((message) => {
+      if (!holding) return ws.send(message)
+      const ref = typeof message === "string" ? JSON.parse(message)[1] : null
+      held.push({ ref, send: () => ws.send(message) })
+    })
+  })
+
+  return {
+    async typeHafenAg(projects: Table) {
+      await projects.open()
+      // the refs of what the page has taken in, once LiveView has applied it
+      // (Phoenix's `onMessage` hears a message after its channel)
+      await page.evaluate(() => {
+        const w = window as any
+        w.answered = []
+        w.liveSocket.getSocket().onMessage((message: { ref: string | null }) => w.answered.push(message.ref))
+      })
+      await projects.cell(PORTAL.id, "client").focus()
+      await projects.press("Enter")
+
+      const client = group(projects.panel, "Client")
+      await expect(box(client, "Name")).toBeFocused()
+      holding = true
+      await page.keyboard.press("ControlOrMeta+a")
+      await page.keyboard.type("Hafen AG")
+      await page.keyboard.press("Tab")
+      await expect(box(client, "Email")).toBeFocused()
+
+      await expect.poll(() => held.some((message) => message.ref !== null && message.ref === ha)).toBe(true)
+      const upTo = held.findIndex((message) => message.ref === ha)
+      for (const message of held.splice(0, upTo + 1)) message.send()
+      await expect.poll(() => page.evaluate((ref) => (window as any).answered.includes(ref), ha)).toBe(true)
+    },
+    releaseAll() {
+      for (const message of held.splice(0)) message.send()
+      holding = false
+    },
+  }
+}
+
 test.describe("the cell of a value made of fields", () => {
   // "Nothing else" but the "Show all" the hook puts into a cell that cuts its text off
   test("shows the value on one line, as plain text: nothing else is in the cell", async ({ page }) => {
@@ -214,71 +275,46 @@ test.describe("saving an embedded resource from the side panel", () => {
     await expect(projects.cell(PORTAL.id, "client")).toContainText("Name: Hafen AG, ")
   })
 
-  // Under load the server answers a form's changes late. This holds back
+  // Under load the server answers a form's changes late. These hold back
   // what the server sends while "Hafen AG" is typed into Name, and once
-  // focus is on Email lets through what it sent up to its answer to "Ha":
-  // the form's later changes are still on their way. The field keeps what
-  // was typed, as LiveView keeps a form's controls while its changes are on
-  // their way (issue #53); once all are answered it holds what the server
-  // says, and Save saves it.
+  // focus is on Email let through what it sent up to its answer to "Ha":
+  // the form's later changes are still on their way.
+
+  // The field keeps what was typed, as LiveView keeps a form's controls
+  // while its changes are on their way (issue #53); once all are answered
+  // it holds what the server says, and Save saves it.
   test("a late answer to a change leaves what was typed in a field that was left", async ({ page }) => {
-    let holding = false
-    let ha: string | null = null // the ref of the change that sent "Ha"
-    const held: Array<{ ref: string | null; send: () => void }> = []
-    await page.routeWebSocket(/\/live\/websocket/, (ws) => {
-      const server = ws.connectToServer()
-      ws.onMessage((message) => {
-        if (holding && typeof message === "string") {
-          const [, ref, , event, payload] = JSON.parse(message)
-          const sent = event === "event" && payload.type === "form" ? [...new URLSearchParams(payload.value)] : []
-          if (sent.some(([name, value]) => name.endsWith("[name]") && value === "Ha")) ha = ref
-        }
-        server.send(message)
-      })
-      server.onMessage((message) => {
-        if (!holding) return ws.send(message)
-        const ref = typeof message === "string" ? JSON.parse(message)[1] : null
-        held.push({ ref, send: () => ws.send(message) })
-      })
-    })
+    const late = await lateAnswerToHa(page)
     const projects = projectsOf(page)
-    await projects.open()
-    // the refs of what the page has taken in, once LiveView has applied it
-    // (Phoenix's `onMessage` hears a message after its channel)
-    await page.evaluate(() => {
-      const w = window as any
-      w.answered = []
-      w.liveSocket.getSocket().onMessage((message: { ref: string | null }) => w.answered.push(message.ref))
-    })
     const cell = projects.cell(PORTAL.id, "client")
-    await cell.focus()
-    await projects.press("Enter")
-
     const client = group(projects.panel, "Client")
-    await expect(box(client, "Name")).toBeFocused()
-    holding = true
-    await page.keyboard.press("ControlOrMeta+a")
-    await page.keyboard.type("Hafen AG")
-    await page.keyboard.press("Tab")
-    await expect(box(client, "Email")).toBeFocused()
-
-    await expect.poll(() => held.some((message) => message.ref !== null && message.ref === ha)).toBe(true)
-    const upTo = held.findIndex((message) => message.ref === ha)
-    for (const message of held.splice(0, upTo + 1)) message.send()
-    await expect.poll(() => page.evaluate((ref) => (window as any).answered.includes(ref), ha)).toBe(true)
+    await late.typeHafenAg(projects)
     await expect(box(client, "Name")).toHaveValue("Hafen AG")
 
     // the next change sends the form with it
     await page.keyboard.press("Tab")
     await page.keyboard.press("Space")
-    for (const message of held.splice(0)) message.send()
-    holding = false
+    late.releaseAll()
     await projects.panelSettled()
     await expect(box(client, "Name")).toHaveValue("Hafen AG")
 
     await projects.panelSubmit.click()
     await expect(projects.panel).toHaveCount(0)
     await expect(cell).toContainText("Name: Hafen AG, ")
+  })
+
+  // The counter counts what the field holds, as it does while it is typed,
+  // not the text of the late answer (issue #54).
+  test("a late answer to a change leaves the counter counting what the field holds", async ({ page }) => {
+    const late = await lateAnswerToHa(page)
+    const projects = projectsOf(page)
+    const client = group(projects.panel, "Client")
+    await late.typeHafenAg(projects)
+    await expect(box(client, "Name")).toHaveAccessibleDescription("8/60")
+
+    late.releaseAll()
+    await projects.panelSettled()
+    await expect(box(client, "Name")).toHaveAccessibleDescription("8/60")
   })
 
   test("what the embedded resource refuses is shown at its field, the panel stays open and the other entries stay", async ({
