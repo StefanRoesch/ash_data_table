@@ -480,7 +480,15 @@ test.describe("focus after the rows change", () => {
     const pageTwo = await tasks.rowKeys()
     expect(pageTwo).not.toEqual(pageOne)
 
-    await tasks.cell(pageTwo[4], "status").focus()
+    // Focus into the rows without scrolling the window: the click on "Next"
+    // scrolled it to the button, and LiveView puts the window back where
+    // its first page was scrolled to as the back button returns to it (its
+    // scroll restoration), which is where the window is then, whenever the
+    // browser told LiveView of that scroll. A focus that scrolled the window
+    // too would leave it elsewhere, so that what the table does to the
+    // scroll could not be told from what LiveView does.
+    await tasks.cell(pageTwo[4], "status").evaluate((cell) => (cell as HTMLElement).focus({ preventScroll: true }))
+    await expect(tasks.cell(pageTwo[4], "status")).toBeFocused()
     const scrolled = await page.evaluate(() => window.scrollY)
     await tasks.reads(() => page.goBack())
     await expect(tasks.range).toHaveText(`1–25 of ${SEED.tasks.acme}`)
