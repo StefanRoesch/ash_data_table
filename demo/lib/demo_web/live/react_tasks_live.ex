@@ -1,10 +1,14 @@
 defmodule DemoWeb.ReactTasksLive do
   @moduledoc """
   The tasks drawn with the demo's React kit (`DemoWeb.ReactKit`): the table
-  of /tasks attached to this LiveView (`AshDataTable.attach/4`), its grid,
-  "Columns", the line above the grid, the live region and the pagination
+  of /tasks attached to this LiveView (`AshDataTable.attach/4`), its parts
   React islands drawn with shadcn/ui through live_react, in the browser
-  only. Its sort, filters and page are in the URL, as on /tasks.
+  only: the grid, the heading line (with "Columns" and the argument line),
+  what a table limited to related records says, the messages in place of
+  the rows, the line above the grid (the selection line), the live region
+  (the status) and the pagination; the panel, the picker and the question
+  are still the default kit's (R3). Its sort, filters and page are in the
+  URL, as on /tasks.
   """
   use DemoWeb, :live_view
 

@@ -135,6 +135,18 @@ declared in the resource and mounted with one line in the router.
   `clearable?`; the `grid` part the same by column, `editors`), and
   `heading` and `argument_line` each argument's values (`arguments`), as
   plain data, so that a kit that draws in the browser draws them itself.
+- The `grid` part is given, in its `texts`, the texts that are the same on
+  every row, so that a kit that draws the rows finds them there and not in
+  each item: by column what a masked cell's button says (`show_value`,
+  `hide_value`, nil for a column that is not sensitive), and for all
+  columns `hidden_value`, `show`, `hide`, `not_available`, `yes` and `no`.
+- The `heading` part is given `label_column`, the column that cannot be
+  hidden, so that a kit's own "Columns" needs no internals.
+- The library's JS exports `count(text, counted)`: how a counter counts a
+  text, as the hooks count it.
+- The messages said in place of the rows (an error, loading, an argument to
+  fill, "No records") are drawn keyed by their kind: a message of another
+  kind is drawn anew, not patched into the one before.
 - Kit contract 4: `heading` and `argument_line` are no longer given
   `lines` and `refused`, nor `argument_line` `state`: the argument line is
   drawn from `arguments`. A kit of contract 3 fails to compile and says
@@ -159,7 +171,12 @@ declared in the resource and mounted with one line in the router.
   `live_react` 2.0 with server rendering off, npm in `demo/assets` (React and
   the packages of shadcn/ui's sources), TSX bundled by the Hex esbuild and
   scanned by the Hex Tailwind (no Vite), and shadcn/ui's colours scoped
-  under `.shadcn` beside daisyUI. `/react` shows one island.
+  under `.shadcn` beside daisyUI. Its React kit (`DemoWeb.ReactKit`)
+  draws a table's heading line, grid, line above the grid, live region,
+  pagination, what a table limited to related records says and the
+  messages in place of the rows as React islands with shadcn/ui's look, on
+  the table's own hooks, nested tables alike, each part replaceable by
+  name; `/react/tasks` shows the tasks drawn with it.
 
 ### Editing several values in the side panel
 

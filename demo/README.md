@@ -713,11 +713,17 @@ them comes back too, whatever it holds.
 http://localhost:4478/react/tasks is the table of /tasks drawn with the
 demo's React kit (`DemoWeb.ReactKit`, stage 8 of the refactor,
 `docs/architecture/react-kit-design.md`), attached to a LiveView of the
-demo's own (`DemoWeb.ReactTasksLive`): its grid, "Columns", the line above
-the grid, the live region and the pagination are React islands drawn with
-shadcn/ui, on the table's own hooks (`mountGrid`, `mountPagination`); the
-heading line around "Columns", the argument line, the messages, the panel,
-the picker and the question are still the default kit's. What each island is
+demo's own (`DemoWeb.ReactTasksLive`): its heading line (the name,
+"Columns", the argument line, create and the table actions), grid, line
+above the grid, live region, pagination, what a table limited to related
+records says, and the messages in place of the rows are React islands drawn
+with shadcn/ui (`AshHeading`, `AshGrid`, `AshSelectionLine`, `AshStatus`,
+`AshPagination`, `AshRelated`, `AshMessage`), on the table's own hooks
+(`mountGrid`, `mountPagination`), nested tables alike; every part an island
+draws is replaceable by name (`reactKit({Cell: …})`,
+`assets/islands/table/parts.tsx`). Only the root (an element that draws
+nothing to be seen), the panel, the picker and the question are still the
+default kit's. What each island is
 given is picked by `DemoWeb.ReactKit.Props`, plain data only
 (`test/demo_web/react_kit_test.exs` encodes it to JSON); the islands are in
 `assets/islands/table/`, their look in `assets/css/react_kit.css`.
