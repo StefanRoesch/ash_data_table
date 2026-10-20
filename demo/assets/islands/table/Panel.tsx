@@ -640,6 +640,7 @@ function ComponentEditor({field, describedBy}: {field: FieldProps; describedBy?:
     required: field.required,
     limits: field.limits,
     control: {...control, defaultValue: text(field.value)},
+    value: text(field.value),
   } as unknown as EditorProps
   return <Component editor={editor} />
 }

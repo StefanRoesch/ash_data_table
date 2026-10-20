@@ -38,6 +38,9 @@ export type EditorProps = {
   control: Bundle | null
   component: string | false
   texts: null | {clear: string; clear_value: string}
+  // in the panel: the field's value (a cell's editor is opened empty, and
+  // the hook gives it the cell's)
+  value?: string
 }
 
 export type EditorComponentProps = {editor: EditorProps}
@@ -164,15 +167,20 @@ export function Editor({id, editor}: {id: string; editor: EditorProps}) {
 // `AshDataTable.Components.Slider`: a slider from the column's minimum to
 // its maximum, by one for whole numbers, else by a hundredth of the way,
 // with the number beside it, which the hook keeps at the slider's.
+// In a cell the cell shows the focus; in a form (the panel) the slider
+// shows it itself, and the number beside it starts at the field's value.
 function Slider({editor}: EditorComponentProps) {
   const limits = editor.limits!
   const min = Number(limits.min)
   const max = Number(limits.max)
   const step = limits.step === "1" ? "1" : String((max - min) / 100)
+  const ring = editor.value === undefined ? "focus-visible:outline-none" : "focus:outline-solid focus:outline-2 focus:outline-offset-2 focus:outline-current"
   return (
     <span className="flex items-center gap-2">
-      <input type="range" min={limits.min ?? undefined} max={limits.max ?? undefined} step={step} defaultValue="" {...attrs(editor.control)} className="ash-react-range w-24 focus-visible:outline-none" />
-      <span data-value-text="" aria-hidden="true" className="text-sm tabular-nums"></span>
+      <input type="range" min={limits.min ?? undefined} max={limits.max ?? undefined} step={step} defaultValue="" {...attrs(editor.control)} className={`ash-react-range w-24 ${ring}`} />
+      <span key={editor.value} data-value-text="" aria-hidden="true" className="text-sm tabular-nums">
+        {editor.value}
+      </span>
     </span>
   )
 }

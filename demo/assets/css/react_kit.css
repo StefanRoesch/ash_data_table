@@ -415,13 +415,18 @@
 /* What opens (`Panel.tsx`, `Picker.tsx`, `Confirm.tsx`): a native
    `<dialog>` over the page, the panel and the picker at the right edge of
    the window and the question in its middle, or a region in the page under
-   the table, each with an edge of its own (forced colours keep it). */
+   the table with an edge of its own. */
 .ash-react-table dialog.ash-react-dialog {
   background: var(--sh-background);
   color: var(--sh-foreground);
   padding: 1.5rem;
-  border: 1px solid var(--sh-border);
+  border: 0;
   box-shadow: 0 10px 30px rgb(0 0 0 / 0.25);
+}
+/* its shadow and the dimmed page behind it are its edge, which forced
+   colours take away: there it has a border */
+@media (forced-colors: active) {
+  .ash-react-table dialog.ash-react-dialog { border: 1px solid; }
 }
 .ash-react-table dialog.ash-react-dialog::backdrop { background: rgb(0 0 0 / 0.4); }
 .ash-react-table dialog.ash-react-side {

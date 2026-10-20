@@ -52,7 +52,7 @@ export function Confirm({confirm}: ConfirmProps) {
           <button value="cancel" className={button("outline", "sm")}>
             {confirm.cancel}
           </button>
-          <button value="confirm" className={button("default", "sm", "data-[destructive]:bg-destructive data-[destructive]:text-white")}>
+          <button value="confirm" className={button("default", "sm", "data-[destructive]:border data-[destructive]:border-destructive data-[destructive]:bg-transparent data-[destructive]:text-destructive")}>
             {confirm.confirm}
           </button>
         </div>
