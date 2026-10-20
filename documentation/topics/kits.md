@@ -414,12 +414,15 @@ resource that ships with the library and has a column of every kind, through
 your kit, in twenty states and four presentations. It checks every marker,
 id and `data-*` value the hooks rely on, the kinds of elements they need,
 the texts each part is given, and that no page holds the test resource's
-sensitive value. The demo runs it against the default kit
-([`demo/test/demo_web/kits/default_kit_test.exs`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/demo_web/kits/default_kit_test.exs)):
+sensitive value. The library runs it against the default kit, on the
+endpoint of its own tests
+([`test/kit/default_kit_test.exs`](https://github.com/StefanRoesch/ash_data_table/blob/main/test/kit/default_kit_test.exs)):
 
-<!-- source: demo/test/demo_web/kits/default_kit_test.exs -->
+<!-- source: test/kit/default_kit_test.exs -->
 ```elixir
-use AshDataTable.KitCase, kit: AshDataTable.Kit.Default, endpoint: DemoWeb.Endpoint
+use AshDataTable.KitCase,
+  kit: AshDataTable.Kit.Default,
+  endpoint: AshDataTable.Test.LiveHost.Endpoint
 ```
 
 What a person does with the keyboard and hears from a screen reader is not

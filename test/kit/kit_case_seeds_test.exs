@@ -1,4 +1,4 @@
-defmodule DemoWeb.Kits.KitCaseSeedsTest do
+defmodule AshDataTable.Kit.KitCaseSeedsTest do
   @moduledoc """
   What a host seeds a state with for `AshDataTable.KitCase.problems/4`:
   `KitCase.given/4` puts the state's records in a tenant of their own and

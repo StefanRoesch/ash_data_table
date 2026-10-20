@@ -51,6 +51,11 @@ defmodule AshDataTable.KitCase do
   given, and keeps the test resource's records in memory, in a tenant of
   each test's own: the tests run `async`.
 
+  The library's own suite runs it for `AshDataTable.Kit.Default`
+  (`test/kit/default_kit_test.exs`, on the endpoint of the tests' own
+  LiveView, which needs no router); the demo's runs it for its kit of
+  `div`s and, with `client: true`, for its React kit.
+
   ## A kit that draws in the browser
 
   A kit whose parts a client framework draws (a React kit) sends the

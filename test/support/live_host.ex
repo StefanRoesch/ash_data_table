@@ -8,6 +8,8 @@ defmodule AshDataTable.Test.LiveHost do
       AshDataTable.Test.LiveHost.run(fn socket -> Registry.take_stream(socket) end)
 
   Its endpoint is started once, by `test_helper.exs` (`start/0`).
+  `AshDataTable.KitCase` runs on it for `AshDataTable.Kit.Default`
+  (`test/kit/default_kit_test.exs`).
   """
 
   defmodule Endpoint do
