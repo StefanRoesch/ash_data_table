@@ -6,7 +6,6 @@ defmodule AshDataTable.Parts.Editors do
 
   alias AshDataTable.Attrs
   alias AshDataTable.Kit
-  alias AshDataTable.Model.Limits
 
   # How long a text is and the most it can be, beside the control the text
   # is typed into: "12/30". Only for a text whose type says a `max_length`
@@ -37,7 +36,7 @@ defmodule AshDataTable.Parts.Editors do
   attr :class, :string, required: true
 
   def count(assigns) do
-    length = Limits.count(assigns.value, assigns.counted)
+    length = AshDataTable.Kit.count(assigns.value, assigns.counted)
 
     assigns =
       assign(assigns,

@@ -120,7 +120,21 @@ defmodule AshDataTable.KitTest do
 
     assert Exception.message(error) =~ "has contract 5"
     assert Exception.message(error) =~ "no lines and refused"
+    assert Exception.message(error) =~ "Ids.panel_place/1"
     refute Exception.message(error) =~ ~s(role="table")
+
+    # from contract 4: the panel and the picker drawn always, their places
+    error =
+      assert_raise CompileError, fn ->
+        compile("""
+        defmodule AshDataTable.KitTest.Four do
+          use AshDataTable.Kit, contract: 4
+        end
+        """)
+      end
+
+    assert Exception.message(error) =~ "given nil while closed"
+    refute Exception.message(error) =~ "no lines and refused"
 
     # and from contract 1 both steps
     error =
@@ -523,5 +537,78 @@ defmodule AshDataTable.KitTest do
     assert :arguments in heading and :arguments in line
     # "Columns", which the heading draws, says what is filtered and sorted
     assert :state in heading
+  end
+
+  test "a text is counted as its counter counts it, as Ash does" do
+    counted = %{max: 5, unit: :graphemes, trim?: true, casing: nil}
+    assert Kit.count("  abc ", counted) == 3
+    assert Kit.count(nil, counted) == 0
+    assert Kit.count("é", %{counted | unit: :bytes, trim?: false}) == 2
+  end
+
+  test "the panel is given each field's assigns, with what a value made of fields holds" do
+    model = AshDataTable.Model.build(AshDataTable.Test.Resource)
+    inputs = Map.new(model.create.inputs, &{&1.name, &1})
+
+    field = fn name, value ->
+      %AshDataTable.Present.Field{
+        name: name,
+        path: [Atom.to_string(name)],
+        form_name: "panel[#{name}]",
+        input: inputs[name],
+        value: value
+      }
+    end
+
+    panel = %AshDataTable.Present.Panel{
+      kind: :create,
+      method: "post",
+      fields: [
+        field.(:name, "Anchor"),
+        field.(:size, "3"),
+        field.(:place, %{"_present" => "", "city" => "Bern", "zip" => "3000"}),
+        field.(:stops, %{"_present" => "", "0" => %{"_present" => "", "city" => "Thun"}}),
+        field.(:kind, %{"_union_type" => "count", "_union_value" => "7"}),
+        field.(:tags, ["red"])
+      ],
+      inside: %{errors: %{}, touched: MapSet.new(), submitted?: false, time_zone: "Etc/UTC"}
+    }
+
+    fields = Map.new(Kit.fields("t", panel, %{}), &{&1.input.name, &1})
+
+    # every assign of the `field` part but `kit` and `target`
+    part =
+      ~w(id input name value errors places chosen clear upload path table limits counted
+         members items kind single texts messages locale)a
+
+    for {_name, given} <- fields, do: assert(Enum.sort(Map.keys(given)) == Enum.sort(part))
+
+    assert %{id: "t-panel-f-name", path: ["name"], table: "t", counted: %{max: 40}} = fields.name
+    assert fields.size.limits == %{min: "0", max: "100", step: "1"}
+
+    # a value made of fields: its members, each a field as the panel's
+    assert %{name: "panel[place]", fields: [city, _zip]} = fields.place.members
+    assert %{id: "t-panel-f-place-f-city", name: "panel[place][city]", value: "Bern"} = city
+    assert city.path == ["place", "city"]
+
+    # a list of them: an item per value, under its own number
+    assert [%{key: "0", id: "t-panel-f-stops-0", path: ["stops", "0"], members: stop}] =
+             fields.stops.items
+
+    assert %{name: "panel[stops][0]", fields: [%{value: "Thun"} | _]} = stop
+
+    # a union: the kind chosen, and its one value
+    assert %{kind: "count", single: %{id: "t-panel-f-kind-value", value: "7"}, members: nil} =
+             fields.kind
+
+    assert fields.kind.single.path == ["kind", "_union_value"]
+    assert fields.tags.members == nil and fields.tags.items == []
+
+    # what is plain data goes to JSON as it is
+    plain = fn given -> Map.drop(given, [:input, :members, :items, :single]) end
+    for {_name, given} <- fields, do: Jason.encode!(plain.(given))
+
+    # none while the panel is closed
+    assert Kit.fields("t", nil, %{}) == []
   end
 end

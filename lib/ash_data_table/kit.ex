@@ -414,7 +414,7 @@ defmodule AshDataTable.Kit do
       `:upper` or nil; as Ash counts it), else nil; `clearable?`, whether
       a sensitive cell can be emptied ("Clear" beside its input).
     * `count` - the counter of a text (`data-count`, `data-max`): `id`,
-      `counted`, `value`, `class`.
+      `counted`, `value`, `class`; how long the text is, `count/2`.
     * `list` - the field of an array in the panel, value by value
       (`data-list`, `data-value-label`, `data-remove-label`, `data-item`,
       `data-add`, `data-remove`): `id`, `rest` (attributes for its
@@ -1017,6 +1017,19 @@ defmodule AshDataTable.Kit do
 
     apply(assigns.kit, part, [assigns])
   end
+
+  @doc """
+  How long `text` is as its counter counts it (`counted`, as the `count`
+  part and `editor`'s `counted` give it): as Ash counts it when it checks
+  `max_length`. The `count` part says it ("12/30"); the library's JS
+  counts the same way (`count(text, counted)` of `assets/js/index.js`) as
+  a person types.
+
+      AshDataTable.Kit.count("Buy milk", %{max: 30, unit: :graphemes, trim?: false, casing: nil})
+      #=> 8
+  """
+  @spec count(term, map) :: non_neg_integer
+  def count(text, counted), do: Limits.count(text, counted)
 
   @doc """
   What a cell of a record holds, for a kit's own `row/1`: the column's
