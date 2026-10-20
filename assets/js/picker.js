@@ -12,22 +12,14 @@
 // opened it.
 import {error as errorId} from "./ids.js"
 import {ANYCELL, DATACELL} from "./grid/shared.js"
-import {ARGUMENTS, CANCEL, GRID, NONE, OF, TAKE} from "./markers.js"
-import {opened} from "./panel.js"
+import {ARGUMENTS, CANCEL, GRID, NONE, TAKE} from "./markers.js"
+import {begin, opened} from "./panel.js"
 
 export default {
   mounted() {
     const dialog = this.el
-    // every listener of the hook goes with it (`destroyed`)
-    this.ending = new AbortController()
-    const until = {signal: this.ending.signal}
-    const grid = document.querySelector(`${GRID}[${OF}="${CSS.escape(dialog.getAttribute(OF))}"]`)
-    // the hook of the table the picker belongs to: its dialog asks
-    // a column's question
-    this.grid = grid && grid._ashDataTable
-    const active = document.activeElement
-    this.opener = active && active !== document.body ? active : null
-    this.openerId = this.opener && this.opener.id
+    // `grid`: its dialog asks a column's question
+    const until = begin(this)
     this.busy = false
     opened(dialog, () => this.cancel(), until)
     dialog.addEventListener("click", e => {

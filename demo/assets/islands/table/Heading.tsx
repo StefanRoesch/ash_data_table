@@ -17,10 +17,10 @@ import * as React from "react"
 import {count, ids} from "ash_data_table"
 
 import {attrs, type Bundle} from "./props"
-import {Strict, useServerChecked, useServerValue} from "./mounting"
+import {ServerBox, Strict, useServerValue} from "./mounting"
 import {usePart} from "./parts"
 import type {ColumnsProps} from "./Columns"
-import {box, button, input, select} from "./look"
+import {button, input, select} from "./look"
 
 type Counted = {max: number; unit: string; "trim?": boolean; casing: string | null}
 
@@ -167,12 +167,6 @@ function TypedInput({id, name, type, step, limits, value, label, required, inval
   )
 }
 
-function Box({id, name, value, checked, invalid, describedBy}: {id?: string; name: string; value: string; checked: boolean; invalid: boolean; describedBy?: string}) {
-  const ref = React.useRef<HTMLInputElement>(null)
-  useServerChecked(ref, checked)
-  return <input ref={ref} type="checkbox" id={id} name={name} value={value} aria-invalid={invalid ? "true" : undefined} aria-describedby={describedBy} className={box()} />
-}
-
 // The part `Argument`: one input of the argument line, its label, the
 // control of its type, and under it what Ash says of a value it refuses.
 export function Argument({argument}: {argument: ArgumentProps}) {
@@ -191,7 +185,7 @@ export function Argument({argument}: {argument: ArgumentProps}) {
         {editor === "boolean" && <input type="hidden" name={name} value="false" />}
         {!array && (
           <label htmlFor={id} className="flex items-center gap-2 text-sm">
-            {editor === "boolean" && <Box id={id} name={name} value="true" checked={value === "true"} invalid={invalid} describedBy={describedBy} />}
+            {editor === "boolean" && <ServerBox id={id} name={name} value="true" checked={value === "true"} invalid={invalid} describedBy={describedBy} />}
             <span data-label="">{argument.label}</span>
             {argument.required && editor !== "boolean" && <span aria-hidden="true">*</span>}
           </label>
@@ -215,7 +209,7 @@ export function Argument({argument}: {argument: ArgumentProps}) {
               {editor === "choices" &&
                 (argument.values || []).map(choice => (
                   <label key={choice.value} className="flex items-center gap-2 text-sm">
-                    <Box name={`${name}[]`} value={choice.value} checked={values.includes(choice.value)} invalid={invalid} />
+                    <ServerBox name={`${name}[]`} value={choice.value} checked={values.includes(choice.value)} invalid={invalid} />
                     {choice.label}
                   </label>
                 ))}

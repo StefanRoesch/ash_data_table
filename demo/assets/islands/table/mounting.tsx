@@ -30,6 +30,7 @@ import * as React from "react"
 import {flushSync} from "react-dom"
 import {getHooks} from "live_react"
 import {liveViewTransport} from "ash_data_table"
+import {box} from "./look"
 
 // What live_react gives an island of LiveView's hook API, bound to the
 // island's hook.
@@ -75,6 +76,45 @@ export function reactKitHooks(components: Record<string, React.ComponentType<any
   }
 }
 
+// The table's hook `mount` on `el`, with a transport of the island's hook
+// functions, held in `mounted` and among the living hooks; gives what
+// destroys it again.
+function attach(
+  el: HTMLElement,
+  mount: Mount,
+  live: Live,
+  mounted: React.RefObject<Mounted | null>,
+  options?: object,
+): () => void {
+  const {pushEventTo, handleEvent, removeHandleEvent} = live
+  const transport = liveViewTransport({
+    el,
+    pushEventTo,
+    handleEvent,
+    removeHandleEvent,
+    liveSocket: (window as any).liveSocket,
+  })
+  const hook = mount(el, transport, options)
+  mounted.current = hook
+  living.set(el, hook)
+  return () => {
+    if (living.get(el) === hook) living.delete(el)
+    hook.destroy()
+    if (mounted.current === hook) mounted.current = null
+  }
+}
+
+// The island's hook functions as live_react gives them now, for an effect
+// that mounts a hook later than the render that was given them; kept up to
+// date after each commit, never during a render.
+function useLive(live: Live): React.RefObject<Live> {
+  const functions = React.useRef(live)
+  React.useLayoutEffect(() => {
+    functions.current = live
+  })
+  return functions
+}
+
 // The table's hook `mount` (`mountGrid`, `mountPagination`) on the element
 // of `ref`, with a transport of the island's hook functions.
 export function useMounted(
@@ -84,28 +124,11 @@ export function useMounted(
   options?: object,
 ): React.RefObject<Mounted | null> {
   const mounted = React.useRef<Mounted | null>(null)
-  const functions = React.useRef(live)
-  functions.current = live
+  const functions = useLive(live)
 
   React.useLayoutEffect(() => {
     const el = ref.current
-    if (!el) return
-    const {pushEventTo, handleEvent, removeHandleEvent} = functions.current
-    const transport = liveViewTransport({
-      el,
-      pushEventTo,
-      handleEvent,
-      removeHandleEvent,
-      liveSocket: (window as any).liveSocket,
-    })
-    const hook = mount(el, transport, options)
-    mounted.current = hook
-    living.set(el, hook)
-    return () => {
-      if (living.get(el) === hook) living.delete(el)
-      hook.destroy()
-      if (mounted.current === hook) mounted.current = null
-    }
+    if (el) return attach(el, mount, functions.current, mounted, options)
   }, [])
 
   return mounted
@@ -125,27 +148,14 @@ export function useMountedWhile(
   close: (el: HTMLElement) => void,
 ): React.RefObject<Mounted | null> {
   const mounted = React.useRef<Mounted | null>(null)
-  const functions = React.useRef(live)
-  functions.current = live
+  const functions = useLive(live)
 
   React.useLayoutEffect(() => {
     const el = ref.current
     if (!el || !open) return
-    const {pushEventTo, handleEvent, removeHandleEvent} = functions.current
-    const transport = liveViewTransport({
-      el,
-      pushEventTo,
-      handleEvent,
-      removeHandleEvent,
-      liveSocket: (window as any).liveSocket,
-    })
-    const hook = mount(el, transport)
-    mounted.current = hook
-    living.set(el, hook)
+    const detach = attach(el, mount, functions.current, mounted)
     return () => {
-      if (living.get(el) === hook) living.delete(el)
-      hook.destroy()
-      if (mounted.current === hook) mounted.current = null
+      detach()
       close(el)
     }
   }, [open])
@@ -215,11 +225,21 @@ export function useServerValue(ref: React.RefObject<Control | null>, value: stri
 // The same for a box the server ticks or not: as the element first comes,
 // and again where the server says otherwise (`whenAnswered`). Not React's
 // `defaultChecked`, which React puts back on the box as it draws it again.
-export function useServerChecked(ref: React.RefObject<HTMLInputElement | null>, checked: boolean) {
+function useServerChecked(ref: React.RefObject<HTMLInputElement | null>, checked: boolean) {
   React.useLayoutEffect(() => {
     const el = ref.current
     if (el) return whenAnswered(el, () => (el.checked = checked))
   }, [checked])
+}
+
+export type ServerBoxProps = {id?: string; name: string; value: string; checked: boolean; invalid: boolean; describedBy?: string}
+
+// A checkbox ticked as the server says (`useServerChecked`): the argument
+// line's, and the panel's (the part `PanelBox`).
+export function ServerBox({id, name, value, checked, invalid, describedBy}: ServerBoxProps) {
+  const ref = React.useRef<HTMLInputElement>(null)
+  useServerChecked(ref, checked)
+  return <input ref={ref} type="checkbox" id={id} name={name} value={value} aria-invalid={invalid ? "true" : undefined} aria-describedby={describedBy} className={box()} />
 }
 
 // Under StrictMode where React checks its components (not in a production build).

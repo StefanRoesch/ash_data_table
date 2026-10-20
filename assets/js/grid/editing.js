@@ -178,17 +178,7 @@ export default {
   // again when it is gone. Where the row's record is gone there is
   // nothing to open it for, and the cell is marked here.
   pick(cell) {
-    if (this.picking) return
-    this.picking = true
-    const payload = {row: this.rowKey(cell), column: this.columnOf(cell)}
-    this.transport.push("pick", payload).then(reply => {
-      this.picking = false
-      if (!reply || !reply.error || !cell.isConnected) return
-      this.fail(cell, reply.error, () => {
-        const message = document.getElementById(errorId(cell.id))
-        if (message) message.remove()
-      })
-    })
+    this.openFor(cell, "pick")
   },
 
   // Asks for the side panel of a map cell: one event with the row
@@ -196,10 +186,16 @@ export default {
   // takes it from there. Where the row's record is gone there is
   // nothing to open it for, and the cell is marked here.
   editInPanel(cell) {
+    this.openFor(cell, "edit")
+  },
+
+  // What `pick` and `editInPanel` share: one push at a time, and the
+  // cell marked where the server answers with an error.
+  openFor(cell, event) {
     if (this.picking) return
     this.picking = true
     const payload = {row: this.rowKey(cell), column: this.columnOf(cell)}
-    this.transport.push("edit", payload).then(reply => {
+    this.transport.push(event, payload).then(reply => {
       this.picking = false
       if (!reply || !reply.error || !cell.isConnected) return
       this.fail(cell, reply.error, () => {

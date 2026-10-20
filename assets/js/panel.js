@@ -109,18 +109,24 @@ export function opened(el, cancel, until, own = handle => handle) {
   }
 }
 
+// What the panel and the picker set up alike as they mount: the end of
+// every listener of the hook (`destroyed`), the hook of the table they
+// belong to (`grid`), and the control that opened them, which has the
+// focus still (`opener`). Returns the listeners' options.
+export function begin(hook) {
+  hook.ending = new AbortController()
+  const grid = document.querySelector(`${GRID}[${OF}="${CSS.escape(hook.el.getAttribute(OF))}"]`)
+  hook.grid = grid && grid._ashDataTable
+  const active = document.activeElement
+  hook.opener = active && active !== document.body ? active : null
+  hook.openerId = hook.opener && hook.opener.id
+  return {signal: hook.ending.signal}
+}
+
 export default {
   mounted() {
     const dialog = this.el
-    // every listener of the hook goes with it (`destroyed`)
-    this.ending = new AbortController()
-    const until = {signal: this.ending.signal}
-    const grid = document.querySelector(`${GRID}[${OF}="${CSS.escape(dialog.getAttribute(OF))}"]`)
-    this.grid = grid && grid._ashDataTable
-    // the control that opened the panel has the focus still
-    const active = document.activeElement
-    this.opener = active && active !== document.body ? active : null
-    this.openerId = this.opener && this.opener.id
+    const until = begin(this)
     this.confirmed = false
     // A picker that a field opened may be drawn inside the panel (a
     // modal panel, an inline picker): what happens in it is the

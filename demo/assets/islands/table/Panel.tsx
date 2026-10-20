@@ -30,7 +30,7 @@ import {count, ids, mountPanel} from "ash_data_table"
 import {useLiveReact} from "live_react"
 
 import {attrs, type Bundle} from "./props"
-import {Commits, Strict, useMountedWhile, useServerChecked, useServerValue, type Live} from "./mounting"
+import {Commits, ServerBox, Strict, useMountedWhile, useServerValue, type Live, type ServerBoxProps} from "./mounting"
 import {usePart} from "./parts"
 import {Template, type EditorProps, type Limits} from "./Editors"
 import {closeDialog} from "./Picker"
@@ -317,10 +317,8 @@ export function Counter({id, field, value, className}: {id: string; field: Field
 
 // The part `PanelBox`: a checkbox of the panel, checked as the server says
 // unless the person is in it.
-export function PanelBox({id, name, value = "true", checked, invalid, describedBy}: {id?: string; name: string; value?: string; checked: boolean; invalid: boolean; describedBy?: string}) {
-  const ref = React.useRef<HTMLInputElement>(null)
-  useServerChecked(ref, checked)
-  return <input ref={ref} type="checkbox" id={id} name={name} value={value} aria-invalid={invalid ? "true" : undefined} aria-describedby={describedBy} className={box()} />
+export function PanelBox({value = "true", ...box}: Omit<ServerBoxProps, "value"> & {value?: string}) {
+  return <ServerBox value={value} {...box} />
 }
 
 const INPUT: Record<string, string> = {number: "number", date: "date", datetime: "datetime-local"}
