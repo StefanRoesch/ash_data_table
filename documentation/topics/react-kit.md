@@ -169,10 +169,21 @@ use AshDataTable.KitCase, kit: DemoWeb.ReactKit, endpoint: DemoWeb.Endpoint, cli
 
 The markers, ids, element kinds and Tab stops are checked on what the
 browser drew: `AshDataTable.KitCase.problems/4` over a page's HTML, for a
-state and a presentation. The demo's browser suite drives each state with
-the table's controls and checks each page (`demo/e2e/kit_check.spec.ts`),
-and runs the whole suite a second time with every table drawn by the React
-kit (the Playwright project `react`).
+state and a presentation. A page of your tests' own seeds the state with
+`AshDataTable.KitCase.given/4` (the records, in a tenant of their own),
+attaches the table of `AshDataTable.Test.Resource` (id `"kit"`) in that
+tenant with your kit, and `AshDataTable.KitCase.clean/1`s the tenant as it
+ends:
+
+<!-- source: demo/e2e/server/kit_states_live.ex -->
+```elixir
+{tenant, key, _session} = KitCase.given(nil, state, presentation)
+```
+
+The demo's browser suite drives each state with the table's controls and
+checks each page (`demo/e2e/kit_check.spec.ts`), and runs the whole suite a
+second time with every table drawn by the React kit (the Playwright project
+`react`).
 
 ## Edge cases
 

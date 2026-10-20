@@ -279,9 +279,28 @@ defmodule AshDataTable.KitCase do
 
   # ---- the records -------------------------------------------------------
 
-  @doc false
-  # A tenant of the test's own with the records of `state`, the key of the
-  # first record, and the session of the LiveView that draws them.
+  @doc """
+  Seeds the records of `state` (one of `states/0`) in a tenant of its own:
+  six records of `AshDataTable.Test.Resource`, more than a page holds, with
+  the owners of the pickers' table and two parts of the nested table,
+  `Anchor` first with a value in every column; none for `:empty`, and a
+  tenant whose reads fail (it begins with `broken`) for `:error`.
+
+  Returns `{tenant, key, session}`: the tenant, the key of `Anchor` (nil
+  where there are no records), and the session of
+  `AshDataTable.KitCase.Live`, which draws the table through `kit` with
+  what opens drawn as `presentation` says (one of `presentations/0`),
+  `client?` as `use AshDataTable.KitCase` was told.
+
+  A host's own page seeds a state with it the same way, for
+  `problems/4`: it attaches the table of `AshDataTable.Test.Resource` (id
+  `"kit"`) in that tenant and leaves the session aside. `clean/1` takes
+  the records away again.
+
+      {tenant, key, _session} = AshDataTable.KitCase.given(nil, :rows, :modal)
+      on_exit(fn -> AshDataTable.KitCase.clean(tenant) end)
+  """
+  @spec given(module | nil, atom, atom, boolean) :: {String.t(), String.t() | nil, map}
   def given(kit, state, presentation, client? \\ false) do
     prefix = if state == :error, do: "broken", else: "kit"
     tenant = "#{prefix}-#{System.unique_integer([:positive])}"
@@ -336,10 +355,17 @@ defmodule AshDataTable.KitCase do
     first.id
   end
 
-  @doc false
+  @doc """
+  Takes away the records `given/4` seeded in `tenant`: it stops the
+  in-memory tables of `AshDataTable.Test.Resource`, its owners and its
+  parts in that tenant.
+  """
+  @spec clean(String.t()) :: :ok
   def clean(tenant) do
     for resource <- [Resource, Resource.Owner, Resource.Part],
         do: Ash.DataLayer.Ets.stop(resource, tenant)
+
+    :ok
   end
 
   # ---- the states --------------------------------------------------------
@@ -370,10 +396,10 @@ defmodule AshDataTable.KitCase do
   `state` (one of `states/0`, or `:filter_panel`, the panel of a filter's
   values on the way to `:filtered`, `:row_selected`, the row selected on
   the way to `:selected`, `:related` and `:full_view` of `:links`), what
-  opens drawn as `presentation` says (one of
-  `presentations/0`): the markers, ids, `data-*` values, element kinds
-  and Tab stops this case checks, as a list of what is missing, `[]` for
-  nothing. `key` is the key of the first record (`Anchor`). `html` is the
+  opens drawn as `presentation` says (one of `presentations/0`): the
+  markers, ids, `data-*` values, element kinds and Tab stops this case
+  checks, as a list of what is missing, `[]` for nothing. `key` is the key
+  of the first record (`Anchor`), as `given/4` returns it. `html` is the
   page as the browser shows it: with what LiveView moved into its places
   in them (a nested table, the picker's table), as a kit that draws in the
   browser has drawn it (`document.body.outerHTML`), or as
@@ -381,7 +407,15 @@ defmodule AshDataTable.KitCase do
 
   A kit that draws in the browser is checked with it there, state by state
   (`client: true` above): the library's own browser suite does so for the
-  demo's React kit.
+  demo's React kit. A host seeds each state with `given/4` (the records
+  and their tenant), draws the table of `AshDataTable.Test.Resource` (id
+  `"kit"`) in that tenant with its kit, what opens drawn as
+  `presentation` says (`AshDataTable.attach/4`'s `presentation`: `:modal`
+  all `:modal`, `:inline` all `:inline`, `:mixed` the question `:inline`,
+  `:inside` the picker and the question `:inline`), brings it into the
+  state by the table's controls, hands `document.body.outerHTML` to a
+  route of its tests' own that calls `problems/4` with the state, the
+  presentation and the key, and `clean/1`s the tenant as the page ends.
   """
   @spec problems(String.t(), atom, atom, String.t()) :: [String.t()]
   def problems(html, state, presentation, key) when is_binary(html) do
@@ -1350,10 +1384,15 @@ defmodule AshDataTable.KitCase do
 end
 
 defmodule AshDataTable.KitCase.Live do
-  @moduledoc false
-  # The LiveView `AshDataTable.KitCase` draws its table in: a table of
-  # `AshDataTable.Test.Resource` attached in a tenant of the test's own,
-  # with the kit and the presentation of the test.
+  @moduledoc """
+  The LiveView `AshDataTable.KitCase` draws its table in: the table of
+  `AshDataTable.Test.Resource` (id `"kit"`) attached in a tenant of the
+  test's own, with the kit and the presentation of the test. Its session
+  is the one `AshDataTable.KitCase.given/4` returns:
+
+      {tenant, _key, session} = AshDataTable.KitCase.given(MyAppWeb.TableKit, :rows, :modal)
+      {:ok, view, html} = live_isolated(build_conn(), AshDataTable.KitCase.Live, session: session)
+  """
   use Phoenix.LiveView
 
   @impl true
