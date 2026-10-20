@@ -12,7 +12,7 @@ defmodule DemoWeb.E2E.ChosenKit do
   part, `class`, `presentation` and `look` is then that kit's. A table
   placed with a kit of its own keeps it.
   """
-  use AshDataTable.Kit, contract: 4
+  use AshDataTable.Kit, contract: 5
 
   for part <- AshDataTable.Kit.parts() do
     def unquote(part)(assigns), do: chosen().unquote(part)(assigns)

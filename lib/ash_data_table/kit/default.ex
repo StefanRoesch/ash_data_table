@@ -3,7 +3,7 @@ defmodule AshDataTable.Kit.Default do
   The kit a table is drawn with unless another is named: the markup of
   every part (see `AshDataTable.Kit`) in daisyUI's classes, on Tailwind.
 
-  A kit of one's own starts from it: `use AshDataTable.Kit, contract: 4`
+  A kit of one's own starts from it: `use AshDataTable.Kit, contract: 5`
   makes every part this kit's, and the kit replaces those it defines.
   `super/1` (or `super/2` in `class/2`) draws what this kit draws.
 

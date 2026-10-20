@@ -42,7 +42,7 @@ defmodule AshDataTable.Kit do
   ## A kit of one's own
 
       defmodule MyAppWeb.TableKit do
-        use AshDataTable.Kit, contract: 4
+        use AshDataTable.Kit, contract: 5
 
         # restyle a part drawn once per table
         def class(:panel, _state), do: "my-panel"
@@ -65,7 +65,7 @@ defmodule AshDataTable.Kit do
         def look(option), do: super(option)
       end
 
-  `use AshDataTable.Kit, contract: 4` makes every part `Kit.Default`'s; a
+  `use AshDataTable.Kit, contract: 5` makes every part `Kit.Default`'s; a
   kit defines the parts it draws itself, and calls `super/1` for what
   `Kit.Default` draws. It is checked as it compiles: a contract other
   than this version's, a public function of one argument that is no
@@ -129,7 +129,7 @@ defmodule AshDataTable.Kit do
   its rows (the items of its stream, `AshDataTable.Item`), its panel and
   picker (`Present.Panel`, …) and its model (`Model.Column`,
   `Model.Action`, …), never a record: their fields are listed in "Kit
-  contract 4" below. `myself` and `target`
+  contract 5" below. `myself` and `target`
   are the `phx-target` of the part's events (nil for an attached table);
   `id` is the table's id, or the element's where it says so.
 
@@ -297,24 +297,29 @@ defmodule AshDataTable.Kit do
       more inside a panel or picker that is modal (`place`: `:panel` or
       `:picker`, nil for the table's own; `Attrs.confirm/3`, its ids ending
       in `Attrs.asked_in/1`, the question `ID-dialog-question-in-panel`),
-      in its `inner_block`; a question asked from that panel or picker (or
-      from what is drawn inside one) is shown there.
+      moved into that one's place; a question asked from that panel or
+      picker (or from what is drawn inside one) is shown there.
     * `panel` - the action panel (`Attrs.panel/5`, `data-presentation`,
       `data-question`, `data-ask`): a `<dialog>` when it is modal, an
       element with `role=region` when it is inline; its form
       `ID-panel-form`, a `field` per field, `data-cancel` and the submit
-      `ID-panel-submit`: `id`, `panel` (`Present.Panel`), `files`,
-      `presentation`, `target`, and `inner_block`, what opens inside it (the
-      picker a field opened, where the panel is modal and the picker
-      inline; the question's copy, where the panel is modal and the
-      question inline), drawn after the form.
+      `ID-panel-submit`, and after the form its place
+      (`Ids.panel_place/1`), an empty element that what opens inside it is
+      moved into (the picker a field opened, where the panel is modal and
+      the picker inline; the question's copy, where the panel is modal and
+      the question inline): `id`, `panel` (`Present.Panel`, nil while the
+      panel is closed), `fields` (per field, in its order, the assigns of
+      its `field` part but `kit` and `target`, as `field` lists them;
+      empty while closed), `presentation`, `target`. The part is drawn
+      always: see "The places a nested table is moved into".
     * `picker` - the picker (`Attrs.picker/5`, `data-presentation`,
       `data-several`), as the panel, with `data-cancel`, `data-none`,
-      `data-take` (`Attrs.take/3`): `id`, `picker` (`Present.Picker`),
-      `presentation`, `target`, `takes?` (a row of its table is selected:
-      "Choose" can be used); the picker's table is its `inner_block`, with the
-      question's copy after it where the picker is modal and the question
-      inline.
+      `data-take` (`Attrs.take/3`) and its place (`Ids.picker_place/1`),
+      which its table is moved into, with the question's copy where the
+      picker is modal and the question inline: `id`, `picker`
+      (`Present.Picker`, nil while it is closed), `presentation`, `target`,
+      `takes?` (a row of its table is selected: "Choose" can be used).
+      Drawn always, as the panel.
     * `message` - `kind` (`:error`, `:loading`, `:fill`, `:empty`), `text`,
       `id`, `nested?`; the element `ID-KIND`.
     * `pagination` - `ID-pagination` with `data-table`, the buttons
@@ -417,8 +422,26 @@ defmodule AshDataTable.Kit do
     * `field` - a field of the panel (`data-field`; its buttons
       `Attrs.add_group/3`, `Attrs.remove_group/3` (`data-remove-group`),
       `Attrs.unpick/4`, `Attrs.clear_field/3`, which send their events
-      with `phx-click`; `data-invalid`): `id`, `input`, `name`, `value`, `errors`, `places`,
-      `chosen`, `clear`, `upload`, `inside`, `target`.
+      with `phx-click`; `data-invalid`): `id`, `input` (an
+      `AshDataTable.Model.Input`, or inside a value made of fields an
+      `AshDataTable.Model.Field`), `name` (what its control is sent under),
+      `value` (what it holds, as its control holds it), `errors`, `places`
+      (the places of the values of an array the errors are about),
+      `chosen`, `clear` (as `Present.Field`'s), `upload` (of a file field
+      LiveView's `Phoenix.LiveView.UploadConfig`, else nil), `path` (the
+      names it is sent under, its `data-field` joined with dots), `table`
+      (the id its events name), `limits` and `counted` (what its control
+      says, as `editor`'s; `counted` of a text and of an array of texts,
+      nil of a sensitive one), `target`; and of a value made of fields what
+      is in it, each field given as this part is: `members` (of a value
+      made of fields while it holds one: `name`, the entry it sends to say
+      it is there under `NAME[_present]`, `keys`, the hidden inputs of the
+      keys it sends back as they came, `%{name:, value:}`, and `fields`;
+      nil for no value), `items` (of a list of them: per value `key`, `id`,
+      `path` and `members`), `kind` and `single` (of a union: the kind
+      chosen, `""` for none, and its value where the kind holds one value,
+      a field; else `members`). Nil, `[]` and nil where the field is none
+      of these.
     * `control` - a field's control: `id`, `input`, `name`, `value`,
       `secret?`, `invalid?`, `described`, `limits`.
     * `failure` - the message of a failed cell or row, drawn in the cell
@@ -532,15 +555,19 @@ defmodule AshDataTable.Kit do
   expanded row ahead of time, hidden while the line is closed, and never
   draws it again as another element (a stable key, its id): the nested
   table in it would be lost. The same holds for every place something is
-  opened into.
+  opened into: the places inside the panel (`Ids.panel_place/1`) and the
+  picker (`Ids.picker_place/1`). The table draws the `panel` and `picker`
+  parts always, given nil while closed, so a kit that draws in the browser
+  draws both closed, with their places in them, ahead of time; a kit drawn
+  in HEEx draws nothing while closed, and the place as it opens.
 
-  ## Kit contract 4: the values a part is given
+  ## Kit contract 5: the values a part is given
 
   The items of the stream (`rows` of `grid`, `row` of `row`, `detail` and
   `actions_cell`) are `AshDataTable.Item`'s maps, documented there. The
   structs below are what the other parts are given (`panel`, `picker`,
   `model`, `column`, `state`, `page`, …). Their fields, as listed here, and
-  the item's keys are the kit contract of version 4: a field is not
+  the item's keys are the kit contract of version 5: a field is not
   renamed, taken away or given another meaning without the contract's
   number going up. The modules themselves, and their functions, are the
   table's own and undocumented: a kit reads the fields, and calls none of
@@ -788,16 +815,25 @@ defmodule AshDataTable.Kit do
   longer given `lines` and `refused`, nor `argument_line` `state`: both
   draw the argument line from `arguments`, which holds what each input
   shows and what Ash said of it.
+
+  Contract 5 (from contract 4): the `panel` and `picker` parts are drawn
+  always, given nil while closed, and have no `inner_block`: what opens
+  inside them is moved into their places (`Ids.panel_place/1`,
+  `Ids.picker_place/1`), which they draw. `panel` is given `fields`, the
+  assigns of each `field`, and no `files`; `field` is given `path`,
+  `table`, `limits`, `counted`, `members`, `items`, `kind` and `single`
+  in place of `inside`.
   """
 
   use Phoenix.Component
 
   alias AshDataTable.Edit
+  alias AshDataTable.Ids
   alias AshDataTable.Kit.Words
   alias AshDataTable.Model
   alias AshDataTable.Model.Limits
 
-  @contract 4
+  @contract 5
 
   @parts [
     :root,
@@ -1126,6 +1162,193 @@ defmodule AshDataTable.Kit do
     end
   end
 
+  @doc false
+  # The `fields` of `panel`: per field of the open panel, in its order, the
+  # assigns of its `field` part (but `kit` and `target`), and inside a value
+  # made of fields the same for each field in it (`members`, `items`,
+  # `single`): what a kit draws the panel from, with nothing left to work
+  # out. `files` are the uploads of its file fields, by name. None while
+  # the panel is closed.
+  def fields(_id, nil, _files), do: []
+
+  def fields(id, panel, files) do
+    for field <- panel.fields do
+      inside = Map.merge(panel.inside, %{place: [field.name], path: field.path, table: id})
+      upload = if field.input.editor == :file, do: files[field.name][:upload]
+
+      field(
+        Ids.field(id, [field.name]),
+        field.input,
+        field.form_name,
+        field.value,
+        field.errors,
+        %{places: field.places, chosen: field.chosen, clear: field.clear, upload: upload},
+        inside
+      )
+    end
+  end
+
+  # One field's assigns: what its control says (`limits`, `counted`), and
+  # of a value made of fields what is in it.
+  defp field(id, input, name, value, errors, given, inside) do
+    words = %{input: input, value: value, errors: errors, chosen: given.chosen, inside: inside}
+
+    Map.merge(
+      %{
+        id: id,
+        input: input,
+        name: name,
+        value: value,
+        errors: errors,
+        places: given.places,
+        chosen: given.chosen,
+        clear: given.clear,
+        upload: given.upload,
+        path: inside.path,
+        table: inside.table,
+        limits: Limits.of(input),
+        counted: field_counted(input),
+        members: nil,
+        items: [],
+        kind: nil,
+        single: nil,
+        texts: Words.texts(:field, words),
+        messages: Words.messages(:field, words),
+        locale: Words.locale()
+      },
+      within(id, input, name, value, errors, inside)
+    )
+  end
+
+  # The counter of a text that has a most it can be long, and of each value
+  # of an array of such texts. Not of a sensitive one: nothing is said of
+  # what is typed hidden but what its control shows.
+  defp field_counted(%{sensitive?: true}), do: nil
+  defp field_counted(%{editor: :text} = input), do: Limits.counted(input)
+
+  defp field_counted(%{editor: :list, cell_type: {:array, :text}} = input),
+    do: Limits.counted(input)
+
+  defp field_counted(_input), do: nil
+
+  # A value made of fields: its `members` while it holds one (nil for no
+  # value). A list of them: an item per value (`AshDataTable.Act.items/1`),
+  # each under a number of its own. A union: the kind chosen (`kind`), and
+  # that kind's value, one field (`single`) or its `members`.
+  defp within(id, %{editor: :group} = input, name, held, _errors, inside),
+    do: %{members: if(is_map(held), do: members(id, name, input, held, inside))}
+
+  defp within(id, %{editor: :groups} = input, name, held, _errors, inside) do
+    items =
+      for {{key, item}, index} <- Enum.with_index(AshDataTable.Act.items(held)) do
+        at = %{inside | place: inside.place ++ [index], path: inside.path ++ [key]}
+
+        %{
+          key: key,
+          id: "#{id}-#{key}",
+          path: at.path,
+          members: members("#{id}-#{key}", "#{name}[#{key}]", input, item, at)
+        }
+      end
+
+    %{items: items}
+  end
+
+  defp within(id, %{editor: :union} = input, name, held, errors, inside) do
+    {member, value} =
+      case AshDataTable.Act.kind(input, held, inside.time_zone) do
+        {%{cell_type: :map} = member, held} when not is_map(held) ->
+          {member, AshDataTable.Act.fresh(member, inside.time_zone)}
+
+        {member, held} ->
+          {member, held}
+
+        nil ->
+          {nil, nil}
+      end
+
+    single? = not is_nil(member) and member.cell_type != :map
+    at = %{inside | path: inside.path ++ ["_union_value"]}
+    inner = "#{name}[_union_value]"
+
+    %{
+      kind: if(member, do: Atom.to_string(member.name), else: ""),
+      single:
+        if(single?,
+          do:
+            field(
+              "#{id}-value",
+              member,
+              inner,
+              member_value(member, value),
+              errors,
+              %{places: [], chosen: nil, clear: nil, upload: nil},
+              at
+            )
+        ),
+      members: if(member && not single?, do: members(id, inner, member, value, at))
+    }
+  end
+
+  defp within(_id, _input, _name, _held, _errors, _inside), do: %{}
+
+  # The fields of one value made of fields: the entry that says it is there
+  # (`_present`), the keys it sends back as they came, and a field per input.
+  defp members(id, name, field, held, inside) do
+    %{
+      name: name,
+      keys:
+        for(
+          %{key?: true, name: key} <- field.fields,
+          is_binary(held[Atom.to_string(key)]),
+          do: %{name: "#{name}[#{key}]", value: held[Atom.to_string(key)]}
+        ),
+      fields:
+        for %{input?: true} = inner <- field.fields do
+          at = %{
+            inside
+            | place: inside.place ++ [inner.name],
+              path: inside.path ++ [Atom.to_string(inner.name)]
+          }
+
+          field(
+            "#{id}-f-#{inner.name}",
+            inner,
+            "#{name}[#{inner.name}]",
+            member_value(inner, held[Atom.to_string(inner.name)]),
+            member_errors(inside, inner),
+            %{places: [], chosen: nil, clear: nil, upload: nil},
+            at
+          )
+        end
+    }
+  end
+
+  # What a field inside a group holds, of what its group holds: a field
+  # made of groups as its form sends it, an array without the entry of its
+  # own, and anything else as text.
+  defp member_value(%{editor: editor}, held) when editor in [:group, :groups, :union], do: held
+  defp member_value(%{cell_type: {:array, _item}}, [_own | values]), do: values
+  defp member_value(%{cell_type: {:array, _item}}, _nothing), do: []
+  defp member_value(_field, held) when is_binary(held), do: held
+  defp member_value(_field, _nothing), do: ""
+
+  # The errors of a field inside a group that are shown: all of them once
+  # the person has used the panel's button, and until then those of the
+  # fields they have been in.
+  defp member_errors(inside, field) do
+    path = inside.path ++ [Atom.to_string(field.name)]
+
+    been? =
+      if field.editor == :union,
+        do: AshDataTable.Present.in_union?(inside.touched, path),
+        else: path in inside.touched
+
+    if inside.submitted? or been?,
+      do: Map.get(inside.errors, inside.place ++ [field.name], []),
+      else: []
+  end
+
   # What an argument's control is sent under.
   defp argument_name(%{column: nil, name: name}), do: "arguments[a][#{name}]"
   defp argument_name(%{column: column, name: name}), do: "arguments[c][#{column}][#{name}]"
@@ -1255,7 +1478,14 @@ defmodule AshDataTable.Kit do
     do:
       ". Contract 4 gives heading and argument_line no lines and refused, and " <>
         "argument_line no state: both draw the argument line from arguments " <>
-        "(see \"Contract versions\" in AshDataTable.Kit)"
+        "(see \"Contract versions\" in AshDataTable.Kit)" <> changed(4)
+
+  defp changed(4),
+    do:
+      ". Contract 5 draws the panel and the picker always, given nil while closed, without an " <>
+        "inner_block: what opens inside them is moved into their places (Ids.panel_place/1, " <>
+        "Ids.picker_place/1); panel is given fields, and field path, table, limits, counted, " <>
+        "members, items, kind and single in place of inside"
 
   defp changed(_contract), do: "."
 

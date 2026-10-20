@@ -13,12 +13,12 @@ defmodule AshDataTable.KitTest do
   end
 
   # The fields of the structs a part is given, as `Kit`'s moduledoc lists
-  # them under "Kit contract 4", by struct.
+  # them under "Kit contract 5", by struct.
   defp contract do
     {:docs_v1, _anno, _language, _format, %{"en" => doc}, _meta, _docs} =
       Code.fetch_docs(Kit)
 
-    [_before, section] = String.split(doc, "## Kit contract 4", parts: 2)
+    [_before, section] = String.split(doc, "## Kit contract 5", parts: 2)
     [section | _after] = String.split(section, "\n## ", parts: 2)
 
     section
@@ -38,7 +38,7 @@ defmodule AshDataTable.KitTest do
     end)
   end
 
-  test "kit contract 4 names every field of every struct a part is given, and no other" do
+  test "kit contract 5 names every field of every struct a part is given, and no other" do
     contract = contract()
 
     assert Map.keys(contract) |> Enum.sort() ==
@@ -71,7 +71,7 @@ defmodule AshDataTable.KitTest do
     kit =
       compile("""
       defmodule AshDataTable.KitTest.Styled do
-        use AshDataTable.Kit, contract: 4
+        use AshDataTable.Kit, contract: 5
 
         def class(:panel, _state), do: "mine"
         def class(part, state), do: super(part, state)
@@ -101,7 +101,7 @@ defmodule AshDataTable.KitTest do
       end
 
     assert Exception.message(error) =~
-             "`use AshDataTable.Kit` was given `contract: 2`, and this version of AshDataTable has contract 4"
+             "`use AshDataTable.Kit` was given `contract: 2`, and this version of AshDataTable has contract 5"
 
     # what changed since: a table, not a grid; then the argument line
     assert Exception.message(error) =~ ~s(role="table")
@@ -118,7 +118,7 @@ defmodule AshDataTable.KitTest do
         """)
       end
 
-    assert Exception.message(error) =~ "has contract 4"
+    assert Exception.message(error) =~ "has contract 5"
     assert Exception.message(error) =~ "no lines and refused"
     refute Exception.message(error) =~ ~s(role="table")
 
@@ -142,7 +142,7 @@ defmodule AshDataTable.KitTest do
       assert_raise CompileError, fn ->
         compile("""
         defmodule AshDataTable.KitTest.Typo do
-          use AshDataTable.Kit, contract: 4
+          use AshDataTable.Kit, contract: 5
 
           def pagniation(assigns), do: super_pagination(assigns)
           defp super_pagination(assigns), do: AshDataTable.Kit.Default.pagination(assigns)
@@ -159,7 +159,7 @@ defmodule AshDataTable.KitTest do
       assert_raise CompileError, fn ->
         compile("""
         defmodule AshDataTable.KitTest.Arity do
-          use AshDataTable.Kit, contract: 4
+          use AshDataTable.Kit, contract: 5
 
           def class(_part), do: "one"
         end
@@ -181,7 +181,7 @@ defmodule AshDataTable.KitTest do
     sideways =
       compile("""
       defmodule AshDataTable.KitTest.Sideways do
-        use AshDataTable.Kit, contract: 4
+        use AshDataTable.Kit, contract: 5
 
         def presentation(:picker), do: :sideways
         def presentation(thing), do: super(thing)
@@ -250,7 +250,7 @@ defmodule AshDataTable.KitTest do
       assert_raise CompileError, fn ->
         compile("""
         defmodule AshDataTable.KitTest.LookArity do
-          use AshDataTable.Kit, contract: 4
+          use AshDataTable.Kit, contract: 5
 
           def look(_option, _table), do: true
         end
@@ -265,7 +265,7 @@ defmodule AshDataTable.KitTest do
     kit =
       compile("""
       defmodule AshDataTable.KitTest.Striped do
-        use AshDataTable.Kit, contract: 4
+        use AshDataTable.Kit, contract: 5
 
         def look(:stripes), do: true
         def look(option), do: super(option)
@@ -314,7 +314,7 @@ defmodule AshDataTable.KitTest do
     kit =
       compile("""
       defmodule AshDataTable.KitTest.Dense do
-        use AshDataTable.Kit, contract: 4
+        use AshDataTable.Kit, contract: 5
 
         def look(:density), do: :dense
         def look(option), do: super(option)
@@ -427,7 +427,7 @@ defmodule AshDataTable.KitTest do
     kit =
       compile("""
       defmodule AshDataTable.KitTest.Editors do
-        use AshDataTable.Kit, contract: 4
+        use AshDataTable.Kit, contract: 5
 
         def editor(assigns) do
           send(self(), {:editor, Map.take(assigns, [:limits, :counted, :clearable?])})
@@ -489,7 +489,7 @@ defmodule AshDataTable.KitTest do
     kit =
       compile("""
       defmodule AshDataTable.KitTest.Line do
-        use AshDataTable.Kit, contract: 4
+        use AshDataTable.Kit, contract: 5
 
         def heading(assigns) do
           send(self(), {:heading, assigns |> Map.keys() |> Enum.sort()})

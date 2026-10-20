@@ -387,7 +387,7 @@ defmodule DemoWeb.TablePage do
           heading: text(html, "[id='#{id}-picker-title']"),
           table:
             html
-            |> attribute("[id='#{id}-picker'] > div[id^='#{prefix}']", "id")
+            |> attribute("[id='#{Ids.picker_place(id)}'] [id^='#{prefix}']", "id")
             |> List.first(),
           buttons:
             html

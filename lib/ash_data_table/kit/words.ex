@@ -318,6 +318,9 @@ defmodule AshDataTable.Kit.Words do
     ] ++ positions(label, values)
   end
 
+  defp words(:panel, %{panel: nil}),
+    do: [title: nil, submit: nil, question: nil, errors: [], cancel: t(:cancel)]
+
   defp words(:panel, %{panel: panel}) do
     [
       title: panel.title,
@@ -351,6 +354,17 @@ defmodule AshDataTable.Kit.Words do
           {_key, called, _at} -> t(:remove_group, column: called)
         end)
     ] ++ group_items(input, values)
+  end
+
+  defp words(:picker, %{picker: nil}) do
+    [
+      title: nil,
+      question: nil,
+      error: nil,
+      cancel: t(:cancel),
+      choose_none: t(:choose_none),
+      choose: t(:choose)
+    ]
   end
 
   defp words(:picker, %{picker: picker}) do

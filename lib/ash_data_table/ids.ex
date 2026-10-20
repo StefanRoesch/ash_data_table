@@ -135,6 +135,23 @@ defmodule AshDataTable.Ids do
   def dialog(id), do: "#{id}-dialog"
 
   @doc """
+  The place inside the action panel that what opens in it is moved into
+  (`Phoenix.Component.portal/1`): the picker a field opened, where the
+  panel is modal and the picker inline, and the question's copy:
+  `ID-panel-place`.
+  """
+  @spec panel_place(String.t()) :: String.t()
+  def panel_place(id), do: "#{id}-panel-place"
+
+  @doc """
+  The place inside the picker that its table is moved into, with the
+  question's copy where the picker is modal and the question inline:
+  `ID-picker-place`.
+  """
+  @spec picker_place(String.t()) :: String.t()
+  def picker_place(id), do: "#{id}-picker-place"
+
+  @doc """
   A field of the action panel, by the way to it: its name, and inside a
   value made of fields the names and the keys of the values on the way
   (`[:place]`, `[:stops, "0", :city]`): `ID-panel-f-NAME-…`.

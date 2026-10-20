@@ -36,6 +36,8 @@ defmodule DemoWeb.E2E.IdsLive do
     {:filters, ["tasks"]},
     {:editor, ["tasks", "title"]},
     {:dialog, ["tasks"]},
+    {:panel_place, ["tasks"]},
+    {:picker_place, ["tasks"]},
     {:field, ["tasks", ["place"]]},
     {:field, ["tasks", ["stops", "0", "city"]]},
     {:clear, ["tasks-panel-f-pin"]},

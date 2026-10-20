@@ -20,7 +20,7 @@ the questions, panels and pickers in your own page, see
 <!-- sketch -->
 ```elixir
 defmodule MyAppWeb.TableKit do
-  use AshDataTable.Kit, contract: 4
+  use AshDataTable.Kit, contract: 5
 
   # restyle a part drawn once per table
   def class(:panel, _state), do: "my-panel"
@@ -32,7 +32,7 @@ defmodule MyAppWeb.TableKit do
 end
 ```
 
-`use AshDataTable.Kit, contract: 4` makes every part the default kit's. A kit
+`use AshDataTable.Kit, contract: 5` makes every part the default kit's. A kit
 defines the parts it draws itself, and calls `super` for what the default kit
 draws. It is checked as it compiles: another contract number than this
 version's, a public function of one argument that is no part (a typo such as
@@ -170,11 +170,11 @@ of your own is given the resolved look, a map of all six, as `look` in its
 ## Drawing a part
 
 A part is a function component of the kit, named after the part
-(`AshDataTable.Kit.parts/0` lists the 32 of contract 4). It is given values,
+(`AshDataTable.Kit.parts/0` lists the 32 of contract 5). It is given values,
 never a record, an `AshPhoenix.Form`, a changeset or the actor, and never the
 value of a `sensitive?` field. The moduledoc of `AshDataTable.Kit` says, part
 by part, what each is given, which elements it must draw with which markers,
-and the fields of every value it is given ("Kit contract 4").
+and the fields of every value it is given ("Kit contract 5").
 
 The demo has a kit of its own, `DemoWeb.DivKit`, which draws the grid, its
 rows, cells and footer with `div`s in place of a `<table>`, and opens
@@ -183,7 +183,7 @@ everything in the page
 
 <!-- source: demo/lib/demo_web/div_kit.ex -->
 ```elixir
-use AshDataTable.Kit, contract: 4
+use AshDataTable.Kit, contract: 5
 
 alias AshDataTable.Attrs
 alias AshDataTable.Ids
@@ -470,7 +470,7 @@ changed.
   table through `Kit.part/1` has to pass that part's `texts` and `messages`
   made with `Kit.Words`.
 - **Reading a function of the table's structs.** A kit reads the fields
-  "Kit contract 4" lists; their modules' functions are the table's own, and
+  "Kit contract 5" lists; their modules' functions are the table's own, and
   may change.
 - **A kit of contract 2 no longer compiles.** Contract 3 draws a table, not
   an ARIA grid: `role="table"`, `"cell"` and `"rowheader"` (the label
@@ -487,6 +487,14 @@ changed.
   `state`: an argument's input is drawn from `arguments`, which holds what
   it shows and what Ash said of it. A part of your own that read them
   reads `arguments` instead.
+- **A kit of contract 4 no longer compiles.** Contract 5 draws the `panel`
+  and `picker` parts always, given nil while closed, and gives them no
+  `inner_block`: what opens inside them (the picker's table, a picker a
+  field opened, the question's copy) is moved into the empty element they
+  draw (`Ids.panel_place/1`, `Ids.picker_place/1`). A panel of your own
+  draws its fields from `fields`; a field of your own is given `path`,
+  `table`, `limits`, `counted` and what a value made of fields holds
+  (`members`, `items`, `kind`, `single`) in place of `inside`.
 
 ## Not in the first version
 

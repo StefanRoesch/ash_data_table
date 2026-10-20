@@ -29,6 +29,8 @@ export const filterRow = id => `${id}-filter-row`
 export const filters = id => `${id}-filters`
 export const editor = (id, name) => `${id}-editor-${name}`
 export const dialog = id => `${id}-dialog`
+export const panelPlace = id => `${id}-panel-place`
+export const pickerPlace = id => `${id}-picker-place`
 // `path`: the names and keys on the way to the field, `["stops", "0", "city"]`
 export const field = (id, path) => [`${id}-panel-f`, ...path].join("-")
 export const clear = field => `${field}-clear`

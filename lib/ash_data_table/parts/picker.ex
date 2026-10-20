@@ -6,7 +6,6 @@ defmodule AshDataTable.Parts.Picker do
 
   alias AshDataTable.Attrs
   alias AshDataTable.Ids
-  alias AshDataTable.Present
 
   # The picker: where a person chooses the related record of a reference
   # cell, or of a field of the action panel that holds such a key. A modal
@@ -17,10 +16,12 @@ defmodule AshDataTable.Parts.Picker do
   #
   # The table is as wide as its columns need, so the dialog is wider than
   # the panel, and the table scrolls sideways in it as it does on a page.
-  # It is the slot: `AshDataTable.Live.Drawing` draws it.
+  # `AshDataTable.Live.Drawing` draws it, and moves it into the picker's
+  # place (`Ids.picker_place/1`, `Phoenix.Component.portal/1`).
   attr :id, :string, required: true
-  # what `AshDataTable.Present.picker/1` gives of the open picker
-  attr :picker, Present.Picker, required: true
+  # what `AshDataTable.Present.picker/1` gives of the open picker, nil while
+  # it is closed: then nothing is drawn
+  attr :picker, :any, required: true
   attr :target, :any, required: true
   # `:modal`, a dialog over the page, or `:inline`, a part of it
   attr :presentation, :atom, required: true
@@ -28,7 +29,8 @@ defmodule AshDataTable.Parts.Picker do
   attr :takes?, :boolean, required: true
   attr :kit, :atom, required: true
   attr :texts, :map, required: true
-  slot :inner_block, required: true
+
+  def picker(%{picker: nil} = assigns), do: ~H""
 
   def picker(assigns) do
     ~H"""
@@ -47,7 +49,7 @@ defmodule AshDataTable.Parts.Picker do
       >
         {@texts.error}
       </p>
-      {render_slot(@inner_block)}
+      <div id={Ids.picker_place(@id)} class="contents"></div>
       <div class="mt-6 flex justify-end gap-2">
         <button type="button" {Attrs.cancel("#{@id}-picker-cancel")} class="btn">
           {@texts.cancel}
