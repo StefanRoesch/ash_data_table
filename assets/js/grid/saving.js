@@ -366,44 +366,51 @@ export default {
 
   // A cell whose save, or whose record chosen in the picker, waits for
   // the host's answer to its column's question (controlled mode), held
-  // by the `ref` of that request: busy until the answer comes. `restore`
-  // puts the cell back as it was, `value` and `old` mark it where the
-  // record is gone (none for a choice, which marks nothing). A reply may
-  // come after a patch took `aria-busy` away: it is set again.
+  // by the `ref` of that request: busy until the answer comes, showing
+  // what it shows now (what was typed, a box ticked, the record it
+  // holds: what the question is about), kept as `shown`. `restore` puts
+  // the cell back as it was, `value` and `old` mark it where the record
+  // is gone (none for a choice, which marks nothing). A reply may come
+  // after a patch took `aria-busy` away: it is set again.
   waitFor(ref, cell, {restore, value, old}) {
     cell.setAttribute("aria-busy", "true")
-    this.holds.set(ref, {cell: cell.id, restore, value, old, patched: false})
+    const shown = Array.from(cell.childNodes).map(node => node.cloneNode(true))
+    this.holds.set(ref, {cell: cell.id, restore, shown, value, old})
   },
 
   // A patch of a held cell's row brings the cell as the server renders
-  // it: it stays busy, as its question is open still, and is not put back
-  // over the patch when the answer is no (`sync`).
+  // it, the record's value: it stays busy, as its question is open still,
+  // and shows what it showed again, as a kit that draws in the browser
+  // keeps a busy cell as it is; what the patch brought is what puts it
+  // back now, when the answer comes (`sync`).
   rehold() {
     for (const held of this.holds.values()) {
       const cell = document.getElementById(held.cell)
       if (!cell || !this.owns(cell) || cell.hasAttribute("aria-busy")) continue
+      const patched = Array.from(cell.childNodes)
+      held.restore = () => cell.replaceChildren(...patched)
+      cell.replaceChildren(...held.shown.map(node => node.cloneNode(true)))
       cell.setAttribute("aria-busy", "true")
-      held.patched = true
     }
   },
 
   // The answer to a save that waited for the host, by the `ref` of its
-  // request: saved, the patch of its row has put the cell right; not
-  // saved, the cell is put back as it was (as a patch brought it, if one
-  // did), or marked where the record is gone. An answer to a `ref` that
-  // is held no more touches nothing: the cell may be held for another.
+  // request: the cell holds what this hook put into it, and is put back
+  // as it was, or as the last patch of its row brought it (`rehold`):
+  // saved, as the patch that saved it brought it; not saved, as the
+  // record has it, or marked where the record is gone. An answer to a
+  // `ref` that is held no more touches nothing: the cell may be held for
+  // another.
   answered({ref, saved, error}) {
     const held = this.holds.get(ref)
     if (!held) return
     this.holds.delete(ref)
     const cell = document.getElementById(held.cell)
     if (!cell || !this.owns(cell)) return
-    if (held.patched) return cell.removeAttribute("aria-busy")
-    // Not patched: the cell holds what this hook put into it. Saved, its
-    // own content goes back first, before it is busy no more: a kit that
-    // draws in the browser held the cell as it was while it was busy, and
-    // draws it from the row it was sent once it is not (a HEEx kit's
-    // patch of the row has always come first: `patched`).
+    // Saved, the cell's content goes back first, before it is busy no
+    // more: a kit that draws in the browser held the cell as it was while
+    // it was busy, and draws it from the row it was sent once it is not
+    // (a HEEx kit's patch of the row has come first: `rehold`).
     if (saved) held.restore()
     cell.removeAttribute("aria-busy")
     if (saved) return

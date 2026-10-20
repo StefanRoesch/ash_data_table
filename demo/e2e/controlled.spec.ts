@@ -79,7 +79,7 @@ test.describe("what the page draws of the questions and the picker", () => {
     await expect(note).toHaveText("first")
   })
 
-  test("a cell held for the page stays busy while a patch puts its row back, and Cancel leaves the patch", async ({ page }) => {
+  test("a cell held for the page stays busy, showing what was typed, while a patch puts its row back, and Cancel leaves the patch", async ({ page }) => {
     const anchor = await opened(page)
     const note = cell(page, anchor, "note")
     await note.focus()
@@ -90,10 +90,9 @@ test.describe("what the page draws of the questions and the picker", () => {
     await expect(note).toHaveAttribute("aria-busy", "true")
 
     // another cell of the row saves: the server sends the row again, and
-    // the note waits still. The default kit's patch draws the note as the
-    // record has it; the React kit draws a busy cell as it was until the
-    // hook gives it back (react-kit-design.md §15, "a cell the hook
-    // holds"), what was typed
+    // the note waits still, showing what was typed, what the question is
+    // about, in every kit (`rehold`; react-kit-design.md §16, "The
+    // drift-check fix-up")
     const name = cell(page, anchor, "name")
     await name.focus()
     await page.keyboard.press("Enter")
@@ -101,13 +100,38 @@ test.describe("what the page draws of the questions and the picker", () => {
     await page.keyboard.press("Enter")
     await expect(name).toHaveText("Anchored")
     await expect(name).not.toHaveAttribute("aria-busy")
-    await expect(note).toHaveText(test.info().project.name === "react" ? "second" : "first")
+    await expect(note).toHaveText("second")
     await expect(note).toHaveAttribute("aria-busy", "true")
 
     await page.locator("#host-cancel").click()
     await expect(page.locator("#host-question")).toHaveCount(0)
     await expect(note).not.toHaveAttribute("aria-busy")
     await expect(note).toHaveText("first")
+    await expect(name).toHaveText("Anchored")
+  })
+
+  test("a cell held for the page, its row patched meanwhile, is saved by Confirm", async ({ page }) => {
+    const anchor = await opened(page)
+    const note = cell(page, anchor, "note")
+    await note.focus()
+    await page.keyboard.press("Enter")
+    await note.locator("textarea").fill("second")
+    await page.keyboard.press("Enter")
+    await expect(page.locator("#host-question-text")).toHaveText("Change the note?")
+
+    const name = cell(page, anchor, "name")
+    await name.focus()
+    await page.keyboard.press("Enter")
+    await name.locator("textarea").fill("Anchored")
+    await page.keyboard.press("Enter")
+    await expect(name).toHaveText("Anchored")
+    await expect(note).toHaveText("second")
+    await expect(note).toHaveAttribute("aria-busy", "true")
+
+    await page.locator("#host-confirm").click()
+    await expect(page.locator("#host-question")).toHaveCount(0)
+    await expect(note).not.toHaveAttribute("aria-busy")
+    await expect(note).toHaveText("second")
     await expect(name).toHaveText("Anchored")
   })
 
