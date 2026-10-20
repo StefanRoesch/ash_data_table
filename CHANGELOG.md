@@ -172,11 +172,33 @@ declared in the resource and mounted with one line in the router.
   the packages of shadcn/ui's sources), TSX bundled by the Hex esbuild and
   scanned by the Hex Tailwind (no Vite), and shadcn/ui's colours scoped
   under `.shadcn` beside daisyUI. Its React kit (`DemoWeb.ReactKit`)
-  draws a table's heading line, grid, line above the grid, live region,
-  pagination, what a table limited to related records says and the
-  messages in place of the rows as React islands with shadcn/ui's look, on
-  the table's own hooks, nested tables alike, each part replaceable by
-  name; `/react/tasks` shows the tasks drawn with it.
+  draws every part of a table but its root (an element that draws nothing
+  to be seen) as React islands with shadcn/ui's look: the heading line,
+  grid, line above the grid, live region, pagination, what a table limited
+  to related records says, the messages in place of the rows, the
+  question, the action panel (every kind of field, a file through
+  LiveView's own file input) and the picker, on the table's own hooks,
+  nested tables alike, each part replaceable by name; `/react/tasks`,
+  linked from the demo's front page, shows the tasks drawn with it. The
+  guide "A kit drawn in React" is its recipe.
+- Kit contract 5: the `panel` and `picker` parts are drawn always, given
+  nil while closed, and have no `inner_block`: what opens inside them (the
+  picker's table, a picker a field of a modal panel opened, the question's
+  copy) is moved by portal into their places (`Ids.panel_place/1`,
+  `Ids.picker_place/1`), which a kit drawn in HEEx draws as they open and a
+  kit that draws in the browser draws ahead. `panel` is given `fields`, the
+  assigns of each field; `field` is given `path`, `table`, `limits`,
+  `counted` and what a value made of fields holds (`members`, `items`,
+  `kind`, `single`) in place of `inside`, so the default kit's panel parts
+  call no internal. A kit of contract 4 fails to compile and says what
+  changed.
+- `AshDataTable.Kit.count/2`: how long a text is as its counter counts it.
+- The buttons that add and take away a group of fields send the way to it
+  as a JSON list in `phx-value-path` (`Attrs.add_group/3`,
+  `Attrs.remove_group/3`), not as a `JS.push` command.
+- `AshDataTable.KitCase` checks a kit that draws in the browser with
+  `client: true` (the texts and that nothing sensitive is given), and
+  `KitCase.problems/4` checks a page as the browser drew it.
 
 ### Editing several values in the side panel
 

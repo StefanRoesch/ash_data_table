@@ -145,7 +145,8 @@ defmodule DemoWeb.HomeLive do
           has none, and shows how the table itself shows every type.
         </p>
         <p id="react" class="text-base-content/70">
-          A table can be drawn by another kit: <.link navigate={~p"/react/tasks"} class="link">React tasks</.link>
+          A table can be drawn by another kit:
+          <.link navigate={~p"/react/tasks"} class="link">React tasks</.link>
           is the table of <code class="text-xs">/tasks</code>
           drawn with the demo's React kit, every part of it in React and shadcn/ui
           (through live_react), on the table's own keyboard and behaviour.

@@ -108,7 +108,7 @@ defmodule AshDataTable.KitTest do
     assert Exception.message(error) =~ "Attrs.sort/3"
     assert Exception.message(error) =~ "argument_line no state"
 
-    # from contract 3 the last step only
+    # from contract 3 its steps on, not the earlier ones
     error =
       assert_raise CompileError, fn ->
         compile("""
