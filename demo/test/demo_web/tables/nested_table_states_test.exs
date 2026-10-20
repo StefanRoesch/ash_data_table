@@ -91,7 +91,7 @@ defmodule DemoWeb.Tables.NestedTableStatesTest do
       refute html =~ "Page one"
     end
 
-    test "is no more than \"not available\" when the destination's table does not say so: never \"No records\"",
+    test ~s[is no more than "not available" when the destination's table does not say so: never "No records"],
          %{view: view, binder: binder} do
       Gate.close()
       {html, id} = open(view, binder, "drafts")

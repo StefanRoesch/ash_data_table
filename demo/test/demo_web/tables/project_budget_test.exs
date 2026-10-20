@@ -304,7 +304,7 @@ defmodule DemoWeb.Tables.ProjectBudgetTest do
       assert Decimal.equal?(stored(other).budget, Decimal.new(@other))
     end
 
-    test "\"Set budget\" has \"Clear\" for a project with a budget, which empties it when the action runs",
+    test ~s["Set budget" has "Clear" for a project with a budget, which empties it when the action runs],
          %{view: view, rich: rich, bare: bare} do
       html = act(view, "project", bare.id, "set_budget")
       assert text(html, "#project-panel-f-budget-clear") == nil

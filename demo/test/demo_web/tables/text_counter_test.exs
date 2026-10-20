@@ -103,20 +103,19 @@ defmodule DemoWeb.Tables.TextCounterTest do
     test "of a text without a most has none, and is the textarea alone", %{labels: html} do
       content = editor_content(html, "label", "colour")
 
-      assert Enum.count(LazyHTML.query(content, "[data-count]")) == 0
+      assert Enum.empty?(LazyHTML.query(content, "[data-count]"))
       assert LazyHTML.attribute(LazyHTML.query(content, "textarea"), "aria-describedby") == []
       assert [{"textarea", _attributes, _children}] = LazyHTML.to_tree(content)
     end
 
     test "of an array of text is none: the array is edited in the side panel, whose rows have theirs",
          %{tasks: html} do
-      assert Enum.count(LazyHTML.query(editor_content(html, "task", "tags"), "[data-count]")) == 0
+      assert Enum.empty?(LazyHTML.query(editor_content(html, "task", "tags"), "[data-count]"))
     end
 
     test "of anything that is no text with a most has none", %{tasks: html} do
       for field <- ~w(status due_on estimate_hours checks billable?) do
-        assert Enum.count(LazyHTML.query(editor_content(html, "task", field), "[data-count]")) ==
-                 0,
+        assert Enum.empty?(LazyHTML.query(editor_content(html, "task", field), "[data-count]")),
                field
       end
     end
@@ -360,7 +359,7 @@ defmodule DemoWeb.Tables.TextCounterTest do
         Phoenix.ConnTest.init_test_session(conn, %{"assigns" => %{reader: %{role: :admin}}})
 
       {:ok, view, html} = live(conn, "/support/safes")
-      assert Enum.count(LazyHTML.query(editor_content(html, "safe", "seal"), "[data-count]")) == 0
+      assert Enum.empty?(LazyHTML.query(editor_content(html, "safe", "seal"), "[data-count]"))
 
       html = act(view, "safe", safe.id, "reissue")
       assert attribute(html, "#safe-panel-f-seal", "type") == ["password"]

@@ -98,7 +98,7 @@ defmodule DemoWeb.Kits.KitNamedTest do
     assert LazyHTML.attribute(cell.("name"), "data-kit-cell") == ["value"]
     assert LazyHTML.attribute(cell.("name"), "data-given") == ["value"]
     # the column's component draws the size, not the kit
-    assert Enum.count(cell.("size")) == 0
+    assert Enum.empty?(cell.("size"))
 
     assert page |> LazyHTML.query("[id='kit-row-#{key}-c-size'] progress") |> Enum.count() ==
              1

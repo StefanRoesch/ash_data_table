@@ -276,29 +276,31 @@ defmodule Demo.Tracker.Label do
   # The lines of an uploaded file that hold something. The file is read
   # through `Ash.Type.File`, whatever it was given as.
   defp lines(file) do
-    with {:ok, device} <- Ash.Type.File.open(file, [:read, :utf8]) do
-      # nothing at all is read as the end of the file
-      text = with :eof <- IO.read(device, :eof), do: ""
-      File.close(device)
+    case Ash.Type.File.open(file, [:read, :utf8]) do
+      {:ok, device} ->
+        # nothing at all is read as the end of the file
+        text = with :eof <- IO.read(device, :eof), do: ""
+        File.close(device)
 
-      cond do
-        not is_binary(text) or not String.valid?(text) ->
-          {:error, invalid("is not a text file")}
+        cond do
+          not is_binary(text) or not String.valid?(text) ->
+            {:error, invalid("is not a text file")}
 
-        String.trim(text) == "" ->
-          {:error, invalid("is empty")}
+          String.trim(text) == "" ->
+            {:error, invalid("is empty")}
 
-        true ->
-          {:ok,
-           for(
-             line <- String.split(text, ~r/\R/),
-             String.trim(line) != "",
-             not String.starts_with?(String.trim_leading(line), "#"),
-             do: line
-           )}
-      end
-    else
-      {:error, _reason} -> {:error, invalid("could not be read")}
+          true ->
+            {:ok,
+             for(
+               line <- String.split(text, ~r/\R/),
+               String.trim(line) != "",
+               not String.starts_with?(String.trim_leading(line), "#"),
+               do: line
+             )}
+        end
+
+      {:error, _reason} ->
+        {:error, invalid("could not be read")}
     end
   end
 

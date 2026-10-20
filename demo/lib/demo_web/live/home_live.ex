@@ -40,7 +40,7 @@ defmodule DemoWeb.HomeLive do
         "no column declared: the default columns, edited in place by admins and members; " <>
           "for nobody, a page that does not exist. " <>
           "A row expands into its tasks: the one relationship it offers by default, with " <>
-          "\"New task\" on its line. \"Set status\" for admins and members; \"Destroy\" " <>
+          ~s["New task" on its line. "Set status" for admins and members; "Destroy" ] <>
           "and \"New project\" for admins"}
      ]},
     {Demo.Tracker.Comment, "Keyset pagination only. Its read is refused outright for nobody.",
