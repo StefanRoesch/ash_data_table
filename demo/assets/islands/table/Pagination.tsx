@@ -48,7 +48,7 @@ export function Pagination({pagination}: PaginationProps) {
 
   return (
     <Commits mounted={mounted}>
-      <Tag ref={ref as any} {...attrs(pagination.element)} className={nested ? "ash-react-pagination-nested" : "ash-react-pagination"}>
+      <Tag ref={ref as React.RefObject<HTMLDivElement>} {...attrs(pagination.element)} className={nested ? "ash-react-pagination-nested" : "ash-react-pagination"}>
         <p id={`${id}-range`} className="me-auto text-sm">{pagination.range}</p>
         <div className="ash-react-join">
           <button type="button" id={`${id}-previous`} className={button("outline", "sm")} disabled={pagination.previous.disabled} {...sent} phx-value-to="previous">

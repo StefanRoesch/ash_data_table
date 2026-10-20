@@ -11,6 +11,13 @@
 import {OWNED} from "ash_data_table"
 
 export type Bundle = Record<string, string | true>
+
+// A value as live_react sends it: JSON.
+export type Json = string | number | boolean | null | Json[] | {[key: string]: Json}
+
+// A message as the library gives it (kit contract 5): its key and values,
+// beside its text, which the parts show.
+export type Message = {key: string; values: {[name: string]: Json}}
 export type Props = Record<string, string | boolean>
 
 const NAMES: Record<string, string> = {

@@ -56,7 +56,7 @@ export function Picker({picker}: PickerProps) {
 
   return (
     <Tag
-      ref={ref as any}
+      ref={ref as React.RefObject<HTMLDialogElement>}
       {...(open ? attrs(picker.frame) : {hidden: Tag === "section"})}
       className={picker.presentation === "modal" ? "ash-react-dialog ash-react-side ash-react-wide" : "ash-react-inline ash-react-wide"}
     >

@@ -22,19 +22,20 @@ import {AshStatus} from "./Status"
 import {DEFAULT_PARTS, PartsContext, type Parts} from "./parts"
 
 export {reactKitHooks} from "./mounting"
+import type {Island} from "./mounting"
 
-const ISLANDS: Record<string, React.ComponentType<any>> = {AshHeading, AshRelated, AshGrid, AshSelectionLine, AshStatus, AshMessage, AshPagination, AshConfirm, AshPanel, AshPicker}
+const ISLANDS = {AshHeading, AshRelated, AshGrid, AshSelectionLine, AshStatus, AshMessage, AshPagination, AshConfirm, AshPanel, AshPicker} as Record<string, Island>
 
-export function reactKit(given: Partial<Parts> = {}): Record<string, React.ComponentType<any>> {
+export function reactKit(given: Partial<Parts> = {}): Record<string, Island> {
   const parts: Parts = {
     ...DEFAULT_PARTS,
     ...given,
     components: {...DEFAULT_PARTS.components, ...(given.components || {})},
     editors: {...DEFAULT_PARTS.editors, ...(given.editors || {})},
   }
-  const islands: Record<string, React.ComponentType<any>> = {}
+  const islands: Record<string, Island> = {}
   for (const [name, Island] of Object.entries(ISLANDS)) {
-    const WithParts = (props: any) => (
+    const WithParts = (props: Record<string, unknown>) => (
       <PartsContext.Provider value={parts}>
         <Island {...props} />
       </PartsContext.Provider>

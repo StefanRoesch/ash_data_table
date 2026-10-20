@@ -43,7 +43,7 @@ const anchor = (id: string) => `--ash-data-table-columns-${id.replace(/[^A-Za-z0
 export function Columns({columns}: ColumnsProps) {
   const {id, texts} = columns
   // what the hook writes into the button: drawn as the server first gave it
-  const name = React.useRef(texts.columns_name).current
+  const [name] = React.useState(texts.columns_name)
 
   return (
     <div id={`${id}-columns-control`}>

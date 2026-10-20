@@ -35,13 +35,19 @@ import {box} from "./look"
 // What live_react gives an island of LiveView's hook API, bound to the
 // island's hook.
 export type Live = {
-  pushEventTo: (target: any, event: string, payload: object) => Promise<any>
-  handleEvent: (event: string, handler: (payload: any) => void) => any
-  removeHandleEvent: (ref: any) => void
+  pushEventTo: (target: string | HTMLElement, event: string, payload: object) => Promise<unknown>
+  handleEvent: (event: string, handler: (payload: Record<string, unknown>) => void) => unknown
+  removeHandleEvent: (ref: unknown) => void
 }
 
 type Mounted = {beforeUpdate(): void; updated(): void; destroy(): void}
-type Mount = (el: HTMLElement, transport: any, options?: object) => Mounted
+
+// An island as live_react draws it: given what the server sent it, as JSON.
+export type Island = React.ComponentType<Record<string, unknown>>
+type Mount = (el: HTMLElement, transport: ReturnType<typeof liveViewTransport>, options?: object) => Mounted
+
+// LiveView's socket, as app.js puts it on the window (its client debug)
+type Socket = {isDebugEnabled(): boolean}
 
 // the hooks mounted in islands, by the element each is mounted on
 const living = new Map<HTMLElement, Mounted>()
@@ -57,15 +63,15 @@ function gone(island: HTMLElement) {
   window.dispatchEvent(new CustomEvent("ash-react:gone", {detail: {island: island.id}}))
 }
 
-export function reactKitHooks(components: Record<string, React.ComponentType<any>>) {
+export function reactKitHooks(components: Record<string, Island>) {
   const {ReactHook} = getHooks(components)
   return {
     ReactHook: {
       ...ReactHook,
-      mounted(this: any) {
+      mounted(this: object) {
         flushSync(() => ReactHook.mounted.call(this))
       },
-      updated(this: any) {
+      updated(this: object) {
         flushSync(() => ReactHook.updated.call(this))
       },
       destroyed(this: {el: HTMLElement}) {
@@ -92,7 +98,7 @@ function attach(
     pushEventTo,
     handleEvent,
     removeHandleEvent,
-    liveSocket: (window as any).liveSocket,
+    liveSocket: (window as Window & {liveSocket?: Socket}).liveSocket,
   })
   const hook = mount(el, transport, options)
   mounted.current = hook
@@ -129,6 +135,10 @@ export function useMounted(
   React.useLayoutEffect(() => {
     const el = ref.current
     if (el) return attach(el, mount, functions.current, mounted, options)
+    // once, as LiveView mounts a hook once on its element: `options` is a
+    // new object on every render, and what the hook is given it reads from
+    // its element and the transport
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return mounted
@@ -158,6 +168,9 @@ export function useMountedWhile(
       detach()
       close(el)
     }
+    // as it opens and closes only: `close` is a new function where the part
+    // writes it inline, and the hook stays mounted while the element is open
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   return mounted
@@ -219,7 +232,7 @@ export function useServerValue(ref: React.RefObject<Control | null>, value: stri
     }
     const el = ref.current
     if (el) return whenAnswered(el, () => (el.value = value ?? ""))
-  }, [value])
+  }, [ref, value])
 }
 
 // The same for a box the server ticks or not: as the element first comes,
@@ -229,7 +242,7 @@ function useServerChecked(ref: React.RefObject<HTMLInputElement | null>, checked
   React.useLayoutEffect(() => {
     const el = ref.current
     if (el) return whenAnswered(el, () => (el.checked = checked))
-  }, [checked])
+  }, [ref, checked])
 }
 
 export type ServerBoxProps = {id?: string; name: string; value: string; checked: boolean; invalid: boolean; describedBy?: string}

@@ -7,13 +7,14 @@ import * as React from "react"
 import {ids} from "ash_data_table"
 import {badge, button} from "./look"
 import {usePart} from "./parts"
+import type {Json, Message} from "./props"
 
 export type ItemCell = {
   state: "value" | "empty" | "masked" | "forbidden"
   text: string | null
-  value: any
+  value: Json
   editable: boolean
-  failure: null | {typed: string; text: string; message: any}
+  failure: null | {typed: string; text: string; message: Message}
   attrs: Record<string, string | true>
 }
 
@@ -31,7 +32,7 @@ export type Column = {
   hide_value: string | null
 }
 
-export type GridTexts = Record<string, any>
+export type GridTexts = Record<string, string>
 
 // what is drawn in place of a sensitive value: the same for every value
 const MASK = "••••••"
@@ -135,7 +136,7 @@ export function Cell({id, column, cell, texts, components}: CellProps) {
 
 // ---- the columns' components ------------------------------------------------
 
-type ComponentProps = {value: any; text: string | null; column: Column}
+type ComponentProps = {value: Json; text: string | null; column: Column}
 export type Components = Record<string, React.ComponentType<ComponentProps>>
 
 // `AshDataTable.Components.Badge`: the text in a badge.
@@ -149,6 +150,8 @@ function Badge({text}: ComponentProps) {
 function source(text: string | null): string | null {
   if (typeof text !== "string") return null
   const value = text.trim()
+  // a control character on purpose: a value with one is no address
+  // eslint-disable-next-line no-control-regex
   if (/[\s\\\x00-\x1f]/.test(value)) return null
   if (value.startsWith("/") && !value.startsWith("//")) return value
   try {

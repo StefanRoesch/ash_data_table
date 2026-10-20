@@ -13,9 +13,12 @@ export default tseslint.config(
   tseslint.configs.recommended,
   reactHooks.configs.flat.recommended,
   jsxA11y.flatConfigs.recommended,
-  {languageOptions: {globals: {...globals.browser}}},
+  // `process.env.NODE_ENV` is replaced by esbuild's `--define` (config/config.exs).
+  {languageOptions: {globals: {...globals.browser, process: "readonly"}}},
   {
     rules: {
+      // a name that starts with `_` is unused on purpose
+      "@typescript-eslint/no-unused-vars": ["error", {argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_"}],
       // usePart(name) reads the part from context: no component is made during render.
       "react-hooks/static-components": "off",
       // role="cell" on a td is on purpose: the grid is role=table and mirrors the HEEx kit's markup.

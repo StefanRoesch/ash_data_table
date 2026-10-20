@@ -38,6 +38,26 @@ import {box, button, input, select} from "./look"
 import {cn} from "../lib/utils"
 
 type Counted = {max: number; unit: string; "trim?": boolean; casing: string | null}
+// What a field is given of its texts (`Kit.Words`), the last three for a
+// list of groups only.
+type FieldTexts = {
+  required: string
+  choose: string
+  add_value: string
+  kind: string
+  remove_group: string
+  will_be_cleared: string
+  keep: string
+  clear: string
+  keep_value: string
+  clear_value: string
+  errors: string[]
+  chosen: string[]
+  remove_chosen: string[]
+  value_position?: string[]
+  remove_value?: string[]
+  item_errors?: string[][]
+}
 type Members = {name: string; keys: {name: string; value: string}[]; fields: FieldProps[]}
 
 export type FieldProps = {
@@ -76,7 +96,7 @@ export type FieldProps = {
   kind: string | null
   kinds: null | {value: string; label: string}[]
   single: FieldProps | null
-  texts: Record<string, any>
+  texts: FieldTexts
   list: false | {add_value: string; value_label: string; remove_label: string; value_position: string[]; remove_value: string[]}
 }
 
@@ -118,7 +138,7 @@ export function Panel({panel}: PanelProps) {
 
   return (
     <Tag
-      ref={ref as any}
+      ref={ref as React.RefObject<HTMLDialogElement>}
       {...(open ? attrs(panel.frame) : {hidden: !modal})}
       className={modal ? "ash-react-dialog ash-react-side" : "ash-react-inline"}
     >
@@ -331,7 +351,8 @@ const STEP: Record<string, string> = {number: "any", datetime: "1"}
 // in a menu, anything else in an input of its type, with what the
 // constraints of a number say of it (`limits`).
 export function Control({field, describedBy}: {field: FieldProps; describedBy?: string}) {
-  const ref = React.useRef<any>(null)
+  // one ref for whichever of the three it draws: an input, a textarea or a select
+  const ref = React.useRef<HTMLInputElement & HTMLTextAreaElement & HTMLSelectElement>(null)
   const value = text(field.value)
   useServerValue(ref, value)
   const common = {
@@ -642,7 +663,7 @@ export function FileField({field, describedBy}: {field: FieldProps; describedBy?
 export function ComponentEditor({field, describedBy}: {field: FieldProps; describedBy?: string}) {
   const components = usePart("editors")
   const Component = field.component ? components[field.component] : null
-  const control: Bundle & Record<string, any> = {
+  const control: Bundle = {
     id: field.id,
     name: field.name,
     "data-control": true,

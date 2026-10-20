@@ -29,7 +29,7 @@ import {ids, mountGrid} from "ash_data_table"
 import {Link} from "live_react"
 
 import {box, button} from "./look"
-import {attrs, merged, type Bundle} from "./props"
+import {attrs, merged, type Bundle, type Message} from "./props"
 import {Commits, Strict, useMounted, type Live} from "./mounting"
 import {usePart} from "./parts"
 import type {Column, GridTexts, ItemCell} from "./cells"
@@ -157,7 +157,7 @@ export type RowItem = {
   key: string
   rowindex: number
   open: boolean
-  failure: null | {text: string; message: any}
+  failure: null | {text: string; message: Message}
   attrs: Record<string, string | true>
   cells: Record<string, ItemCell>
 }
@@ -352,7 +352,7 @@ export function FilterCell({cell, table, form}: {cell: FilterCellProps; table: s
 // Drawn once, as the element first comes: what the hook changes after it
 // (`aria-rowindex`, "once").
 function useOnce<T>(value: T): T {
-  return React.useRef(value).current
+  return React.useState(value)[0]
 }
 
 // The part `Row`: the box that selects the row, its expander, a cell per
@@ -397,14 +397,17 @@ export function Row({item, open, row, columns, texts}: {item: RowItem; open: boo
 
 // Drawn from `item` but while the hook holds the element of `id`: then as
 // it was drawn last before.
-function useHeld<T>(id: string, item: T, el?: React.RefObject<HTMLElement | null>): T {
-  // busy as it is drawn: the hook may have marked it a moment ago
+function useHeld<T>(id: string, item: T): T {
   const store = React.useContext(Held)
-  const held = React.useSyncExternalStore(store.subscribe, () => store.has(id))
-  const holding = held || !!(el && el.current && el.current.hasAttribute("aria-busy"))
-  const kept = React.useRef(item)
-  if (!holding) kept.current = item
-  return kept.current
+  // busy as it is drawn: the hook may have marked it a moment ago (the
+  // page's element, read as a store is)
+  const holding = React.useSyncExternalStore(
+    store.subscribe,
+    () => store.has(id) || !!document.getElementById(id)?.hasAttribute("aria-busy"),
+  )
+  const [kept, keep] = React.useState(item)
+  if (!holding && kept !== item) keep(item)
+  return holding ? kept : item
 }
 
 // A number that goes up whenever the server sent `item` again (another
@@ -420,20 +423,21 @@ function useDrawnAnew(ref: React.RefObject<HTMLElement | null>, sent: number) {
   React.useLayoutEffect(() => {
     if (sent === 0 || !ref.current) return
     for (const button of ref.current.querySelectorAll(":scope > [data-whole]")) button.remove()
-  }, [sent])
+  }, [ref, sent])
 }
 
 function useSent(item: object): number {
-  const last = React.useRef({item, sent: 0})
-  if (last.current.item !== item) last.current = {item, sent: last.current.sent + 1}
-  return last.current.sent
+  const [last, put] = React.useState({item, sent: 0})
+  if (last.item === item) return last.sent
+  put({item, sent: last.sent + 1})
+  return last.sent + 1
 }
 
 // The cell of a record under a column, the label column's the row's
 // header; as it was while the hook holds it.
 export function DataCell({id, column, cell, colindex, header, texts}: {id: string; column: Column; cell: ItemCell; colindex: number; header: boolean; texts: GridTexts}) {
   const ref = React.useRef<HTMLTableCellElement>(null)
-  const shown = useHeld(id, cell, ref)
+  const shown = useHeld(id, cell)
   const sent = useSent(shown)
   useDrawnAnew(ref, sent)
   const CellPart = usePart("Cell")
@@ -461,7 +465,7 @@ export function DataCell({id, column, cell, colindex, header, texts}: {id: strin
 export function ActionsCell({id, item, row}: {id: string; item: RowItem; row: RowProps}) {
   const Failure = usePart("Failure")
   const ref = React.useRef<HTMLTableCellElement>(null)
-  const held = useHeld(id, item, ref)
+  const held = useHeld(id, item)
   const failure = held.failure
   const sent = useSent(held)
   return (
