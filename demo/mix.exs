@@ -50,7 +50,7 @@ defmodule Demo.MixProject do
       {:sourceror, "~> 1.8", only: [:dev, :test]},
       {:ash_data_table, path: ".."},
       {:ash_phoenix, "~> 2.0"},
-      {:ash_postgres, "~> 2.14 and >= 2.14.5"},
+      {:ash_postgres, "~> 2.15 and >= 2.15.0"},
       {:ash_sql, "~> 0.8 and >= 0.8.2"},
       {:ash, "~> 3.36 and >= 3.36.1"},
       {:picosat_elixir, "~> 0.2"},
