@@ -1036,7 +1036,7 @@ Shaped in [react-kit-design.md](react-kit-design.md). Built as R0–R5, each wit
 
 Shaped in [deepening-design.md](deepening-design.md) (the architecture review of 2026-10-20; owner, 2026-10-20: all six candidates, in this order; the note's 33 questions answered as recommended, 2026-10-20). Each stage R-style with its own drift check and its own single run of the suites; bytes within 2 % on `/tasks`, times within 20 %; kit contract 6 once; the quality gate once at the end.
 
-- [ ] 9a, `KitCase` with `Kit.Default` in the root suite on `AshDataTable.Test.LiveHost`.
+- [x] 9a, `KitCase` with `Kit.Default` in the root suite on `AshDataTable.Test.LiveHost`. Done 2026-10-20 (owner's yes after the drift check, no drift; root coverage 58 % → 74 %; as built in deepening-design.md §6).
 - [ ] 9b, `AshDataTable.GroupValue`: the group value's encoding both ways, one owner; kits get the hidden entries as bundles; contract 6 opens.
 - [ ] 9c, `AshDataTable.Geometry` and `assets/js/geometry.js`: one grid geometry value per table; the `Attrs` ↔ `Parts.Common` cycle goes; `lead`, `acting?`, `editing?`, `label_column` leave `Live.Entry`.
 - [ ] 9d, `AshDataTable.Panel`: the action panel with a closed set of kinds; `Act` runs actions only; `spent`, `running_files` leave `Live.Entry`; the `Requests` cycle goes; #56 closed.
