@@ -48,6 +48,7 @@ defmodule DemoWeb.PlannerLiveTest do
   end
 
   defp summary(view), do: text(render(view), "#planner-sprint-summary")
+
   defp feed(view) do
     render(view)
     |> LazyHTML.from_fragment()
@@ -59,6 +60,8 @@ defmodule DemoWeb.PlannerLiveTest do
        %{conn: conn, world: world, a: a, b: b, c: c} do
     {:ok, view, _html} = planner(conn, world.admin)
     assert summary(view) =~ "No tasks selected"
+    # the table's name is a heading of the page, and names its section
+    assert has_element?(view, "#planner-tasks[aria-labelledby=task-name] h2#task-name", "Tasks")
 
     select(view, [a.id, b.id, c.id])
     assert card(view) == {"3", "7.5 h", "1"}

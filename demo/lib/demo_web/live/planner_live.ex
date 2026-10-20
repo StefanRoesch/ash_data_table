@@ -152,9 +152,14 @@ defmodule DemoWeb.PlannerLive do
   defp tally(records) do
     {hours, hours_unknown} =
       Enum.reduce(records, {Decimal.new(0), 0}, fn
-        %{estimate_hours: %Decimal{} = hours}, {sum, unknown} -> {Decimal.add(sum, hours), unknown}
-        %{estimate_hours: nil}, acc -> acc
-        _hidden, {sum, unknown} -> {sum, unknown + 1}
+        %{estimate_hours: %Decimal{} = hours}, {sum, unknown} ->
+          {Decimal.add(sum, hours), unknown}
+
+        %{estimate_hours: nil}, acc ->
+          acc
+
+        _hidden, {sum, unknown} ->
+          {sum, unknown + 1}
       end)
 
     %{
