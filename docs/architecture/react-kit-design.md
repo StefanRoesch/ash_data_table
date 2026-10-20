@@ -359,5 +359,48 @@ R2's measured gap (cell save 70 → 131, nested 55 → 170, page change 108 → 
 
 **Left open, for the owner.**
 
-- `heading` and `argument_line` are given `lines`, `refused` and `state` as before, though both kits now draw the argument line from `arguments`: taking them away changes the parts' assigns in a way an existing kit cannot follow, which by the moduledoc's rule raises the contract to 4. Kept in contract 3; to be decided.
-- Still `Kit.Default`'s in the React kit: the root, `related` (the line above a table limited to related records), the messages, and the panel, picker and question (R3). `Kit.Default`'s panel parts (`field`, `control`, `list`, `count`) still compute limits and counters from the internals: R3's seam.
+- `heading` and `argument_line` are given `lines`, `refused` and `state` as before, though both kits now draw the argument line from `arguments`: taking them away changes the parts' assigns in a way an existing kit cannot follow, which by the moduledoc's rule raises the contract to 4. Kept in contract 3; to be decided. **Done in the second fix-up (contract 4), below.**
+- Still `Kit.Default`'s in the React kit: the root, `related` (the line above a table limited to related records), the messages, and the panel, picker and question (R3). `Kit.Default`'s panel parts (`field`, `control`, `list`, `count`) still compute limits and counters from the internals: R3's seam. **`related` and the messages moved in the second fix-up; the root did not (below).**
+
+### The second fix-up (2026-10-20)
+
+The owner's decisions of 2026-10-20, as recommended, under the rule "the whole UI must be React/shadcn": move to React what the React kit still drew as HEEx but the panel, picker and question (R3): the root frame, `related` and the messages; take `lines`, `refused` and `state` away from what `heading` and `argument_line` are given, and raise the kit contract to 4.
+
+**`related` and the messages are React's.** Two islands, each a part replaceable by name (`reactKit({Related: …, Message: …})`, `parts.tsx`), the same for a nested table as for the table on the page:
+
+- `related` is the island `AshRelated` (`Related.tsx`, the part `Related`): the heading (the relationship, or its words before and after the record, the record a live_react `Link` to its own table's page where the router mounts one), create and the table actions (their bundles, `Attrs.create/2`, `Attrs.table_action/3`) and "Show all records" (a `Link` that patches). `DemoWeb.ReactKit.Props.related/8` picks it of the part's assigns.
+- `message` is the island `AshMessage` (`Message.tsx`, the part `Message`), one per message said in place of the rows (an error, `role=alert`; a nested table's first read on its way; an argument to fill; "No records"): `Props.message/4`.
+
+No seam of the library was needed: both parts are given plain values and the documented fields of `Model.Action` (`label`, `name`), and their texts. `react_kit_test.exs` checks the props of both ("No records" after a filter that matches nothing; a table limited to a project's tasks).
+
+**A fix in the drawing, for every kit.** `Live.Drawing` draws the messages keyed by their kind (`:key={kind}`, LiveView's keyed comprehension). Without it, a nested table whose first read found nothing showed "Loading…" in the React kit for good: the comprehension's slot was the same, the island of "No records" a new element (another id), and that new element came with the props of the "Loading…" island before it (its `data-props`, seen in the browser as the element was added), which live_react drew. Found by `nesting.spec.ts`, `a11y-nesting.spec.ts` and `full_view.spec.ts` in the `react` project; a message of another kind is now another item of the comprehension, drawn anew. The default kit's markup is the same; its bytes grow by 4 per opened nested table (below). Whether LiveView or live_react should give such an element its own props is a question for them, not taken further here.
+
+**The root stays `Kit.Default`'s: an exception, for the owner.** The root (`root/1`) is the element that holds every other part of a table: the islands, the filter row's form and the sender (C9, which must be markup of the LiveView's), the messages, and in its slot `opened` the question, the panel and the picker, whose content LiveView patches. React cannot draw an element whose children LiveView patches (live_react draws HEEx children once, as dead HTML: section 3, "a container part as an island"), so the root could be React's only if every part it holds were moved into a place React draws (a portal per part, as Q2 does for the slots of the panel and picker). That is a decision the note does not cover: section 6 ("What stays HEEx: the kit's `root/1`, an element with its bundle, no visible UI") and Q2 ("The root stays a HEEx element in every kit") keep it HEEx. The root draws nothing to be seen: its bundle (`Attrs.root/2`, the markers), the kit's class (`class(:root, …)`, the React kit's look and the `shadcn` scope), the look's heights as custom properties, and the empty element the skip link jumps to (`Attrs.skip_target/1`). Proposed: keep it so (the rule's "UI" is what is seen), or decide at R3 together with Q2 whether every part goes into a place a React root draws, measured as M4 is.
+
+**Kit contract 4.** `heading` and `argument_line` are no longer given `lines` and `refused`, and `argument_line` no longer `state`: both kits draw the argument line from `arguments`. `heading` keeps `state`: its "Columns" says what is filtered and sorted (`Kit.Default`'s `columns` part is given it, the React kit's `Props.heading_columns/6` reads it), so the premise "no kit reads them" held for `lines` and `refused`, not for the heading's `state` (**divergence D5**, for the owner: to take it away too, "Columns" would be given what is filtered and sorted by column, a seam of its own). `use AshDataTable.Kit, contract: 4` everywhere (`Kit.Default`'s moduledoc, `KitCase`'s probe kit, `DivKit`, the test kits, `ChosenKit`, `ReactKit`, the guides `kits.md` and `mistakes-at-compile-time.md`, the CHANGELOG); "Kit contract 4" in `Kit`'s moduledoc, with what changed; a kit of contract 3 fails to compile and is told so, one of 1 or 2 every step since (`changed/1`). `kit_test.exs`: the message of each older contract, and that a kit's `heading` and `argument_line` are given no `lines` and `refused`, the argument line no `state`.
+
+**Measured** (`baseline.mjs`, `PERF_WIRE=1`, 15 repetitions; temporary worktrees of `1bda22b` (A, the first fix-up) and `bcd87ac` (B, this fix-up's code), on ports 4490/4491 and 4492/4493; run A, B, B, A per page, /tasks first; load 10.5 falling to 1.6, then 2.0 to 3.2; the mean of each pair's medians):
+
+| Action | `/tasks` A → B | `/react/tasks` A → B |
+| --- | --- | --- |
+| Cell save | 77.1 → 76.9 ms | 80.8 → 79.8 ms |
+| Cell save in a nested table | 68.8 → 64.6 ms | 81.2 → 75.4 ms |
+| Cell save, a nested table open | 69.4 → 68.7 ms | 84.5 → 67.4 ms |
+| Page change | 129.3 → 137.8 ms | 122.2 → 118.7 ms |
+| Open a nested table | 104.8 → 103.2 ms | 105.8 → 111.5 ms |
+| Expand a row | 25.4 → 26.9 ms | 20.6 → 21.5 ms |
+| Open the picker | 53.3 → 56.0 ms | 52.0 → 46.0 ms |
+| Open the panel | 45.5 → 37.0 ms | 31.2 → 31.4 ms |
+| Select a row | 4.9 → 4.0 ms | 6.1 → 6.4 ms |
+
+- **The default kit's bytes** (the 2 % budget): identical per action but two, each +4 bytes (the keyed messages): page change 157,703 both, open the picker 40,163 → 40,167 (+0.01 %), open a nested table 42,009 → 42,013, cell save 8,605 both. On `/react/tasks` a page change 125,411 both, open a nested table 29,265 → 29,454 (+0.6 %: the "Loading…" island's props).
+- **`/react/tasks` against the first fix-up.** Run beside it on the same machine, this fix-up's times are the first fix-up's or better, but opening a nested table (+5.4 %: 102.7 and 108.9 ms against 114.8 and 108.3, the pairs overlap; the "Loading…" message is an island now, mounted and taken away again as the table reads). The first fix-up's own figures (cell save 68.7, nested save 66.3, page change 102.9, open a nested table 95.6, open the picker 40.8 ms) were not reached by either today: its own code (A) measured 80.8, 81.2, 122.2, 105.8 and 52.0 ms, and /tasks, whose code did not change, 10–17 % slower than then too (cell save 67.1 → 77.1, page change 113.6 → 129.3): the machine, not the change.
+
+**The suites, once each at the end** (2026-10-20):
+
+- Root `mix test`: 1300 tests, 0 failures (load 2.9 → 3.7).
+- Demo `mix test`: 3090 tests, 0 failures (load 3.5 → 14.8).
+- The whole browser suite, both projects (`E2E_FIRST_PORT=4490 E2E_WORKERS=4`): 1729 passed, 0 failed, 0 flaky, in 25.6 min (5 setup, the default kit's 1011, the `react` project's 713; load 13.9 → 9.9).
+
+**Left open, for the owner.** The root (an exception, above), D5 (the heading's `state`), and whether a new island element given the props of the element before it in the same slot is LiveView's or live_react's to fix.
+
