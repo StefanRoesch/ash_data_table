@@ -18,6 +18,10 @@ import { Table } from "./support/table"
 // has "Copy", a generic action that is given the row's key. In the seed
 // every label is on some task, so no label is unused until a test makes
 // one. These tests change the data.
+//
+// A test that needs the action panel or the question, which the React kit
+// draws from R3 on (`Kit.Default`'s until then), is tagged `@heex`: the
+// `react` project (playwright.config.ts) leaves out that test only.
 
 const QUESTION = "Delete every label that no task carries?"
 
@@ -131,7 +135,7 @@ test.describe("an action that runs at once", () => {
     })
   }
 
-  test("from the keyboard: Enter and Space on its button run it, once each", async ({ page, pushed }) => {
+  test("from the keyboard: Enter and Space on its button run it, once each", { tag: "@heex" }, async ({ page, pushed }) => {
     await makeUnused(labels, "spare")
     const count = labels.tableAction("count_unused")
 
@@ -148,7 +152,7 @@ test.describe("an action that runs at once", () => {
 })
 
 test.describe("an action that asks first", () => {
-  test("asks in the table's dialog; Cancel runs nothing and puts focus back on the button", async ({
+  test("asks in the table's dialog; Cancel runs nothing and puts focus back on the button", { tag: "@heex" }, async ({
     page,
     pushed,
   }) => {
@@ -172,7 +176,7 @@ test.describe("an action that asks first", () => {
     expect(await pushed.count("table_run")).toBe(0)
   })
 
-  test("Confirm runs it: the table says that it is done, and shows the records as they are now", async ({
+  test("Confirm runs it: the table says that it is done, and shows the records as they are now", { tag: "@heex" }, async ({
     pushed,
   }) => {
     await makeUnused(labels, "spare")
@@ -194,7 +198,7 @@ test.describe("an action that asks first", () => {
 
 test.describe("an action with arguments", () => {
   for (const theme of ["light", "dark"] as const) {
-    test(`opens the action panel from the keyboard, says what the action refuses at the field, and runs when it is put right (${theme})`, async ({
+    test(`opens the action panel from the keyboard, says what the action refuses at the field, and runs when it is put right (${theme})`, { tag: "@heex" }, async ({
       page,
     }) => {
       await page.addInitScript((theme) => localStorage.setItem("phx:theme", theme), theme)
@@ -241,7 +245,7 @@ test.describe("an action with arguments", () => {
     })
   }
 
-  test("Escape closes the panel, runs nothing, and puts focus back on the button", async ({ page }) => {
+  test("Escape closes the panel, runs nothing, and puts focus back on the button", { tag: "@heex" }, async ({ page }) => {
     const recolour = labels.tableAction("recolour")
     await recolour.click()
     await expect(labels.panel).toBeVisible()
@@ -254,7 +258,7 @@ test.describe("an action with arguments", () => {
 })
 
 test.describe("a generic action in a row", () => {
-  test("has its button in the actions cell, asks for what the row does not give, and the table reads again", async ({
+  test("has its button in the actions cell, asks for what the row does not give, and the table reads again", { tag: "@heex" }, async ({
     page,
   }) => {
     const key = await labels.rowKey(1)
@@ -350,7 +354,7 @@ test.describe("in a nested table", () => {
     await expectNoAxeViolations(page)
   })
 
-  test("an action that asks first asks in the nested table's own dialog, and one with arguments opens its own panel", async ({
+  test("an action that asks first asks in the nested table's own dialog, and one with arguments opens its own panel", { tag: "@heex" }, async ({
     page,
     tasks,
   }) => {

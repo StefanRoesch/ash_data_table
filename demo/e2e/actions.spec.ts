@@ -13,6 +13,10 @@ import { Table } from "./support/table"
 // test says otherwise. A row of it has four actions: "Archive" runs at one
 // click, "Reassign" and "Set progress" open the action panel, and "Destroy"
 // asks first. These tests change the data.
+//
+// A test that needs the action panel or the question, which the React kit
+// draws from R3 on (`Kit.Default`'s until then), is tagged `@heex`: the
+// `react` project (playwright.config.ts) leaves out that test only.
 
 const FIRST = SEED.task.first
 // still to do, with a progress of 5
@@ -267,7 +271,7 @@ test.describe("an action that asks first", () => {
     confirm = tasks.question.getByRole("button", { name: "Confirm" })
   })
 
-  test("the dialog asks the action's question before anything is sent, and says by its colour that the answer deletes", async ({
+  test("the dialog asks the action's question before anything is sent, and says by its colour that the answer deletes", { tag: "@heex" }, async ({
     tasks,
     pushed,
   }) => {
@@ -293,7 +297,7 @@ test.describe("an action that asks first", () => {
     }
   })
 
-  test("Cancel sends nothing and puts focus back on the button; so does Escape", async ({
+  test("Cancel sends nothing and puts focus back on the button; so does Escape", { tag: "@heex" }, async ({
     tasks,
     pushed,
   }) => {
@@ -318,7 +322,7 @@ test.describe("an action that asks first", () => {
     expect(await pushed.all()).toEqual([])
   })
 
-  test("the answer of a question that deletes nothing is not in the colour of one that does", async ({
+  test("the answer of a question that deletes nothing is not in the colour of one that does", { tag: "@heex" }, async ({
     tasks,
   }) => {
     await tasks.action(SECOND, "destroy").click()
@@ -339,7 +343,7 @@ test.describe("an action that asks first", () => {
     await expect.poll(() => ground(confirm)).not.toBe(deleting)
   })
 
-  test("Confirm takes the row out of the page, counts it out, and puts focus on the same stop of the row after it", async ({
+  test("Confirm takes the row out of the page, counts it out, and puts focus on the same stop of the row after it", { tag: "@heex" }, async ({
     page,
     tasks,
     pushed,
@@ -376,7 +380,7 @@ test.describe("an action that asks first", () => {
     await expect(tasks.range).toHaveText(`1–25 of ${total - 1}`)
   })
 
-  test("by keyboard all the way: Enter on the button, Tab to Confirm, Enter", async ({ tasks }) => {
+  test("by keyboard all the way: Enter on the button, Tab to Confirm, Enter", { tag: "@heex" }, async ({ tasks }) => {
     await tasks.action(SECOND, "set_progress").focus()
     await tasks.press("Tab")
     await expect(tasks.action(SECOND, "destroy")).toBeFocused()
@@ -388,7 +392,7 @@ test.describe("an action that asks first", () => {
     await expect(tasks.action(THIRD, "destroy")).toBeFocused()
   })
 
-  test("the last row of the page: focus goes to the row before it; and what was open under the row goes with it", async ({
+  test("the last row of the page: focus goes to the row before it; and what was open under the row goes with it", { tag: "@heex" }, async ({
     tasks,
   }) => {
     const keys = await tasks.rowKeys()
@@ -406,7 +410,7 @@ test.describe("an action that asks first", () => {
     expect(await tasks.rowIndexes()).toEqual(Array.from({ length: 24 }, (_, index) => index + 3))
   })
 
-  test("the only row of the page: the table reads again, and focus goes to the table's first stop", async ({
+  test("the only row of the page: the table reads again, and focus goes to the table's first stop", { tag: "@heex" }, async ({
     tasks,
   }) => {
     await tasks.open("/tasks?task[f][title]=Rename the onboarding email")
@@ -509,7 +513,7 @@ test.describe("an action that failed", () => {
       await expect(tasks.failure(tasks.actionsCell(FIRST)), "without focus or pointer").toBeVisible()
     })
 
-    test("a destroy that is refused leaves the row, with the refusal on its actions cell", async ({
+    test("a destroy that is refused leaves the row, with the refusal on its actions cell", { tag: "@heex" }, async ({
       tasks,
     }) => {
       await tasks.action(FIRST, "destroy").click()
@@ -575,7 +579,7 @@ test.describe("an action that failed", () => {
 })
 
 test.describe("the action panel", () => {
-  test("is a modal dialog at the right edge of the window, named by its heading; focus moves to its first control", async ({
+  test("is a modal dialog at the right edge of the window, named by its heading; focus moves to its first control", { tag: "@heex" }, async ({
     page,
     tasks,
     pushed,
@@ -608,7 +612,7 @@ test.describe("the action panel", () => {
     expect(box.width).toBeCloseTo(448, 0)
   })
 
-  test("Tab stays in the panel, and the page behind it is out of reach", async ({ page, tasks, pushed }) => {
+  test("Tab stays in the panel, and the page behind it is out of reach", { tag: "@heex" }, async ({ page, tasks, pushed }) => {
     await tasks.acts(FIRST, () => tasks.action(FIRST, "reassign").click())
     await expect(tasks.fieldChoose("assignee_id")).toBeFocused()
     await pushed.clear()
@@ -644,7 +648,7 @@ test.describe("the action panel", () => {
     expect(await pushed.all()).toEqual([])
   })
 
-  test("Escape closes it and nothing has run; focus is back on the button that opened it. Cancel does the same", async ({
+  test("Escape closes it and nothing has run; focus is back on the button that opened it. Cancel does the same", { tag: "@heex" }, async ({
     tasks,
     pushed,
   }) => {
@@ -679,7 +683,7 @@ test.describe("the action panel", () => {
     expect(await tasks.walk(1)).toEqual([`task-row-${FIRST}-a-set_progress`])
   })
 
-  test("Run runs the action with what the fields hold: the row comes back changed, and focus is on its button again", async ({
+  test("Run runs the action with what the fields hold: the row comes back changed, and focus is on its button again", { tag: "@heex" }, async ({
     tasks,
     pushed,
   }) => {
@@ -728,7 +732,7 @@ test.describe("the action panel", () => {
     await expect(tasks.status).toHaveText("Reassign: done")
   })
 
-  test("says what the action makes of a field once that field was used, and of every field after Run", async ({
+  test("says what the action makes of a field once that field was used, and of every field after Run", { tag: "@heex" }, async ({
     page,
     tasks,
     pushed,
@@ -781,7 +785,7 @@ test.describe("the action panel", () => {
   test.describe("as the member", () => {
     test.use({ actor: "member" })
 
-    test("a refusal that is about no field stands above the fields as an alert, and the panel stays open", async ({
+    test("a refusal that is about no field stands above the fields as an alert, and the panel stays open", { tag: "@heex" }, async ({
       tasks,
     }) => {
       // not the member's task: the action is theirs to try, and refused
@@ -807,7 +811,7 @@ test.describe("the action panel", () => {
     })
   })
 
-  test("an action that asks first asks when Run is used, in the dialog on top of the panel; Cancel comes back to the panel as it was", async ({
+  test("an action that asks first asks when Run is used, in the dialog on top of the panel; Cancel comes back to the panel as it was", { tag: "@heex" }, async ({
     page,
     tasks,
     pushed,
@@ -872,7 +876,7 @@ test.describe("the action panel", () => {
     expect(await pushed.count("panel_submit")).toBe(1)
   })
 
-  test("the question can also be asked while a panel is open: it is on top, and gives the focus back to the panel", async ({
+  test("the question can also be asked while a panel is open: it is on top, and gives the focus back to the panel", { tag: "@heex" }, async ({
     tasks,
   }) => {
     await tasks.acts(FIRST, () => tasks.action(FIRST, "reassign").click())
@@ -929,7 +933,7 @@ test.describe("creating a record", () => {
     expect(grid.y).toBeCloseTo(viewers.grid, 0)
   })
 
-  test("it is a Tab stop of the heading line before the table, opens the panel with the create action's inputs, and gets the focus back", async ({
+  test("it is a Tab stop of the heading line before the table, opens the panel with the create action's inputs, and gets the focus back", { tag: "@heex" }, async ({
     page,
     tasks,
     pushed,
@@ -1011,7 +1015,7 @@ test.describe("creating a record", () => {
     await expect(tasks.skip).toBeFocused()
   })
 
-  test("a field of every type is filled in, and the new record is the first row of the page, with the focus on its first stop", async ({
+  test("a field of every type is filled in, and the new record is the first row of the page, with the focus on its first stop", { tag: "@heex" }, async ({
     page,
     tasks,
     pushed,
@@ -1105,7 +1109,7 @@ test.describe("creating a record", () => {
     await expect(tasks.grid).toHaveAttribute("aria-rowcount", String(total + 3))
   })
 
-  test("on a later page the new row is the first of that page, and the rows count on from the page's first", async ({
+  test("on a later page the new row is the first of that page, and the rows count on from the page's first", { tag: "@heex" }, async ({
     tasks,
   }) => {
     const total = SEED.tasks.acme
@@ -1132,7 +1136,7 @@ test.describe("creating a record", () => {
     await expect(tasks.range).toHaveText(`1–25 of ${total + 1}`)
   })
 
-  test("the panel says what is wrong with a field once it was used, and with every field after Create; nothing is created", async ({
+  test("the panel says what is wrong with a field once it was used, and with every field after Create; nothing is created", { tag: "@heex" }, async ({
     page,
     tasks,
   }) => {
@@ -1170,7 +1174,7 @@ test.describe("creating a record", () => {
   test.describe("as the member", () => {
     test.use({ actor: "member" })
 
-    test("creates tasks, without the field of what they never see; and has no button where they may not create", async ({
+    test("creates tasks, without the field of what they never see; and has no button where they may not create", { tag: "@heex" }, async ({
       page,
       tasks,
     }) => {
@@ -1275,7 +1279,7 @@ test.describe("creating in a nested table", () => {
     await expect.poll(() => lineHeights(tasks, FIRST)).toEqual(closed)
   })
 
-  test("with the pointer: the button opens the panel of the nested table, and the new record is its first row, with the focus", async ({
+  test("with the pointer: the button opens the panel of the nested table, and the new record is its first row, with the focus", { tag: "@heex" }, async ({
     tasks,
     pushed,
   }) => {
@@ -1325,7 +1329,7 @@ test.describe("creating in a nested table", () => {
     await expect(create).toBeVisible()
   })
 
-  test("with the keyboard: Tab goes from the line's button to the nested table's heading line, Columns and create; Enter or Space uses one", async ({
+  test("with the keyboard: Tab goes from the line's button to the nested table's heading line, Columns and create; Enter or Space uses one", { tag: "@heex" }, async ({
     tasks,
     pushed,
   }) => {
@@ -1386,7 +1390,7 @@ test.describe("creating in a nested table", () => {
     expect(await pushed.count("toggle")).toBe(2)
   })
 
-  test("under a project, its tasks are created with every field but the one that joins them to it", async ({
+  test("under a project, its tasks are created with every field but the one that joins them to it", { tag: "@heex" }, async ({
     page,
   }) => {
     const projects = new Table(page, "project", "/projects")
@@ -1447,7 +1451,7 @@ test.describe("creating in a nested table", () => {
 })
 
 test.describe("creating in the full view", () => {
-  test("the create button is on the line that says what the table shows, before the way back; the record is created under that row", async ({
+  test("the create button is on the line that says what the table shows, before the way back; the record is created under that row", { tag: "@heex" }, async ({
     page,
   }) => {
     const comments = new Table(page, "comment", "/comments")
@@ -1516,7 +1520,7 @@ test.describe("the two tables of /dashboard", () => {
     await tasks.ready()
   })
 
-  test("each names itself on a line with its create button, and each has a panel and a dialog of its own", async ({
+  test("each names itself on a line with its create button, and each has a panel and a dialog of its own", { tag: "@heex" }, async ({
     page,
   }) => {
     await expect(page.getByRole("heading", { level: 2 })).toHaveText(["Projects", "Tasks"])
@@ -1573,7 +1577,7 @@ test.describe("the two tables of /dashboard", () => {
     expect(ids.filter((id, index) => ids.indexOf(id) !== index)).toEqual([])
   })
 
-  test("a task created there is the first row of its table, and the other table is as it was", async ({
+  test("a task created there is the first row of its table, and the other table is as it was", { tag: "@heex" }, async ({
     page,
   }) => {
     const url = page.url()
@@ -1596,7 +1600,7 @@ test.describe("the two tables of /dashboard", () => {
 
 test.describe("the look", () => {
   for (const width of [1500, 900]) {
-    test(`at ${width} px: the name and the create button at the two ends of what is seen of the table, the panel at the right edge`, async ({
+    test(`at ${width} px: the name and the create button at the two ends of what is seen of the table, the panel at the right edge`, { tag: "@heex" }, async ({
       page,
       tasks,
     }) => {
@@ -1642,7 +1646,7 @@ test.describe("the look", () => {
     })
   }
 
-  test("on a narrow window the panel is as wide as the window, and everything in it can be reached", async ({
+  test("on a narrow window the panel is as wide as the window, and everything in it can be reached", { tag: "@heex" }, async ({
     page,
     tasks,
   }) => {
