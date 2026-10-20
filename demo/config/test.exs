@@ -43,3 +43,9 @@ config :phoenix_live_view,
 # Sort query params output of verified routes for robust url comparisons
 config :phoenix,
   sort_verified_routes_query_params: true
+
+# An island's props in full on every render, not a patch of them, so that
+# `LiveReact.Test.get_react/2` reads all of them (react_kit_test.exs; as
+# `LiveReact.Test` advises). The browser suite's e2e environment sends the
+# patches, as dev and prod do.
+config :live_react, enable_props_diff: false
