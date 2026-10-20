@@ -12,7 +12,7 @@ defmodule DemoWeb.ReactKitTest do
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage, only: [nested: 3]
 
-  @islands ~w(AshGrid AshColumns AshSelectionLine AshStatus AshPagination)
+  @islands ~w(AshHeading AshGrid AshSelectionLine AshStatus AshPagination)
 
   setup %{conn: conn} do
     world = world(tasks: 30)
@@ -52,6 +52,24 @@ defmodule DemoWeb.ReactKitTest do
 
     assert %{"editor" => nil, "template" => %{"data-editor" => "reference"}} =
              editors["assignee"]
+
+    # the heading line: "Columns", and the argument line with what the
+    # table gives each argument's input
+    heading = Enum.find(islands, &(&1.name == "AshHeading"))
+
+    assert %{
+             "heading" => %{"id" => "task-header", "shown" => true},
+             "columns" => %{"id" => "task"},
+             "arguments" => %{"form" => %{"id" => "task-arguments"}, "inputs" => inputs}
+           } = heading.props
+
+    assert %{
+             "id" => "task-arg-search",
+             "name" => "arguments[a][search]",
+             "value" => "",
+             "counted" => %{"max" => 60, "unit" => _},
+             "count" => %{"data-max" => "60"}
+           } = Enum.find(inputs, &(&1["named"] == "search"))
 
     task = hd(world.tasks)
 

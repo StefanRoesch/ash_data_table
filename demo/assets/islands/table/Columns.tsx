@@ -1,4 +1,4 @@
-// "Columns" and its list (the island `AshColumns`, the part `columns`), as
+// "Columns" and its list (the part `Columns`, in the heading line), as
 // the HEEx kit's (`Parts.Grid.columns`): the button opens the browser's
 // popover with the label column's entry (its width field), a box and a
 // width field per column that can be hidden, and "Reset widths". What it
@@ -9,10 +9,9 @@
 import * as React from "react"
 
 import {attrs, type Bundle} from "./props"
-import {Strict} from "./mounting"
 import {box, button, input} from "./look"
 
-type ColumnsProps = {
+export type ColumnsProps = {
   columns: {
     id: string
     button: Bundle
@@ -41,15 +40,7 @@ const ticked = (box: HTMLInputElement | null) => {
 // the name of the button the list is placed under, the table's own
 const anchor = (id: string) => `--ash-data-table-columns-${id.replace(/[^A-Za-z0-9_-]/g, "_")}`
 
-export function AshColumns(props: ColumnsProps) {
-  return (
-    <Strict>
-      <Columns {...props} />
-    </Strict>
-  )
-}
-
-function Columns({columns}: ColumnsProps) {
+export function Columns({columns}: ColumnsProps) {
   const {id, texts} = columns
   // what the hook writes into the button: drawn as the server first gave it
   const name = React.useRef(texts.columns_name).current

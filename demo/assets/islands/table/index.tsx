@@ -9,8 +9,8 @@
 // editors of those that edit.
 import * as React from "react"
 
-import {AshColumns} from "./Columns"
 import {AshGrid} from "./Grid"
+import {AshHeading} from "./Heading"
 import {AshPagination} from "./Pagination"
 import {AshSelectionLine} from "./SelectionLine"
 import {AshStatus} from "./Status"
@@ -18,7 +18,7 @@ import {DEFAULT_PARTS, PartsContext, type Parts} from "./parts"
 
 export {reactKitHooks} from "./mounting"
 
-const ISLANDS: Record<string, React.ComponentType<any>> = {AshGrid, AshColumns, AshSelectionLine, AshStatus, AshPagination}
+const ISLANDS: Record<string, React.ComponentType<any>> = {AshHeading, AshGrid, AshSelectionLine, AshStatus, AshPagination}
 
 export function reactKit(given: Partial<Parts> = {}): Record<string, React.ComponentType<any>> {
   const parts: Parts = {

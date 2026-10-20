@@ -394,6 +394,125 @@ defmodule DemoWeb.ReactKit.Props do
   # ---- around the grid ------------------------------------------------------
 
   @doc """
+  The heading line (the part `heading`): whether it is drawn at all, the
+  table's name (a heading of the level the page asks for, else a plain
+  element; not of a nested table, whose line names it), and at its far
+  end create and the table actions (`Attrs.create/2`,
+  `Attrs.table_action/3`), offered beside rows only and not by a table
+  limited to related records, which offers them above its grid.
+  """
+  def heading(id, heading, label, label_column, model, offered, page, related, nested?, myself) do
+    acts? = not is_nil(page) and (not is_nil(model.create) or offered != []) and is_nil(related)
+
+    %{
+      id: "#{id}-header",
+      shown:
+        nested? or !!heading or columns?(model, label_column) or model.arguments != [] or acts?,
+      nested: nested?,
+      name:
+        heading && not nested? &&
+          %{id: "#{id}-name", level: is_integer(heading) && heading, text: label},
+      create:
+        acts? && model.create &&
+          %{label: model.create.label, attrs: bundle(Attrs.create(id, myself))},
+      actions:
+        for action <- (acts? && offered) || [] do
+          %{
+            name: action.name,
+            label: action.label,
+            attrs: bundle(Attrs.table_action(id, action, myself))
+          }
+        end
+    }
+  end
+
+  @doc """
+  "Columns" in the heading line, nil where the table has no column a
+  person can hide (one column, or only the label column): what
+  `columns_list/6` gives of the columns but the label column.
+  """
+  def heading_columns(id, model, label_column, state, label, nested?) do
+    if columns?(model, label_column) do
+      hideable = hideable(model, label_column)
+
+      columns_list(
+        id,
+        hideable,
+        label_column,
+        is_nil(label_column),
+        state,
+        Words.texts(:columns, %{
+          columns: hideable,
+          label_column: label_column,
+          state: state,
+          label: label,
+          nested?: nested?
+        })
+      )
+    end
+  end
+
+  defp columns?(model, label_column),
+    do: length(model.columns) > 1 and hideable(model, label_column) != []
+
+  defp hideable(model, nil), do: model.columns
+  defp hideable(model, label_column), do: List.delete(model.columns, label_column)
+
+  @doc """
+  The argument line (the part `argument_line`), nil for a table without
+  arguments: its form (`Attrs.arguments/2`) and per argument what the
+  table gives its input (`arguments`, `AshDataTable.Kit`): its ids and
+  name, what it holds, whether Ash refused it and what it said, the limits
+  of a number and the counter of a text (`Attrs.count/2`), with its label,
+  control, values and the buttons of a list (`argument_add`,
+  `argument_remove`, with `phx-value-at` per value).
+  """
+  def arguments(id, model, arguments, nested?, myself) do
+    if model.arguments != [] do
+      target = myself && to_string(myself)
+
+      %{
+        form: bundle(Attrs.arguments(id, myself)),
+        nested: nested?,
+        inputs:
+          for {argument, given} <- Enum.zip(model.arguments, arguments) do
+            list = %{
+              "phx-value-argument" => given.named,
+              "phx-target" => target
+            }
+
+            %{
+              id: given.id,
+              named: given.named,
+              name: given.name,
+              label: argument.label,
+              editor: argument.editor,
+              item:
+                case argument.cell_type do
+                  {:array, item} -> item
+                  _one -> nil
+                end,
+              required: argument.required?,
+              values: choices(argument.values),
+              value: given.value,
+              invalid: given.errors != [],
+              limits: given.limits,
+              counted: given.counted,
+              count: given.counted && bundle(Attrs.count(given.counted, false)),
+              add:
+                argument.editor == :list &&
+                  drop_empty(Map.put(list, "phx-click", Attrs.event(id, "argument_add"))),
+              remove:
+                argument.editor == :list &&
+                  drop_empty(Map.put(list, "phx-click", Attrs.event(id, "argument_remove"))),
+              texts: given.texts
+            }
+          end
+      }
+    end
+  end
+
+  @doc """
   "Columns" and its list (the part `columns`): the button
   (`Attrs.columns_button/2`) and the list (`Attrs.columns/3`), the label
   column's entry, a box and a width field per column that can be hidden,

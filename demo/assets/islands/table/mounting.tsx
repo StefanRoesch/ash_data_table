@@ -144,6 +144,17 @@ export function useServerValue(
   }, [value])
 }
 
+// The same for a box the server ticks or not: as the element first comes,
+// and again where the server says otherwise, unless the person is on it.
+// Not React's `defaultChecked`, which React puts back on the box as it
+// draws it again.
+export function useServerChecked(ref: React.RefObject<HTMLInputElement | null>, checked: boolean) {
+  React.useLayoutEffect(() => {
+    const el = ref.current
+    if (el && document.activeElement !== el) el.checked = checked
+  }, [checked])
+}
+
 // Under StrictMode where React checks its components (not in a production build).
 export function Strict({children}: {children: React.ReactNode}) {
   return process.env.NODE_ENV === "production" ? <>{children}</> : <React.StrictMode>{children}</React.StrictMode>

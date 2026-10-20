@@ -8,11 +8,17 @@ import * as React from "react"
 
 import {COMPONENTS, Cell, type Components} from "./cells"
 import {ActionsCell, DataCell, Detail, Footer, HeaderCell, Line, Row, SummaryCell} from "./Grid"
+import {Columns} from "./Columns"
 import {Editor, EDITORS, type EditorComponents} from "./Editors"
+import {Argument, ArgumentLine, Heading} from "./Heading"
 import {Filter} from "./Filter"
 import {Pagination} from "./Pagination"
 
 export const DEFAULT_PARTS = {
+  Heading,
+  Columns,
+  ArgumentLine,
+  Argument,
   HeaderCell,
   Filter,
   Row,

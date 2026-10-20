@@ -169,7 +169,7 @@ function Slider({editor}: EditorComponentProps) {
   const step = limits.step === "1" ? "1" : String((max - min) / 100)
   return (
     <span className="flex items-center gap-2">
-      <input type="range" min={limits.min ?? undefined} max={limits.max ?? undefined} step={step} defaultValue="" {...attrs(editor.control)} className="w-24 accent-current focus-visible:outline-none" />
+      <input type="range" min={limits.min ?? undefined} max={limits.max ?? undefined} step={step} defaultValue="" {...attrs(editor.control)} className="ash-react-range w-24 focus-visible:outline-none" />
       <span data-value-text="" aria-hidden="true" className="text-sm tabular-nums"></span>
     </span>
   )

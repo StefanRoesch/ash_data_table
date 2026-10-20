@@ -22,7 +22,7 @@ import { workerCount } from "./support/server"
 const REACT = new RegExp(
   "(^|/)(" +
     [
-      "a11y-editing", "a11y-nesting", "a11y-tables", "attached", "authorization", "components",
+      "a11y-editing", "a11y-nesting", "a11y-tables", "arguments", "attached", "authorization", "components",
       "contrast", "counter", "dashboard", "editing", "filtering", "footer", "full_view", "hiding",
       "live_updates", "locale", "long_text", "named_tables", "nesting", "page_size", "pagination",
       "portals", "relationships", "resizing", "scrolling", "selection", "sensitive", "sorting",

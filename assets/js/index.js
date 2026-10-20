@@ -17,8 +17,8 @@
 // For a kit that draws in the browser (a React kit), public as well:
 // `mountGrid`, `mountPanel`, `mountPicker`, `mountPagination` and
 // `liveViewTransport` (mount.js), the attributes the hooks own (`OWNED`,
-// `CHILDREN`, owned.js) and the DOM ids of `AshDataTable.Ids` (`ids`,
-// ids.js).
+// `CHILDREN`, owned.js), the DOM ids of `AshDataTable.Ids` (`ids`,
+// ids.js) and how a counter counts a text (`count`).
 
 import grid from "./grid/index.js"
 import pagination from "./pagination.js"
@@ -26,6 +26,7 @@ import panel from "./panel.js"
 import picker from "./picker.js"
 import sender from "./sender.js"
 import {hook} from "./transport/live_view.js"
+import {LENGTH} from "./grid/shared.js"
 
 export const Grid = hook(grid, "grid")
 export const Pagination = hook(pagination, "pagination")
@@ -36,6 +37,19 @@ export const Sender = hook(sender, "sender")
 export {liveViewTransport, mountGrid, mountPagination, mountPanel, mountPicker} from "./mount.js"
 export {CHILDREN, OWNED} from "./owned.js"
 export * as ids from "./ids.js"
+
+/**
+ * How long `text` is, counted as Ash counts it by the `counted` a part is
+ * given (`unit`, `trim?`, `casing`; the `editor` and `argument_line`
+ * parts of `AshDataTable.Kit`): what the counter beside a text says as a
+ * kit draws it in the browser. The hooks count the same way as it is typed.
+ *
+ * @param {string} text
+ * @param {{unit: string, "trim?": boolean, casing: string | null}} counted
+ * @returns {number}
+ */
+export const count = (text, counted) =>
+  LENGTH(text, {count: counted.unit, trim: counted["trim?"] ? "" : undefined, casing: counted.casing || undefined})
 
 export const hooks = {
   "AshDataTable.Grid": Grid,

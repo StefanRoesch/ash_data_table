@@ -18,15 +18,19 @@ defmodule DemoWeb.ReactKit do
       component's module) and of a failed cell's message. Outside the
       island, as markup of the LiveView's: the filter row's form and the
       grid's sender (C9);
-    * `columns` - the island `AshColumns`: "Columns" and its list;
+    * `heading` - the island `AshHeading`: the table's name, "Columns"
+      and its list, the argument line (a form of the island's, which
+      LiveView hears from its root), create and the table actions;
     * `selection_line` - the island `AshSelectionLine`;
     * `status` - the island `AshStatus`;
     * `pagination` - the island `AshPagination` (a nested table's is in
       the grid's island).
 
-  The other parts are `AshDataTable.Kit.Default`'s: the root, the heading
-  line around "Columns" with the argument line, create and the table
-  actions, the messages, the panel, the picker and the question (stage R3).
+  The other parts are `AshDataTable.Kit.Default`'s: the root, the line
+  above a table limited to related records (`related`), the messages, the panel, the picker and the question (stage R3). The parts
+  the islands draw inside them (`columns`, `argument_line`, `argument`,
+  `editor`, …) are React components there, each replaceable by name
+  (`reactKit({...})`); their `Kit.Default` parts are not used by this kit.
 
   What each island is given is picked here (`DemoWeb.ReactKit.Props`), as
   plain data that goes to JSON: never a record, an Ash type or a struct of
@@ -129,13 +133,29 @@ defmodule DemoWeb.ReactKit do
     """
   end
 
-  def columns(assigns) do
+  # The heading line, with "Columns" and the argument line in it.
+  def heading(assigns) do
     ~H"""
     <LiveReact.react
-      id={"#{@id}-columns-island"}
-      name="AshColumns"
+      id={"#{@id}-heading-island"}
+      name="AshHeading"
       class="contents"
-      columns={Props.columns_list(@id, @columns, @label_column, @keeps_one?, @state, @texts)}
+      heading={
+        Props.heading(
+          @id,
+          @heading,
+          @label,
+          @label_column,
+          @model,
+          @offered,
+          @page,
+          @related,
+          @nested?,
+          @myself
+        )
+      }
+      columns={Props.heading_columns(@id, @model, @label_column, @state, @label, @nested?)}
+      arguments={Props.arguments(@id, @model, @arguments, @nested?, @myself)}
     />
     """
   end

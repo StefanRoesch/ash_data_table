@@ -365,3 +365,49 @@
   .ash-react-progress::-webkit-progress-bar { background: Canvas; }
   .ash-react-progress::-webkit-progress-value { background: CanvasText; }
 }
+
+/* A slider (a column component's editor): a thumb as high as the slider,
+   with a wide ring in the text colour; the part of the track before it filled in the
+   text colour (the thumb's shadow, clipped by the slider), the rest a band
+   of the text colour at half strength, thinner than the thumb. Forced colours
+   would take the shadow away: there it keeps its drawing, in the system's
+   colours. */
+.ash-react-range {
+  appearance: none;
+  height: 1rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--sh-foreground);
+  cursor: pointer;
+  forced-color-adjust: none;
+}
+.ash-react-range::-webkit-slider-runnable-track {
+  height: 1rem;
+  background: linear-gradient(transparent 0.25rem, color-mix(in oklab, currentColor 50%, transparent) 0.25rem 0.75rem, transparent 0.75rem);
+}
+.ash-react-range::-webkit-slider-thumb {
+  appearance: none;
+  height: 1rem;
+  width: 1rem;
+  border-radius: 9999px;
+  background: var(--sh-background);
+  box-shadow: 0 0 0 0.25rem currentColor inset, -100rem 0 0 99.5rem currentColor;
+}
+.ash-react-range::-moz-range-track {
+  height: 1rem;
+  background: linear-gradient(transparent 0.25rem, color-mix(in oklab, currentColor 50%, transparent) 0.25rem 0.75rem, transparent 0.75rem);
+}
+.ash-react-range::-moz-range-thumb {
+  height: 1rem;
+  width: 1rem;
+  border: 0;
+  border-radius: 9999px;
+  background: var(--sh-background);
+  box-shadow: 0 0 0 0.25rem currentColor inset, -100rem 0 0 99.5rem currentColor;
+}
+@media (forced-colors: active) {
+  .ash-react-range { color: CanvasText; }
+  .ash-react-range::-webkit-slider-thumb { background: Canvas; }
+  .ash-react-range::-moz-range-thumb { background: Canvas; }
+}
