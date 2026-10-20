@@ -121,26 +121,27 @@ defmodule AshDataTable.Live.Core.Bulk do
   # outlives its page: they are claims, and the run reads each as the
   # person before anything is done to it (`AshDataTable.Bulk`).
   def on({:bulk, name} = intent, socket) do
-    with {:ok, action, selection} <-
-           Operation.bulk_action(Core.operation(socket, intent), name) do
-      %{entry: entry} = Core.table(socket)
-      question = question(action, selected(selection, entry))
-      token = Selection.token(entry)
+    case Operation.bulk_action(Core.operation(socket, intent), name) do
+      {:ok, action, selection} ->
+        %{entry: entry} = Core.table(socket)
+        question = question(action, selected(selection, entry))
+        token = Selection.token(entry)
 
-      cond do
-        action.panel? ->
-          {:reply, %{panel: true}, open_bulk(socket, action, selection, question)}
+        cond do
+          action.panel? ->
+            {:reply, %{panel: true}, open_bulk(socket, action, selection, question)}
 
-        # in controlled mode the host asks it (`Requests.ask/4`)
-        Requests.controlled?(socket, :confirm) ->
-          {:reply, %{ok: true},
-           Requests.ask(socket, {:bulk_run, name, token}, %{action | confirm: question}, nil)}
+          # in controlled mode the host asks it (`Requests.ask/4`)
+          Requests.controlled?(socket, :confirm) ->
+            {:reply, %{ok: true},
+             Requests.ask(socket, {:bulk_run, name, token}, %{action | confirm: question}, nil)}
 
-        true ->
-          {:reply, %{ask: Text.say(question), selection: token}, socket}
-      end
-    else
-      :error -> {:reply, %{ok: false}, socket}
+          true ->
+            {:reply, %{ask: Text.say(question), selection: token}, socket}
+        end
+
+      :error ->
+        {:reply, %{ok: false}, socket}
     end
   end
 

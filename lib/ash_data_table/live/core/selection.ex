@@ -1,8 +1,9 @@
 defmodule AshDataTable.Live.Core.Selection do
   @moduledoc false
-  # What is selected: the entry holds it, the hook paints
-  # the rows, and the line above the grid is drawn from it (`whole_page?/1`). The hook says what a person selects on every change (`select`); the
-  # server decides when a selection ends or narrows, and tells the hook with
+  # What is selected: the entry holds it, the hook paints the rows, and the
+  # line above the grid is drawn from it (`whole_page?/1`). The hook says
+  # what a person selects on every change (`select`); the server decides
+  # when a selection ends or narrows, and tells the hook with
   # `ash_data_table:select` (`{table, all, rows}`, each row `[key, named]`,
   # as the hook keeps it):
   #
@@ -21,11 +22,11 @@ defmodule AshDataTable.Live.Core.Selection do
 
   import Phoenix.LiveView, only: [push_event: 3]
 
+  alias AshDataTable.Errors
   alias AshDataTable.Event
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Notify
   alias AshDataTable.Live.Core.Reading
-  alias AshDataTable.Errors
   alias AshDataTable.Query
   alias AshDataTable.Record
   alias AshDataTable.Sensitive

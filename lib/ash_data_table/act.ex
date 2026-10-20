@@ -105,40 +105,44 @@ defmodule AshDataTable.Act do
   """
   @spec run(Model.t(), Action.t(), map, keyword) :: result
   def run(%Model{} = model, %Action{type: :action} = action, key, opts) when is_map(key) do
-    with {:ok, record} <- Record.fetch(model, key, opts) do
-      case run_generic(model, action, given(action, key), opts) do
-        {:done, value} ->
-          {:done, value}
+    case Record.fetch(model, key, opts) do
+      {:ok, record} ->
+        case run_generic(model, action, given(action, key), opts) do
+          {:done, value} ->
+            {:done, value}
 
-        {:error, message} ->
-          case Record.load(model, record, opts) do
-            {:ok, record} -> {:error, record, message}
-            :error -> {:error, nil, message}
-          end
-      end
-    else
-      :error -> {:error, nil, {:text, :record_gone, []}}
+          {:error, message} ->
+            case Record.load(model, record, opts) do
+              {:ok, record} -> {:error, record, message}
+              :error -> {:error, nil, message}
+            end
+        end
+
+      :error ->
+        {:error, nil, {:text, :record_gone, []}}
     end
   end
 
   def run(%Model{} = model, %Action{} = action, key, opts) when is_map(key) do
     given = from_page(action, opts)
 
-    with {:ok, record} <- Record.fetch(model, key, opts) do
-      case submit(model, form(record, action, "action", opts), given, opts) do
-        {:error, form} ->
-          message = Errors.joined(messages(form, model))
+    case Record.fetch(model, key, opts) do
+      {:ok, record} ->
+        case submit(model, form(record, action, "action", opts), given, opts) do
+          {:error, form} ->
+            message = Errors.joined(messages(form, model))
 
-          case Record.load(model, record, opts) do
-            {:ok, record} -> {:error, record, message}
-            :error -> {:error, nil, message}
-          end
+            case Record.load(model, record, opts) do
+              {:ok, record} -> {:error, record, message}
+              :error -> {:error, nil, message}
+            end
 
-        ran ->
-          ran
-      end
-    else
-      :error -> {:error, nil, {:text, :record_gone, []}}
+          ran ->
+            ran
+        end
+
+      :error ->
+        {:error, nil, {:text, :record_gone, []}}
     end
   end
 
@@ -1019,38 +1023,39 @@ defmodule AshDataTable.Act do
   # error's path, and that of an array of maps among its variables, if at
   # all.
   defp place(inputs, [name | rest], field, {_message, vars}) do
-    with %{} = input <-
-           Enum.find(inputs, &(&1.name == name and &1.editor in [:group, :groups, :union])) do
-      {place, at} = Enum.reduce_while(rest, {[name], input}, &step/2)
+    case Enum.find(inputs, &(&1.name == name and &1.editor in [:group, :groups, :union])) do
+      nil ->
+        nil
 
-      {place, at} =
-        case {at.cell_type, List.last(place), vars[:index]} do
-          {{:array, :map}, last, index} when not is_integer(last) and is_integer(index) ->
-            {place ++ [index], at}
+      input ->
+        {place, at} = Enum.reduce_while(rest, {[name], input}, &step/2)
 
-          _placed ->
-            {place, at}
-        end
+        {place, at} =
+          case {at.cell_type, List.last(place), vars[:index]} do
+            {{:array, :map}, last, index} when not is_integer(last) and is_integer(index) ->
+              {place ++ [index], at}
 
-      cond do
-        # the values of an array are told apart by their places
-        match?({:array, :map}, at.cell_type) and not is_integer(List.last(place)) ->
-          {:group, place}
-
-        Enum.any?(fields_at(at), &(&1.name == field and &1.input?)) ->
-          {:field, place ++ [field]}
-
-        # Ash says of some errors of a value inside a value that they are
-        # about the value around it. Where one value in it, and no other,
-        # has a field of that name, that is the field.
-        true ->
-          case inside(at, field) do
-            [way] -> {:field, place ++ way}
-            _none_or_several -> {:group, place}
+            _placed ->
+              {place, at}
           end
-      end
-    else
-      _no_group -> nil
+
+        cond do
+          # the values of an array are told apart by their places
+          match?({:array, :map}, at.cell_type) and not is_integer(List.last(place)) ->
+            {:group, place}
+
+          Enum.any?(fields_at(at), &(&1.name == field and &1.input?)) ->
+            {:field, place ++ [field]}
+
+          # Ash says of some errors of a value inside a value that they are
+          # about the value around it. Where one value in it, and no other,
+          # has a field of that name, that is the field.
+          true ->
+            case inside(at, field) do
+              [way] -> {:field, place ++ way}
+              _none_or_several -> {:group, place}
+            end
+        end
     end
   end
 

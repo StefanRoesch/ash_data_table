@@ -567,9 +567,10 @@ defmodule AshDataTable.Attrs do
   # (`select`: `:multi` or `:single`), which is how a table is shown for a
   # person to choose from, with nothing to run.
   #
-  # Which rows are selected the server holds (`AshDataTable.Live.Core.Selection`),
-  # draws the line above the grid from, and the hook paints in the rows: it is told every change a person makes (`select`),
-  # and decides when a selection ends (the filters, the arguments or what
+  # Which rows are selected the server holds
+  # (`AshDataTable.Live.Core.Selection`), draws the line above the grid from,
+  # and the hook paints in the rows: it is told every change a person makes
+  # (`select`), and decides when a selection ends (the filters, the arguments or what
   # the table is limited to changed) or narrows (a row went, a run left
   # the rows it did not run on), which it tells the hook
   # (`ash_data_table:select`). The hook says of each row whether it is
@@ -876,8 +877,8 @@ defmodule AshDataTable.Attrs do
   # (`AshDataTable.Query.summaries/4`, which also says what is never shown: a
   # number over a field the person sees on some records only). They are
   # asked for beside the read of the rows (a task of its own, under the key
-  # `{:ash_data_table, id, {:summary, token}}`), which never waits for them: with every read but one that only sorts, after
-  # everything the table writes, and once per batch of live updates
+  # `{:ash_data_table, id, {:summary, token}}`), which never waits for them:
+  # with every read but one that only sorts, after everything the table writes, and once per batch of live updates
   # (`summarise/1`, from `tidy/1`). Until the answer is there the cells keep
   # what they showed and are `aria-busy`. An answer that fails puts the dash
   # into every cell and is logged; the rows are not touched.

@@ -132,7 +132,7 @@ defmodule AshDataTable.Resource.Uploading do
   def message({:invalid_accept, name, kind}),
     do:
       "The upload of `#{name}` accepts #{inspect(kind)}, which is no kind of file LiveView " <>
-        "knows. `accept` takes file name extensions with a known MIME type (\".csv\"), MIME " <>
-        "types (\"text/csv\"), and the wildcards \"audio/*\", \"image/*\" and \"video/*\". " <>
+        ~s[knows. `accept` takes file name extensions with a known MIME type (".csv"), MIME ] <>
+        ~s[types ("text/csv"), and the wildcards "audio/*", "image/*" and "video/*". ] <>
         "Another extension is made known with `config :mime, :types`."
 end

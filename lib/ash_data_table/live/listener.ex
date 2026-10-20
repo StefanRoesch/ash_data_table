@@ -140,12 +140,12 @@ defmodule AshDataTable.Listener do
         gather(state, [{type, key} | heard])
 
       :relay ->
-        state.relay.(heard |> Enum.reverse() |> Enum.uniq())
+        state.relay.(batch(heard))
         idle(state)
 
       # the timer's `:relay` comes later, to a listener with nothing to hand over
       {:flush, from, ref} ->
-        state.relay.(heard |> Enum.reverse() |> Enum.uniq())
+        state.relay.(batch(heard))
         send(from, {ref, :flushed})
         idle(state)
 
@@ -153,6 +153,9 @@ defmodule AshDataTable.Listener do
         if ended?(message, state), do: :ok, else: gather(state, heard)
     end
   end
+
+  # what was heard, in the order it came, each change once
+  defp batch(heard), do: heard |> Enum.reverse() |> Enum.uniq()
 
   defp ended?(:stop, _state), do: true
   defp ended?({:DOWN, watch, :process, _pid, _reason}, %{watch: watch}), do: true

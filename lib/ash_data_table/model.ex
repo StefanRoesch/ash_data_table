@@ -940,10 +940,12 @@ defmodule AshDataTable.Model do
   """
   @spec label_column(t) :: Column.t() | nil
   def label_column(%__MODULE__{resource: resource, columns: columns}) do
-    with {:ok, %{name: name}} <- Referencing.label_field(resource) do
-      Enum.find(columns, &(&1.kind == :attribute and &1.name == name))
-    else
-      _none_or_unusable -> nil
+    case Referencing.label_field(resource) do
+      {:ok, %{name: name}} ->
+        Enum.find(columns, &(&1.kind == :attribute and &1.name == name))
+
+      _none_or_unusable ->
+        nil
     end
   end
 
@@ -1352,17 +1354,13 @@ defmodule AshDataTable.Model do
       case found do
         {:ok, kind, action} ->
           built =
-            action(
-              resource,
-              table,
-              action,
-              columns,
-              declaration.label,
-              declaration.confirm || nil,
-              declaration.record_argument,
-              declaration.references,
-              Acting.page_names(declaration)
-            )
+            action(resource, table, action, columns, %{
+              label: declaration.label,
+              confirm: declaration.confirm || nil,
+              record_argument: declaration.record_argument,
+              references: declaration.references,
+              page: Acting.page_names(declaration)
+            })
 
           # a table action runs on no record, and so on no selection of them
           {kind,
@@ -1411,7 +1409,13 @@ defmodule AshDataTable.Model do
 
       {:ok, action} ->
         create =
-          action(resource, table, action, columns, "New #{name(resource)}", nil, nil, [], [])
+          action(resource, table, action, columns, %{
+            label: "New #{name(resource)}",
+            confirm: nil,
+            record_argument: nil,
+            references: [],
+            page: []
+          })
 
         cond do
           Acting.unusable(resource, action) != [] ->
@@ -1506,10 +1510,20 @@ defmodule AshDataTable.Model do
     resource |> Info.short_name() |> to_string() |> String.replace("_", " ")
   end
 
-  # An action as a table offers it, with the inputs a table has a field for.
+  # An action as a table offers it, with the inputs a table has a field for,
+  # and what its declaration says (`declared`: `label`, `confirm`,
+  # `record_argument`, `references`, the names of its `page` arguments).
   # `record_argument` is the argument of a generic action that the table
   # gives itself, which is no input.
-  defp action(resource, table, action, columns, label, confirm, record_argument, references, page) do
+  defp action(resource, table, action, columns, declared) do
+    %{
+      label: label,
+      confirm: confirm,
+      record_argument: record_argument,
+      references: references,
+      page: page
+    } = declared
+
     inputs =
       for %{editor: editor} = input when not is_nil(editor) <-
             Acting.inputs(resource, action, record_argument, references, page) do

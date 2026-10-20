@@ -119,13 +119,14 @@ defmodule AshDataTable.Resource.Exposing do
   def references(_resource, nothing) when nothing in [nil, []], do: []
 
   def references(resource, expression) do
-    with {:ok, expression} <-
-           Ash.Filter.hydrate_refs(expression, %{resource: resource, public?: false}) do
-      for %{relationship_path: path, attribute: attribute} <- Ash.Filter.list_refs(expression),
-          name = name(attribute),
-          do: {path, name}
-    else
-      _unreadable -> []
+    case Ash.Filter.hydrate_refs(expression, %{resource: resource, public?: false}) do
+      {:ok, expression} ->
+        for %{relationship_path: path, attribute: attribute} <- Ash.Filter.list_refs(expression),
+            name = name(attribute),
+            do: {path, name}
+
+      _unreadable ->
+        []
     end
   end
 

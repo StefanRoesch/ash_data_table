@@ -7,9 +7,9 @@ defmodule AshDataTable.Parts.Panel do
   use Phoenix.Component
 
   alias AshDataTable.Attrs
+  alias AshDataTable.Ids
   alias AshDataTable.Kit
   alias AshDataTable.Kit.Words
-  alias AshDataTable.Ids
   alias AshDataTable.Parts
 
   # The action panel: where a person gives the inputs of a row action, or of

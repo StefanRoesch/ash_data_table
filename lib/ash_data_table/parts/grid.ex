@@ -10,9 +10,9 @@ defmodule AshDataTable.Parts.Grid do
   use Phoenix.Component
 
   alias AshDataTable.Attrs
+  alias AshDataTable.Ids
   alias AshDataTable.Kit
   alias AshDataTable.Kit.Words
-  alias AshDataTable.Ids
   alias AshDataTable.Parts
   alias AshDataTable.Parts.Common
   alias AshDataTable.Present

@@ -40,9 +40,9 @@ defmodule AshDataTable.Query do
   alias AshDataTable.Errors
   alias AshDataTable.Model
   alias AshDataTable.Model.Argument
+  alias AshDataTable.Model.Pagination
   alias AshDataTable.Resource.Operator
   alias AshDataTable.Resource.Summarising
-  alias AshDataTable.Model.Pagination
   alias AshDataTable.State
   alias AshDataTable.Zone
 

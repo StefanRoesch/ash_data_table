@@ -1481,8 +1481,8 @@ defmodule AshDataTable.Kit do
 
   defp changed(2),
     do:
-      ". Contract 3 draws a table, not an ARIA grid: role=\"table\", \"cell\" and \"rowheader\" " <>
-        "in place of \"grid\" and \"gridcell\", no tabindex=\"-1\" on cells and controls, a sort " <>
+      ~s[. Contract 3 draws a table, not an ARIA grid: role="table", "cell" and "rowheader" ] <>
+        ~s[in place of "grid" and "gridcell", no tabindex="-1" on cells and controls, a sort ] <>
         "button in a sortable header (Attrs.sort/3), the skip link and its target " <>
         "(Attrs.skip/1, Attrs.skip_target/1), data-failed in place of aria-invalid, and no " <>
         "aria-readonly or aria-multiselectable" <> changed(3)

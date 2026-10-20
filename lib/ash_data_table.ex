@@ -247,7 +247,7 @@ defmodule AshDataTable do
     default: [],
     doc:
       "How the table looks, over what its kit says: `[sticky_header: true, density: :compact, " <>
-        "stripes: true, column_lines: true, height: \"60vh\", nested_height: \"20rem\"]`, " <>
+        ~s|stripes: true, column_lines: true, height: "60vh", nested_height: "20rem"]`, | <>
         "any of them. See \"The look of a table\" in `AshDataTable.Kit`."
 
   def table(assigns) do

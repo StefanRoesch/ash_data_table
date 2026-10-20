@@ -7,10 +7,10 @@ defmodule AshDataTable.Resource.Editing do
   alias Ash.Resource.Info
   alias AshDataTable.Resource.CellType
   alias AshDataTable.Resource.Embedding
-  alias AshDataTable.Resource.Table
+  alias AshDataTable.Resource.Exposing
   alias AshDataTable.Resource.Managing
   alias AshDataTable.Resource.Referencing
-  alias AshDataTable.Resource.Exposing
+  alias AshDataTable.Resource.Table
 
   # The cell types with an editor.
   @editors [:text, :number, :boolean, :date, :datetime, :enum]

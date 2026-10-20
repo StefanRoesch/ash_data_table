@@ -76,7 +76,7 @@ defmodule AshDataTable.Zone do
         raise ArgumentError,
               "#{given_as} is #{inspect(zone)}, but Elixir has no time zone database to " <>
                 "convert datetimes into it: the default one knows UTC only. Add one to the " <>
-                "application, `{:tz, \"~> 0.28\"}` or `{:tzdata, \"~> 1.1\"}`, and configure it: " <>
+                ~s[application, `{:tz, "~> 0.28"}` or `{:tzdata, "~> 1.1"}`, and configure it: ] <>
                 "`config :elixir, :time_zone_database, Tz.TimeZoneDatabase` " <>
                 "(or `Tzdata.TimeZoneDatabase`)."
 

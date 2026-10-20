@@ -73,10 +73,7 @@ if Code.ensure_loaded?(Igniter) do
           :unchanged
         else
           # Both or neither: an import without the spread is of no use.
-          with {:ok, content} <- spread_hooks(content),
-               {:ok, content} <- import_hooks(content) do
-            {:ok, content}
-          end
+          with {:ok, content} <- spread_hooks(content), do: import_hooks(content)
         end
       end)
     end

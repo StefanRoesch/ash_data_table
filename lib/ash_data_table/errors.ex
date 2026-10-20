@@ -252,25 +252,26 @@ defmodule AshDataTable.Errors do
   @spec nested_text(Model.t(), [atom | non_neg_integer], atom, {String.t(), keyword}) ::
           message | nil
   def nested_text(%Model{} = model, [name | rest], field, {_message, _vars} = error) do
-    with %{label: label, cell_type: cell_type} = column
-         when cell_type in [:map, {:array, :map}, :union] <-
-           Enum.find(model.columns, &(&1.name == name)) do
-      labels =
-        Enum.reduce(rest ++ [field], [label], fn
-          index, [label | labels] when is_integer(index) ->
-            [{:text, :value_position, column: label, position: index + 1} | labels]
+    case Enum.find(model.columns, &(&1.name == name)) do
+      %{label: label, cell_type: cell_type} = column
+      when cell_type in [:map, {:array, :map}, :union] ->
+        labels =
+          Enum.reduce(rest ++ [field], [label], fn
+            index, [label | labels] when is_integer(index) ->
+              [{:text, :value_position, column: label, position: index + 1} | labels]
 
-          name, labels ->
-            [{:label, AshDataTable.Resource.Words.humanize(name)} | labels]
+            name, labels ->
+              [{:label, AshDataTable.Resource.Words.humanize(name)} | labels]
+          end)
+
+        sensitive? = column.sensitive? or sensitive_within?(column, rest ++ [field])
+
+        Enum.reduce(labels, ash(error, sensitive?), fn label, message ->
+          {:text, :error_on_field, field: label, message: message}
         end)
 
-      sensitive? = column.sensitive? or sensitive_within?(column, rest ++ [field])
-
-      Enum.reduce(labels, ash(error, sensitive?), fn label, message ->
-        {:text, :error_on_field, field: label, message: message}
-      end)
-    else
-      _no_such_column -> nil
+      _no_such_column ->
+        nil
     end
   end
 

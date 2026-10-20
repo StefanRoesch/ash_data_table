@@ -120,35 +120,37 @@ defmodule AshDataTable.Resource.Referencing do
   @spec label_field(Ash.Resource.t() | Spark.Dsl.t()) ::
           {:ok, Ash.Resource.Attribute.t()} | :none | {:error, label_reason}
   def label_field(resource) do
-    with {:ok, name} <- TableInfo.table_label_field(resource) do
-      cond do
-        attribute = Info.attribute(resource, name) ->
-          cond do
-            not attribute.public? ->
-              {:error, {:label_not_public, name}}
+    case TableInfo.table_label_field(resource) do
+      {:ok, name} ->
+        cond do
+          attribute = Info.attribute(resource, name) ->
+            cond do
+              not attribute.public? ->
+                {:error, {:label_not_public, name}}
 
-            # what a record is called is shown wherever the record is named
-            AshDataTable.Resource.Exposing.sensitive?(attribute) ->
-              {:error, {:label_sensitive, name}}
+              # what a record is called is shown wherever the record is named
+              AshDataTable.Resource.Exposing.sensitive?(attribute) ->
+                {:error, {:label_sensitive, name}}
 
-            true ->
-              {:ok, attribute}
-          end
+              true ->
+                {:ok, attribute}
+            end
 
-        Info.relationship(resource, name) ->
-          {:error, {:label_relationship, name}}
+          Info.relationship(resource, name) ->
+            {:error, {:label_relationship, name}}
 
-        Info.calculation(resource, name) ->
-          {:error, {:label_not_an_attribute, name, :calculation}}
+          Info.calculation(resource, name) ->
+            {:error, {:label_not_an_attribute, name, :calculation}}
 
-        Info.aggregate(resource, name) ->
-          {:error, {:label_not_an_attribute, name, :aggregate}}
+          Info.aggregate(resource, name) ->
+            {:error, {:label_not_an_attribute, name, :aggregate}}
 
-        true ->
-          {:error, {:label_not_found, name}}
-      end
-    else
-      :error -> :none
+          true ->
+            {:error, {:label_not_found, name}}
+        end
+
+      :error ->
+        :none
     end
   end
 
@@ -384,13 +386,11 @@ defmodule AshDataTable.Resource.Referencing do
     names = Enum.map(references, & &1.name)
 
     Enum.find_value(references, :ok, fn reference ->
-      cond do
-        reference.name in (names -- Enum.uniq(names)) ->
-          {:error, {:reference_twice, action.name, reference.name}}
-
-        true ->
-          with {:ok, _managing} <- declared(resource, action, reference, record_argument),
-               do: nil
+      if reference.name in (names -- Enum.uniq(names)) do
+        {:error, {:reference_twice, action.name, reference.name}}
+      else
+        with {:ok, _managing} <- declared(resource, action, reference, record_argument),
+             do: nil
       end
     end)
   end

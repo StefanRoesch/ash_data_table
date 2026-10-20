@@ -11,8 +11,8 @@ defmodule AshDataTable.Resource.Summarising do
   # hold), and not through a manual read action, which the data layer is not
   # asked through and whose rows the number could then disagree with.
 
-  alias AshDataTable.Resource.Referencing
   alias AshDataTable.Resource.Exposing
+  alias AshDataTable.Resource.Referencing
 
   @kinds [:count, :sum, :avg, :min, :max]
 

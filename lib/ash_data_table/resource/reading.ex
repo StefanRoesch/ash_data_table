@@ -5,8 +5,8 @@ defmodule AshDataTable.Resource.Reading do
   # (which report a mistake) and the table model (which builds on the answer).
 
   alias Ash.Resource.Info
-  alias AshDataTable.Resource.Table
   alias AshDataTable.Resource.Relating
+  alias AshDataTable.Resource.Table
 
   @type strategy :: :offset | :keyset | :none
 
@@ -129,10 +129,9 @@ defmodule AshDataTable.Resource.Reading do
 
   def message({:default_limit_not_offered, default, limit, max, name}) do
     opens =
-      cond do
-        limit == default -> "has `default_limit: #{default}`"
-        true -> "has `default_limit: #{limit}`, capped at its `max_page_size: #{max}`"
-      end
+      if limit == default,
+        do: "has `default_limit: #{default}`",
+        else: "has `default_limit: #{limit}`, capped at its `max_page_size: #{max}`"
 
     "The read action `#{inspect(name)}` #{opens}, and #{default} is not one of the `page_sizes`. The action says which size a table opens with: add #{default} to `page_sizes`, or change the action's `default_limit`."
   end
@@ -334,25 +333,26 @@ defmodule AshDataTable.Resource.Reading do
     do: []
 
   defp expression(resource, expression, seen) do
-    with {:ok, expression} <-
-           Ash.Filter.hydrate_refs(expression, %{resource: resource, public?: false}) do
-      for %{relationship_path: path, attribute: %Ash.Query.Aggregate{} = aggregate} <-
-            Ash.Filter.list_refs(expression, false, false, true),
-          at = Info.related(resource, path),
-          not is_nil(at),
-          {related, over} =
-            over(
-              at,
-              aggregate.relationship_path,
-              aggregate.read_action,
-              aggregate,
-              aggregate.name
-            ),
-          read <- over ++ within(related, aggregate.field, seen) do
-        read
-      end
-    else
-      _unreadable -> []
+    case Ash.Filter.hydrate_refs(expression, %{resource: resource, public?: false}) do
+      {:ok, expression} ->
+        for %{relationship_path: path, attribute: %Ash.Query.Aggregate{} = aggregate} <-
+              Ash.Filter.list_refs(expression, false, false, true),
+            at = Info.related(resource, path),
+            not is_nil(at),
+            {related, over} =
+              over(
+                at,
+                aggregate.relationship_path,
+                aggregate.read_action,
+                aggregate,
+                aggregate.name
+              ),
+            read <- over ++ within(related, aggregate.field, seen) do
+          read
+        end
+
+      _unreadable ->
+        []
     end
   end
 
