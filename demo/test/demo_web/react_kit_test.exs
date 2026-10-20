@@ -174,6 +174,62 @@ defmodule DemoWeb.ReactKitTest do
     assert title == project.name
   end
 
+  test "the question, the panel and the picker go to JSON, closed and open", %{
+    conn: conn,
+    world: world
+  } do
+    {:ok, view, html} = live(conn, "/react/tasks")
+    task = hd(world.tasks)
+
+    # drawn closed, with their places, before anything opens
+    assert %{"question" => "task-dialog-question", "dialog" => %{"id" => "task-dialog"}} =
+             island!(html, "task-dialogs", "AshConfirm", ~w(confirm))["confirm"]
+
+    assert %{"open" => false, "place" => "task-panel-place", "fields" => [], "frame" => nil} =
+             island!(html, "task-panel-island", "AshPanel", ~w(panel))["panel"]
+
+    assert %{"open" => false, "place" => "task-picker-place", "frame" => nil} =
+             island!(html, "task-picker-island", "AshPicker", ~w(picker))["picker"]
+
+    send = fn event, payload ->
+      AshDataTable.Test.send_event(view, "task", event, payload, from: :sender)
+      render_async(view, 10_000)
+    end
+
+    # the create panel: its form, and a field of each kind it has
+    html = send.("create", %{})
+    panel = island!(html, "task-panel-island", "AshPanel", ~w(panel))["panel"]
+
+    assert %{
+             "open" => true,
+             "frame" => %{"id" => "task-panel", "data-table" => "task", "role" => "dialog"},
+             "form" => %{
+               "id" => "task-panel-form",
+               "phx-submit" => "ash_data_table:task:panel_submit"
+             }
+           } = panel
+
+    refute Map.has_key?(panel["frame"], "phx-hook")
+    refute Map.has_key?(panel["frame"], "phx-mounted")
+    fields = Map.new(panel["fields"], &{&1["path"], &1})
+
+    assert %{"id" => "task-panel-f-title", "editor" => "text", "counted" => %{"max" => 120}} =
+             fields["title"]
+
+    assert %{"editor" => "reference", "choose" => %{"phx-value-input" => "assignee_id"}} =
+             fields["assignee_id"]
+
+    # the picker of a reference cell, its place for its table
+    send.("panel_cancel", %{})
+    html = send.("pick", %{"row" => task.id, "column" => "assignee"})
+
+    assert %{
+             "open" => true,
+             "frame" => %{"id" => "task-picker", "data-table" => "task"},
+             "take" => %{"attrs" => %{"id" => "task-picker-choose", "data-take" => ""}}
+           } = island!(html, "task-picker-island", "AshPicker", ~w(picker))["picker"]
+  end
+
   # The islands `suffixes` of the table `id` in the page, each a JSON
   # object of exactly its props, by suffix.
   defp islands!(html, id, suffixes) do

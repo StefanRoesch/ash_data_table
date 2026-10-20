@@ -111,6 +111,48 @@ export function useMounted(
   return mounted
 }
 
+// The same for what is drawn always and opens now and then (the panel, the
+// picker): the hook is mounted on the element as it opens (`open`), after
+// the commit that gave it what it opens with, and destroyed as it closes,
+// as LiveView mounts a hook on the element a HEEx kit draws as it opens and
+// destroys it as the element goes. `close` runs after the hook is gone:
+// what the browser keeps open (a modal `<dialog>`) is closed.
+export function useMountedWhile(
+  ref: React.RefObject<HTMLElement | null>,
+  open: boolean,
+  mount: Mount,
+  live: Live,
+  close: (el: HTMLElement) => void,
+): React.RefObject<Mounted | null> {
+  const mounted = React.useRef<Mounted | null>(null)
+  const functions = React.useRef(live)
+  functions.current = live
+
+  React.useLayoutEffect(() => {
+    const el = ref.current
+    if (!el || !open) return
+    const {pushEventTo, handleEvent, removeHandleEvent} = functions.current
+    const transport = liveViewTransport({
+      el,
+      pushEventTo,
+      handleEvent,
+      removeHandleEvent,
+      liveSocket: (window as any).liveSocket,
+    })
+    const hook = mount(el, transport)
+    mounted.current = hook
+    living.set(el, hook)
+    return () => {
+      if (living.get(el) === hook) living.delete(el)
+      hook.destroy()
+      if (mounted.current === hook) mounted.current = null
+      close(el)
+    }
+  }, [open])
+
+  return mounted
+}
+
 export class Commits extends React.Component<{mounted: React.RefObject<Mounted | null>; children: React.ReactNode}> {
   getSnapshotBeforeUpdate() {
     if (this.props.mounted.current) this.props.mounted.current.beforeUpdate()
@@ -130,7 +172,7 @@ export class Commits extends React.Component<{mounted: React.RefObject<Mounted |
 // server gives another, unless the person is in it (as LiveView patches a
 // form's control). The value the person types stays the browser's.
 export function useServerValue(
-  ref: React.RefObject<HTMLInputElement | HTMLSelectElement | null>,
+  ref: React.RefObject<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null>,
   value: string | null | undefined,
 ) {
   const first = React.useRef(true)

@@ -398,8 +398,15 @@ export default {
     this.holds.delete(ref)
     const cell = document.getElementById(held.cell)
     if (!cell || !this.owns(cell)) return
+    if (held.patched) return cell.removeAttribute("aria-busy")
+    // Not patched: the cell holds what this hook put into it. Saved, its
+    // own content goes back first, before it is busy no more: a kit that
+    // draws in the browser held the cell as it was while it was busy, and
+    // draws it from the row it was sent once it is not (a HEEx kit's
+    // patch of the row has always come first: `patched`).
+    if (saved) held.restore()
     cell.removeAttribute("aria-busy")
-    if (saved || held.patched) return
+    if (saved) return
     if (error && held.value !== undefined) this.mark(cell, held.value, held.old, error, held.restore)
     else held.restore()
   },

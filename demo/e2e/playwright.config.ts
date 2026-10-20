@@ -18,19 +18,6 @@ import { workerCount } from "./support/server"
 //                                     and those that import a changed file
 //   npm run test:server -- editing    against a running `./server.sh`, one
 //                                     test at a time, with nothing started
-// The specs of the grid, which the project `react` runs against the React kit.
-const REACT = new RegExp(
-  "(^|/)(" +
-    [
-      "a11y-editing", "a11y-nesting", "a11y-tables", "actions", "arguments", "attached", "authorization",
-      "components", "contrast", "counter", "dashboard", "editing", "filtering", "footer", "full_view",
-      "hiding", "live_updates", "locale", "long_text", "named_tables", "nesting", "open", "page_size",
-      "pagination", "portals", "relationships", "resizing", "scrolling", "selection", "sensitive",
-      "sorting", "tab_order", "table_actions", "tables", "task_labels", "validation", "zones",
-    ].join("|") +
-    ")\\.spec\\.ts$",
-)
-
 export default defineConfig({
   testDir: ".",
   testMatch: /\.spec\.ts$/,
@@ -70,20 +57,14 @@ export default defineConfig({
         viewport: { width: 1600, height: 900 },
       },
     },
-    // The grid specs once more against the demo's React kit
-    // (`DemoWeb.ReactKit`, stage 8, R2): every table a page does not give a
+    // The whole suite once more against the demo's React kit
+    // (`DemoWeb.ReactKit`, stage 8, R4): every table a page does not give a
     // kit of its own is drawn with it, as the page asks by request
-    // (`x-demo-kit`, `DemoWeb.E2E.ChosenKit`). The panel, the picker and the
-    // question are the default kit's until R3, so their specs are not here;
-    // in a spec of the grid, a single test that needs one of them, or checks
-    // what only the HEEx kit draws, is tagged `@heex` (`{ tag: "@heex" }`,
-    // which `grepInvert` matches as it matches the title) and left out
-    // (the React kit's note, §7.3), never a whole file.
+    // (`x-demo-kit`, `DemoWeb.E2E.ChosenKit`). A page that names a kit of its
+    // own (`/e2e/kit`'s kit of `div`s, `/e2e/markers`) is drawn as it says.
     {
       name: "react",
       dependencies: ["setup"],
-      testMatch: REACT,
-      grepInvert: /@heex/,
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1600, height: 900 },

@@ -50,6 +50,27 @@ defmodule AshDataTable.KitCase do
   It runs with `Phoenix.LiveViewTest` (`live_isolated/3`) on the endpoint
   given, and keeps the test resource's records in memory, in a tenant of
   each test's own: the tests run `async`.
+
+  ## A kit that draws in the browser
+
+  A kit whose parts a client framework draws (a React kit) sends the
+  server's HTML no markers: its islands are given props, which the browser
+  draws. `client: true` checks what can be checked on the server: every
+  part's texts and messages as above, and that no page holds the test
+  resource's sensitive value, which is that the kit gave none of its
+  props and none of its stream's items the value (they are in the page's
+  HTML as its framework's bridge writes them). The markers, ids, element
+  kinds and Tab stops are checked in the browser, on what the kit drew
+  there: `problems/4` over the page's HTML.
+
+      defmodule MyAppWeb.ReactKitTest do
+        use AshDataTable.KitCase, kit: MyAppWeb.ReactKit, endpoint: MyAppWeb.Endpoint, client: true
+      end
+
+  The events that bring a table into a state are sent from the grid's
+  sender (`AshDataTable.Attrs.sender/1`), the markup of the LiveView's
+  that every kit draws, and a form's as its event, with the values the
+  state needs.
   """
 
   import ExUnit.Assertions
@@ -89,6 +110,7 @@ defmodule AshDataTable.KitCase do
   defmacro __using__(opts) do
     kit = Keyword.fetch!(opts, :kit)
     endpoint = Keyword.fetch!(opts, :endpoint)
+    client? = Keyword.get(opts, :client, false)
 
     # The kit, drawn through a kit that first checks what each part is given
     # (`given!/2`): every part the kit draws is called through it.
@@ -112,6 +134,7 @@ defmodule AshDataTable.KitCase do
 
       @endpoint unquote(endpoint)
       @kit unquote(kit)
+      @client unquote(client?)
 
       defmodule Probe do
         @moduledoc false
@@ -131,7 +154,7 @@ defmodule AshDataTable.KitCase do
 
         test "#{inspect(@kit)} draws the state #{@state}, what opens #{@presentation}" do
           {tenant, key, session} =
-            AshDataTable.KitCase.given(__MODULE__.Probe, @state, @presentation)
+            AshDataTable.KitCase.given(__MODULE__.Probe, @state, @presentation, @client)
 
           on_exit(fn -> AshDataTable.KitCase.clean(tenant) end)
 
@@ -140,7 +163,15 @@ defmodule AshDataTable.KitCase do
               session: session
             )
 
-          AshDataTable.KitCase.check(__MODULE__.Probe, view, html, key, @state, @presentation)
+          AshDataTable.KitCase.check(
+            __MODULE__.Probe,
+            view,
+            html,
+            key,
+            @state,
+            @presentation,
+            @client
+          )
         end
       end
     end
@@ -251,7 +282,7 @@ defmodule AshDataTable.KitCase do
   @doc false
   # A tenant of the test's own with the records of `state`, the key of the
   # first record, and the session of the LiveView that draws them.
-  def given(kit, state, presentation) do
+  def given(kit, state, presentation, client? \\ false) do
     prefix = if state == :error, do: "broken", else: "kit"
     tenant = "#{prefix}-#{System.unique_integer([:positive])}"
     key = if state not in [:empty, :error], do: seed(tenant)
@@ -260,7 +291,8 @@ defmodule AshDataTable.KitCase do
      %{
        "kit" => kit,
        "tenant" => tenant,
-       "presentation" => Keyword.fetch!(@presentations, presentation)
+       "presentation" => Keyword.fetch!(@presentations, presentation),
+       "client" => client?
      }}
   end
 
@@ -315,23 +347,67 @@ defmodule AshDataTable.KitCase do
   @doc false
   # Brings the table into `state` and checks every page it draws on the way
   # there, the first one (`html`, as it was mounted) among them.
-  def check(kit, view, html, key, state, presentation) do
+  def check(kit, view, html, key, state, presentation, client? \\ false) do
+    Process.put({__MODULE__, :client}, client?)
     pages = [{html, {:way, state}} | drive(kit, view, state, key)]
 
     for {html, at} <- pages do
       refute html =~ Resource.secret(),
              "the page holds the sensitive value of AshDataTable.Test.Resource (#{inspect(at)})"
 
-      page = AshDataTable.Test.page(html)
-      problems = common(page, at, presentation) ++ special(page, at, key, presentation)
+      if not client? do
+        problems = problems_of(AshDataTable.Test.page(html), at, key, presentation)
 
-      assert problems == [],
-             "the kit draws the state #{inspect(at)} without:\n  " <> Enum.join(problems, "\n  ")
+        assert problems == [],
+               "the kit draws the state #{inspect(at)} without:\n  " <>
+                 Enum.join(problems, "\n  ")
+      end
     end
   end
 
-  defp event(view, name, payload, opts \\ []),
-    do: AshDataTable.Test.send_event(view, @table, name, payload, opts)
+  @doc """
+  What the page `html` lacks of what the table's hooks need in the state
+  `state` (one of `states/0`, or `:filter_panel`, the panel of a filter's
+  values on the way to `:filtered`, `:related` and `:full_view` of
+  `:links`), what opens drawn as `presentation` says (one of
+  `presentations/0`): the markers, ids, `data-*` values, element kinds
+  and Tab stops this case checks, as a list of what is missing, `[]` for
+  nothing. `key` is the key of the first record (`Anchor`). `html` is the
+  page as the browser shows it: with what LiveView moved into its places
+  in them (a nested table, the picker's table), as a kit that draws in the
+  browser has drawn it (`document.body.outerHTML`), or as
+  `AshDataTable.Test.page/1` gives the page of `Phoenix.LiveViewTest`.
+
+  A kit that draws in the browser is checked with it there, state by state
+  (`client: true` above): the library's own browser suite does so for the
+  demo's React kit.
+  """
+  @spec problems(String.t(), atom, atom, String.t()) :: [String.t()]
+  def problems(html, state, presentation, key) when is_binary(html),
+    do: problems_of(LazyHTML.from_fragment(html), state, key, presentation)
+
+  defp problems_of(page, at, key, presentation),
+    do: common(page, at, presentation) ++ special(page, at, key, presentation)
+
+  # An event, as the hook of the part `from` sends it; from the grid's
+  # sender for a kit that draws in the browser, whose parts' elements are
+  # not in the server's HTML.
+  defp event(view, name, payload, opts \\ []) do
+    opts =
+      if Process.get({__MODULE__, :client}), do: Keyword.put(opts, :from, :sender), else: opts
+
+    AshDataTable.Test.send_event(view, @table, name, payload, opts)
+  end
+
+  # A form of the panel, as the browser sends it: of a kit that draws in
+  # the browser as its event, with the values given.
+  defp form(view, kind, values) do
+    if Process.get({__MODULE__, :client}) do
+      event(view, "panel_#{kind}", values)
+    else
+      AshDataTable.Test.send_form(view, "[id='kit-panel-form']", kind, values, check: false)
+    end
+  end
 
   defp async(view), do: Phoenix.LiveViewTest.render_async(view, 5_000)
 
@@ -345,13 +421,7 @@ defmodule AshDataTable.KitCase do
     chosen = event(view, "filter", %{"filter" => %{"tier" => %{"o" => "any_of"}}})
     opened = event(view, "filter_values", %{"column" => "tier", "operator" => "any_of"})
 
-    AshDataTable.Test.send_form(
-      view,
-      "[id='kit-panel-form']",
-      :submit,
-      %{"panel" => %{"tier" => ["", "low"]}},
-      check: false
-    )
+    form(view, :submit, %{"panel" => %{"tier" => ["", "low"]}})
 
     [
       {sorted, {:way, :filtered}},
@@ -399,19 +469,13 @@ defmodule AshDataTable.KitCase do
     opened = event(view, "create", %{})
 
     failed =
-      AshDataTable.Test.send_form(
-        view,
-        "[id='kit-panel-form']",
-        :submit,
-        %{
-          "panel" => %{
-            "name" => "New",
-            "secret" => Resource.secret(),
-            "tags" => ["ok", "much-too-long"]
-          }
-        },
-        check: false
-      )
+      form(view, :submit, %{
+        "panel" => %{
+          "name" => "New",
+          "secret" => Resource.secret(),
+          "tags" => ["ok", "much-too-long"]
+        }
+      })
 
     [{opened, {:way, :create_failed}}, {failed, :create_failed}]
   end

@@ -13,6 +13,9 @@ import {AshGrid} from "./Grid"
 import {AshHeading} from "./Heading"
 import {AshMessage} from "./Message"
 import {AshPagination} from "./Pagination"
+import {AshPanel} from "./Panel"
+import {AshPicker} from "./Picker"
+import {AshConfirm} from "./Confirm"
 import {AshRelated} from "./Related"
 import {AshSelectionLine} from "./SelectionLine"
 import {AshStatus} from "./Status"
@@ -20,7 +23,7 @@ import {DEFAULT_PARTS, PartsContext, type Parts} from "./parts"
 
 export {reactKitHooks} from "./mounting"
 
-const ISLANDS: Record<string, React.ComponentType<any>> = {AshHeading, AshRelated, AshGrid, AshSelectionLine, AshStatus, AshMessage, AshPagination}
+const ISLANDS: Record<string, React.ComponentType<any>> = {AshHeading, AshRelated, AshGrid, AshSelectionLine, AshStatus, AshMessage, AshPagination, AshConfirm, AshPanel, AshPicker}
 
 export function reactKit(given: Partial<Parts> = {}): Record<string, React.ComponentType<any>> {
   const parts: Parts = {

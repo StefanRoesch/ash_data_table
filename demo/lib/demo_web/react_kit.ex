@@ -6,7 +6,7 @@ defmodule DemoWeb.ReactKit do
   own hooks, which the islands mount by hand (`mountGrid`,
   `mountPagination`, `liveViewTransport` of the library's JS).
 
-  Stage R2 draws these parts as islands (`assets/islands/table/`):
+  It draws these parts as islands (`assets/islands/table/`):
 
     * `grid` - the island `AshGrid`: the header with its sort buttons and
       handles, the filter row, the rows and their cells (every state, the
@@ -31,13 +31,31 @@ defmodule DemoWeb.ReactKit do
     * `message` - the island `AshMessage`, one per message said in place
       of the rows (an error, loading, an argument to fill, "No records").
 
-  The other parts are `AshDataTable.Kit.Default`'s: the root (an element
-  with its bundle that holds the table's parts and what opens, and draws
-  nothing to be seen: LiveView patches what it holds), the panel, the
-  picker and the question (stage R3). The parts
-  the islands draw inside them (`columns`, `argument_line`, `argument`,
-  `editor`, …) are React components there, each replaceable by name
-  (`reactKit({...})`); their `Kit.Default` parts are not used by this kit.
+    * `confirm` - the island `AshConfirm`: the question, a `<dialog>` or a
+      region in the page, which the grid's hook opens and writes into;
+      once more inside a panel or picker over the page, where the question
+      is asked in the page;
+    * `panel` - the island `AshPanel`, drawn closed too: a `<dialog>` or a
+      region, its form with a field per field (every kind: text, numbers,
+      choices, lists, values made of fields and lists of them, unions,
+      chosen records, a sensitive field's Clear, a component's editor, a
+      file), and its place (`Ids.panel_place/1`), which what opens in it is
+      moved into; beside it, LiveView's file input of each file field, out
+      of sight, which the island's file control hands the files to
+      (`uploadTo`);
+    * `picker` - the island `AshPicker`, drawn closed too, with its place
+      (`Ids.picker_place/1`), which its table is moved into.
+
+  The panel and the picker mount the table's hooks (`mountPanel`,
+  `mountPicker`) as they open, and destroy them as they close.
+
+  The root stays `AshDataTable.Kit.Default`'s: an element with its bundle
+  that holds the table's parts and what opens, and draws nothing to be
+  seen (LiveView patches what it holds). The parts the islands draw inside
+  them (`columns`, `argument_line`, `argument`, `editor`, `field`,
+  `control`, `list`, `count`, …) are React components there, each
+  replaceable by name (`reactKit({...})`); their `Kit.Default` parts are
+  not used by this kit.
 
   What each island is given is picked here (`DemoWeb.ReactKit.Props`), as
   plain data that goes to JSON: never a record, an Ash type or a struct of
@@ -240,6 +258,56 @@ defmodule DemoWeb.ReactKit do
       name="AshPagination"
       class="contents"
       pagination={Props.pagination(@id, @nested?, @page, @model, @state, @target, @texts, @pages)}
+    />
+    """
+  end
+
+  # The question, drawn once and opened by the grid's hook (`dialog.js`),
+  # which writes the question into it: the island's element is LiveView's
+  # place left alone (`ID-dialogs`, `-in-panel`, `-in-picker`).
+  def confirm(assigns) do
+    ~H"""
+    <LiveReact.react
+      id={"#{@id}-dialogs#{Attrs.asked_in(@place)}"}
+      name="AshConfirm"
+      class="contents"
+      confirm={Props.confirm(@id, @model, @bulk, @presentation, @place, @texts)}
+    />
+    """
+  end
+
+  # The action panel, drawn closed too, with its place for what opens in it
+  # (C8). Beside the island, as markup of the LiveView's: LiveView's own
+  # file input of each file field, out of sight and in the island's form
+  # (`form=`), which LiveView tracks the files of; the island's control
+  # hands it the files a person chooses (`uploadTo`).
+  def panel(assigns) do
+    ~H"""
+    <LiveReact.react
+      id={"#{@id}-panel-island"}
+      name="AshPanel"
+      class="contents"
+      panel={Props.panel(@id, @panel, @fields, @target, @presentation, @texts)}
+    />
+    <.live_file_input
+      :for={field <- @fields}
+      :if={field.upload}
+      upload={field.upload}
+      form={"#{@id}-panel-form"}
+      hidden
+    />
+    """
+  end
+
+  # The picker, drawn closed too, with its place, which its table is moved
+  # into (C8).
+  def picker(assigns) do
+    ~H"""
+    <LiveReact.react
+      id={"#{@id}-picker-island"}
+      name="AshPicker"
+      class="contents"
+      picker={Props.picker(@id, @picker, @target, @presentation, @takes?, @texts)}
     />
     """
   end

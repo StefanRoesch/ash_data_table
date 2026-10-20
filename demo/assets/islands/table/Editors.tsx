@@ -44,7 +44,7 @@ export type EditorComponentProps = {editor: EditorProps}
 export type EditorComponents = Record<string, React.ComponentType<EditorComponentProps>>
 
 // A template, and what is drawn into its content.
-function Template({bundle, children}: {bundle: Bundle; children?: React.ReactNode}) {
+export function Template({bundle, children}: {bundle: Bundle; children?: React.ReactNode}) {
   const [el, setEl] = React.useState<HTMLTemplateElement | null>(null)
   return (
     <template ref={setEl} {...attrs(bundle)}>

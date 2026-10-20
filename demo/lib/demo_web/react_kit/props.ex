@@ -757,11 +757,210 @@ defmodule DemoWeb.ReactKit.Props do
     }
   end
 
+  # ---- what opens -----------------------------------------------------------
+
+  @doc """
+  The question (the part `confirm`): whether the table asks at all, the
+  dialog's bundle (`Attrs.confirm/3`: a `<dialog>` over the page, a region
+  in it, hidden until the hook asks), the id of where the hook writes the
+  question, and the answers' words.
+  """
+  def confirm(id, model, bulk, presentation, place, texts) do
+    %{
+      asks: asks?(model, bulk),
+      presentation: presentation,
+      dialog: bundle(Attrs.confirm(id, presentation, place)),
+      question: "#{Ids.dialog(id)}-question#{Attrs.asked_in(place)}",
+      cancel: texts.cancel,
+      confirm: texts.confirm
+    }
+  end
+
+  # Whether anything of the table asks a question before it runs: a column,
+  # a row action, a table action, and every action on the selected rows.
+  defp asks?(model, bulk),
+    do:
+      bulk != [] or Enum.any?(model.columns, & &1.confirm) or
+        Enum.any?(model.actions ++ model.table_actions, & &1.confirm)
+
+  @doc """
+  The action panel (the part `panel`), drawn closed too: whether it is
+  open, how it opens, its place (`Ids.panel_place/1`), and while it is open
+  its element's bundle (`Attrs.panel/5`), its form, its words and a field
+  each (`field/2`).
+  """
+  def panel(id, panel, fields, target, presentation, texts) do
+    %{
+      id: id,
+      open: panel != nil,
+      presentation: presentation,
+      place: Ids.panel_place(id),
+      frame: panel && bundle(Attrs.panel(id, panel, texts.question, target, presentation)),
+      form:
+        panel &&
+          bundle(%{
+            "id" => "#{id}-panel-form",
+            "method" => panel.method,
+            "phx-change" => Attrs.event(id, "panel_validate"),
+            "phx-submit" => Attrs.event(id, "panel_submit"),
+            "phx-target" => target,
+            "novalidate" => true
+          }),
+      title: texts.title,
+      errors: panel && panel.errors && texts.errors,
+      destructive: panel != nil and panel.destructive?,
+      cancel: %{attrs: bundle(Attrs.cancel("#{id}-panel-cancel")), text: texts.cancel},
+      submit: %{id: "#{id}-panel-submit", text: texts.submit},
+      fields: Enum.map(fields, &field(&1, target))
+    }
+  end
+
+  # One field of the panel, of what its `field` part is given: its ids, name
+  # and value, what its control is and says, its buttons' bundles
+  # (`Attrs.unpick/4`, `Attrs.clear_field/3`, `Attrs.add_group/3`,
+  # `Attrs.remove_group/3`, and the picker's `pick_input`), a file's upload,
+  # and what a value made of fields holds, each a field again.
+  defp field(given, target) do
+    input = given.input
+    editor = input.editor
+    group? = editor in [:group, :groups, :union]
+
+    %{
+      id: given.id,
+      name: given.name,
+      path: Enum.join(given.path, "."),
+      editor: editor,
+      label: input.label,
+      required: input.required?,
+      sensitive: Map.get(input, :sensitive?) == true,
+      item:
+        case input.cell_type do
+          {:array, item} -> item
+          _one -> nil
+        end,
+      values: choices(input.values),
+      value: if(group?, do: nil, else: given.value),
+      boxless: boxless(input, given.value),
+      invalid: given.errors != [],
+      places: given.places != [] && Attrs.held(given.places),
+      limits: given.limits,
+      counted: given.counted,
+      count: given.counted && bundle(Attrs.count(given.counted, false)),
+      clear: given.clear,
+      clear_button: given.clear && bundle(Attrs.clear_field(given.table, input.name, target)),
+      choose:
+        editor in [:reference, :references] &&
+          bundle(%{
+            "phx-click" => Attrs.event(given.table, "pick_input"),
+            "phx-value-input" => input.name,
+            "phx-target" => target
+          }),
+      chosen:
+        if editor == :references do
+          for key <- given.value,
+              do: %{key: key, unpick: bundle(Attrs.unpick(given.table, input.name, key, target))}
+        end,
+      component: editor == :component && inspect(input.component.module),
+      upload: given.upload && upload(given.upload),
+      add: group? && editor != :union && bundle(Attrs.add_group(given.table, given.path, target)),
+      remove:
+        editor == :group and not input.required? and
+          bundle(Attrs.remove_group(given.table, given.path, target)),
+      members: members(given.members, target),
+      items:
+        for item <- given.items do
+          %{
+            key: item.key,
+            id: item.id,
+            remove: bundle(Attrs.remove_group(given.table, item.path, target)),
+            members: members(item.members, target)
+          }
+        end,
+      kind: given.kind,
+      kinds:
+        if editor == :union do
+          for member <- input.members,
+              do: %{value: Atom.to_string(member.name), label: member.label}
+        end,
+      single: given.single && field(given.single, target),
+      texts: given.texts,
+      list:
+        editor == :list &&
+          Words.texts(:list, %{label: input.label, values: given.value})
+    }
+  end
+
+  defp members(nil, _target), do: nil
+
+  defp members(members, target),
+    do: %{
+      name: members.name,
+      keys: members.keys,
+      fields: Enum.map(members.fields, &field(&1, target))
+    }
+
+  # What a field of multiple choice holds that is none of its values, which
+  # it sends back as it came.
+  defp boxless(%{editor: :choices, values: values}, held) when is_list(held) do
+    choices = Enum.map(values, fn {choice, _label} -> to_string(choice) end)
+    Enum.reject(held, &(&1 in choices))
+  end
+
+  defp boxless(_input, _held), do: []
+
+  # What LiveView keeps of a file field (`Phoenix.LiveView.UploadConfig`):
+  # its name, what it takes, and each file chosen with how far it has come.
+  defp upload(upload) do
+    %{
+      name: to_string(upload.name),
+      ref: upload.ref,
+      accept: if(is_binary(upload.accept), do: upload.accept),
+      multiple: upload.max_entries > 1,
+      entries:
+        for entry <- upload.entries do
+          %{
+            ref: entry.ref,
+            name: entry.client_name,
+            progress: entry.progress,
+            done: entry.done?,
+            cancelled: entry.cancelled?
+          }
+        end
+    }
+  end
+
+  @doc """
+  The picker (the part `picker`), drawn closed too: whether it is open, how,
+  its place (`Ids.picker_place/1`, which its table is moved into), and
+  while it is open its element's bundle (`Attrs.picker/5`), its words, what
+  it says when a choice was not taken, and its buttons (`Attrs.cancel/1`,
+  `Attrs.none/1`, `Attrs.take/3`).
+  """
+  def picker(id, picker, target, presentation, takes?, texts) do
+    %{
+      id: id,
+      open: picker != nil,
+      presentation: presentation,
+      place: Ids.picker_place(id),
+      frame:
+        picker &&
+          bundle(Attrs.picker(id, texts.question, picker.several?, target, presentation)),
+      title: texts.title,
+      error: picker && picker.error && %{id: Ids.error("#{id}-picker"), text: texts.error},
+      cancel: %{attrs: bundle(Attrs.cancel("#{id}-picker-cancel")), text: texts.cancel},
+      none:
+        picker && picker.allow_none? && %{attrs: bundle(Attrs.none(id)), text: texts.choose_none},
+      take:
+        picker && %{attrs: bundle(Attrs.take(id, picker.several?, takes?)), text: texts.choose}
+    }
+  end
+
   # ---- the bundles ----------------------------------------------------------
 
   # A bundle as an island's props: without what LiveView reads of an
-  # element it draws itself (`phx-hook`, `phx-update`).
-  defp bundle(attributes), do: attributes |> Map.drop(["phx-hook", "phx-update"]) |> Attrs.props()
+  # element it draws itself (`phx-hook`, `phx-update`, `phx-mounted`).
+  defp bundle(attributes),
+    do: attributes |> Map.drop(["phx-hook", "phx-update", "phx-mounted"]) |> Attrs.props()
 
   defp drop_empty(attributes),
     do: for({name, value} <- attributes, value not in [nil, false], into: %{}, do: {name, value})

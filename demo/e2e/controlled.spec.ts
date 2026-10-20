@@ -89,8 +89,11 @@ test.describe("what the page draws of the questions and the picker", () => {
     await expect(page.locator("#host-question-text")).toHaveText("Change the note?")
     await expect(note).toHaveAttribute("aria-busy", "true")
 
-    // another cell of the row saves: the server sends the row again, with
-    // the note as the record has it, and the note waits still
+    // another cell of the row saves: the server sends the row again, and
+    // the note waits still. The default kit's patch draws the note as the
+    // record has it; the React kit draws a busy cell as it was until the
+    // hook gives it back (react-kit-design.md §15, "a cell the hook
+    // holds"), what was typed
     const name = cell(page, anchor, "name")
     await name.focus()
     await page.keyboard.press("Enter")
@@ -98,7 +101,7 @@ test.describe("what the page draws of the questions and the picker", () => {
     await page.keyboard.press("Enter")
     await expect(name).toHaveText("Anchored")
     await expect(name).not.toHaveAttribute("aria-busy")
-    await expect(note).toHaveText("first")
+    await expect(note).toHaveText(test.info().project.name === "react" ? "second" : "first")
     await expect(note).toHaveAttribute("aria-busy", "true")
 
     await page.locator("#host-cancel").click()

@@ -16,6 +16,9 @@ import {Argument, ArgumentLine, Heading} from "./Heading"
 import {Filter} from "./Filter"
 import {Message} from "./Message"
 import {Pagination} from "./Pagination"
+import {Control, Field, List, Panel} from "./Panel"
+import {Picker} from "./Picker"
+import {Confirm} from "./Confirm"
 import {Related} from "./Related"
 import {SelectionLine} from "./SelectionLine"
 import {Status} from "./Status"
@@ -47,6 +50,12 @@ export const DEFAULT_PARTS = {
   Message,
   Editor,
   Count,
+  Confirm,
+  Panel,
+  Field,
+  Control,
+  List,
+  Picker,
   components: COMPONENTS as Components,
   editors: EDITORS as EditorComponents,
 }

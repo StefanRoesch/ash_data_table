@@ -145,7 +145,7 @@ test.describe("an array of text: one control per value, in the side panel", () =
     // nothing of it is in the cell, and the column's editor is no editor of the cell's
     await expect(tags).toHaveText("api, customer, quick-win")
     await expect(tasks.openEditors).toHaveCount(0)
-    const template = tasks.hookRoot.locator(`:scope > template[id="task-editor-tags"]`)
+    const template = tasks.editorTemplates.and(tasks.page.locator(`#task-editor-tags`))
     await expect(template).toHaveAttribute("data-editor", "list")
     expect(await template.evaluate((node) => (node as HTMLTemplateElement).content.childElementCount)).toBe(0)
   })
@@ -515,7 +515,7 @@ test.describe("an array of enum values: multiple choice, in the side panel", () 
     expect(await pushed.count("save")).toBe(0)
     // nothing of it is in the cell, and the column's editor is no editor of the cell's
     await expect(tasks.openEditors).toHaveCount(0)
-    const template = tasks.hookRoot.locator(`:scope > template[id="task-editor-checks"]`)
+    const template = tasks.editorTemplates.and(tasks.page.locator(`#task-editor-checks`))
     await expect(template).toHaveAttribute("data-editor", "choices")
     expect(await template.evaluate((node) => (node as HTMLTemplateElement).content.childElementCount)).toBe(0)
   })
