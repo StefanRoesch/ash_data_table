@@ -105,9 +105,10 @@ defmodule AshDataTable.Live.Hooks do
     end
 
     table =
-      Table.new()
+      private.streams
+      |> Map.get(given.id, %{free: [], next: 0})
+      |> Table.new()
       |> Table.put(target: nil, router: socket.router)
-      |> Map.put(:pool, Map.get(private.streams, given.id, %{free: [], next: 0}))
 
     socket =
       socket

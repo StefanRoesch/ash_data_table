@@ -95,7 +95,11 @@ defmodule AshDataTable.Table do
             caller: Caller.t(),
             entry: Entry.t(),
             entries: %{String.t() => Entry.t()},
-            pool: %{free: [String.t()], next: non_neg_integer, prefix: String.t() | nil},
+            pool: %{
+              required(:free) => [String.t()],
+              required(:next) => non_neg_integer,
+              optional(:prefix) => String.t() | nil
+            },
             models: %{optional(tuple) => AshDataTable.Model.t()}
           }
 
@@ -106,9 +110,12 @@ defmodule AshDataTable.Table do
             pool: %{free: [], next: 0, prefix: nil},
             models: %{}
 
+  # A new table, with the stream names its id configured before as its
+  # `pool` (`AshDataTable.Live.Hooks`: they are kept across `detach/2`).
   @doc false
-  @spec new() :: t
-  def new, do: %__MODULE__{caller: Caller.new(), entry: Entry.new()}
+  @spec new(map) :: t
+  def new(pool \\ %{free: [], next: 0, prefix: nil}),
+    do: %__MODULE__{caller: Caller.new(), entry: Entry.new(), pool: pool}
 
   # The table with the given fields put where each lives: an option, a
   # value of the caller, else a field of the entry. A name none of them has

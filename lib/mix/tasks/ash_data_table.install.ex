@@ -306,21 +306,22 @@ if Code.ensure_loaded?(Igniter) do
       ]
 
       Enum.reduce(settings, igniter, fn {key, module, function, value, notice}, igniter ->
-        cond do
-          Igniter.Project.Config.configures_key?(igniter, "config.exs", :ash_data_table, key) ->
-            igniter
+        if Igniter.Project.Config.configures_key?(igniter, "config.exs", :ash_data_table, key) do
+          igniter
+        else
+          case defines?(igniter, module, function) do
+            {true, igniter} ->
+              Igniter.Project.Config.configure(
+                igniter,
+                "config.exs",
+                :ash_data_table,
+                [key],
+                {:code, Sourceror.parse_string!(value.(module))}
+              )
 
-          ({found?, igniter} = defines?(igniter, module, function)) && found? ->
-            Igniter.Project.Config.configure(
-              igniter,
-              "config.exs",
-              :ash_data_table,
-              [key],
-              {:code, Sourceror.parse_string!(value.(module))}
-            )
-
-          true ->
-            Igniter.add_notice(igniter, notice)
+            {false, igniter} ->
+              Igniter.add_notice(igniter, notice)
+          end
         end
       end)
     end

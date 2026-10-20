@@ -182,7 +182,13 @@ defmodule AshDataTable.Pick do
   the row the picker opens with. `value` is the key as a record holds it, or
   as a field of the action panel does, which is as text.
   """
-  @spec current?(referred, Ash.Resource.record(), term) :: boolean
+  # of the reference only its `destination_attribute` is read
+  @spec current?(
+          %{:destination_attribute => atom, optional(atom) => term},
+          Ash.Resource.record(),
+          term
+        ) ::
+          boolean
   def current?(_reference, _record, nil), do: false
 
   def current?(%{destination_attribute: attribute}, record, value) do

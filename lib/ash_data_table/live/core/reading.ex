@@ -425,7 +425,8 @@ defmodule AshDataTable.Live.Core.Reading do
   # which raises the exception; nothing crashes for it.
   defp not_found(socket, :later) do
     uri = URI.parse(Core.table(socket).options.url)
-    redirect(socket, to: %URI{path: uri.path || "/", query: uri.query} |> URI.to_string())
+    query = if uri.query, do: "?" <> uri.query, else: ""
+    redirect(socket, to: (uri.path || "/") <> query)
   end
 
   # Whether a record of a table to choose from is the one the key points at

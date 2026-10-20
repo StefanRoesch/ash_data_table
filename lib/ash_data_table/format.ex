@@ -26,6 +26,17 @@ defmodule AshDataTable.Format do
 
   @utc Zone.utc()
 
+  @typedoc """
+  What a value is shown as: a column, an input, a field of a value made of
+  fields, a kind of a union, or a cell type alone. Of it `format/3` reads
+  `cell_type`, and where they are there `values` (an enum's), `fields`,
+  `members` (a union's kinds), `type` and `sensitive?`.
+  """
+  @type shown :: %{
+          required(:cell_type) => AshDataTable.Resource.CellType.t(),
+          optional(atom) => term
+        }
+
   @doc """
   The text shown for `value` in a cell of `column`.
 
@@ -34,10 +45,10 @@ defmodule AshDataTable.Format do
   an instant is shown in `zone`, the time zone of the page; `format/2` in
   UTC.
   """
-  @spec format(Column.t() | AshDataTable.Model.Input.t(), term) :: String.t()
+  @spec format(shown, term) :: String.t()
   def format(column, value), do: format(column, value, @utc)
 
-  @spec format(Column.t() | AshDataTable.Model.Input.t(), term, Zone.t()) :: String.t()
+  @spec format(shown, term, Zone.t()) :: String.t()
   def format(_column, nil, _zone), do: ""
   # A field the actor may not see has a placeholder, which is markup and
   # belongs to the component.

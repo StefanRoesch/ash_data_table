@@ -731,9 +731,9 @@ defmodule AshDataTable.Query do
   Who is asking, as the options of an Ash call: scope, or actor and tenant,
   `authorize?`, and the `context` the page gives (`page_values`), with the
   table's own key last, which the page cannot set. Taking the options it
-  gives again gives them unchanged.
+  gives again gives them unchanged, and any other option is left out.
   """
-  @spec reader_opts([option]) :: keyword
+  @spec reader_opts([option] | keyword) :: keyword
   def reader_opts(opts) do
     who =
       case opts[:scope] do

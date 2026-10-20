@@ -193,6 +193,7 @@ defmodule AshDataTable.Resource.Managing do
       else: {:error, {:not_a_key, type, key.name, key.type}}
   end
 
-  defp stored(%{type: type, constraints: constraints}), do: stored(type, constraints || [])
+  # an attribute's constraints are a list, an empty one where it has none
+  defp stored(%{type: type, constraints: constraints}), do: stored(type, constraints)
   defp stored(type, constraints), do: Ash.Type.storage_type(type, constraints)
 end

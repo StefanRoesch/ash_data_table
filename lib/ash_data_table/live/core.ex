@@ -207,7 +207,8 @@ defmodule AshDataTable.Live.Core do
   def put(socket, %Table{} = table),
     do: assign(socket, socket.private.ash_data_table.current, table)
 
-  def put(socket, fields), do: put(socket, Table.put(table(socket), fields))
+  def put(socket, fields),
+    do: assign(socket, socket.private.ash_data_table.current, Table.put(table(socket), fields))
 
   # What a table is told: by the host for the table on the page
   # (`update/2`), by the table it is in for any other (`Nesting.reconcile/1`).
