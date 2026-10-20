@@ -49,8 +49,8 @@ defmodule AshDataTable.Live.Drawing do
       options={@table.options}
       time_zone={@table.caller.time_zone}
       rows={rows(@streams, @table.entry)}
-      chooser={chooser(@table, @table.entry)}
-      chooser_rows={rows(@streams, chooser(@table, @table.entry))}
+      chooser={chooser(@table.entries, @table.entry.id, @table.entry.picker)}
+      chooser_rows={rows(@streams, chooser(@table.entries, @table.entry.id, @table.entry.picker))}
       myself={@table.options.target}
       uploads={@uploads}
       router={@table.options.router}
@@ -177,7 +177,7 @@ defmodule AshDataTable.Live.Drawing do
     class = table.options.kit.class(:portal, %{})
 
     for entry <- Registry.portals(table) do
-      chooser = chooser(table, entry)
+      chooser = chooser(table.entries, entry.id, entry.picker)
 
       {entry, streams[entry.stream],
        %{
@@ -201,11 +201,11 @@ defmodule AshDataTable.Live.Drawing do
 
   defp rows(streams, entry), do: streams[entry.stream]
 
-  # The table of the entry's open picker, which is drawn in its dialog.
-  defp chooser(_table, %{picker: nil}), do: nil
-
-  defp chooser(table, %{id: id, picker: picker}),
-    do: Map.get(table.entries, "#{id}-pick-#{picker.name}")
+  # The table of the entry's open picker, which is moved into its place: of
+  # the fields it is made of, so that LiveView draws what is given it again
+  # only when one of them changes.
+  defp chooser(_entries, _id, nil), do: nil
+  defp chooser(entries, id, picker), do: Map.get(entries, "#{id}-pick-#{picker.name}")
 
   # The parts of one table, inside its root element: the table on the
   # page's, a nested table's in its portal, a picker's table in its picker.
@@ -402,7 +402,15 @@ defmodule AshDataTable.Live.Drawing do
         them, ahead (C8). What opens inside one is moved into its place
         (`Phoenix.Component.portal/1`) no later than the patch that opens
         it. --%>
-        <.panel entry={@entry} options={@options} myself={@myself} uploads={@uploads} />
+        <.panel
+          id={@entry.id}
+          held={@entry.panel}
+          controlled={@options.controlled}
+          uploads={@uploads}
+          kit={@options.kit}
+          presentation={presentation(@options, :panel)}
+          myself={@myself}
+        />
         <.portal
           :if={panel?(@entry, @options) and (in_panel?(@options) or asked_in?(@options, :panel))}
           id={"#{@entry.id}-panel-portal"}
@@ -449,26 +457,37 @@ defmodule AshDataTable.Live.Drawing do
   end
 
   # The action panel, nil while it is closed (or the host draws it), with
-  # what each of its fields is drawn with.
-  attr :entry, :any, required: true
-  attr :options, :any, required: true
-  attr :myself, :any, required: true
+  # what each of its fields is drawn with. Given what it is made of, field
+  # by field (`held`, the entry's panel; `controlled`, the options'), so
+  # that LiveView draws it again only when one of them changes, not with
+  # every change of its table: a kit that draws in the browser is sent its
+  # props again only then.
+  attr :id, :string, required: true
+  attr :held, :any, required: true
+  attr :controlled, :list, required: true
   attr :uploads, :any, required: true
+  attr :kit, :atom, required: true
+  attr :presentation, :atom, required: true
+  attr :myself, :any, required: true
 
   defp panel(assigns) do
-    assigns = assign(assigns, :panel, open_panel(assigns.entry, assigns.options, assigns.uploads))
-
     ~H"""
     <Kit.part
       part={:panel}
-      kit={@options.kit}
-      id={@entry.id}
-      panel={@panel}
-      fields={Kit.fields(@entry.id, @panel, files(@entry, @options, @uploads))}
+      kit={@kit}
+      id={@id}
+      panel={open_panel(@id, @held, @controlled, @uploads)}
+      fields={
+        Kit.fields(
+          @id,
+          open_panel(@id, @held, @controlled, @uploads),
+          files(@id, @held, @controlled, @uploads)
+        )
+      }
       target={@myself}
-      presentation={presentation(@options, :panel)}
-      texts={Words.texts(:panel, %{panel: @panel})}
-      messages={Words.messages(:panel, %{panel: @panel})}
+      presentation={@presentation}
+      texts={Words.texts(:panel, %{panel: open_panel(@id, @held, @controlled, @uploads)})}
+      messages={Words.messages(:panel, %{panel: open_panel(@id, @held, @controlled, @uploads)})}
     />
     """
   end
@@ -484,23 +503,19 @@ defmodule AshDataTable.Live.Drawing do
   attr :router, :any, required: true
 
   defp picker(assigns) do
-    assigns = assign(assigns, :picker, open_picker(assigns.entry, assigns.options))
-
     ~H"""
-    <Kit.part
-      part={:picker}
-      kit={@options.kit}
+    <.picker_part
       id={@entry.id}
-      picker={@picker}
-      target={@myself}
+      held={@entry.picker}
+      controlled={@options.controlled}
+      kit={@options.kit}
       presentation={presentation(@options, :picker)}
       takes?={!!@chooser and !@chooser.gone? and Selection.in_view(@chooser) != []}
-      texts={Words.texts(:picker, %{picker: @picker})}
-      messages={Words.messages(:picker, %{picker: @picker})}
+      myself={@myself}
     />
     <%!-- its table, moved into its place --%>
     <.portal
-      :if={@picker}
+      :if={picker?(@entry, @options)}
       id={"#{@entry.id}-picker-portal"}
       target={"[id='#{Ids.picker_place(@entry.id)}']"}
       class={@options.kit.class(:portal, %{})}
@@ -527,6 +542,31 @@ defmodule AshDataTable.Live.Drawing do
         />
       </div>
     </.portal>
+    """
+  end
+
+  # The picker part, given what it is made of field by field, as the panel is.
+  attr :id, :string, required: true
+  attr :held, :any, required: true
+  attr :controlled, :list, required: true
+  attr :kit, :atom, required: true
+  attr :presentation, :atom, required: true
+  attr :takes?, :boolean, required: true
+  attr :myself, :any, required: true
+
+  defp picker_part(assigns) do
+    ~H"""
+    <Kit.part
+      part={:picker}
+      kit={@kit}
+      id={@id}
+      picker={open_picker(@held, @controlled)}
+      target={@myself}
+      presentation={@presentation}
+      takes?={@takes?}
+      texts={Words.texts(:picker, %{picker: open_picker(@held, @controlled)})}
+      messages={Words.messages(:picker, %{picker: open_picker(@held, @controlled)})}
+    />
     """
   end
 
@@ -573,20 +613,29 @@ defmodule AshDataTable.Live.Drawing do
   defp in_panel?(options),
     do: presentation(options, :panel) == :modal and presentation(options, :picker) == :inline
 
-  # What `Present.panel/2` gives of the open panel the table draws, nil for
-  # none.
-  defp open_panel(entry, options, uploads) do
-    if panel?(entry, options), do: Present.panel(entry.panel, Files.files_said(entry, uploads))
+  # What `Present.panel/2` gives of the open panel the table draws (`held`,
+  # the entry's), nil for none: closed, or the host draws it (controlled
+  # mode).
+  defp open_panel(id, held, controlled, uploads) do
+    if held != nil and not hosted?(controlled, :panel),
+      do: Present.panel(held, Files.files_said(%{id: id, panel: held}, uploads))
   end
 
   # What `Present.picker/1` gives of the open picker the table draws, nil
   # for none.
-  defp open_picker(entry, options),
-    do: if(picker?(entry, options), do: Present.picker(entry.picker))
+  defp open_picker(held, controlled),
+    do: if(held != nil and not hosted?(controlled, :picker), do: Present.picker(held))
+
+  # Whether the host draws `kind` itself (controlled mode).
+  defp hosted?(controlled, kind),
+    do: AshDataTable.Live.Core.Requests.host?(%{controlled: controlled}, nil, kind)
 
   # The uploads of the open panel's file fields, by name.
-  defp files(entry, options, uploads),
-    do: if(panel?(entry, options), do: files!(entry, uploads), else: %{})
+  defp files(id, held, controlled, uploads) do
+    if held != nil and not hosted?(controlled, :panel),
+      do: files!(%{id: id, panel: held}, uploads),
+      else: %{}
+  end
 
   # Whether the table draws the picker: it is open, and not a request the
   # host draws (controlled mode).
