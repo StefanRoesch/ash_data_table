@@ -159,6 +159,7 @@ Root coverage is low because the LiveView modules (`Live.*`, `Live.Page`, `Live.
 - xref (3): the root's cycles are Spark's extension, entity, verifier and info edges, which `test/architecture_test.exs` allows. The demo's is Phoenix's router and verified-routes cycle.
 - tsc, demo (1): `getHooks` is missing from live_react's `index.d.mts`. The export exists, and live_react's install guide uses it.
 - ESLint (60): `react-hooks/static-components` (42): `usePart` reads the part from context. `jsx-a11y` roles (12): `role="cell"` and `role="rowgroup"` are on purpose under the role=table model and mirror the HEEx markup. `_`-prefixed unused names (4). `process` (1; esbuild's `--define`). `no-control-regex` (1; on purpose).
+  Since 2026-10-20 (owner's decision) `static-components`, `no-interactive-element-to-noninteractive-role` and `no-redundant-roles` are off in `eslint.config.mjs`; ESLint reports 47: the 41 real ones and the 6 small ones above.
 - knip (2): `Badge` and `Button` in the generated shadcn files `islands/ui/`.
 
 **Trials (not in the gate):**

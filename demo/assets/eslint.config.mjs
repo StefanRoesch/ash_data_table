@@ -14,4 +14,14 @@ export default tseslint.config(
   reactHooks.configs.flat.recommended,
   jsxA11y.flatConfigs.recommended,
   {languageOptions: {globals: {...globals.browser}}},
+  {
+    rules: {
+      // usePart(name) reads the part from context: no component is made during render.
+      "react-hooks/static-components": "off",
+      // role="cell" on a td is on purpose: the grid is role=table and mirrors the HEEx kit's markup.
+      "jsx-a11y/no-interactive-element-to-noninteractive-role": "off",
+      // role="rowgroup" on a tbody is on purpose, as the HEEx kit draws it.
+      "jsx-a11y/no-redundant-roles": "off",
+    },
+  },
 )
