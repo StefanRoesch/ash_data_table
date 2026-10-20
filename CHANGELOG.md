@@ -131,6 +131,14 @@ declared in the resource and mounted with one line in the router.
   `Attrs.empty_cell/2` in place of `Attrs.gridcell/3`. `KitCase` checks
   the stop rule. A kit of contract 2 fails to compile and says what
   changed.
+- The `editor` part is given what its control says (`limits`, `counted`,
+  `clearable?`; the `grid` part the same by column, `editors`), and
+  `heading` and `argument_line` each argument's values (`arguments`), as
+  plain data, so that a kit that draws in the browser draws them itself.
+- Kit contract 4: `heading` and `argument_line` are no longer given
+  `lines` and `refused`, nor `argument_line` `state`: the argument line is
+  drawn from `arguments`. A kit of contract 3 fails to compile and says
+  what changed.
 - What a kit that draws in the browser (a React kit) needs is public:
   `Attrs.props/1` (a bundle as props), `Attrs.event/2` and the list of the
   events a table takes, with what sends each, its payload and its answer

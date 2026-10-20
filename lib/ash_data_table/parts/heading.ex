@@ -52,13 +52,11 @@ defmodule AshDataTable.Parts.Heading do
   attr :label, :any, required: true
   # the column a record is called by, nil for none: the one "Columns" cannot hide
   attr :label_column, :any, required: true
-  attr :lines, :any, required: true
   attr :model, :any, required: true
   attr :myself, :any, required: true
   attr :nested?, :any, required: true
   attr :offered, :any, required: true
   attr :page, :any, required: true
-  attr :refused, :any, required: true
   attr :related, :any, required: true
   attr :state, :any, required: true
 
@@ -121,12 +119,9 @@ defmodule AshDataTable.Parts.Heading do
         kit={@kit}
         id={@id}
         arguments={@arguments}
-        lines={@lines}
         model={@model}
         myself={@myself}
         nested?={@nested?}
-        refused={@refused}
-        state={@state}
       />
       <div
         :if={acts?(@page, @model, @offered, @related)}

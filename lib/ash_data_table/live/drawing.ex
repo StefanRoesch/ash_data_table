@@ -132,13 +132,11 @@ defmodule AshDataTable.Live.Drawing do
       arguments={Kit.arguments(@entry.id, @entry.model, @entry.lines, @entry.state, @entry.refused)}
       label={@entry.label}
       label_column={@entry.label_column}
-      lines={@entry.lines}
       model={@entry.model}
       myself={@myself}
       nested?={@entry.nested?}
       offered={@entry.offered}
       page={@entry.page}
-      refused={@entry.refused}
       related={@entry.related}
       state={@entry.state}
     />

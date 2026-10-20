@@ -5,7 +5,7 @@ defmodule DemoWeb.Support.MarkedKit do
   says what the part was given: the cell's state, and whether it was given
   a value or its text.
   """
-  use AshDataTable.Kit, contract: 3
+  use AshDataTable.Kit, contract: 4
 
   def cell(assigns) do
     ~H"""
@@ -163,7 +163,7 @@ defmodule DemoWeb.Support.ItemsKit do
   default kit draws, and after the grid every item of its stream as JSON,
   as a kit that hands the stream to the browser sends it, one script each.
   """
-  use AshDataTable.Kit, contract: 3
+  use AshDataTable.Kit, contract: 4
 
   def grid(assigns) do
     ~H"""

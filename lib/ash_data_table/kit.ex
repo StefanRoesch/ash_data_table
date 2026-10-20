@@ -42,7 +42,7 @@ defmodule AshDataTable.Kit do
   ## A kit of one's own
 
       defmodule MyAppWeb.TableKit do
-        use AshDataTable.Kit, contract: 3
+        use AshDataTable.Kit, contract: 4
 
         # restyle a part drawn once per table
         def class(:panel, _state), do: "my-panel"
@@ -65,7 +65,7 @@ defmodule AshDataTable.Kit do
         def look(option), do: super(option)
       end
 
-  `use AshDataTable.Kit, contract: 3` makes every part `Kit.Default`'s; a
+  `use AshDataTable.Kit, contract: 4` makes every part `Kit.Default`'s; a
   kit defines the parts it draws itself, and calls `super/1` for what
   `Kit.Default` draws. It is checked as it compiles: a contract other
   than this version's, a public function of one argument that is no
@@ -129,7 +129,7 @@ defmodule AshDataTable.Kit do
   its rows (the items of its stream, `AshDataTable.Item`), its panel and
   picker (`Present.Panel`, …) and its model (`Model.Column`,
   `Model.Action`, …), never a record: their fields are listed in "Kit
-  contract 3" below. `myself` and `target`
+  contract 4" below. `myself` and `target`
   are the `phx-target` of the part's events (nil for an attached table);
   `id` is the table's id, or the element's where it says so.
 
@@ -201,8 +201,8 @@ defmodule AshDataTable.Kit do
       (`ID-create`) and table actions (`data-table-action`): `id`,
       `heading`, `label`, `label_column` (the `Model.Column` a record is
       called by, nil for none: the one column `columns` cannot hide),
-      `model`, `offered` (the table actions), `page`, `related`, `state`,
-      `arguments` (as `argument_line`'s), `lines`, `refused`, `nested?`,
+      `model`, `offered` (the table actions), `page`, `related`, `state`
+      (for its `columns`), `arguments` (as `argument_line`'s), `nested?`,
       `myself`. A nested
       table's is drawn in a portal of its own onto its line
       (`Ids.line_heading/2`, which the `line` part draws), where the line
@@ -214,8 +214,8 @@ defmodule AshDataTable.Kit do
       every record), `create`, `actions`, `target`.
     * `argument_line` - the form of the read action's arguments
       (`ID-arguments`, `data-arguments`, `AshDataTable.Attrs.arguments/2`),
-      drawn by `heading`: `id`, `arguments`, `lines`, `model`, `refused`,
-      `state`, `nested?`, `myself`; it draws an `argument` per argument.
+      drawn by `heading`: `id`, `arguments`, `model`, `nested?`,
+      `myself`; it draws an `argument` per argument.
       `arguments` holds, per argument of `model.arguments` and in its
       order, what its input is drawn with, as plain data (it goes to JSON
       as it is), the assigns of its `argument` but `argument` itself:
@@ -534,13 +534,13 @@ defmodule AshDataTable.Kit do
   table in it would be lost. The same holds for every place something is
   opened into.
 
-  ## Kit contract 3: the values a part is given
+  ## Kit contract 4: the values a part is given
 
   The items of the stream (`rows` of `grid`, `row` of `row`, `detail` and
   `actions_cell`) are `AshDataTable.Item`'s maps, documented there. The
   structs below are what the other parts are given (`panel`, `picker`,
   `model`, `column`, `state`, `page`, …). Their fields, as listed here, and
-  the item's keys are the kit contract of version 3: a field is not
+  the item's keys are the kit contract of version 4: a field is not
   renamed, taken away or given another meaning without the contract's
   number going up. The modules themselves, and their functions, are the
   table's own and undocumented: a kit reads the fields, and calls none of
@@ -548,9 +548,7 @@ defmodule AshDataTable.Kit do
   (`AshDataTable.Messages`).
 
   Besides these, a part is given plain values: `bulk` and `offered`
-  (`AshDataTable.Model.Action`s), `lines` (by an argument's key, the values
-  of a list argument typed so far), `refused` (an argument's text the
-  read action refused, with its messages), `selecting` (`:single`,
+  (`AshDataTable.Model.Action`s), `selecting` (`:single`,
   `:multi` or nil), `summary` (by column `{:ok, value}` or
   `:unavailable`), `result` (a run's `summary` and `failures`, messages),
   `announcement`/`announcements` (messages), `related` (`via` and `key` of
@@ -785,6 +783,11 @@ defmodule AshDataTable.Kit do
   `texts.show_whole_of` and `texts.show_less_of` go into `Attrs.grid/6`
   (`data-show-whole-of`, `data-show-less-of`): what the button that shows
   a cell's whole text is called.
+
+  Contract 4 (from contract 3): `heading` and `argument_line` are no
+  longer given `lines` and `refused`, nor `argument_line` `state`: both
+  draw the argument line from `arguments`, which holds what each input
+  shows and what Ash said of it.
   """
 
   use Phoenix.Component
@@ -794,7 +797,7 @@ defmodule AshDataTable.Kit do
   alias AshDataTable.Model
   alias AshDataTable.Model.Limits
 
-  @contract 3
+  @contract 4
 
   @parts [
     :root,
@@ -1246,7 +1249,13 @@ defmodule AshDataTable.Kit do
         "in place of \"grid\" and \"gridcell\", no tabindex=\"-1\" on cells and controls, a sort " <>
         "button in a sortable header (Attrs.sort/3), the skip link and its target " <>
         "(Attrs.skip/1, Attrs.skip_target/1), data-failed in place of aria-invalid, and no " <>
-        "aria-readonly or aria-multiselectable (see \"Contract versions\" in AshDataTable.Kit)"
+        "aria-readonly or aria-multiselectable" <> changed(3)
+
+  defp changed(3),
+    do:
+      ". Contract 4 gives heading and argument_line no lines and refused, and " <>
+        "argument_line no state: both draw the argument line from arguments " <>
+        "(see \"Contract versions\" in AshDataTable.Kit)"
 
   defp changed(_contract), do: "."
 

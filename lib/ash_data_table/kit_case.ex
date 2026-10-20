@@ -115,7 +115,7 @@ defmodule AshDataTable.KitCase do
 
       defmodule Probe do
         @moduledoc false
-        use AshDataTable.Kit, contract: 3
+        use AshDataTable.Kit, contract: 4
 
         unquote_splicing(probed)
 

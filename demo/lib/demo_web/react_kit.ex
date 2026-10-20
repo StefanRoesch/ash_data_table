@@ -37,7 +37,7 @@ defmodule DemoWeb.ReactKit do
   the table's, and nothing a part is not given. The rows are the table's
   stream, handed to the island as it is.
   """
-  use AshDataTable.Kit, contract: 3
+  use AshDataTable.Kit, contract: 4
 
   alias AshDataTable.Attrs
   alias DemoWeb.ReactKit.Props

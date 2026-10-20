@@ -271,10 +271,17 @@ defmodule DemoWeb.ReactKit.Props do
         clearable: given != nil and given.clearable?,
         control:
           cond do
-            given == nil -> nil
-            column.editor == :component -> bundle(Attrs.component_control(column))
-            given.counted && column.editor == :text -> bundle(Attrs.counted_control(template, column))
-            true -> nil
+            given == nil ->
+              nil
+
+            column.editor == :component ->
+              bundle(Attrs.component_control(column))
+
+            given.counted && column.editor == :text ->
+              bundle(Attrs.counted_control(template, column))
+
+            true ->
+              nil
           end,
         component: column.editor == :component && inspect(column.component.module),
         texts: given && Words.texts(:editor, %{column: column})

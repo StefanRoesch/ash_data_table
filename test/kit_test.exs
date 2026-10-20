@@ -13,12 +13,12 @@ defmodule AshDataTable.KitTest do
   end
 
   # The fields of the structs a part is given, as `Kit`'s moduledoc lists
-  # them under "Kit contract 3", by struct.
+  # them under "Kit contract 4", by struct.
   defp contract do
     {:docs_v1, _anno, _language, _format, %{"en" => doc}, _meta, _docs} =
       Code.fetch_docs(Kit)
 
-    [_before, section] = String.split(doc, "## Kit contract 3", parts: 2)
+    [_before, section] = String.split(doc, "## Kit contract 4", parts: 2)
     [section | _after] = String.split(section, "\n## ", parts: 2)
 
     section
@@ -38,7 +38,7 @@ defmodule AshDataTable.KitTest do
     end)
   end
 
-  test "kit contract 3 names every field of every struct a part is given, and no other" do
+  test "kit contract 4 names every field of every struct a part is given, and no other" do
     contract = contract()
 
     assert Map.keys(contract) |> Enum.sort() ==
@@ -71,7 +71,7 @@ defmodule AshDataTable.KitTest do
     kit =
       compile("""
       defmodule AshDataTable.KitTest.Styled do
-        use AshDataTable.Kit, contract: 3
+        use AshDataTable.Kit, contract: 4
 
         def class(:panel, _state), do: "mine"
         def class(part, state), do: super(part, state)
@@ -101,11 +101,26 @@ defmodule AshDataTable.KitTest do
       end
 
     assert Exception.message(error) =~
-             "`use AshDataTable.Kit` was given `contract: 2`, and this version of AshDataTable has contract 3"
+             "`use AshDataTable.Kit` was given `contract: 2`, and this version of AshDataTable has contract 4"
 
-    # what changed since: a table, not a grid
+    # what changed since: a table, not a grid; then the argument line
     assert Exception.message(error) =~ ~s(role="table")
     assert Exception.message(error) =~ "Attrs.sort/3"
+    assert Exception.message(error) =~ "argument_line no state"
+
+    # from contract 3 the last step only
+    error =
+      assert_raise CompileError, fn ->
+        compile("""
+        defmodule AshDataTable.KitTest.Three do
+          use AshDataTable.Kit, contract: 3
+        end
+        """)
+      end
+
+    assert Exception.message(error) =~ "has contract 4"
+    assert Exception.message(error) =~ "no lines and refused"
+    refute Exception.message(error) =~ ~s(role="table")
 
     # and from contract 1 both steps
     error =
@@ -119,6 +134,7 @@ defmodule AshDataTable.KitTest do
 
     assert Exception.message(error) =~ "AshDataTable.Item"
     assert Exception.message(error) =~ ~s(role="table")
+    assert Exception.message(error) =~ "no lines and refused"
   end
 
   test "a public function of one argument that is no part fails to compile" do
@@ -126,7 +142,7 @@ defmodule AshDataTable.KitTest do
       assert_raise CompileError, fn ->
         compile("""
         defmodule AshDataTable.KitTest.Typo do
-          use AshDataTable.Kit, contract: 3
+          use AshDataTable.Kit, contract: 4
 
           def pagniation(assigns), do: super_pagination(assigns)
           defp super_pagination(assigns), do: AshDataTable.Kit.Default.pagination(assigns)
@@ -143,7 +159,7 @@ defmodule AshDataTable.KitTest do
       assert_raise CompileError, fn ->
         compile("""
         defmodule AshDataTable.KitTest.Arity do
-          use AshDataTable.Kit, contract: 3
+          use AshDataTable.Kit, contract: 4
 
           def class(_part), do: "one"
         end
@@ -165,7 +181,7 @@ defmodule AshDataTable.KitTest do
     sideways =
       compile("""
       defmodule AshDataTable.KitTest.Sideways do
-        use AshDataTable.Kit, contract: 3
+        use AshDataTable.Kit, contract: 4
 
         def presentation(:picker), do: :sideways
         def presentation(thing), do: super(thing)
@@ -234,7 +250,7 @@ defmodule AshDataTable.KitTest do
       assert_raise CompileError, fn ->
         compile("""
         defmodule AshDataTable.KitTest.LookArity do
-          use AshDataTable.Kit, contract: 3
+          use AshDataTable.Kit, contract: 4
 
           def look(_option, _table), do: true
         end
@@ -249,7 +265,7 @@ defmodule AshDataTable.KitTest do
     kit =
       compile("""
       defmodule AshDataTable.KitTest.Striped do
-        use AshDataTable.Kit, contract: 3
+        use AshDataTable.Kit, contract: 4
 
         def look(:stripes), do: true
         def look(option), do: super(option)
@@ -298,7 +314,7 @@ defmodule AshDataTable.KitTest do
     kit =
       compile("""
       defmodule AshDataTable.KitTest.Dense do
-        use AshDataTable.Kit, contract: 3
+        use AshDataTable.Kit, contract: 4
 
         def look(:density), do: :dense
         def look(option), do: super(option)
@@ -411,7 +427,7 @@ defmodule AshDataTable.KitTest do
     kit =
       compile("""
       defmodule AshDataTable.KitTest.Editors do
-        use AshDataTable.Kit, contract: 3
+        use AshDataTable.Kit, contract: 4
 
         def editor(assigns) do
           send(self(), {:editor, Map.take(assigns, [:limits, :counted, :clearable?])})
@@ -467,5 +483,45 @@ defmodule AshDataTable.KitTest do
     assert Jason.decode!(Jason.encode!(refusal))["errors"] == [
              %{"key" => "ash", "values" => %{"message" => "is required", "vars" => %{}}}
            ]
+  end
+
+  test "the heading line and the argument line are given their arguments, not what they are made of" do
+    kit =
+      compile("""
+      defmodule AshDataTable.KitTest.Line do
+        use AshDataTable.Kit, contract: 4
+
+        def heading(assigns) do
+          send(self(), {:heading, assigns |> Map.keys() |> Enum.sort()})
+          super(assigns)
+        end
+
+        def argument_line(assigns) do
+          send(self(), {:argument_line, assigns |> Map.keys() |> Enum.sort()})
+          super(assigns)
+        end
+      end
+      """)
+
+    require Phoenix.LiveViewTest
+
+    Phoenix.LiveViewTest.render_component(&AshDataTable.table/1,
+      resource: AshDataTable.Test.Resource,
+      tenant: "kit-line",
+      kit: kit
+    )
+
+    assert_received {:heading, heading}
+    assert_received {:argument_line, line}
+
+    for name <- [:lines, :refused] do
+      refute name in heading
+      refute name in line
+    end
+
+    refute :state in line
+    assert :arguments in heading and :arguments in line
+    # "Columns", which the heading draws, says what is filtered and sorted
+    assert :state in heading
   end
 end
