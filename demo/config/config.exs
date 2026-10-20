@@ -90,8 +90,17 @@ config :demo, DemoWeb.Endpoint,
 config :esbuild,
   version: "0.25.4",
   demo: [
+    # Unminified, esbuild bundles React's development build (it sets
+    # `process.env.NODE_ENV` from `--minify`): StrictMode and React's
+    # checks, which dev and e2e want. The perf environment measures the
+    # demo as production runs it (`assets.deploy`, minified): React's
+    # production build, unminified.
     args:
-      ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=. --jsx=automatic),
+      ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=. --jsx=automatic) ++
+        if(config_env() == :perf,
+          do: [~s(--define:process.env.NODE_ENV="production")],
+          else: []
+        ),
     cd: Path.expand("../assets", __DIR__),
     # deps/ (phoenix, phoenix_live_view, live_react), the colocated hooks of
     # the build, and assets/node_modules (npm: react, the shadcn sources'

@@ -35,10 +35,44 @@ import {Failure} from "./cells"
 import {Filter, type FilterProps} from "./Filter"
 import {Pagination, type PaginationProps} from "./Pagination"
 
-// the cells the hook holds, by id: the one it edits (`onEdit`) and those
+// The cells the hook holds, by id: the one it edits (`onEdit`) and those
 // whose save or action is on its way (`aria-busy`), for them to be drawn
-// as they are
-export const Held = React.createContext<ReadonlySet<string>>(new Set())
+// as they are. A store each cell hears by its own id
+// (`useSyncExternalStore`): when the hook takes or gives back a cell, that
+// cell is drawn again, not every cell of the table (nor of the table a
+// nested one is in).
+type HeldStore = {
+  has(id: string): boolean
+  subscribe(listener: () => void): () => void
+  edit(id: string | null): void
+  busy(ids: ReadonlySet<string>): void
+}
+
+function heldStore(): HeldStore {
+  let edited: string | null = null
+  let busy: ReadonlySet<string> = new Set()
+  const listeners = new Set<() => void>()
+  const changed = () => flushSync(() => listeners.forEach(listener => listener()))
+  return {
+    has: id => id === edited || busy.has(id),
+    subscribe(listener) {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    edit(id) {
+      if (id === edited) return
+      edited = id
+      changed()
+    },
+    busy(ids) {
+      if (same(busy, ids)) return
+      busy = ids
+      changed()
+    },
+  }
+}
+
+const Held = React.createContext<HeldStore>(heldStore())
 
 type HeadColumn = {
   id: string
@@ -156,8 +190,7 @@ export function AshGrid(props: GridProps) {
 
 function Grid(props: GridProps) {
   const {rows, texts, grid, table, head, filters, columns, row, footer} = props
-  const [edited, setEdited] = React.useState<string | null>(null)
-  const [busy, setBusy] = React.useState<ReadonlySet<string>>(() => new Set())
+  const [held] = React.useState(heldStore)
   const ref = React.useRef<HTMLDivElement>(null)
   // The hook says which cell it edits as it opens the editor: the cell is
   // drawn as it is at once, before anything else comes. It says that the
@@ -166,10 +199,9 @@ function Grid(props: GridProps) {
   // once it has, at the end of what the hook does now (a microtask).
   const options = React.useMemo(
     () => ({
-      onEdit: (cellId: string | null) =>
-        cellId === null ? queueMicrotask(() => flushSync(() => setEdited(null))) : flushSync(() => setEdited(cellId)),
+      onEdit: (cellId: string | null) => (cellId === null ? queueMicrotask(() => held.edit(null)) : held.edit(cellId)),
     }),
-    [],
+    [held],
   )
   const mounted = useMounted(ref, mountGrid, props, options)
   // the cells whose save or action is on its way: the hook marks them
@@ -178,18 +210,14 @@ function Grid(props: GridProps) {
   // moment the hook marked them (a microtask later, before anything else)
   React.useLayoutEffect(() => {
     const el = ref.current!
-    let before: ReadonlySet<string> = new Set()
     const observer = new MutationObserver(() => {
       const now = new Set<string>()
       for (const cell of el.querySelectorAll<HTMLElement>("td[aria-busy][id], th[aria-busy][id]")) now.add(cell.id)
-      if (same(before, now)) return
-      before = now
-      flushSync(() => setBusy(now))
+      held.busy(now)
     })
     observer.observe(el, {subtree: true, attributes: true, attributeFilter: ["aria-busy"]})
     return () => observer.disconnect()
-  }, [])
-  const held = React.useMemo(() => (edited ? new Set([...busy, edited]) : busy), [busy, edited])
+  }, [held])
   const HeaderCell = usePart("HeaderCell")
   // a row is drawn again only where its item, or what all rows are drawn
   // with, changed (a cell the hook holds hears that itself)
@@ -347,7 +375,9 @@ export function Row({item, open, row, columns, texts}: {item: RowItem; open: boo
 // it was drawn last before.
 function useHeld<T>(id: string, item: T, el?: React.RefObject<HTMLElement | null>): T {
   // busy as it is drawn: the hook may have marked it a moment ago
-  const holding = React.useContext(Held).has(id) || !!(el && el.current && el.current.hasAttribute("aria-busy"))
+  const store = React.useContext(Held)
+  const held = React.useSyncExternalStore(store.subscribe, () => store.has(id))
+  const holding = held || !!(el && el.current && el.current.hasAttribute("aria-busy"))
   const kept = React.useRef(item)
   if (!holding) kept.current = item
   return kept.current

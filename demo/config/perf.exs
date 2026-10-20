@@ -6,8 +6,10 @@ import Config
 # checks, plugs initialised at compile time, protocols consolidated.
 #
 # What differs from config/prod.exs: plain HTTP on loopback, assets neither
-# minified nor digested, a fixed secret, no `check_origin`, and the routes
-# and modules of `perf/server`, which exist in this environment only.
+# minified nor digested (with React's production build all the same, as
+# the minified bundle has it: config/config.exs), a fixed secret, no
+# `check_origin`, and the routes and modules of `perf/server`, which exist
+# in this environment only.
 
 # PERF_DB chooses between the two databases the scripts seed: the large one
 # (the default) and the standard one. Neither is the dev database.
