@@ -40,7 +40,7 @@ test("is reached from the header, with the cards above the table", async ({ page
   await expect(page.getByRole("region", { name: "Last changes" })).toBeVisible()
   await expect(page.getByRole("region", { name: "Tasks" }).getByRole("table", { name: "Tasks" })).toBeVisible()
   await expect(page.locator("#planner-sprint-summary")).toHaveText(/No tasks selected/)
-  await expect(page.getByRole("button", { name: "Clear selection" })).toBeDisabled()
+  await expect(page.getByRole("region", { name: "Selected for the sprint" }).getByRole("button", { name: "Clear selection" })).toBeDisabled()
 })
 
 test("ticked rows fill the card, a saved estimate changes it, and Clear selection empties it", async ({ page }) => {
@@ -57,10 +57,10 @@ test("ticked rows fill the card, a saved estimate changes it, and Clear selectio
 
   await expectNoAxeViolations(page)
 
-  await page.getByRole("button", { name: "Clear selection" }).click()
+  await page.getByRole("region", { name: "Selected for the sprint" }).getByRole("button", { name: "Clear selection" }).click()
   await expect(page.locator("#planner-sprint-summary")).toHaveText(/No tasks selected/)
   await expect.poll(() => tasks.selectedKeys()).toEqual([])
-  await expect(page.getByRole("button", { name: "Clear selection" })).toBeDisabled()
+  await expect(page.getByRole("region", { name: "Selected for the sprint" }).getByRole("button", { name: "Clear selection" })).toBeDisabled()
 })
 
 test.describe("as the member", () => {
