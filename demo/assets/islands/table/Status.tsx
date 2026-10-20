@@ -6,8 +6,9 @@ import * as React from "react"
 
 import {attrs, type Bundle} from "./props"
 import {Strict} from "./mounting"
+import {usePart} from "./parts"
 
-type StatusProps = {
+export type StatusProps = {
   status: {
     region: Bundle
     announcement: string | null
@@ -16,9 +17,19 @@ type StatusProps = {
   }
 }
 
-export function AshStatus({status}: StatusProps) {
+export function AshStatus(props: StatusProps) {
+  const StatusPart = usePart("Status")
   return (
     <Strict>
+      <StatusPart {...props} />
+    </Strict>
+  )
+}
+
+// The part `Status`.
+export function Status({status}: StatusProps) {
+  return (
+    <>
       <p {...attrs(status.region)} className="sr-only">
         {(status.announcement ?? "") + (status.again ? " " : "")}
       </p>
@@ -33,6 +44,6 @@ export function AshStatus({status}: StatusProps) {
           ))}
         </p>
       )}
-    </Strict>
+    </>
   )
 }

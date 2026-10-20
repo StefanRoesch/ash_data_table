@@ -64,6 +64,8 @@ defmodule DemoWeb.ReactKit do
       class="contents"
       rows={@rows}
       texts={@texts}
+      skip={Props.skip(@id)}
+      scrollbar={Props.scrollbar(@id)}
       grid={Props.grid(@id, @myself, @lead, @selecting, @choose, @texts)}
       table={
         Props.table(

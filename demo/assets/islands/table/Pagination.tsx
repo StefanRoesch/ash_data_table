@@ -10,6 +10,7 @@ import {useLiveReact} from "live_react"
 
 import {attrs, type Bundle} from "./props"
 import {Commits, Strict, useMounted, useServerValue, type Live} from "./mounting"
+import {usePart} from "./parts"
 import {button, select} from "./look"
 
 export type PaginationProps = {
@@ -28,13 +29,15 @@ export type PaginationProps = {
 }
 
 export function AshPagination(props: PaginationProps & Live) {
+  const PaginationPart = usePart("Pagination")
   return (
     <Strict>
-      <Pagination pagination={props.pagination} />
+      <PaginationPart pagination={props.pagination} />
     </Strict>
   )
 }
 
+// The part `Pagination`.
 export function Pagination({pagination}: PaginationProps) {
   const live = useLiveReact() as unknown as Live
   const ref = React.useRef<HTMLElement>(null)

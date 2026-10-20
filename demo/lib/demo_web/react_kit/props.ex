@@ -23,6 +23,12 @@ defmodule DemoWeb.ReactKit.Props do
 
   # ---- the grid -------------------------------------------------------------
 
+  @doc "The link at the start of a table that jumps past it (`Attrs.skip/1`)."
+  def skip(id), do: bundle(Attrs.skip(id))
+
+  @doc "The scrollbar at the bottom edge of the window (`Attrs.scrollbar/1`)."
+  def scrollbar(id), do: bundle(Attrs.scrollbar(id))
+
   @doc "The grid's element (`Attrs.grid/6`)."
   def grid(id, myself, lead, selecting, choose, texts),
     do: bundle(Attrs.grid(id, myself, lead, selecting, choose, texts))

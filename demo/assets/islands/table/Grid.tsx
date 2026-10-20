@@ -33,10 +33,9 @@ import {attrs, merged, type Bundle} from "./props"
 import {Commits, Strict, useMounted, type Live} from "./mounting"
 import {usePart} from "./parts"
 import type {Column, GridTexts, ItemCell} from "./cells"
-import {Failure} from "./cells"
 import {Editors, type EditorProps} from "./Editors"
-import {Filter, type FilterProps} from "./Filter"
-import {Pagination, type PaginationProps} from "./Pagination"
+import type {FilterProps} from "./Filter"
+import type {PaginationProps} from "./Pagination"
 
 // The cells the hook holds, by id: the one it edits (`onEdit`) and those
 // whose save or action is on its way (`aria-busy`), for them to be drawn
@@ -99,13 +98,15 @@ type Head = {
   columns: HeadColumn[]
 }
 
+type FilterCellProps = {id: string; colindex: number; filter: FilterProps["filter"] | false}
+
 type Filters = null | {
   row: Bundle
   form: string
   select: Bundle | false
   expander: Bundle | false
   actions: Bundle | false
-  columns: {id: string; colindex: number; filter: FilterProps["filter"] | false}[]
+  columns: FilterCellProps[]
 }
 
 export type RowProps = {
@@ -152,7 +153,6 @@ type Footer = {
 }
 
 export type RowItem = {
-  __dom_id: string
   dom_id: string
   key: string
   rowindex: number
@@ -163,7 +163,6 @@ export type RowItem = {
 }
 
 export type DetailItem = {
-  __dom_id: string
   dom_id: string
   detail: true
   key: string
@@ -171,9 +170,11 @@ export type DetailItem = {
   attrs: Record<string, string | true>
 }
 
-type GridProps = Live & {
+export type GridProps = Live & {
   rows: (RowItem | DetailItem)[]
   texts: GridTexts
+  skip: Bundle
+  scrollbar: Bundle
   grid: Bundle
   table: Bundle
   head: Head
@@ -186,15 +187,18 @@ type GridProps = Live & {
 }
 
 export function AshGrid(props: GridProps) {
+  const GridPart = usePart("Grid")
   return (
     <Strict>
-      <Grid {...props} />
+      <GridPart {...props} />
     </Strict>
   )
 }
 
-function Grid(props: GridProps) {
-  const {rows, texts, grid, table, head, filters, columns, row, footer, editors, failure} = props
+// The part `Grid`: the skip link, the grid's element with the table's
+// hook, the scrollbar and the editors' templates.
+export function Grid(props: GridProps) {
+  const {rows, texts, skip, scrollbar, grid, table, head, filters, columns, row, footer, editors, failure} = props
   const [held] = React.useState(heldStore)
   const ref = React.useRef<HTMLDivElement>(null)
   // The hook says which cell it edits as it opens the editor: the cell is
@@ -224,6 +228,7 @@ function Grid(props: GridProps) {
     return () => observer.disconnect()
   }, [held])
   const HeaderCell = usePart("HeaderCell")
+  const FilterCell = usePart("FilterCell")
   // a row is drawn again only where its item, or what all rows are drawn
   // with, changed (a cell the hook holds hears that itself)
   const RowPart = usePart("Row")
@@ -243,7 +248,7 @@ function Grid(props: GridProps) {
 
   return (
     <Held.Provider value={held}>
-      <a id={ids.skip(id)} href={"#" + ids.skipTarget(id)} className="ash-react-skip">
+      <a {...attrs(skip)} className="ash-react-skip">
         {texts.skip_table}
       </a>
       <Commits mounted={mounted}>
@@ -271,22 +276,18 @@ function Grid(props: GridProps) {
                 <tr {...attrs(filters.row)}>
                   {filters.select && <td {...attrs(filters.select)}></td>}
                   {filters.expander && <td {...attrs(filters.expander)}></td>}
-                  {filters.columns.map(cell => (
-                    <td key={cell.id} id={cell.id} role="cell" aria-colindex={cell.colindex} data-filter={cell.filter ? "" : undefined}>
-                      {cell.filter && <Filter id={cell.id} table={id} form={filters.form} filter={cell.filter} />}
-                    </td>
-                  ))}
+                  {filters.columns.map(cell => <FilterCell key={cell.id} cell={cell} table={id} form={filters.form} />)}
                   {filters.actions && <td {...attrs(filters.actions)}></td>}
                 </tr>
               )}
             </thead>
             {rows.map(item =>
               "detail" in item && item.detail ? (
-                <tbody key={item.__dom_id} id={item.__dom_id} role="rowgroup" {...attrs(item.attrs)}>
+                <tbody key={item.dom_id} id={item.dom_id} role="rowgroup" {...attrs(item.attrs)}>
                   <Detail item={item} row={row} />
                 </tbody>
               ) : (
-                <tbody key={item.__dom_id} id={item.__dom_id} role="rowgroup" {...attrs(item.attrs)}>
+                <tbody key={item.dom_id} id={item.dom_id} role="rowgroup" {...attrs(item.attrs)}>
                   <Row item={item as RowItem} open={expanded.has(item.key)} row={row} columns={columns} texts={texts} />
                 </tbody>
               ),
@@ -295,7 +296,7 @@ function Grid(props: GridProps) {
           </table>
         </div>
       </Commits>
-      <div id={`${id}-scrollbar`} aria-hidden="true" tabIndex={-1} hidden data-scrollbar="" className="ash-react-scrollbar">
+      <div {...attrs(scrollbar)} className="ash-react-scrollbar">
         <div className="h-px"></div>
       </div>
       <Editors table={id} editors={editors} failure={failure} />
@@ -324,8 +325,25 @@ export function HeaderCell({column}: {column: HeadColumn}) {
           <path d="M8 11V7a4 4 0 0 1 8 0v4" />
         </svg>
       )}
-      <span id={column.resizer} aria-hidden="true" data-resize="" className="ash-react-resizer"></span>
+      <Resizer id={column.resizer} />
     </th>
+  )
+}
+
+// The part `Resizer`: the handle at a header's end edge, which the hook
+// drags (`widths.js`).
+export function Resizer({id}: {id: string}) {
+  return <span id={id} aria-hidden="true" data-resize="" className="ash-react-resizer"></span>
+}
+
+// The part `FilterCell`: a column's cell of the filter row, its filter in
+// it where the column filters.
+export function FilterCell({cell, table, form}: {cell: FilterCellProps; table: string; form: string}) {
+  const Filter = usePart("Filter")
+  return (
+    <td id={cell.id} role="cell" aria-colindex={cell.colindex} data-filter={cell.filter ? "" : undefined}>
+      {cell.filter && <Filter id={cell.id} table={table} form={form} filter={cell.filter} />}
+    </td>
   )
 }
 
@@ -441,6 +459,7 @@ export function DataCell({id, column, cell, colindex, header, texts}: {id: strin
 // action, and the message of an action that failed; as it was while the
 // hook holds it.
 export function ActionsCell({id, item, row}: {id: string; item: RowItem; row: RowProps}) {
+  const Failure = usePart("Failure")
   const ref = React.useRef<HTMLTableCellElement>(null)
   const held = useHeld(id, item, ref)
   const failure = held.failure
@@ -527,6 +546,8 @@ export function Line({owner, relationship, line, row}: {owner: string; relations
 
 export function Footer({footer}: {footer: Footer}) {
   const SummaryCellPart = usePart("SummaryCell")
+  const Pagination = usePart("Pagination")
+  const FullView = usePart("FullView")
   const {summaries, pager, full_view} = footer
   return (
     <tfoot id={footer.id} hidden={footer.hidden} className="font-normal">
@@ -548,13 +569,20 @@ export function Footer({footer}: {footer: Footer}) {
       {full_view && (
         <tr {...attrs(full_view.row)}>
           <td {...attrs(full_view.cell)}>
-            <Link id={full_view.id} navigate={full_view.path} aria-label={full_view.texts.full_view_of} className="ash-react-link sticky left-4 text-sm">
-              {full_view.texts.full_view}
-            </Link>
+            <FullView full_view={full_view} />
           </td>
         </tr>
       )}
     </tfoot>
+  )
+}
+
+// The part `FullView`: a nested table's link to its full view.
+export function FullView({full_view}: {full_view: Exclude<Footer["full_view"], false>}) {
+  return (
+    <Link id={full_view.id} navigate={full_view.path} aria-label={full_view.texts.full_view_of} className="ash-react-link sticky left-4 text-sm">
+      {full_view.texts.full_view}
+    </Link>
   )
 }
 

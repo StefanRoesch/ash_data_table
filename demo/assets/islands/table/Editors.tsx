@@ -18,7 +18,6 @@ import {createPortal} from "react-dom"
 
 import {attrs, type Bundle} from "./props"
 import {usePart} from "./parts"
-import {Failure} from "./cells"
 import {box, button} from "./look"
 
 export type Limits = {min: string | null; max: string | null; step: string | null}
@@ -56,6 +55,7 @@ function Template({bundle, children}: {bundle: Bundle; children?: React.ReactNod
 
 export function Editors({table, editors, failure}: {table: string; editors: EditorProps[]; failure: boolean}) {
   const Editor = usePart("Editor")
+  const Failure = usePart("Failure")
   return (
     <>
       {editors.map(editor => (
@@ -80,12 +80,13 @@ const INPUT: Record<string, string> = {number: "number", date: "date", datetime:
 // any number, not only whole ones; a datetime to the second, as it is shown
 const STEP: Record<string, string> = {number: "any", datetime: "1"}
 
-// The counter of a text: how long it is and the most it can be, which the
-// hook counts again as it is typed (`Attrs.count/2`).
-export function Count({id, bundle, max, className}: {id: string; bundle: Bundle | false | null; max: number; className?: string}) {
+// The part `Count`: the counter of a text, how long it is and the most it
+// can be (`text`), which the hook counts again as it is typed
+// (`Attrs.count/2`): under a cell's editor and beside an argument's input.
+export function Count({id, bundle, text, className}: {id: string; bundle: Bundle | false | null; text: string; className?: string}) {
   return (
     <span id={id} {...attrs(bundle)} className={"shrink-0 text-xs whitespace-nowrap tabular-nums opacity-70 data-[over]:font-semibold data-[over]:opacity-100 " + (className ?? "")}>
-      {`0/${max}`}
+      {text}
     </span>
   )
 }
@@ -93,6 +94,7 @@ export function Count({id, bundle, max, className}: {id: string; bundle: Bundle 
 // The part `Editor`: a column's editor, by what the column is edited with.
 export function Editor({id, editor}: {id: string; editor: EditorProps}) {
   const components = usePart("editors")
+  const Count = usePart("Count")
   const limits = editor.limits ?? {min: null, max: null, step: null}
   const required = editor.required ? "true" : undefined
 
@@ -126,7 +128,7 @@ export function Editor({id, editor}: {id: string; editor: EditorProps}) {
       return (
         <div>
           <textarea rows={1} {...attrs(editor.control)} className={TEXT}></textarea>
-          <Count id={`${id}-count`} bundle={editor.count} max={editor.counted.max} className="block text-end" />
+          <Count id={`${id}-count`} bundle={editor.count} text={`0/${editor.counted.max}`} className="block text-end" />
         </div>
       )
     // Enter on the cell toggles it: the box is shown while the value is saved

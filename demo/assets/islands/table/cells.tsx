@@ -6,6 +6,7 @@
 import * as React from "react"
 import {ids} from "ash_data_table"
 import {badge, button} from "./look"
+import {usePart} from "./parts"
 
 export type ItemCell = {
   state: "value" | "empty" | "masked" | "forbidden"
@@ -78,6 +79,8 @@ function Masked({column, texts}: {column: Column; texts: GridTexts}) {
   )
 }
 
+// The part `Failure`: the message of a failed cell or actions cell, under
+// what it shows (and, empty, the failure template's, which the hook copies).
 export function Failure({id, text}: {id?: string; text: string}) {
   return <span id={id} className="mt-0.5 block max-w-xs text-xs whitespace-normal break-words">{text}</span>
 }
@@ -112,6 +115,7 @@ export type CellProps = {id: string; column: Column; cell: ItemCell; texts: Grid
 
 // The part `Cell`: what a cell of a record holds.
 export function Cell({id, column, cell, texts, components}: CellProps) {
+  const Failure = usePart("Failure")
   const {failure} = cell
   if (!failure) {
     const Component = column.component && cell.state === "value" ? components[column.component.module] : null

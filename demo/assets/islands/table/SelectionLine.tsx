@@ -10,11 +10,12 @@ import * as React from "react"
 
 import {attrs, type Bundle} from "./props"
 import {Strict} from "./mounting"
+import {usePart} from "./parts"
 import {button} from "./look"
 
 type Action = {label: string; destroys: boolean; attrs: Bundle}
 
-type LineProps = {
+export type LineProps = {
   line: {
     id: string
     shown: boolean
@@ -50,14 +51,16 @@ function focusFirst(id: string) {
 }
 
 export function AshSelectionLine(props: LineProps) {
+  const SelectionLinePart = usePart("SelectionLine")
   return (
     <Strict>
-      <SelectionLine {...props} />
+      <SelectionLinePart {...props} />
     </Strict>
   )
 }
 
-function SelectionLine({line}: LineProps) {
+// The part `SelectionLine`.
+export function SelectionLine({line}: LineProps) {
   const {id, selection, notice, texts} = line
   const anchor = `--ash-data-table-more-${id}`
 

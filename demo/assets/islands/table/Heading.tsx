@@ -128,12 +128,9 @@ const described = (...ids: (string | false | null | undefined)[]) => ids.filter(
 // `key`), as the server would draw it; the hook counts again from what the
 // control holds, as it is typed and as the counter comes.
 function Counter({id, argument, value}: {id: string; argument: ArgumentProps; value: string}) {
+  const Count = usePart("Count")
   const counted = argument.counted!
-  return (
-    <span key={value} id={id} {...attrs(argument.count)} className="shrink-0 text-xs whitespace-nowrap tabular-nums opacity-70 data-[over]:font-semibold data-[over]:opacity-100">
-      {`${count(value, counted)}/${counted.max}`}
-    </span>
-  )
+  return <Count key={value} id={id} bundle={argument.count} text={`${count(value, counted)}/${counted.max}`} />
 }
 
 function TypedInput({id, name, type, step, limits, value, label, required, invalid, describedBy}: {
