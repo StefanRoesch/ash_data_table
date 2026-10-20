@@ -168,13 +168,39 @@ export class Commits extends React.Component<{mounted: React.RefObject<Mounted |
   }
 }
 
+// What the server gives a control, put in once its form has no change on
+// its way (LiveView's documented class `phx-change-loading` on the form,
+// and on a control without one: on the control), unless the person is in
+// it. An answer to an earlier change, which comes after the person went on
+// to the next field, would put back what was typed then (issue #53):
+// LiveView shows the answers to a form only once all of them are in. The
+// effect's cleanup drops what was waiting where a newer value comes.
+type Control = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+
+const CHANGING = "phx-change-loading"
+
+function whenAnswered(el: Control, put: () => void): (() => void) | undefined {
+  const form = el.form ?? el
+  const set = () => {
+    if (document.activeElement !== el) put()
+  }
+  if (!form.classList.contains(CHANGING)) {
+    set()
+    return
+  }
+  const observer = new MutationObserver(() => {
+    if (form.classList.contains(CHANGING)) return
+    observer.disconnect()
+    set()
+  })
+  observer.observe(form, {attributes: true, attributeFilter: ["class"]})
+  return () => observer.disconnect()
+}
+
 // An uncontrolled control whose value the server gives: set where the
-// server gives another, unless the person is in it (as LiveView patches a
-// form's control). The value the person types stays the browser's.
-export function useServerValue(
-  ref: React.RefObject<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null>,
-  value: string | null | undefined,
-) {
+// server gives another (`whenAnswered`), as LiveView patches a form's
+// control. The value the person types stays the browser's.
+export function useServerValue(ref: React.RefObject<Control | null>, value: string | null | undefined) {
   const first = React.useRef(true)
   React.useLayoutEffect(() => {
     if (first.current) {
@@ -182,18 +208,17 @@ export function useServerValue(
       return
     }
     const el = ref.current
-    if (el && document.activeElement !== el) el.value = value ?? ""
+    if (el) return whenAnswered(el, () => (el.value = value ?? ""))
   }, [value])
 }
 
 // The same for a box the server ticks or not: as the element first comes,
-// and again where the server says otherwise, unless the person is on it.
-// Not React's `defaultChecked`, which React puts back on the box as it
-// draws it again.
+// and again where the server says otherwise (`whenAnswered`). Not React's
+// `defaultChecked`, which React puts back on the box as it draws it again.
 export function useServerChecked(ref: React.RefObject<HTMLInputElement | null>, checked: boolean) {
   React.useLayoutEffect(() => {
     const el = ref.current
-    if (el && document.activeElement !== el) el.checked = checked
+    if (el) return whenAnswered(el, () => (el.checked = checked))
   }, [checked])
 }
 
