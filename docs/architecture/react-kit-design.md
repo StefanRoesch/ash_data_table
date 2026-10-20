@@ -314,7 +314,50 @@ What R2 built, per item of its line in target.md, and where it went its own way.
 
 ### Divergences and questions for the owner
 
-- **D1** (editors as HEEx templates, Q8's fallback for another reason) and **D2** (heading frame and argument line stay HEEx): each needs a seam of the library to close (above). Proposed: in R3, give `editor` and `argument_line` what their controls say.
-- **D3:** the kit is chosen per request in the e2e environment by a dispatching kit (`DemoWeb.E2E.ChosenKit`) and the kit noted in the LiveView's process at mount (LiveView's documented telemetry, as `DemoWeb.E2E.Sandbox` hears it): e2e only, never in dev or prod.
-- **D4:** `flushSync` around live_react's `mounted`/`updated` (React's public API; a wrapper of live_react's public hook object): the kit's hook, not live_react's own timing.
-- Additions: `yes`/`no` among the grid's texts; `label_column` for the heading; the `ash-react:gone` event (the kit's own seam, for its test).
+- **D1** (editors as HEEx templates, Q8's fallback for another reason) and **D2** (heading frame and argument line stay HEEx): each needs a seam of the library to close (above). Proposed: in R3, give `editor` and `argument_line` what their controls say. **Closed in the fix-up (owner, 2026-10-20: "the whole UI must be React/shadcn"), below.**
+- **D3:** the kit is chosen per request in the e2e environment by a dispatching kit (`DemoWeb.E2E.ChosenKit`) and the kit noted in the LiveView's process at mount (LiveView's documented telemetry, as `DemoWeb.E2E.Sandbox` hears it): e2e only, never in dev or prod. **Accepted by the owner 2026-10-20.**
+- **D4:** `flushSync` around live_react's `mounted`/`updated` (React's public API; a wrapper of live_react's public hook object): the kit's hook, not live_react's own timing. **Accepted by the owner 2026-10-20.**
+- Additions: `yes`/`no` among the grid's texts; `label_column` for the heading (**accepted by the owner 2026-10-20**); the `ash-react:gone` event (the kit's own seam, for its test).
+
+### The fix-up (2026-10-20)
+
+The owner's decisions of 2026-10-20, as recommended: close D1 and D2 now; find why saves are slower on `/react/tasks` and fix the cause where that can be done cleanly; D3, D4 and `label_column` accepted (above).
+
+**D1 closed: the editors are React's.** The library gives the `editor` part what its control says, as plain data that goes to JSON (`Kit` moduledoc, part `editor`; `test/kit_test.exs`): `limits` (`min`, `max`, `step` of a number, each text or nil), `counted` (how a text with a most it can be long is counted: `max`, `unit`, `trim?`, `casing`; nil for none) and `clearable?` (a sensitive cell can be emptied). The `grid` part gets the same by column name, `editors`, for a kit that draws the editors itself. `Kit.editor/1` passes them (`Kit.editors/1` and the private `editing/1`, which call `Model.Limits` and `Edit.clearable?/1`), and `Kit.Default`'s `editor` draws from them: no call of the internals is left in it for these. The React kit's island draws a `<template>` per editable column (`Attrs.editor_template/3`) and the failure template, and each editor into its template's content with `createPortal` (Q8 as recommended; `Editors.tsx`, the part `Editor`); a column whose component edits is drawn by the React component of its module (`reactKit({editors: …})`: the library's `Slider` and the demo's `Progress` and `Hours`), else as text with a warning in development. The slider has a look of its own (`react_kit.css`), which `contrast.spec.ts` checks in both themes and forced colours, as it did daisyUI's.
+
+**D2 closed: the heading line and the argument line are React's.** The library gives `heading` and `argument_line` `arguments`: per argument of `model.arguments`, in its order, what its input is drawn with, as plain data: `id`, `named`, `name`, `value`, `errors` (messages, `%{key:, values:}`: they were the internal tuples), `limits`, `counted`, `texts`, `messages` (`Kit.arguments/5`, called by `Live.Drawing`). The `argument` part is given `limits` and `counted` too; `Kit.Default`'s argument line draws from `arguments` and calls no internal. The React kit's `heading` is the island `AshHeading` (`Heading.tsx`, parts `Heading`, `Columns`, `ArgumentLine`, `Argument`): the name, "Columns" (no island of its own any more: `AshColumns` and the kit's `columns/1` are gone), the argument line as a form of the island's (LiveView hears its `phx-change`/`phx-submit` from its root), create and the table actions. A counter is drawn as the server's value comes (a new element per value), its text counted as the hooks count: the library's JS exports `count(text, counted)` (`assets/js/index.js`), the hooks' own counting. `arguments.spec.ts` runs in the `react` project now. To stay in contract 3, `heading` and `argument_line` are still given `lines`, `refused` and `state`, which neither kit reads now (question below).
+
+**Why the saves were slower: the evidence.** Each save on `/react/tasks` split, in the page, into the time to the answer's frame and the time after it, with a CPU profile of the page bucketed by the bundle's modules (a throwaway script beside `baseline.mjs`; R2's code, `e1c9864`, 10 saves each):
+
+| Cell save, median | Enter → frame | total | Server callbacks | CPU in `react`/`react-dom`/islands |
+| --- | --- | --- | --- | --- |
+| `/tasks` | 34 ms | 72 ms | 26 ms | – |
+| `/react/tasks`, R2's build | 76 ms | 201 ms | 20 ms | 69 + 34 + 9 ms |
+| `/react/tasks`, React's production build | 39 ms | 87 ms | 25 ms | 0.5 + 10 + 4 ms |
+
+1. **The perf environment measured React's development build.** Unminified, esbuild sets `process.env.NODE_ENV` to `development` (it follows `--minify`), so `MIX_ENV=perf mix assets.build` bundled `react-dom-client.development.js`: StrictMode's double renders and effects, React's checks and its owner stacks (`console.createTask`). Production (`assets.deploy`, minified) never runs it. With React's production build R2's code saves in 81 ms (`baseline.mjs`, one run: nested save 71, page change 108, open a nested table 92). Not the server: its callbacks and the bytes are the same; not the wire.
+2. **Every cell was drawn again whenever the hook took or gave back a cell.** The cells the hook holds (being edited, `aria-busy`) were a React context of the grid that every cell read: a save changed it four times (the edit ends, the cell busy, busy no more, …), and each change drew all 550 cells of `/tasks`' page again, about 5 ms each (counted by instrumenting the throwaway build); a save in a nested table drew the 550 cells of the table around it too (its observer saw the nested cell's `aria-busy`). The row's own patch drew 22 cells: the rows' `memo` held.
+
+**The fix.** (1) `config/config.exs` bundles React's production build in the perf environment (`--define:process.env.NODE_ENV="production"`, perf only; dev and e2e keep the development build and StrictMode). (2) The held cells are a store each cell hears by its own id (`useSyncExternalStore`, `Grid.tsx`): only the cell taken or given back is drawn again.
+
+**Before and after** (`baseline.mjs`, `PERF_WIRE=1`, 15 repetitions, ports 4490/4491, temporary worktrees of `e1c9864` (A) and the fix-up (B), run A, B, B, A per page; load 7.1 falling to 3.6; the mean of each pair's medians):
+
+| Action | `/tasks` A → B | `/react/tasks` A → B |
+| --- | --- | --- |
+| Cell save | 68.8 → 67.1 ms | 145.9 → 68.7 ms |
+| Cell save in a nested table | 55.3 → 54.7 ms | 181.1 → 66.3 ms |
+| Cell save, a nested table open | 58.1 → 62.0 ms | 159.8 → 59.0 ms |
+| Page change | 110.3 → 113.6 ms | 151.7 → 102.9 ms |
+| Open a nested table | 89.5 → 88.6 ms | 133.6 → 95.6 ms |
+| Expand a row | 23.8 → 23.6 ms | 33.4 → 20.3 ms |
+| Open the picker | 45.9 → 46.9 ms | 65.7 → 40.8 ms |
+| Select a row | 5.1 → 4.6 ms | 7.0 → 7.9 ms |
+
+R2's measured gap (cell save 70 → 131, nested 55 → 170, page change 108 → 170, open a nested table 86 → 135) is gone but for a nested save (54.7 against 66.3 ms) and opening a nested table (88.6 against 95.6 ms). A's React times are R2's method (its development build); B's are of the production build.
+
+**The default kit's bytes** (the 2 % budget), the same runs: identical per action but a page change, 158,220 → 157,703 (−0.3 %); open the picker 40,163 both, open a nested table 42,009, cell save 8,605. On `/react/tasks` a page change 124,608 → 125,409 (+0.6 %: the heading's props), open a nested table 30,123 → 29,265.
+
+**Left open, for the owner.**
+
+- `heading` and `argument_line` are given `lines`, `refused` and `state` as before, though both kits now draw the argument line from `arguments`: taking them away changes the parts' assigns in a way an existing kit cannot follow, which by the moduledoc's rule raises the contract to 4. Kept in contract 3; to be decided.
+- Still `Kit.Default`'s in the React kit: the root, `related` (the line above a table limited to related records), the messages, and the panel, picker and question (R3). `Kit.Default`'s panel parts (`field`, `control`, `list`, `count`) still compute limits and counters from the internals: R3's seam.
