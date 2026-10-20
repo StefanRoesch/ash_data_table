@@ -169,15 +169,11 @@ defmodule AshDataTable.Intent do
   def parse("panel_validate", params), do: {:ok, {:panel_validate, form(params, "panel")}}
   def parse("panel_submit", params), do: {:ok, {:panel_submit, form(params, "panel")}}
 
-  # the way to the group: its names, as a JSON list (`phx-value-path`)
-  def parse(event, %{"path" => path})
-      when event in ["panel_add", "panel_remove"] and is_binary(path) do
-    case Phoenix.json_library().decode(path) do
-      {:ok, [_ | _] = names} ->
-        if Enum.all?(names, &is_binary/1), do: {:ok, {tag(event), names}}, else: :malformed
-
-      _other ->
-        :malformed
+  # the way to the group: its names (`AshDataTable.GroupValue.path/1`)
+  def parse(event, %{"path" => path}) when event in ["panel_add", "panel_remove"] do
+    case AshDataTable.GroupValue.path(path) do
+      {:ok, names} -> {:ok, {tag(event), names}}
+      :error -> :malformed
     end
   end
 

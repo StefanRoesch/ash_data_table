@@ -42,7 +42,7 @@ defmodule AshDataTable.Kit do
   ## A kit of one's own
 
       defmodule MyAppWeb.TableKit do
-        use AshDataTable.Kit, contract: 5
+        use AshDataTable.Kit, contract: 6
 
         # restyle a part drawn once per table
         def class(:panel, _state), do: "my-panel"
@@ -65,7 +65,7 @@ defmodule AshDataTable.Kit do
         def look(option), do: super(option)
       end
 
-  `use AshDataTable.Kit, contract: 5` makes every part `Kit.Default`'s; a
+  `use AshDataTable.Kit, contract: 6` makes every part `Kit.Default`'s; a
   kit defines the parts it draws itself, and calls `super/1` for what
   `Kit.Default` draws. It is checked as it compiles: a contract other
   than this version's, a public function of one argument that is no
@@ -129,7 +129,7 @@ defmodule AshDataTable.Kit do
   its rows (the items of its stream, `AshDataTable.Item`), its panel and
   picker (`Present.Panel`, …) and its model (`Model.Column`,
   `Model.Action`, …), never a record: their fields are listed in "Kit
-  contract 5" below. `myself` and `target`
+  contract 6" below. `myself` and `target`
   are the `phx-target` of the part's events (nil for an attached table);
   `id` is the table's id, or the element's where it says so.
 
@@ -433,15 +433,22 @@ defmodule AshDataTable.Kit do
       (the id its events name), `limits` and `counted` (what its control
       says, as `editor`'s; `counted` of a text and of an array of texts,
       nil of a sensitive one), `target`; and of a value made of fields what
-      is in it, each field given as this part is: `members` (of a value
-      made of fields while it holds one: `name`, the entry it sends to say
-      it is there under `NAME[_present]`, `keys`, the hidden inputs of the
-      keys it sends back as they came, `%{name:, value:}`, and `fields`;
-      nil for no value), `items` (of a list of them: per value `key`, `id`,
-      `path` and `members`), `kind` and `single` (of a union: the kind
-      chosen, `""` for none, and its value where the kind holds one value,
-      a field; else `members`). Nil, `[]` and nil where the field is none
-      of these.
+      is in it, each field given as this part is: `hidden` (the entries it
+      sends beside its fields, each a bundle the part spreads on an
+      `<input type="hidden">`: of a list of values made of fields the entry
+      that sends the list at all, of a union the one that says which kind
+      its value was given for; `[]` of any other field), `members` (of a
+      value made of fields while it holds one: `name`, `hidden` (the entry
+      that says it is there and the keys it sends back as they came,
+      bundles as the field's), and `fields`; nil for no value), `items` (of
+      a list of them: per value `key`, `id`, `path` and `members`), `kind`,
+      `kind_name`, `kind_path` and `single` (of a union: the kind chosen,
+      `""` for none, what the choice of the kind is sent under and its
+      `data-field` path, and the kind's value where it holds one value, a
+      field; else `members`). Nil, `[]` and nil where the field is none of
+      these. The names and the hidden entries are the table's to make
+      (the wire format of a value made of fields): a kit draws them as it is
+      given them.
     * `control` - a field's control: `id`, `input`, `name`, `value`,
       `secret?`, `invalid?`, `described`, `limits`.
     * `failure` - the message of a failed cell or row, drawn in the cell
@@ -561,13 +568,13 @@ defmodule AshDataTable.Kit do
   draws both closed, with their places in them, ahead of time; a kit drawn
   in HEEx draws nothing while closed, and the place as it opens.
 
-  ## Kit contract 5: the values a part is given
+  ## Kit contract 6: the values a part is given
 
   The items of the stream (`rows` of `grid`, `row` of `row`, `detail` and
   `actions_cell`) are `AshDataTable.Item`'s maps, documented there. The
   structs below are what the other parts are given (`panel`, `picker`,
   `model`, `column`, `state`, `page`, …). Their fields, as listed here, and
-  the item's keys are the kit contract of version 5: a field is not
+  the item's keys are the kit contract of version 6: a field is not
   renamed, taken away or given another meaning without the contract's
   number going up. The modules themselves, and their functions, are the
   table's own and undocumented: a kit reads the fields, and calls none of
@@ -823,17 +830,24 @@ defmodule AshDataTable.Kit do
   assigns of each `field`, and no `files`; `field` is given `path`,
   `table`, `limits`, `counted`, `members`, `items`, `kind` and `single`
   in place of `inside`.
+
+  Contract 6 (from contract 5), the stage of the refactor that makes it
+  (`docs/architecture/deepening-design.md`) by step: the group value
+  (9b), the `field` part is given `hidden`, the hidden entries of a value
+  made of fields as bundles, and of a union `kind_name` and `kind_path`;
+  its `members` hold `hidden` in place of `keys`. A kit no longer writes
+  the names a value made of fields sends beside its fields.
   """
 
   use Phoenix.Component
 
   alias AshDataTable.Edit
-  alias AshDataTable.Ids
+  alias AshDataTable.GroupValue
   alias AshDataTable.Kit.Words
   alias AshDataTable.Model
   alias AshDataTable.Model.Limits
 
-  @contract 5
+  @contract 6
 
   @parts [
     :root,
@@ -1186,13 +1200,15 @@ defmodule AshDataTable.Kit do
 
   def fields(id, panel, files) do
     for field <- panel.fields do
-      inside = Map.merge(panel.inside, %{place: [field.name], path: field.path, table: id})
+      inside =
+        panel.inside
+        |> Map.merge(GroupValue.at(field.form_name, field.path))
+        |> Map.merge(%{place: [field.name], table: id})
+
       upload = if field.input.editor == :file, do: files[field.name][:upload]
 
       field(
-        Ids.field(id, [field.name]),
         field.input,
-        field.form_name,
         field.value,
         field.errors,
         %{places: field.places, chosen: field.chosen, clear: field.clear, upload: upload},
@@ -1201,16 +1217,20 @@ defmodule AshDataTable.Kit do
     end
   end
 
+  @plain %{places: [], chosen: nil, clear: nil, upload: nil}
+
   # One field's assigns: what its control says (`limits`, `counted`), and
-  # of a value made of fields what is in it.
-  defp field(id, input, name, value, errors, given, inside) do
+  # of a value made of fields what is in it. `inside` says where it sits
+  # (`AshDataTable.GroupValue.at/2`): its name, path and id.
+  defp field(input, value, errors, given, inside) do
+    id = GroupValue.id(inside.table, inside)
     words = %{input: input, value: value, errors: errors, chosen: given.chosen, inside: inside}
 
     Map.merge(
       %{
         id: id,
         input: input,
-        name: name,
+        name: inside.name,
         value: value,
         errors: errors,
         places: given.places,
@@ -1221,15 +1241,18 @@ defmodule AshDataTable.Kit do
         table: inside.table,
         limits: Limits.of(input),
         counted: field_counted(input),
+        hidden: [],
         members: nil,
         items: [],
         kind: nil,
+        kind_name: nil,
+        kind_path: nil,
         single: nil,
         texts: Words.texts(:field, words),
         messages: Words.messages(:field, words),
         locale: Words.locale()
       },
-      within(id, input, name, value, errors, inside)
+      within(input, value, errors, inside)
     )
   end
 
@@ -1245,33 +1268,36 @@ defmodule AshDataTable.Kit do
   defp field_counted(_input), do: nil
 
   # A value made of fields: its `members` while it holds one (nil for no
-  # value). A list of them: an item per value (`AshDataTable.Act.items/1`),
-  # each under a number of its own. A union: the kind chosen (`kind`), and
-  # that kind's value, one field (`single`) or its `members`.
-  defp within(id, %{editor: :group} = input, name, held, _errors, inside),
-    do: %{members: if(is_map(held), do: members(id, name, input, held, inside))}
+  # value). A list of them: an item per value (`AshDataTable.GroupValue.items/1`),
+  # each under a number of its own, and the entry of its own (`hidden`). A
+  # union: the kind chosen (`kind`), what its choice is sent under
+  # (`kind_name`, `kind_path`), the entry that says which kind its value
+  # was given for (`hidden`), and that kind's value, one field (`single`) or
+  # its `members`.
+  defp within(%{editor: :group} = input, held, _errors, inside),
+    do: %{members: if(is_map(held), do: members(input, held, inside))}
 
-  defp within(id, %{editor: :groups} = input, name, held, _errors, inside) do
+  defp within(%{editor: :groups} = input, held, _errors, inside) do
     items =
-      for {{key, item}, index} <- Enum.with_index(AshDataTable.Act.items(held)) do
-        at = %{inside | place: inside.place ++ [index], path: inside.path ++ [key]}
+      for {{key, item}, index} <- Enum.with_index(GroupValue.items(held)) do
+        at = GroupValue.inside(%{inside | place: inside.place ++ [index]}, {:item, key})
 
         %{
           key: key,
-          id: "#{id}-#{key}",
+          id: GroupValue.id(inside.table, at),
           path: at.path,
-          members: members("#{id}-#{key}", "#{name}[#{key}]", input, item, at)
+          members: members(%{input | cell_type: :map}, item, at)
         }
       end
 
-    %{items: items}
+    %{items: items, hidden: GroupValue.hidden(input, inside.name, held)}
   end
 
-  defp within(id, %{editor: :union} = input, name, held, errors, inside) do
+  defp within(%{editor: :union} = input, held, errors, inside) do
     {member, value} =
-      case AshDataTable.Act.kind(input, held, inside.time_zone) do
+      case GroupValue.kind(input, held, inside.time_zone) do
         {%{cell_type: :map} = member, held} when not is_map(held) ->
-          {member, AshDataTable.Act.fresh(member, inside.time_zone)}
+          {member, GroupValue.blank(member, inside.time_zone)}
 
         {member, held} ->
           {member, held}
@@ -1281,56 +1307,53 @@ defmodule AshDataTable.Kit do
       end
 
     single? = not is_nil(member) and member.cell_type != :map
-    at = %{inside | path: inside.path ++ ["_union_value"]}
-    inner = "#{name}[_union_value]"
+    choice = GroupValue.inside(inside, :kind)
 
     %{
       kind: if(member, do: Atom.to_string(member.name), else: ""),
+      kind_name: choice.name,
+      kind_path: choice.path,
+      hidden: GroupValue.hidden(input, inside.name, held),
       single:
         if(single?,
           do:
             field(
-              "#{id}-value",
               member,
-              inner,
               member_value(member, value),
               errors,
-              %{places: [], chosen: nil, clear: nil, upload: nil},
-              at
+              @plain,
+              GroupValue.inside(inside, {:value, member})
             )
         ),
-      members: if(member && not single?, do: members(id, inner, member, value, at))
+      members:
+        if(member && not single?,
+          do: members(member, value, GroupValue.inside(inside, {:value, member}))
+        )
     }
   end
 
-  defp within(_id, _input, _name, _held, _errors, _inside), do: %{}
+  defp within(_input, _held, _errors, _inside), do: %{}
 
-  # The fields of one value made of fields: the entry that says it is there
-  # (`_present`), the keys it sends back as they came, and a field per input.
-  defp members(id, name, field, held, inside) do
+  # The fields of one value made of fields: its hidden entries (that it is
+  # there, and the keys it sends back as they came:
+  # `AshDataTable.GroupValue.hidden/3`), and a field per input.
+  defp members(field, held, inside) do
     %{
-      name: name,
-      keys:
-        for(
-          %{key?: true, name: key} <- field.fields,
-          is_binary(held[Atom.to_string(key)]),
-          do: %{name: "#{name}[#{key}]", value: held[Atom.to_string(key)]}
-        ),
+      name: inside.name,
+      hidden: GroupValue.hidden(field, inside.name, held),
       fields:
         for %{input?: true} = inner <- field.fields do
-          at = %{
-            inside
-            | place: inside.place ++ [inner.name],
-              path: inside.path ++ [Atom.to_string(inner.name)]
-          }
+          at =
+            GroupValue.inside(
+              %{inside | place: inside.place ++ [inner.name]},
+              {:field, inner.name}
+            )
 
           field(
-            "#{id}-f-#{inner.name}",
             inner,
-            "#{name}[#{inner.name}]",
             member_value(inner, held[Atom.to_string(inner.name)]),
-            member_errors(inside, inner),
-            %{places: [], chosen: nil, clear: nil, upload: nil},
+            member_errors(at, inner),
+            @plain,
             at
           )
         end
@@ -1348,17 +1371,15 @@ defmodule AshDataTable.Kit do
 
   # The errors of a field inside a group that are shown: all of them once
   # the person has used the panel's button, and until then those of the
-  # fields they have been in.
-  defp member_errors(inside, field) do
-    path = inside.path ++ [Atom.to_string(field.name)]
-
+  # fields they have been in. `at` is where the field sits.
+  defp member_errors(at, field) do
     been? =
       if field.editor == :union,
-        do: AshDataTable.Present.in_union?(inside.touched, path),
-        else: path in inside.touched
+        do: GroupValue.touched?(at.touched, at.path),
+        else: at.path in at.touched
 
-    if inside.submitted? or been?,
-      do: Map.get(inside.errors, inside.place ++ [field.name], []),
+    if at.submitted? or been?,
+      do: Map.get(at.errors, at.place, []),
       else: []
   end
 
@@ -1498,7 +1519,13 @@ defmodule AshDataTable.Kit do
       ". Contract 5 draws the panel and the picker always, given nil while closed, without an " <>
         "inner_block: what opens inside them is moved into their places (Ids.panel_place/1, " <>
         "Ids.picker_place/1); panel is given fields, and field path, table, limits, counted, " <>
-        "members, items, kind and single in place of inside"
+        "members, items, kind and single in place of inside" <> changed(5)
+
+  defp changed(5),
+    do:
+      ". Contract 6 gives field the hidden entries of a value made of fields as bundles " <>
+        "(hidden; members' hidden in place of keys) and of a union kind_name and kind_path: " <>
+        "a kit no longer writes the names a value made of fields sends beside its fields"
 
   defp changed(_contract), do: "."
 

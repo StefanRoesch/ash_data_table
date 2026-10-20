@@ -58,7 +58,10 @@ type FieldTexts = {
   remove_value?: string[]
   item_errors?: string[][]
 }
-type Members = {name: string; keys: {name: string; value: string}[]; fields: FieldProps[]}
+// A hidden entry of a value made of fields: a bundle of its `name` and `value`,
+// spread on an `<input type="hidden">` as the library gives it.
+type Hidden = Bundle & {name: string}
+type Members = {hidden: Hidden[]; fields: FieldProps[]}
 
 export type FieldProps = {
   id: string
@@ -91,9 +94,12 @@ export type FieldProps = {
   }
   add: Bundle | false
   remove: Bundle | false
+  hidden: Hidden[]
   members: Members | null
   items: {key: string; id: string; remove: Bundle; members: Members}[]
   kind: string | null
+  kind_name: string | null
+  kind_path: string | null
   kinds: null | {value: string; label: string}[]
   single: FieldProps | null
   texts: FieldTexts
@@ -458,18 +464,26 @@ export function ListItem({field, listId, value, position, valueLabel, removeLabe
   )
 }
 
-// The part `MembersOf`: the fields of one value made of fields: the entry that says it is there,
-// the keys it sends back as they came, and a field per input.
+// The part `MembersOf`: the fields of one value made of fields: its hidden entries (that it is
+// there, the keys it sends back as they came), and a field per input.
 export function MembersOf({members}: {members: Members}) {
   const Field = usePart("Field")
   return (
     <>
-      <input type="hidden" name={`${members.name}[_present]`} value="" />
-      {members.keys.map(key => (
-        <input key={key.name} type="hidden" name={key.name} value={key.value} />
-      ))}
+      <HiddenEntries entries={members.hidden} />
       {members.fields.map(inner => (
         <Field key={inner.id} field={inner} />
+      ))}
+    </>
+  )
+}
+
+// The hidden entries a value made of fields sends beside its fields, as the library names them.
+function HiddenEntries({entries}: {entries: Hidden[]}) {
+  return (
+    <>
+      {entries.map(entry => (
+        <input key={entry.name} type="hidden" {...attrs(entry)} />
       ))}
     </>
   )
@@ -543,7 +557,7 @@ export function Groups({field}: {field: FieldProps}) {
         <span data-label="">{field.label}</span>
       </span>
       {field.invalid && <Errors id={id} errors={texts.errors} />}
-      <input type="hidden" name={`${field.name}[_present]`} value="" />
+      <HiddenEntries entries={field.hidden} />
       {field.items.map((item, index) => {
         const errors: string[] = texts.item_errors?.[index] || []
         return (
@@ -586,12 +600,12 @@ export function Union({field}: {field: FieldProps}) {
       <GroupLabel field={field} />
       {own.length > 0 && <Errors id={id} errors={own} />}
       <div className="ps-4">
-        <input type="hidden" name={`${field.name}[_of]`} value={kind} />
-        <div className="mb-3 flex flex-col gap-1" data-field={`${field.path}._union_type`}>
+        <HiddenEntries entries={field.hidden} />
+        <div className="mb-3 flex flex-col gap-1" data-field={field.kind_path ?? undefined}>
           <label htmlFor={`${id}-kind`} className={LABEL}>
             <span data-label="">{texts.kind}</span>
           </label>
-          <select ref={ref} id={`${id}-kind`} name={`${field.name}[_union_type]`} defaultValue={kind} aria-required={field.required ? "true" : undefined} className={select("h-8 w-full text-sm")}>
+          <select ref={ref} id={`${id}-kind`} name={field.kind_name ?? undefined} defaultValue={kind} aria-required={field.required ? "true" : undefined} className={select("h-8 w-full text-sm")}>
             {(!field.required || kind === "") && <option value=""></option>}
             {(field.kinds || []).map(choice => (
               <option key={choice.value} value={choice.value}>

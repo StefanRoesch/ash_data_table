@@ -4,7 +4,7 @@ defmodule DemoWeb.LookKit do
   given, the roots of nested tables and pickers' tables too
   (`look_test.exs`): `Kit.Default`'s classes, and a class of its own.
   """
-  use AshDataTable.Kit, contract: 5
+  use AshDataTable.Kit, contract: 6
 
   def class(:root, %{look: look} = state) do
     super(:root, state) <>

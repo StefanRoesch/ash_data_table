@@ -76,12 +76,12 @@ LiveView:
   time_zone: socket.assigns.time_zone
 ```
 
-The kit is a kit of contract 5. Each part it draws is an island, given the
+The kit is a kit of contract 6. Each part it draws is an island, given the
 part's assigns picked as plain data (`DemoWeb.ReactKit.Props`):
 
 <!-- source: demo/lib/demo_web/react_kit.ex -->
 ```elixir
-use AshDataTable.Kit, contract: 5
+use AshDataTable.Kit, contract: 6
 # ...
 def picker(assigns) do
   ~H"""
@@ -103,7 +103,7 @@ documented in a moduledoc or a JS file of the package and checked by a test:
 - **The stream's items** (`AshDataTable.Item`): plain maps whose cells hold
   their finished, translated text. The `grid` part hands `rows` (the
   stream) to its island as it is.
-- **What each part is given** (`AshDataTable.Kit`, "Kit contract 5"): plain
+- **What each part is given** (`AshDataTable.Kit`, "Kit contract 6"): plain
   values and the documented fields of the table's structs, with every text
   said (`texts`, `messages`). The `editor`, `argument_line` and `field`
   parts are given what their controls say (`limits`, `counted`), and

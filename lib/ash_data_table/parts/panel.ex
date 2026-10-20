@@ -93,8 +93,9 @@ defmodule AshDataTable.Parts.Panel do
   # what the field says of itself (`data-field`): its name, and for a field
   # inside a group the names on the way to it, with a dot between; `table`
   # the id its events name. What a value made of fields holds is given
-  # (`members`, `items`, `kind`, `single`: `AshDataTable.Kit.fields/3`), and
-  # what its control says (`limits`, `counted`).
+  # (`hidden`, `members`, `items`, `kind`, `kind_name`, `kind_path`,
+  # `single`: `AshDataTable.Kit.fields/3`), and what its control says
+  # (`limits`, `counted`).
   attr :id, :string, required: true
   attr :input, :map, required: true
   attr :name, :string, required: true
@@ -108,9 +109,12 @@ defmodule AshDataTable.Parts.Panel do
   attr :table, :string, required: true
   attr :limits, :map, required: true
   attr :counted, :map, required: true
+  attr :hidden, :list, required: true
   attr :members, :map, required: true
   attr :items, :list, required: true
   attr :kind, :string, required: true
+  attr :kind_name, :string, required: true
+  attr :kind_path, :list, required: true
   attr :single, :map, required: true
   attr :target, :any, required: true
   attr :kit, :atom, required: true
@@ -345,6 +349,7 @@ defmodule AshDataTable.Parts.Panel do
         id={@id}
         name={@name}
         field={@input}
+        hidden={@hidden}
         members={@members}
         items={@items}
         kind={@kind}
@@ -362,9 +367,12 @@ defmodule AshDataTable.Parts.Panel do
         id={@id}
         name={@name}
         field={@input}
+        hidden={@hidden}
         members={@members}
         items={@items}
         kind={@kind}
+        kind_name={@kind_name}
+        kind_path={@kind_path}
         single={@single}
         errors={@errors}
         path={@path}
@@ -633,10 +641,12 @@ defmodule AshDataTable.Parts.Panel do
   # Each value is sent under a number of its own, which says where it
   # stands among the others and stays its own for as long as it is there:
   # taking a value away renames none of the others. The field sends an
-  # entry of its own besides, so that a list without values is sent at all.
+  # entry of its own besides, so that a list without values is sent at all
+  # (`hidden`).
   attr :id, :string, required: true
   attr :name, :string, required: true
   attr :field, :map, required: true
+  attr :hidden, :list, required: true
   attr :members, :map, required: true
   attr :items, :list, required: true
   attr :kind, :string, required: true
@@ -665,7 +675,7 @@ defmodule AshDataTable.Parts.Panel do
       <div :if={@errors != []} id={Ids.error(@id)} class="mb-1 text-sm">
         <p :for={message <- @texts.errors} data-error>{message}</p>
       </div>
-      <input type="hidden" name={"#{@name}[_present]"} value="" />
+      <input :for={entry <- @hidden} type="hidden" {entry} />
       <div
         :for={{item, index} <- @items}
         id={item.id}
@@ -723,8 +733,10 @@ defmodule AshDataTable.Parts.Panel do
   # be left out, and until a kind is chosen. Choosing another kind is an
   # ordinary change of the panel's form: the server renders the fields of
   # that kind in place of the others. The field says which kind the value
-  # it sends was given for (`_of`), so that what was typed for one kind is
-  # never taken as the value of another (`AshDataTable.Act.kind/2`).
+  # it sends was given for (an entry of `hidden`), so that what was typed
+  # for one kind is never taken as the value of another
+  # (`AshDataTable.GroupValue.kind/3`). The choice is sent under
+  # `kind_name`, and says what it is under `kind_path`.
   #
   # What the action says of the union as a whole is shown at the value where
   # the kind holds one value, which is what it is about, and under the
@@ -732,9 +744,12 @@ defmodule AshDataTable.Parts.Panel do
   attr :id, :string, required: true
   attr :name, :string, required: true
   attr :field, :map, required: true
+  attr :hidden, :list, required: true
   attr :members, :map, required: true
   attr :items, :list, required: true
   attr :kind, :string, required: true
+  attr :kind_name, :string, required: true
+  attr :kind_path, :list, required: true
   attr :single, :map, required: true
   attr :errors, :list, required: true
   attr :path, :list, required: true
@@ -763,14 +778,14 @@ defmodule AshDataTable.Parts.Panel do
         <p :for={message <- @own_errors} data-error>{message}</p>
       </div>
       <div class="ps-4">
-        <input type="hidden" name={"#{@name}[_of]"} value={@kind} />
-        <div class="fieldset mb-2" {Attrs.field(@path ++ ["_union_type"])}>
+        <input :for={entry <- @hidden} type="hidden" {entry} />
+        <div class="fieldset mb-2" {Attrs.field(@kind_path)}>
           <label for={"#{@id}-kind"} class="label mb-1 text-base-content">
             <span data-label>{@texts.kind}</span>
           </label>
           <select
             id={"#{@id}-kind"}
-            name={"#{@name}[_union_type]"}
+            name={@kind_name}
             aria-required={@field.required? && "true"}
             class={["select w-full", Parts.Editors.control_edge()]}
           >
@@ -792,20 +807,19 @@ defmodule AshDataTable.Parts.Panel do
   end
 
   # The inputs of one value made of fields, each a field of the panel, whose
-  # id is the group's with `-f-` and its name: `ID-panel-f-client-f-name`,
-  # `ID-panel-f-milestones-0-f-title`. The
-  # value says that it is there with an entry of its own (`_present`), so
-  # that one without inputs, or with nothing but boxes, is sent at all; and
-  # sends back the primary key it came with, where that is no input: Ash
-  # tells by it which value of an array is which (`keys`).
+  # id is the group's and its own (`ID-panel-f-client-f-name`,
+  # `ID-panel-f-milestones-0-f-title`: `AshDataTable.GroupValue`). The
+  # value says that it is there with an entry of its own, so that one
+  # without inputs, or with nothing but boxes, is sent at all; and sends
+  # back the primary key it came with, where that is no input: Ash tells by
+  # it which value of an array is which (both in `hidden`).
   attr :members, :map, required: true
   attr :target, :any, default: nil
   attr :kit, :atom, required: true
 
   defp members(assigns) do
     ~H"""
-    <input type="hidden" name={"#{@members.name}[_present]"} value="" />
-    <input :for={key <- @members.keys} type="hidden" name={key.name} value={key.value} />
+    <input :for={entry <- @members.hidden} type="hidden" {entry} />
     <Kit.part
       :for={inner <- @members.fields}
       part={:field}

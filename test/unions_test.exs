@@ -9,6 +9,7 @@ defmodule AshDataTable.UnionsTest do
   alias AshDataTable.Act
   alias AshDataTable.Edit
   alias AshDataTable.Format
+  alias AshDataTable.GroupValue
   alias AshDataTable.Model
   alias AshDataTable.Model.Field
   alias AshDataTable.Resource.Embedding
@@ -231,162 +232,9 @@ defmodule AshDataTable.UnionsTest do
     end
   end
 
-  describe "what the editor of a union holds" do
-    test "the kind and that kind's value, as the editor of its type writes it; nil for no value" do
-      value = column(:value)
-
-      assert AshDataTable.Typed.of(value, %Ash.Union{type: :amount, value: 12}) ==
-               %{"_union_type" => "amount", "_union_value" => "12"}
-
-      assert AshDataTable.Typed.of(value, %Ash.Union{type: :done, value: false}) ==
-               %{"_union_type" => "done", "_union_value" => "false"}
-
-      assert AshDataTable.Typed.of(value, %Ash.Union{type: :shade, value: :dark}) ==
-               %{"_union_type" => "shade", "_union_value" => "dark"}
-
-      assert AshDataTable.Typed.of(value, %Ash.Union{
-               type: :place,
-               value: %Place{street: "Quay 1"}
-             }) ==
-               %{
-                 "_union_type" => "place",
-                 "_union_value" => %{"street" => "Quay 1", "city" => ""}
-               }
-
-      assert AshDataTable.Typed.of(value, nil) == nil
-    end
-
-    test "a kind that holds nothing is no value: Ash keeps the kind of a value that was taken away" do
-      assert AshDataTable.Typed.of(column(:value), %Ash.Union{type: :amount, value: nil}) == nil
-      assert AshDataTable.Typed.of(column(:value), %Ash.Union{type: :gone, value: 1}) == nil
-    end
-
-    test "inside a value made of fields the same way" do
-      holder = %Holder{label: "Box", either: %Ash.Union{type: :number, value: 5}}
-
-      assert AshDataTable.Typed.of(column(:holder), holder) == %{
-               "label" => "Box",
-               "either" => %{"_union_type" => "number", "_union_value" => "5"},
-               "other" => nil
-             }
-
-      assert AshDataTable.Typed.of(column(:holder), %Holder{label: "Box"}) ==
-               %{"label" => "Box", "either" => nil, "other" => nil}
-    end
-
-    test "is sent by its field with the kind its value is of, and taken back as it was held" do
-      value = Model.input(model(), column(:value))
-
-      held =
-        AshDataTable.Typed.of(value, %Ash.Union{type: :place, value: %Place{street: "Quay 1"}})
-
-      assert Act.sent(value, held) == %{
-               "_union_type" => "place",
-               "_of" => "place",
-               "_union_value" => %{"_present" => "", "street" => "Quay 1", "city" => ""}
-             }
-
-      assert Act.typed(value, Act.sent(value, held)) == held
-
-      # without a value: no kind
-      assert Act.sent(value, nil) == %{"_union_type" => "", "_of" => ""}
-      assert Act.typed(value, Act.sent(value, nil)) == nil
-    end
-  end
-
   describe "what a union's field gives the action" do
     setup do
-      %{
-        value: Model.input(model(), column(:value)),
-        payment: Model.input(model(), column(:payment))
-      }
-    end
-
-    test "the kind by name and its value as typed, as Ash takes a union from outside", %{
-      value: value
-    } do
-      assert Act.typed(value, %{
-               "_union_type" => "amount",
-               "_of" => "amount",
-               "_union_value" => "12"
-             }) ==
-               %{"_union_type" => "amount", "_union_value" => "12"}
-
-      # a box that is not ticked sends nothing of its own
-      assert Act.typed(value, %{
-               "_union_type" => "done",
-               "_of" => "done",
-               "_union_value" => "false"
-             }) ==
-               %{"_union_type" => "done", "_union_value" => "false"}
-    end
-
-    test "of a value made of fields, the fields the kind has, by name, and nothing else that was sent",
-         %{value: value} do
-      sent = %{
-        "_union_type" => "place",
-        "_of" => "place",
-        "_union_value" => %{
-          "_present" => "",
-          "street" => "Quay 1",
-          "city" => "",
-          "memo" => "sneaked in"
-        }
-      }
-
-      assert Act.typed(value, sent) ==
-               %{
-                 "_union_type" => "place",
-                 "_union_value" => %{"street" => "Quay 1", "city" => ""}
-               }
-    end
-
-    test "no value where no kind is chosen, and for a kind the union does not have", %{
-      value: value
-    } do
-      assert Act.typed(value, %{"_union_type" => "", "_of" => "", "_union_value" => "12"}) == nil
-      assert Act.typed(value, %{"_union_type" => "nope", "_union_value" => "12"}) == nil
-      assert Act.typed(value, nil) == nil
-      assert Act.typed(value, "text") == nil
-    end
-
-    test "a new value of the kind where what was sent was given for another kind", %{value: value} do
-      # the person has just chosen "Amount": the text typed for "Text" is not an amount
-      assert Act.typed(value, %{
-               "_union_type" => "amount",
-               "_of" => "text",
-               "_union_value" => "abc"
-             }) ==
-               %{"_union_type" => "amount", "_union_value" => ""}
-
-      assert Act.typed(value, %{"_union_type" => "done", "_of" => "text", "_union_value" => "abc"}) ==
-               %{"_union_type" => "done", "_union_value" => "false"}
-
-      # a value made of fields starts with its fields empty, whatever was sent
-      assert Act.typed(value, %{"_union_type" => "spot", "_of" => "text", "_union_value" => "abc"}) ==
-               %{"_union_type" => "spot", "_union_value" => %{"x" => "", "y" => ""}}
-
-      assert {%Field{name: :spot}, %{"_present" => "", "x" => "", "y" => ""}} =
-               Act.kind(value, %{
-                 "_union_type" => "spot",
-                 "_of" => "text",
-                 "_union_value" => "abc"
-               })
-    end
-
-    test "with the key the union tells the kind by, which is the table's to give", %{
-      payment: payment
-    } do
-      sent = %{
-        "_union_type" => "card",
-        "_of" => "card",
-        "_union_value" => %{"_present" => "", "number" => "4111", "type" => "transfer"}
-      }
-
-      assert Act.typed(payment, sent) == %{
-               "_union_type" => "card",
-               "_union_value" => %{"number" => "4111", "type" => :card}
-             }
+      %{value: Model.input(model(), column(:value))}
     end
 
     test "is always given: no kind is no value", %{value: value} do
@@ -395,14 +243,15 @@ defmodule AshDataTable.UnionsTest do
 
     test "what was sent is what the cell holds when nothing was changed", %{value: value} do
       held = %Ash.Union{type: :amount, value: 12}
-      sent = Act.sent(value, AshDataTable.Typed.of(value, held))
+      sent = GroupValue.held(value, held, "Etc/UTC")
+      none = GroupValue.held(value, nil, "Etc/UTC")
 
       assert Act.unchanged?(value, sent, held)
       refute Act.unchanged?(value, %{sent | "_union_value" => "13"}, held)
       refute Act.unchanged?(value, %{sent | "_union_type" => "text"}, held)
-      assert Act.unchanged?(value, Act.sent(value, nil), nil)
+      assert Act.unchanged?(value, none, nil)
       # a kind that holds nothing is no value
-      assert Act.unchanged?(value, Act.sent(value, nil), %Ash.Union{type: :amount, value: nil})
+      assert Act.unchanged?(value, none, %Ash.Union{type: :amount, value: nil})
     end
   end
 
@@ -470,7 +319,7 @@ defmodule AshDataTable.UnionsTest do
       # Ash keeps the kind, with nothing in it: no value, as a table shows it
       assert record.value in [nil, %Ash.Union{type: :amount, value: nil}]
       assert Format.format(column(:value), record.value) == ""
-      assert AshDataTable.Typed.of(column(:value), record.value) == nil
+      assert GroupValue.held(column(:value), record.value, "Etc/UTC")["_union_type"] == ""
     end
 
     test "what the record holds already calls nothing", %{key: key} do
@@ -521,7 +370,7 @@ defmodule AshDataTable.UnionsTest do
         "either" => chosen("number", "5")
       }
 
-      assert Act.typed(holder, sent) == %{
+      assert GroupValue.taken(holder, sent, "Etc/UTC") == %{
                "label" => "Box",
                "either" => %{"_union_type" => "number", "_union_value" => "5"},
                "other" => nil

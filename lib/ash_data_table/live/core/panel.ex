@@ -8,6 +8,7 @@ defmodule AshDataTable.Live.Core.Panel do
   alias AshDataTable.Act
   alias AshDataTable.Event
   alias AshDataTable.Format
+  alias AshDataTable.GroupValue
   alias AshDataTable.Ids
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Bulk
@@ -22,7 +23,6 @@ defmodule AshDataTable.Live.Core.Panel do
   alias AshDataTable.Pick
   alias AshDataTable.Present
   alias AshDataTable.Text
-  alias AshDataTable.Typed
 
   require AshDataTable.Live.Current, as: Current
 
@@ -172,7 +172,7 @@ defmodule AshDataTable.Live.Core.Panel do
     with %{} = input <-
            Enum.find(panel.inputs, &(Model.group?(&1) and Atom.to_string(&1.name) == name)),
          {:ok, held, focus} <-
-           regroup(input, panel.groups[name], rest, change, panel.time_zone) do
+           GroupValue.change(input, panel.groups[name], rest, change, panel.time_zone) do
       groups = Map.put(panel.groups, name, held)
       # every group as the panel holds it, with what the form sent last
       typed = Map.merge(panel.typed, groups)
@@ -400,16 +400,16 @@ defmodule AshDataTable.Live.Core.Panel do
   # not there, unless a record is being created and cannot be without it:
   # then its fields are there to be filled in.
   defp started(%{editor: :groups} = input, value, _kind, zone),
-    do: Act.sent(input, Typed.of(input, List.wrap(value), zone))
+    do: GroupValue.held(input, List.wrap(value), zone)
 
   # a union always sends its kind: none where it has no value
   defp started(%{editor: :union} = input, value, _kind, zone),
-    do: Act.sent(input, Typed.of(input, value, zone))
+    do: GroupValue.held(input, value, zone)
 
-  defp started(input, %{} = value, _kind, zone),
-    do: Act.sent(input, Typed.of(input, value, zone))
+  defp started(input, %{} = value, _kind, zone), do: GroupValue.held(input, value, zone)
 
-  defp started(%{required?: true} = input, _none, :create, zone), do: Act.blank(input, zone)
+  defp started(%{required?: true} = input, _none, :create, zone),
+    do: GroupValue.blank(input, zone)
 
   defp started(_input, _none, _kind, _zone), do: nil
 
@@ -449,73 +449,6 @@ defmodule AshDataTable.Live.Core.Panel do
         if is_map(held), do: MapSet.union(touched, touched(held, path ++ [name])), else: touched
     end
   end
-
-  # Adds a group to a field made of groups, or takes one away: what the
-  # field holds then, and where focus goes, as the end of an id. `path` is
-  # the way from the field to the group, as the names it is sent under, and
-  # is a claim: it is followed through the fields the input has, and through
-  # nothing else.
-  defp regroup(%{cell_type: :map} = field, nil, [], :add, zone),
-    do: {:ok, Act.blank(field, zone), []}
-
-  defp regroup(%{cell_type: :map, required?: false}, %{}, [], :remove, _zone),
-    do: {:ok, nil, ["add"]}
-
-  defp regroup(%{cell_type: {:array, :map}} = field, held, [], :add, zone) do
-    held = if is_map(held), do: held, else: %{"_present" => ""}
-    numbers = for {key, _item} <- Act.items(held), do: String.to_integer(key)
-    key = Integer.to_string(Enum.max(numbers, fn -> -1 end) + 1)
-
-    {:ok, Map.put(held, key, Act.blank(field, zone)), [key]}
-  end
-
-  defp regroup(%{cell_type: {:array, :map}} = field, %{} = held, [key | rest], change, zone) do
-    keys = for {key, _item} <- Act.items(held), do: key
-
-    cond do
-      key not in keys ->
-        :error
-
-      rest == [] and change == :remove ->
-        at = Enum.find_index(keys, &(&1 == key))
-        # to the value after it, else to the one before it, else to the
-        # button that adds one
-        focus = Enum.at(keys, at + 1) || (at > 0 && Enum.at(keys, at - 1)) || "add"
-        {:ok, Map.delete(held, key), [focus]}
-
-      true ->
-        with {:ok, item, focus} <-
-               regroup(%{field | cell_type: :map}, held[key], rest, change, zone),
-             do: {:ok, Map.put(held, key, item), [key | focus]}
-    end
-  end
-
-  defp regroup(%{cell_type: :map, fields: fields}, %{} = held, [name | rest], change, zone) do
-    with %{} = field <-
-           Enum.find(fields || [], &(Model.group?(&1) and Atom.to_string(&1.name) == name)),
-         # a union is no group that is added or taken away: only what is in it
-         true <- field.editor != :union or rest != [],
-         {:ok, inner, focus} <- regroup(field, held[name], rest, change, zone) do
-      # the id of a field in a group: see `members/1`
-      {:ok, Map.put(held, name, inner), ["f", name | focus]}
-    else
-      _ -> :error
-    end
-  end
-
-  # Through a union, to a group inside the value of its kind: the value is
-  # sent under a name of its own, and has no id of its own.
-  defp regroup(%{cell_type: :union} = field, %{} = held, ["_union_value" | rest], change, zone) do
-    with {%{cell_type: :map} = member, %{} = value} <- Act.kind(field, held, zone),
-         [_ | _] <- rest,
-         {:ok, inner, focus} <- regroup(member, value, rest, change, zone) do
-      {:ok, Map.merge(held, %{"_of" => held["_union_type"], "_union_value" => inner}), focus}
-    else
-      _ -> :error
-    end
-  end
-
-  defp regroup(_field, _held, _path, _change, _zone), do: :error
 
   # A row action with inputs opens the action panel: the record is read
   # again, as the person, and the form of the action on it is what the panel

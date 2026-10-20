@@ -3,8 +3,10 @@ defmodule AshDataTable.Typed do
   # A value as the control of its type holds it, and as a person types it:
   # the text of a text, a number, a date or a datetime as the matching
   # native HTML input writes it, the value itself for a choice, `"true"` or
-  # `"false"` for a boolean. An array is a list of such texts, a map cell its
-  # inputs by name, a union its kind and that kind's value.
+  # `"false"` for a boolean. An array is a list of such texts. What the form
+  # holds for a value made of fields (a map cell, a list of them, a union)
+  # is `AshDataTable.GroupValue.held/3`'s, which asks this module for the
+  # text of each value in it.
   #
   # It is never a translation: the same in every locale, so that what a
   # person typed is told from what a field holds by comparing texts
@@ -14,13 +16,9 @@ defmodule AshDataTable.Typed do
   # A datetime that is an instant (a `DateTime`) is written as the clocks of
   # the page's zone show it (`AshDataTable.Zone`); a naive one as it is.
 
-  alias AshDataTable.Model
   alias AshDataTable.Present
-  alias AshDataTable.Resource.Embedding
   alias AshDataTable.Sensitive
   alias AshDataTable.Zone
-
-  @utc Zone.utc()
 
   @doc """
   The text the control of `field` (a column, an input, a field of a map
@@ -30,52 +28,10 @@ defmodule AshDataTable.Typed do
   is the empty list there. A value that is text already is what a person
   typed, and is held as it is. `of/2` writes an instant in UTC.
   """
-  @spec of(map, term) :: String.t() | [String.t()] | map | [map] | nil
-  def of(field, value), do: of(field, value, @utc)
+  @spec of(map, term) :: String.t() | [String.t()]
+  def of(field, value), do: of(field, value, Zone.utc())
 
-  @spec of(map, term, Zone.t()) :: String.t() | [String.t()] | map | [map] | nil
-  # The control of a map cell holds its inputs by name, each as the control
-  # of its type holds it, and with them the primary key of an embedded
-  # resource that is no input: Ash tells by it which value is which. Nil is
-  # no value.
-  def of(%{cell_type: :map, fields: [_ | _] = fields}, value, zone) when is_map(value) do
-    for %{name: name} = inner <- fields, inner.input? or inner.key?, into: %{} do
-      held = held(value, name)
-
-      {Atom.to_string(name),
-       if(inner.cell_type in [:map, :union],
-         do: of(inner, held, zone),
-         else: of(inner, held, zone) || ""
-       )}
-    end
-  end
-
-  def of(%{cell_type: :map}, _value, _zone), do: nil
-
-  # The control of a union holds the kind and that kind's value, as the
-  # control of its type holds it. Nil is no value, and so is a kind that
-  # holds nothing: Ash keeps the kind of a value that was taken away.
-  def of(%{cell_type: :union} = field, %Ash.Union{type: kind, value: value}, zone)
-      when not is_nil(value) do
-    case Enum.find(members(field) || [], &(&1.name == kind)) do
-      nil ->
-        nil
-
-      member ->
-        held = of(member, value, zone)
-
-        %{
-          "_union_type" => Atom.to_string(kind),
-          "_union_value" => if(member.cell_type == :map, do: held, else: held || "")
-        }
-    end
-  end
-
-  def of(%{cell_type: :union}, _value, _zone), do: nil
-
-  def of(%{cell_type: {:array, :map}} = field, values, zone) when is_list(values),
-    do: Enum.map(values, &of(%{field | cell_type: :map}, &1, zone))
-
+  @spec of(map, term, Zone.t()) :: String.t() | [String.t()]
   def of(%{cell_type: {:array, item}} = field, values, zone) when is_list(values) do
     Enum.map(values, fn
       typed when is_binary(typed) -> typed
@@ -119,28 +75,6 @@ defmodule AshDataTable.Typed do
 
   defp written(_field, value, zone), do: other(value, zone)
 
-  # The kinds of a union: those its column or field says, else those of its
-  # type.
-  defp members(%{members: [_ | _] = members}), do: members
-
-  defp members(%{type: {type, constraints}}) when not is_nil(type) do
-    case Embedding.of(type, constraints) do
-      %{members: [_ | _] = members} -> Model.Field.from(members)
-      _none -> nil
-    end
-  end
-
-  defp members(_field), do: nil
-
-  # What a value holds for a field: a map that declares its fields has them
-  # by name, and one that was not cast by text.
-  defp held(value, name) do
-    case Map.fetch(value, name) do
-      {:ok, held} -> held
-      :error -> Map.get(value, Atom.to_string(name))
-    end
-  end
-
   # Text for everything without a cell type of its own.
   defp other(nil, _zone), do: ""
 
@@ -165,8 +99,11 @@ defmodule AshDataTable.Typed do
 
   # An instant without a type that says so, in a zone other than UTC: as a
   # datetime is written. (In UTC it is the text of the struct.)
-  defp other(%DateTime{} = value, zone) when zone != @utc,
-    do: written(%{cell_type: :datetime}, value, zone)
+  defp other(%DateTime{} = value, zone) do
+    if zone == Zone.utc(),
+      do: to_string(value),
+      else: written(%{cell_type: :datetime}, value, zone)
+  end
 
   defp other(%_{} = value, _zone) do
     if String.Chars.impl_for(value), do: to_string(value), else: inspect(value)

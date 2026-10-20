@@ -117,8 +117,8 @@ defmodule AshDataTable.Zone do
   in `zone` being the instant it is there; and where among it a wall time
   was typed that the zone does not have. `field` is a column, an input of
   the panel, a field of a map cell or an argument; `held` what its control
-  sent, as `AshDataTable.Act.typed/2` takes it: text, a list of texts, a map of
-  the fields of a map cell, a list of those, or a union's kind and value.
+  sent, as `AshDataTable.GroupValue.taken/3` gives it: text, a list of texts, a map
+  of the fields of a map cell, a list of those, or a union's kind and value.
   """
   @spec given(map, term, t) :: {term, [path]}
   def given(_field, held, @utc), do: {held, []}
@@ -138,68 +138,17 @@ defmodule AshDataTable.Zone do
   def read(_field, held, @utc), do: held
   def read(field, held, zone), do: field |> walk(held, zone, :read) |> elem(0)
 
-  defp walk(%{cell_type: :datetime} = field, held, zone, use) when is_binary(held) do
+  # Through a value made of fields, a list or a union to each value in it
+  # (`AshDataTable.GroupValue.walk/3`), and the time rule on each: a wall
+  # time of an instant's type is the instant it is in `zone`.
+  defp walk(field, held, zone, use),
+    do: AshDataTable.GroupValue.walk(field, held, &wall(&1, &2, zone, use))
+
+  defp wall(%{cell_type: :datetime} = field, held, zone, use) when is_binary(held) do
     if zoned?(field.type), do: one(held, zone, use), else: {held, []}
   end
 
-  defp walk(%{cell_type: {:array, :datetime}} = field, held, zone, use) when is_list(held) do
-    if zoned?(field.type),
-      do:
-        each(held, fn text, _index -> walk(%{field | cell_type: :datetime}, text, zone, use) end),
-      else: {held, []}
-  end
-
-  defp walk(%{cell_type: :map, fields: [_ | _] = fields}, %{} = held, zone, use) do
-    Enum.reduce(fields, {held, []}, fn %{name: name} = inner, {held, gaps} ->
-      key = Atom.to_string(name)
-
-      case Map.fetch(held, key) do
-        {:ok, value} ->
-          {value, found} = walk(inner, value, zone, use)
-          {Map.put(held, key, value), gaps ++ Enum.map(found, &[name | &1])}
-
-        :error ->
-          {held, gaps}
-      end
-    end)
-  end
-
-  defp walk(%{cell_type: {:array, :map}, fields: [_ | _]} = field, held, zone, use)
-       when is_list(held),
-       do: each(held, fn item, _index -> walk(%{field | cell_type: :map}, item, zone, use) end)
-
-  # a union's value is that of its kind's field; what is not there is about the union
-  defp walk(
-         %{cell_type: :union, members: [_ | _] = members},
-         %{"_union_type" => kind, "_union_value" => value} = held,
-         zone,
-         use
-       ) do
-    case Enum.find(members, &(Atom.to_string(&1.name) == kind)) do
-      nil ->
-        {held, []}
-
-      member ->
-        {value, found} = walk(member, value, zone, use)
-        {Map.put(held, "_union_value", value), Enum.map(found, fn _path -> [] end)}
-    end
-  end
-
-  defp walk(_field, held, _zone, _use), do: {held, []}
-
-  # The values of a list, each with the places of its own gaps after its own.
-  defp each(values, fun) do
-    {values, gaps} =
-      values
-      |> Enum.with_index()
-      |> Enum.map(fn {value, index} ->
-        {value, found} = fun.(value, index)
-        {value, Enum.map(found, &[index | &1])}
-      end)
-      |> Enum.unzip()
-
-    {values, Enum.concat(gaps)}
-  end
+  defp wall(_field, held, _zone, _use), do: {held, []}
 
   defp one(text, zone, use) do
     case instant(text, zone) do

@@ -21,7 +21,7 @@ defmodule AshDataTable.Present do
   # panel, else nothing. The one way to a sensitive value is the reply to
   # `reveal`, which goes past this module to the hook alone.
 
-  alias AshDataTable.Act
+  alias AshDataTable.GroupValue
   alias AshDataTable.Model
   alias AshDataTable.Resource.Embedding
   alias AshDataTable.Resource.Exposing
@@ -378,7 +378,12 @@ defmodule AshDataTable.Present do
       # A datetime that was typed is shown as it was typed, a wall time in
       # the page's zone: the form holds the instant it was given as.
       is_map_key(panel.typed, name) and AshDataTable.Zone.zoned?(input.type) ->
-        field_value(input, Act.typed(input, panel.typed[name], panel.time_zone), false, panel)
+        field_value(
+          input,
+          GroupValue.taken(input, panel.typed[name], panel.time_zone),
+          false,
+          panel
+        )
 
       true ->
         field_value(
@@ -399,7 +404,7 @@ defmodule AshDataTable.Present do
 
   # of a union: once they have been at its choice, or in its value
   defp field_errors(panel, %{editor: :union} = input, _upload_errors) do
-    if panel.submitted? or in_union?(panel.touched, [Atom.to_string(input.name)]),
+    if panel.submitted? or GroupValue.touched?(panel.touched, [Atom.to_string(input.name)]),
       do: Map.get(panel.errors, input.name, []),
       else: []
   end
@@ -408,23 +413,6 @@ defmodule AshDataTable.Present do
     if panel.submitted? or Atom.to_string(input.name) in panel.used,
       do: Map.get(panel.errors, input.name, []),
       else: []
-  end
-
-  @doc """
-  Whether a person has been in the field of a union: at the choice of its
-  kind, or in the value of the kind. `path` is the way to the field, as the
-  names it is sent under. That the field was sent says nothing: it always
-  is, and so are the entries of its own that say what is there (`_of`,
-  `_present`).
-  """
-  @spec in_union?(Enumerable.t(), [String.t()]) :: boolean
-  def in_union?(touched, path) do
-    value = path ++ ["_union_value"]
-    inside = Enum.filter(touched, &(List.starts_with?(&1, value) and &1 != value))
-
-    (path ++ ["_union_type"]) in touched or
-      Enum.any?(inside, &(List.last(&1) not in ["_present", "_of"])) or
-      (inside == [] and value in touched)
   end
 
   # The values of an array field that the errors shown at it are about, by

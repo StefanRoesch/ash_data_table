@@ -680,7 +680,7 @@ defmodule AshDataTable.Attrs do
   # kind's fields. The field sends the kind (`_union_type`), the value
   # (`_union_value`), and which kind that value was given for (`_of`), by
   # which a value that was typed for another kind is told and left out
-  # (`AshDataTable.Act.kind/2`). What such a field holds is kept with the
+  # (`AshDataTable.GroupValue.kind/3`). What such a field holds is kept with the
   # panel's groups.
   #
   # ## Files
@@ -1704,7 +1704,7 @@ defmodule AshDataTable.Attrs do
   defp group(event, path, target) do
     %{
       "phx-click" => event,
-      "phx-value-path" => Phoenix.json_library().encode!(path),
+      "phx-value-path" => AshDataTable.GroupValue.path_value(path),
       "phx-target" => target
     }
   end

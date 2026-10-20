@@ -244,8 +244,11 @@ defmodule AshDataTable.SensitiveTest do
                {:password, true, false}
              ]
 
-      assert AshDataTable.Typed.of(column(:shown), %Shown{user: "bob", password: "swordfish"}) ==
-               %{"user" => "bob"}
+      assert AshDataTable.GroupValue.held(
+               column(:shown),
+               %Shown{user: "bob", password: "swordfish"},
+               "Etc/UTC"
+             ) == %{"_present" => "", "user" => "bob"}
     end
   end
 

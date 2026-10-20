@@ -13,12 +13,12 @@ defmodule AshDataTable.KitTest do
   end
 
   # The fields of the structs a part is given, as `Kit`'s moduledoc lists
-  # them under "Kit contract 5", by struct.
+  # them under "Kit contract 6", by struct.
   defp contract do
     {:docs_v1, _anno, _language, _format, %{"en" => doc}, _meta, _docs} =
       Code.fetch_docs(Kit)
 
-    [_before, section] = String.split(doc, "## Kit contract 5", parts: 2)
+    [_before, section] = String.split(doc, "## Kit contract 6", parts: 2)
     [section | _after] = String.split(section, "\n## ", parts: 2)
 
     section
@@ -38,7 +38,7 @@ defmodule AshDataTable.KitTest do
     end)
   end
 
-  test "kit contract 5 names every field of every struct a part is given, and no other" do
+  test "kit contract 6 names every field of every struct a part is given, and no other" do
     contract = contract()
 
     assert Map.keys(contract) |> Enum.sort() ==
@@ -71,7 +71,7 @@ defmodule AshDataTable.KitTest do
     kit =
       compile("""
       defmodule AshDataTable.KitTest.Styled do
-        use AshDataTable.Kit, contract: 5
+        use AshDataTable.Kit, contract: 6
 
         def class(:panel, _state), do: "mine"
         def class(part, state), do: super(part, state)
@@ -101,7 +101,7 @@ defmodule AshDataTable.KitTest do
       end
 
     assert Exception.message(error) =~
-             "`use AshDataTable.Kit` was given `contract: 2`, and this version of AshDataTable has contract 5"
+             "`use AshDataTable.Kit` was given `contract: 2`, and this version of AshDataTable has contract 6"
 
     # what changed since: a table, not a grid; then the argument line
     assert Exception.message(error) =~ ~s(role="table")
@@ -118,7 +118,7 @@ defmodule AshDataTable.KitTest do
         """)
       end
 
-    assert Exception.message(error) =~ "has contract 5"
+    assert Exception.message(error) =~ "has contract 6"
     assert Exception.message(error) =~ "no lines and refused"
     assert Exception.message(error) =~ "Ids.panel_place/1"
     refute Exception.message(error) =~ ~s(role="table")
@@ -134,7 +134,22 @@ defmodule AshDataTable.KitTest do
       end
 
     assert Exception.message(error) =~ "given nil while closed"
+    assert Exception.message(error) =~ "kind_name"
     refute Exception.message(error) =~ "no lines and refused"
+
+    # from contract 5: the hidden entries of a value made of fields
+    error =
+      assert_raise CompileError, fn ->
+        compile("""
+        defmodule AshDataTable.KitTest.Five do
+          use AshDataTable.Kit, contract: 5
+        end
+        """)
+      end
+
+    assert Exception.message(error) =~ "has contract 6"
+    assert Exception.message(error) =~ "members' hidden in place of keys"
+    refute Exception.message(error) =~ "given nil while closed"
 
     # and from contract 1 both steps
     error =
@@ -156,7 +171,7 @@ defmodule AshDataTable.KitTest do
       assert_raise CompileError, fn ->
         compile("""
         defmodule AshDataTable.KitTest.Typo do
-          use AshDataTable.Kit, contract: 5
+          use AshDataTable.Kit, contract: 6
 
           def pagniation(assigns), do: super_pagination(assigns)
           defp super_pagination(assigns), do: AshDataTable.Kit.Default.pagination(assigns)
@@ -173,7 +188,7 @@ defmodule AshDataTable.KitTest do
       assert_raise CompileError, fn ->
         compile("""
         defmodule AshDataTable.KitTest.Arity do
-          use AshDataTable.Kit, contract: 5
+          use AshDataTable.Kit, contract: 6
 
           def class(_part), do: "one"
         end
@@ -195,7 +210,7 @@ defmodule AshDataTable.KitTest do
     sideways =
       compile("""
       defmodule AshDataTable.KitTest.Sideways do
-        use AshDataTable.Kit, contract: 5
+        use AshDataTable.Kit, contract: 6
 
         def presentation(:picker), do: :sideways
         def presentation(thing), do: super(thing)
@@ -264,7 +279,7 @@ defmodule AshDataTable.KitTest do
       assert_raise CompileError, fn ->
         compile("""
         defmodule AshDataTable.KitTest.LookArity do
-          use AshDataTable.Kit, contract: 5
+          use AshDataTable.Kit, contract: 6
 
           def look(_option, _table), do: true
         end
@@ -279,7 +294,7 @@ defmodule AshDataTable.KitTest do
     kit =
       compile("""
       defmodule AshDataTable.KitTest.Striped do
-        use AshDataTable.Kit, contract: 5
+        use AshDataTable.Kit, contract: 6
 
         def look(:stripes), do: true
         def look(option), do: super(option)
@@ -328,7 +343,7 @@ defmodule AshDataTable.KitTest do
     kit =
       compile("""
       defmodule AshDataTable.KitTest.Dense do
-        use AshDataTable.Kit, contract: 5
+        use AshDataTable.Kit, contract: 6
 
         def look(:density), do: :dense
         def look(option), do: super(option)
@@ -441,7 +456,7 @@ defmodule AshDataTable.KitTest do
     kit =
       compile("""
       defmodule AshDataTable.KitTest.Editors do
-        use AshDataTable.Kit, contract: 5
+        use AshDataTable.Kit, contract: 6
 
         def editor(assigns) do
           send(self(), {:editor, Map.take(assigns, [:limits, :counted, :clearable?])})
@@ -503,7 +518,7 @@ defmodule AshDataTable.KitTest do
     kit =
       compile("""
       defmodule AshDataTable.KitTest.Line do
-        use AshDataTable.Kit, contract: 5
+        use AshDataTable.Kit, contract: 6
 
         def heading(assigns) do
           send(self(), {:heading, assigns |> Map.keys() |> Enum.sort()})
@@ -579,30 +594,35 @@ defmodule AshDataTable.KitTest do
     # every assign of the `field` part but `kit` and `target`
     part =
       ~w(id input name value errors places chosen clear upload path table limits counted
-         members items kind single texts messages locale)a
+         hidden members items kind kind_name kind_path single texts messages locale)a
 
     for {_name, given} <- fields, do: assert(Enum.sort(Map.keys(given)) == Enum.sort(part))
 
     assert %{id: "t-panel-f-name", path: ["name"], table: "t", counted: %{max: 40}} = fields.name
     assert fields.size.limits == %{min: "0", max: "100", step: "1"}
 
-    # a value made of fields: its members, each a field as the panel's
-    assert %{name: "panel[place]", fields: [city, _zip]} = fields.place.members
-    assert %{id: "t-panel-f-place-f-city", name: "panel[place][city]", value: "Bern"} = city
-    assert city.path == ["place", "city"]
+    # a value made of fields: its members, each a field as the panel's,
+    # with the hidden entries it sends beside them (named by
+    # `AshDataTable.GroupValue`, whose tests say how)
+    assert %{name: name, hidden: [present], fields: [city, _zip]} = fields.place.members
+    assert is_binary(name) and Map.keys(present) == ["name", "value"]
+    assert %{value: "Bern", input: %{name: :city}, members: nil} = city
+    assert fields.place.hidden == []
 
-    # a list of them: an item per value, under its own number
-    assert [%{key: "0", id: "t-panel-f-stops-0", path: ["stops", "0"], members: stop}] =
-             fields.stops.items
+    # a list of them: an item per value, under its own number, and its own entry
+    assert [%{key: "0", members: stop} = item] = fields.stops.items
+    assert is_binary(item.id) and is_list(item.path)
+    assert %{fields: [%{value: "Thun"} | _]} = stop
+    assert [_own] = fields.stops.hidden
 
-    assert %{name: "panel[stops][0]", fields: [%{value: "Thun"} | _]} = stop
-
-    # a union: the kind chosen, and its one value
-    assert %{kind: "count", single: %{id: "t-panel-f-kind-value", value: "7"}, members: nil} =
+    # a union: the kind chosen, its one value, what its choice is sent under
+    # and the entry that says which kind its value is of
+    assert %{kind: "count", single: %{value: "7", input: %{name: :count}}, members: nil} =
              fields.kind
 
-    assert fields.kind.single.path == ["kind", "_union_value"]
-    assert fields.tags.members == nil and fields.tags.items == []
+    assert is_binary(fields.kind.kind_name) and is_list(fields.kind.kind_path)
+    assert [%{"value" => "count"}] = fields.kind.hidden
+    assert fields.tags.members == nil and fields.tags.items == [] and fields.tags.hidden == []
 
     # what is plain data goes to JSON as it is
     plain = fn given -> Map.drop(given, [:input, :members, :items, :single]) end

@@ -418,9 +418,9 @@ defmodule AshDataTable.Kit.Words do
 
   # Of a field that is a list of groups: what each value of it is called,
   # the button that takes it away, and what is said of it as a whole, by
-  # its place (`AshDataTable.Act.items/1`, as the panel draws them).
+  # its place (`AshDataTable.GroupValue.items/1`, as the panel draws them).
   defp group_items(%{editor: :groups, label: label}, %{value: held, inside: inside}) do
-    items = AshDataTable.Act.items(held)
+    items = AshDataTable.GroupValue.items(held)
 
     positions(label, items) ++
       [

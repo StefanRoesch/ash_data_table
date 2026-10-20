@@ -24,8 +24,6 @@ defmodule AshDataTable.Format do
   alias AshDataTable.Text
   alias AshDataTable.Zone
 
-  @utc Zone.utc()
-
   @typedoc """
   What a value is shown as: a column, an input, a field of a value made of
   fields, a kind of a union, or a cell type alone. Of it `format/3` reads
@@ -46,7 +44,7 @@ defmodule AshDataTable.Format do
   UTC.
   """
   @spec format(shown, term) :: String.t()
-  def format(column, value), do: format(column, value, @utc)
+  def format(column, value), do: format(column, value, Zone.utc())
 
   @spec format(shown, term, Zone.t()) :: String.t()
   def format(_column, nil, _zone), do: ""
@@ -158,7 +156,7 @@ defmodule AshDataTable.Format do
   cast what a generic action returns.
   """
   @spec said(Model.Action.t(), term) :: String.t() | nil
-  def said(action, value), do: said(action, value, @utc)
+  def said(action, value), do: said(action, value, Zone.utc())
 
   @spec said(Model.Action.t(), term, Zone.t()) :: String.t() | nil
   def said(%Model.Action{} = action, value, zone) do
@@ -193,7 +191,7 @@ defmodule AshDataTable.Format do
   """
   @spec summary(Column.t(), term) :: String.t()
   # in UTC
-  def summary(column, value), do: summary(column, value, @utc)
+  def summary(column, value), do: summary(column, value, Zone.utc())
 
   @spec summary(Column.t(), term, Zone.t()) :: String.t()
   def summary(_column, nil, _zone), do: ""
@@ -299,8 +297,11 @@ defmodule AshDataTable.Format do
   # An instant without a type that says so, in a zone other than UTC: as a
   # datetime cell shows it. (In UTC it is the text of the struct, as it was
   # before there were zones.)
-  defp other(%DateTime{} = value, zone) when zone != @utc,
-    do: format(%{cell_type: :datetime}, value, zone)
+  defp other(%DateTime{} = value, zone) do
+    if zone == Zone.utc(),
+      do: to_string(value),
+      else: format(%{cell_type: :datetime}, value, zone)
+  end
 
   defp other(%_{} = value, _zone) do
     if String.Chars.impl_for(value), do: to_string(value), else: inspect(value)

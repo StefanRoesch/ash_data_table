@@ -20,7 +20,7 @@ the questions, panels and pickers in your own page, see
 <!-- sketch -->
 ```elixir
 defmodule MyAppWeb.TableKit do
-  use AshDataTable.Kit, contract: 5
+  use AshDataTable.Kit, contract: 6
 
   # restyle a part drawn once per table
   def class(:panel, _state), do: "my-panel"
@@ -32,7 +32,7 @@ defmodule MyAppWeb.TableKit do
 end
 ```
 
-`use AshDataTable.Kit, contract: 5` makes every part the default kit's. A kit
+`use AshDataTable.Kit, contract: 6` makes every part the default kit's. A kit
 defines the parts it draws itself, and calls `super` for what the default kit
 draws. It is checked as it compiles: another contract number than this
 version's, a public function of one argument that is no part (a typo such as
@@ -170,11 +170,11 @@ of your own is given the resolved look, a map of all six, as `look` in its
 ## Drawing a part
 
 A part is a function component of the kit, named after the part
-(`AshDataTable.Kit.parts/0` lists the 32 of contract 5). It is given values,
+(`AshDataTable.Kit.parts/0` lists the 32 of contract 6). It is given values,
 never a record, an `AshPhoenix.Form`, a changeset or the actor, and never the
 value of a `sensitive?` field. The moduledoc of `AshDataTable.Kit` says, part
 by part, what each is given, which elements it must draw with which markers,
-and the fields of every value it is given ("Kit contract 5").
+and the fields of every value it is given ("Kit contract 6").
 
 The demo has a kit of its own, `DemoWeb.DivKit`, which draws the grid, its
 rows, cells and footer with `div`s in place of a `<table>`, and opens
@@ -183,7 +183,7 @@ everything in the page
 
 <!-- source: demo/lib/demo_web/div_kit.ex -->
 ```elixir
-use AshDataTable.Kit, contract: 5
+use AshDataTable.Kit, contract: 6
 
 alias AshDataTable.Attrs
 alias AshDataTable.Ids
@@ -228,6 +228,16 @@ given. Where a part is drawn once per row, cell or column, the attributes that
 are the same on every one are written by the part itself, as `role` above
 (a bundle would send it again with every row), and the bundle holds what
 varies. The `Attrs` moduledoc is the contract.
+
+A field of the action panel that holds a value made of fields (a map, a list
+of maps, a union) is given its hidden entries the same way: `hidden`, a list
+of bundles, each spread on an `<input type="hidden">` (of a list of maps the
+entry that sends the list when it has no values, of a union the one that says
+which kind its value was typed for), and the same in its `members` (the entry
+that says the value is there, and the key of each value of a list, which Ash
+tells them apart by). A union's choice of its kind is sent under `kind_name`.
+What those entries are called and hold is the table's: a part draws them as
+it is given them, and writes no name of its own.
 
 **Tab stops.** A table is a table (`role="table"`), not an ARIA grid: the
 browser moves the focus with Tab, from control to control in the order they
@@ -476,7 +486,7 @@ changed.
   table through `Kit.part/1` has to pass that part's `texts` and `messages`
   made with `Kit.Words`.
 - **Reading a function of the table's structs.** A kit reads the fields
-  "Kit contract 5" lists; their modules' functions are the table's own, and
+  "Kit contract 6" lists; their modules' functions are the table's own, and
   may change.
 - **A kit of contract 2 no longer compiles.** Contract 3 draws a table, not
   an ARIA grid: `role="table"`, `"cell"` and `"rowheader"` (the label
@@ -501,6 +511,12 @@ changed.
   draws its fields from `fields`; a field of your own is given `path`,
   `table`, `limits`, `counted` and what a value made of fields holds
   (`members`, `items`, `kind`, `single`) in place of `inside`.
+- **A kit of contract 5 no longer compiles.** Contract 6 gives a field of the
+  panel its hidden entries as bundles (`hidden`, and `members.hidden` in
+  place of `members.keys`) and a union the name of its kind's choice
+  (`kind_name`, `kind_path`). A field of your own spreads each entry of
+  `hidden` on an `<input type="hidden">` and names the kind's choice
+  `kind_name`, in place of the names it wrote itself.
 
 ## Not in the first version
 

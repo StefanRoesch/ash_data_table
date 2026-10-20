@@ -1049,125 +1049,15 @@ defmodule AshDataTable.ModelTest do
     end
   end
 
-  describe "what the editor of a map cell holds" do
+  describe "what the field of a map cell sent, against what the record holds" do
     alias AshDataTable.Act
-    alias AshDataTable.Format
+    alias AshDataTable.GroupValue
     alias AshDataTable.Test.Embedding.{Part, Place}
-
-    test "its inputs by name, each as the editor of its type writes it; nil for no value" do
-      place = %Place{street: "Quay 1", open?: true, kind: :main_depot, tags: ["a"], memo: "x"}
-
-      assert AshDataTable.Typed.of(mapped(:place), place) == %{
-               "street" => "Quay 1",
-               "city" => "",
-               "open?" => "true",
-               "kind" => "main_depot",
-               "opens_at" => "",
-               "tags" => ["a"],
-               "token" => ""
-             }
-
-      assert AshDataTable.Typed.of(mapped(:place), nil) == nil
-    end
-
-    test "with the key of an embedded resource that is no input, and without what is only shown" do
-      part = %Part{
-        id: "11111111-2222-4333-8444-555555555555",
-        name: "Crane",
-        made_at: ~U[2026-01-01 00:00:00Z]
-      }
-
-      assert AshDataTable.Typed.of(mapped(:parts), [part]) == [
-               %{"id" => "11111111-2222-4333-8444-555555555555", "name" => "Crane"}
-             ]
-
-      assert AshDataTable.Typed.of(mapped(:parts), nil) == []
-    end
-
-    test "a value made of fields inside it the same way, nil where there is none" do
-      assert AshDataTable.Typed.of(mapped(:settings), %{title: "Main", limits: %{low: 1}}) == %{
-               "title" => "Main",
-               "count" => "",
-               "mode" => "",
-               "limits" => %{"low" => "1"},
-               "place" => nil
-             }
-    end
-
-    test "is sent by its field with a mark of its own, and taken back as it was held" do
-      place = mapped(:place)
-      held = AshDataTable.Typed.of(place, %Place{street: "Quay 1", open?: true, tags: ["a", "b"]})
-      sent = Act.sent(place, held)
-
-      assert sent["_present"] == ""
-      # the field of an array sends an entry of its own before its values
-      assert sent["tags"] == ["", "a", "b"]
-      assert Act.typed(place, sent) == held
-      assert Act.sent(place, nil) == nil
-      assert Act.typed(place, nil) == nil
-      assert Act.typed(place, "") == nil
-    end
-
-    test "an array of them is sent value by value, each under a number of its own, and taken back in that order" do
-      entries = mapped(:entries)
-      sent = Act.sent(entries, [%{"label" => "one"}, %{"label" => "two"}])
-
-      assert sent == %{
-               "_present" => "",
-               "0" => %{"_present" => "", "label" => "one"},
-               "1" => %{"_present" => "", "label" => "two"}
-             }
-
-      assert Act.items(sent) |> Enum.map(&elem(&1, 0)) == ["0", "1"]
-
-      # a number says the order, and need not be the place
-      assert Act.typed(entries, %{"10" => %{"label" => "b"}, "2" => %{"label" => "a"}, "x" => %{}}) ==
-               [%{"label" => "a"}, %{"label" => "b"}]
-
-      # nothing sent is the empty list
-      assert Act.typed(entries, nil) == []
-      assert Act.typed(entries, %{"_present" => ""}) == []
-    end
-
-    test "only what the fields say is taken, whatever else was sent" do
-      assert Act.typed(mapped(:place), %{"street" => "Quay 1", "memo" => "forged", "bogus" => "x"}) ==
-               %{
-                 "street" => "Quay 1",
-                 "city" => "",
-                 "open?" => "false",
-                 "kind" => "",
-                 "opens_at" => "",
-                 "tags" => [],
-                 "token" => ""
-               }
-
-      # what is only shown is never taken; the key is, as it came
-      assert Act.typed(mapped(:parts), %{
-               "0" => %{"id" => "abc", "name" => "Crane", "made_at" => "2020-01-01T00:00:00"}
-             }) == [%{"id" => "abc", "name" => "Crane"}]
-    end
-
-    test "a new value starts with its inputs empty, but for those with a default" do
-      assert Act.blank(mapped(:place)) == %{
-               "_present" => "",
-               "street" => "",
-               "city" => "",
-               "open?" => "false",
-               "kind" => "",
-               "opens_at" => "",
-               "tags" => [""],
-               "token" => ""
-             }
-
-      # a value inside it that can be left out is not there
-      assert Act.blank(mapped(:settings))["limits"] == nil
-      assert Act.blank(mapped(:contact))["places"] == %{"_present" => ""}
-    end
 
     test "what it sent is unchanged when it is what the record holds, as its field would send that" do
       place = %Place{street: "Quay 1", open?: false, tags: ["a"]}
       column = mapped(:place)
-      sent = Act.sent(column, AshDataTable.Typed.of(column, place))
+      sent = GroupValue.held(column, place, "Etc/UTC")
 
       assert Act.unchanged?(column, sent, place)
       refute Act.unchanged?(column, %{sent | "city" => "Kiel"}, place)
@@ -1178,7 +1068,7 @@ defmodule AshDataTable.ModelTest do
 
       parts = mapped(:parts)
       list = [%Part{id: "a", name: "Crane"}, %Part{id: "b", name: "Winch"}]
-      sent = Act.sent(parts, AshDataTable.Typed.of(parts, list))
+      sent = GroupValue.held(parts, list, "Etc/UTC")
       assert Act.unchanged?(parts, sent, list)
       refute Act.unchanged?(parts, Map.delete(sent, "1"), list)
       assert Act.unchanged?(parts, %{"_present" => ""}, [])

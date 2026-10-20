@@ -819,7 +819,9 @@ defmodule DemoWeb.ReactKit.Props do
   # and value, what its control is and says, its buttons' bundles
   # (`Attrs.unpick/4`, `Attrs.clear_field/3`, `Attrs.add_group/3`,
   # `Attrs.remove_group/3`, and the picker's `pick_input`), a file's upload,
-  # and what a value made of fields holds, each a field again.
+  # and what a value made of fields holds, each a field again, with its
+  # hidden entries as bundles (`hidden`) and a union's choice of its kind
+  # (`kind_name`, `kind_path`).
   defp field(given, target) do
     input = given.input
     editor = input.editor
@@ -876,7 +878,10 @@ defmodule DemoWeb.ReactKit.Props do
             members: members(item.members, target)
           }
         end,
+      hidden: Enum.map(given.hidden, &bundle/1),
       kind: given.kind,
+      kind_name: given.kind_name,
+      kind_path: given.kind_path && Enum.join(given.kind_path, "."),
       kinds:
         if editor == :union do
           for member <- input.members,
@@ -894,8 +899,7 @@ defmodule DemoWeb.ReactKit.Props do
 
   defp members(members, target),
     do: %{
-      name: members.name,
-      keys: members.keys,
+      hidden: Enum.map(members.hidden, &bundle/1),
       fields: Enum.map(members.fields, &field(&1, target))
     }
 

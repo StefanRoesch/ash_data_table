@@ -11,7 +11,7 @@ defmodule DemoWeb.DivKit do
   the columns line up; what is not a grid part is the default kit's. What
   it says is what each part is given (`texts`), in the person's language.
   """
-  use AshDataTable.Kit, contract: 5
+  use AshDataTable.Kit, contract: 6
 
   alias AshDataTable.Attrs
   alias AshDataTable.Ids
