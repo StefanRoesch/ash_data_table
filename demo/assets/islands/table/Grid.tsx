@@ -191,8 +191,12 @@ function Grid(props: GridProps) {
   }, [])
   const held = React.useMemo(() => (edited ? new Set([...busy, edited]) : busy), [busy, edited])
   const HeaderCell = usePart("HeaderCell")
-  const Row = usePart("Row")
-  const Detail = usePart("Detail")
+  // a row is drawn again only where its item, or what all rows are drawn
+  // with, changed (a cell the hook holds hears that itself)
+  const RowPart = usePart("Row")
+  const DetailPart = usePart("Detail")
+  const Row = React.useMemo(() => React.memo(RowPart), [RowPart])
+  const Detail = React.useMemo(() => React.memo(DetailPart), [DetailPart])
   const FooterPart = usePart("Footer")
   const id = row.id
   // whether a row is expanded, by its key: what the server last said of its
