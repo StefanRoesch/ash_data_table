@@ -57,14 +57,16 @@ The action reads the file through `Ash.Type.File`:
 <!-- source: demo/lib/demo/tracker/label.ex -->
 ```elixir
 defp lines(file) do
-  with {:ok, device} <- Ash.Type.File.open(file, [:read, :utf8]) do
-    # nothing at all is read as the end of the file
-    text = with :eof <- IO.read(device, :eof), do: ""
-    File.close(device)
+  case Ash.Type.File.open(file, [:read, :utf8]) do
+    {:ok, device} ->
+      # nothing at all is read as the end of the file
+      text = with :eof <- IO.read(device, :eof), do: ""
+      File.close(device)
 
-    # ...
-  else
-    {:error, _reason} -> {:error, invalid("could not be read")}
+      # ...
+
+    {:error, _reason} ->
+      {:error, invalid("could not be read")}
   end
 end
 ```
