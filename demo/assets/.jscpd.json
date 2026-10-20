@@ -1,0 +1,7 @@
+{
+  "path": ["islands", "js", "../../assets/js"],
+  "ignore": ["**/node_modules/**", "**/vendor/**", "**/islands/ui/**"],
+  "minTokens": 50,
+  "reporters": ["console"],
+  "gitignore": true
+}

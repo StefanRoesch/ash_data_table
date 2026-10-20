@@ -114,6 +114,59 @@ What the clones in `~/doloops/ash_reference` and Ash core / ash_phoenix on GitHu
 
 **So the Ash way is:** ex_check + Credo strict (their disabled list) + Dialyzer + Sobelow `--skip` + both audits + spark formatter/cheat-sheet checks + warnings-as-errors. DuplicatedCode, coverage, mix_unused, jscpd and knip go beyond the precedent; that is fine for a gate that only reports, but they should not become build-failing checks without a reason.
 
+## First run (2026-10-20)
+
+The gate after the React kit (R0–R5). Run as `mix check --no-retry`, first in the root and then in `demo/`, one after the other. Elixir 1.19.4, OTP 28.3, Node 24.13.1. The load average (1 min) went from 1.2 to 9.2 in the root and from 2.3 to 9.6 in the demo (5-min peak 13.1). Other BEAMs were running on the machine.
+
+**Setup** (dev/test only, exact versions). In `mix.exs` and `demo/mix.exs`: ex_check 0.17.0, credo 1.7.19, dialyxir 1.4.8, sobelow 0.16.0 and mix_audit 2.1.5. `dialyzer: [plt_add_apps: [:mix, :ex_unit]]`, and `test_coverage: [summary: [threshold: 0]]` so that coverage reports and never fails. `.check.exs` and `.credo.exs` in both places: Ash's disabled checks, with `DuplicatedCode` switched on. In the demo, `npm_test` is off.
+
+The library stays npm-free: the JS tools are devDependencies of `demo/assets/package.json`. They are eslint 9.39.5 (npm already marks 9.x deprecated), @eslint/js 9.39.5, typescript-eslint 8.72.0, eslint-plugin-react-hooks 7.1.1, eslint-plugin-jsx-a11y 6.10.2, globals 17.13.0, knip 6.42.1, jscpd 5.4.1, typescript 5.9.3, @types/react 19.3.0 and @types/react-dom 19.3.0. Their configs are `eslint.config.mjs`, `knip.json` and `.jscpd.json`. The demo's type check has its own `tsconfig.check.json` (with `check.d.ts`), because Phoenix's `tsconfig.json` targets ES5 and cannot see live_react's types. The library's `npm run check` runs in the root gate.
+
+Fixes to the setup during the run, each followed by one re-run of only that tool:
+- knip had reported `live_react` and `phoenix-colocated` as unlisted. They come from `deps/` and `_build`, so they are now ignored.
+- tsc had reported 46 errors from the ES5 default. With `tsconfig.check.json` it reports 1.
+- My first edit of `demo/mix.exs` broke `documentation_test.exs`, which quotes the `live_react` line. That was fixed and the test re-run.
+
+| Tool | Root: findings (real) | Root time | Demo: findings (real) | Demo time | Tickets |
+|---|---|---|---|---|---|
+| `compile --force --warnings-as-errors` | 0 | 0:06 | 0 | 0:05 | – |
+| formatter, spark.formatter, spark.cheat_sheets | 0 | 0:02–0:03 | 0 | 0:09 | – |
+| `mix docs --warnings-as-errors` | 0 | 0:03 | – (no ex_doc) | – | – |
+| Credo `--strict` | 35 (33) | 0:12 | 31 (31) | 0:14 | #56, #57, #58 |
+| Dialyzer | 60 (34) | 4:14 (PLT 3:49) | 2 (0) | 5:48 (PLT 4:54) | #55 |
+| `mix test --cover --warnings-as-errors` | 1305 tests, 1 failure (mine, fixed); **coverage 58.15 %** | 1:30 | 3181 tests, 0 failures, 2 warnings; **coverage 84.91 %** | 3:43 | #63 |
+| Sobelow `--skip` | 4 (0) | 0:04 | 4 (0) | 0:02 | – |
+| `hex.audit` / `deps.audit` / `deps.unlock --check-unused` | 0 / 0 / 0 | 0:01–0:03 | 1 / 0 / 0 | 0:02–0:03 | #62 |
+| gettext `--check-up-to-date` | 0 | 0:12 | 1 (1) | 0:14 | #64 |
+| xref cycles (compile-connected) | 2 (0) | 0:02 | 1 (0) | 0:03 | – |
+| tsc | 0 (`npm run check`) | 0:02 | 1 (0) | 0:11 | – |
+| ESLint | – | – | 101 (41) | 0:11 | #60 |
+| knip | – | – | 7 (5) | 0:02 | #61 |
+| jscpd | – | – | 5 clones, 0.62 % (5) | 0:00 | #59 |
+| `npm audit --omit=dev` | – | – | 0 | 0:01 | – |
+| **Whole `mix check`** | | **4:24** | | **5:53** | |
+
+The first PLT took about 4 minutes, not the expected 15–25, because dialyxir's core Erlang/Elixir PLT already existed on the machine.
+
+Root coverage is low because the LiveView modules (`Live.*`, `Live.Page`, `Live.Hooks`, the `Live.Core.*` topics) are tested by the demo's suite, not the root's. The two numbers measure different code and do not add up.
+
+**Dropped as false positives:**
+- Dialyzer, root (26): `LazyHTML.*` unknown functions in `kit_case.ex` and `test.ex`. `lazy_html` is test-only and so is not in the dev PLT.
+- Dialyzer, demo (2): `Gettext.Plural` opaque calls in the generated `DemoWeb.Gettext` backend.
+- Credo, root (2): `UnusedEnumOperation` in `listener.ex`. The result is passed to `state.relay`.
+- Sobelow, root (4): `File.cp!` and `File.rm` in `live/core/files.ex` work on paths from `Plug.Upload.random_file!/1`, not from the browser. `String.to_atom` in `router.ex:199` runs at compile time on the router line's id.
+- Sobelow, demo (4): `secret_key_base` in `config/e2e.exs` and `config/perf.exs` (local environments). No CSP in the demo's `browser` pipeline (a demo, not deployed). No CSRF on `:e2e_session`, which is JSON routes in the e2e environment only.
+- xref (3): the root's cycles are Spark's extension, entity, verifier and info edges, which `test/architecture_test.exs` allows. The demo's is Phoenix's router and verified-routes cycle.
+- tsc, demo (1): `getHooks` is missing from live_react's `index.d.mts`. The export exists, and live_react's install guide uses it.
+- ESLint (60): `react-hooks/static-components` (42): `usePart` reads the part from context. `jsx-a11y` roles (12): `role="cell"` and `role="rowgroup"` are on purpose under the role=table model and mirror the HEEx markup. `_`-prefixed unused names (4). `process` (1; esbuild's `--define`). `no-control-regex` (1; on purpose).
+- knip (2): `Badge` and `Button` in the generated shadcn files `islands/ui/`.
+
+**Trials (not in the gate):**
+- **argus_beam 0.24.0**, `mix argus --all` on the demo (with the library): **0 findings**. It took 1:13, including the download of its prebuilt engines (123 MB, not the 70 MB the README says). As the note expected, there are almost no processes for it to look at. **Not worth keeping.**
+- **mix_unused 0.4.1**, as a compiler in the root: **521 hints** in 7 s (444 "unused", 77 "should be private"). Almost all are noise: Spark's generated entities and options, Info functions, the public API, Phoenix's `__components__`/`__live__`, dispatch through `on/2`, and callers in tests. A grep confirmed 3 truly dead functions (#61). Without a long ignore list it is unusable. **Not worth keeping.** A grep when a feature ends finds the same.
+
+**Tickets:** #55 Dialyzer (lib), #56 Credo (lib), #57 Credo (demo), #58 duplicated test fixtures, #59 jscpd clones, #60 React kit ESLint, #61 unused code (mix_unused trial and knip), #62 retired ash_postgres 2.14.5 (demo), #63 unused variables in demo tests, #64 demo `default.pot` out of date. All are labelled `ready-for-agent`.
+
 ## Sources
 
 - Hex packages (version, dates, licence, owners from `https://hex.pm/api/packages/<name>`): [credo](https://hex.pm/packages/credo), [dialyxir](https://hex.pm/packages/dialyxir), [sobelow](https://hex.pm/packages/sobelow), [mix_audit](https://hex.pm/packages/mix_audit), [ex_check](https://hex.pm/packages/ex_check), [argus_beam](https://hex.pm/packages/argus_beam), [panoptes](https://hex.pm/packages/panoptes), [scry](https://hex.pm/packages/scry), [mix_unused](https://hex.pm/packages/mix_unused), [doctor](https://hex.pm/packages/doctor), [excoveralls](https://hex.pm/packages/excoveralls), [styler](https://hex.pm/packages/styler), [quokka](https://hex.pm/packages/quokka), [credo_naming](https://hex.pm/packages/credo_naming), [boundary](https://hex.pm/packages/boundary), [ex_doc](https://hex.pm/packages/ex_doc), [ex_slop](https://hex.pm/packages/ex_slop), [ex_dna](https://hex.pm/packages/ex_dna), [reach](https://hex.pm/packages/reach)

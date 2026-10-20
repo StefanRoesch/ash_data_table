@@ -1,7 +1,7 @@
 {
   "name": "demo-assets",
   "private": true,
-  "description": "The demo's npm packages, for its React islands (assets/islands) only: bundled by the Hex esbuild, no Vite, no Node at runtime. The library itself has no npm dependency.",
+  "description": "The demo's npm packages, for its React islands (assets/islands) only: bundled by the Hex esbuild, no Vite, no Node at runtime. The library itself has no npm dependency. devDependencies: the code-quality gate's JS tools (`mix check` in demo).",
   "dependencies": {
     "@radix-ui/react-slot": "1.5.0",
     "ash_data_table": "file:../..",
@@ -10,5 +10,24 @@
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "tailwind-merge": "3.7.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.check.json",
+    "lint": "eslint js islands",
+    "knip": "knip",
+    "jscpd": "jscpd"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "eslint": "9.39.5",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.13.0",
+    "jscpd": "5.4.1",
+    "knip": "6.42.1",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.0"
   }
 }

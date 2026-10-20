@@ -1,0 +1,24 @@
+// The type check of the code-quality gate (`npm run typecheck`, `mix check`
+// in demo). `tsconfig.json` is Phoenix's file for editors and esbuild; this
+// one adds what a check needs: a modern target and the DOM, the way the Hex
+// esbuild resolves packages, live_react's declared types (its package.json
+// names them only under `exports`, which a `paths` lookup does not read;
+// React's types for them, as `deps/` has no node_modules),
+// `process.env.NODE_ENV` (esbuild's `--define`, `check.d.ts`), and no
+// checking of the packages' own types.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+    "paths": {
+      "live_react": ["../deps/live_react/assets/js/live_react/index.d.mts"],
+      "react": ["./node_modules/@types/react"],
+      "*": ["../deps/*"]
+    }
+  },
+  "include": ["js/**/*", "islands/**/*", "check.d.ts"]
+}

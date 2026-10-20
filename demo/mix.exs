@@ -12,6 +12,9 @@ defmodule Demo.MixProject do
       deps: deps(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader],
+      dialyzer: [plt_add_apps: [:mix, :ex_unit]],
+      # `mix test --cover` reports the coverage; no threshold fails it yet.
+      test_coverage: [summary: [threshold: 0]],
       consolidate_protocols: Mix.env() != :dev
     ]
   end
@@ -72,6 +75,14 @@ defmodule Demo.MixProject do
        app: false,
        compile: false,
        depth: 1},
+      # The code-quality gate, `mix check` (`.check.exs`; the research note
+      # `docs/research/code-quality-tools.md` in the root). Exact versions: a
+      # new release of a checker changes its findings.
+      {:ex_check, "0.17.0", only: [:dev, :test], runtime: false},
+      {:credo, "1.7.19", only: [:dev, :test], runtime: false},
+      {:dialyxir, "1.4.8", only: [:dev, :test], runtime: false},
+      {:sobelow, "0.16.0", only: [:dev, :test], runtime: false},
+      {:mix_audit, "2.1.5", only: [:dev, :test], runtime: false},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 1.0"},
@@ -118,6 +129,8 @@ defmodule Demo.MixProject do
         "esbuild demo --minify",
         "phx.digest"
       ],
+      credo: "credo --strict",
+      sobelow: "sobelow --skip",
       precommit: [
         "compile --force --warnings-as-errors",
         "deps.unlock --unused",

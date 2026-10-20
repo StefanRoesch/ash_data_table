@@ -30,6 +30,9 @@ defmodule AshDataTable.MixProject do
       package: package(),
       source_url: @source_url,
       aliases: aliases(),
+      dialyzer: [plt_add_apps: [:mix, :ex_unit]],
+      # `mix test --cover` reports the coverage; no threshold fails it yet.
+      test_coverage: [summary: [threshold: 0]],
       docs: &docs/0
     ]
   end
@@ -40,7 +43,10 @@ defmodule AshDataTable.MixProject do
       # are built, and its links are turned into ones ExDoc resolves.
       docs: ["spark.cheat_sheets", "docs", "spark.replace_doc_links"],
       "spark.cheat_sheets": "spark.cheat_sheets --extensions #{@extensions}",
-      "spark.formatter": "spark.formatter --extensions #{@extensions}"
+      "spark.formatter": "spark.formatter --extensions #{@extensions}",
+      credo: "credo --strict",
+      # A library has no router or endpoint: Sobelow skips what is marked.
+      sobelow: "sobelow --skip"
     ]
   end
 
@@ -189,6 +195,14 @@ defmodule AshDataTable.MixProject do
       # Only `mix ash_data_table.install` needs it; without it the task is a stub.
       {:igniter, "~> 0.6", optional: true},
       {:ex_doc, "~> 0.37", only: [:dev, :test], runtime: false},
+      # The code-quality gate, `mix check` (`.check.exs`; the research note
+      # `docs/research/code-quality-tools.md`). Exact versions: a new release
+      # of a checker changes its findings.
+      {:ex_check, "0.17.0", only: [:dev, :test], runtime: false},
+      {:credo, "1.7.19", only: [:dev, :test], runtime: false},
+      {:dialyxir, "1.4.8", only: [:dev, :test], runtime: false},
+      {:sobelow, "0.16.0", only: [:dev, :test], runtime: false},
+      {:mix_audit, "2.1.5", only: [:dev, :test], runtime: false},
       # The solver Ash's policies need. Only the test resources have policies;
       # a host application brings its own.
       {:simple_sat, "~> 0.1", only: :test},

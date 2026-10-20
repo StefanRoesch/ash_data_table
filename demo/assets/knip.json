@@ -1,0 +1,6 @@
+{
+  "$schema": "https://unpkg.com/knip@6.42.1/schema.json",
+  "entry": ["js/app.js"],
+  "project": ["js/**", "islands/**"],
+  "ignoreDependencies": ["live_react", "phoenix-colocated"]
+}
