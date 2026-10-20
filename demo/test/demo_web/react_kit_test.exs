@@ -93,6 +93,43 @@ defmodule DemoWeb.ReactKitTest do
           send.("select", %{"rows" => [[task.id, nil]], "all" => false})
         ],
         do: props!(page)
+
+    # a filter that matches nothing: "No records", an island of its own
+    send.("filter", %{"filter" => %{"title" => %{"o" => "contains", "v" => "no such task"}}})
+
+    assert [%{props: %{"message" => message}}] =
+             view |> render_async(10_000) |> islands() |> Enum.filter(&(&1.name == "AshMessage"))
+
+    assert %{"id" => "task-empty", "kind" => "empty", "alert" => false, "text" => "No records"} =
+             message
+  end
+
+  test "a table limited to the records of one record says so in an island", %{
+    conn: conn,
+    world: world
+  } do
+    project = hd(world.projects)
+
+    {:ok, _view, html} = live(conn, "/react/tasks?task[of][project][tasks]=#{project.id}")
+
+    assert [%{props: %{"related" => related}}] =
+             html |> islands() |> Enum.filter(&(&1.name == "AshRelated"))
+
+    assert %{
+             "id" => "task-related",
+             "heading" => %{
+               "id" => "task-related-heading",
+               "record" => %{
+                 "id" => "task-related-parent",
+                 "title" => title,
+                 "path" => "/projects"
+               }
+             },
+             "create" => %{"attrs" => %{"id" => "task-create"}},
+             "clear" => %{"id" => "task-related-clear", "path" => "/react/tasks"}
+           } = related
+
+    assert title == project.name
   end
 
   # Every island's props in the page, its portals too, are JSON objects.

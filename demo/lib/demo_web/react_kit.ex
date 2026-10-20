@@ -24,10 +24,17 @@ defmodule DemoWeb.ReactKit do
     * `selection_line` - the island `AshSelectionLine`;
     * `status` - the island `AshStatus`;
     * `pagination` - the island `AshPagination` (a nested table's is in
-      the grid's island).
+      the grid's island);
+    * `related` - the island `AshRelated`: what a table limited to the
+      records of one record says above its grid, its create and table
+      actions, and "Show all records";
+    * `message` - the island `AshMessage`, one per message said in place
+      of the rows (an error, loading, an argument to fill, "No records").
 
-  The other parts are `AshDataTable.Kit.Default`'s: the root, the line
-  above a table limited to related records (`related`), the messages, the panel, the picker and the question (stage R3). The parts
+  The other parts are `AshDataTable.Kit.Default`'s: the root (an element
+  with its bundle that holds the table's parts and what opens, and draws
+  nothing to be seen: LiveView patches what it holds), the panel, the
+  picker and the question (stage R3). The parts
   the islands draw inside them (`columns`, `argument_line`, `argument`,
   `editor`, …) are React components there, each replaceable by name
   (`reactKit({...})`); their `Kit.Default` parts are not used by this kit.
@@ -196,6 +203,30 @@ defmodule DemoWeb.ReactKit do
       name="AshStatus"
       class="contents"
       status={Props.status(@id, @announcements, @texts)}
+    />
+    """
+  end
+
+  # Above a table limited to the records of one record.
+  def related(assigns) do
+    ~H"""
+    <LiveReact.react
+      id={"#{@id}-related-island"}
+      name="AshRelated"
+      class="contents"
+      related={Props.related(@id, @title, @parent, @clear, @create, @actions, @target, @texts)}
+    />
+    """
+  end
+
+  # What is said in place of the rows: one island per message, by its kind.
+  def message(assigns) do
+    ~H"""
+    <LiveReact.react
+      id={"#{@id}-#{@kind}-island"}
+      name="AshMessage"
+      class="contents"
+      message={Props.message(@id, @kind, @text, @nested?)}
     />
     """
   end

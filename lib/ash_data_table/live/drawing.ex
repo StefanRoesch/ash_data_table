@@ -338,11 +338,14 @@ defmodule AshDataTable.Live.Drawing do
         texts={Words.texts(:grid, %{label: @entry.label, columns: @entry.model.columns})}
         messages={Words.messages(:grid, %{label: @entry.label, columns: @entry.model.columns})}
       />
+      <%!-- keyed by its kind: a message of another kind is another
+      element, drawn anew, not the one before it changed --%>
       <Kit.part
         :for={
           {kind, message} <-
             Parts.Messages.messages(@entry.error, @entry.fill, @entry.loading?, @entry.row_count)
         }
+        :key={kind}
         part={:message}
         kit={@options.kit}
         id={@entry.id}

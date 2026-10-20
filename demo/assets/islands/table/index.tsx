@@ -11,14 +11,16 @@ import * as React from "react"
 
 import {AshGrid} from "./Grid"
 import {AshHeading} from "./Heading"
+import {AshMessage} from "./Message"
 import {AshPagination} from "./Pagination"
+import {AshRelated} from "./Related"
 import {AshSelectionLine} from "./SelectionLine"
 import {AshStatus} from "./Status"
 import {DEFAULT_PARTS, PartsContext, type Parts} from "./parts"
 
 export {reactKitHooks} from "./mounting"
 
-const ISLANDS: Record<string, React.ComponentType<any>> = {AshHeading, AshGrid, AshSelectionLine, AshStatus, AshPagination}
+const ISLANDS: Record<string, React.ComponentType<any>> = {AshHeading, AshRelated, AshGrid, AshSelectionLine, AshStatus, AshMessage, AshPagination}
 
 export function reactKit(given: Partial<Parts> = {}): Record<string, React.ComponentType<any>> {
   const parts: Parts = {

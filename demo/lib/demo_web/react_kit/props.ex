@@ -668,6 +668,50 @@ defmodule DemoWeb.ReactKit.Props do
   end
 
   @doc """
+  What a table limited to the records of one record says above its grid
+  (the part `related`): its heading, the relationship as the parent's
+  table calls it, or its words before and after the record, which is a
+  link to the page of the record's own table where the router mounts one;
+  create and the table actions (`Attrs.create/2`, `Attrs.table_action/3`),
+  and "Show all records", a patch to every record.
+  """
+  def related(id, title, parent, clear, create, actions, target, texts) do
+    %{
+      id: "#{id}-related",
+      heading: %{
+        id: "#{id}-related-heading",
+        relationship: texts.relationship,
+        record:
+          texts.heading_before &&
+            %{
+              id: "#{id}-related-parent",
+              before: texts.heading_before,
+              title: title,
+              after: texts.heading_after,
+              path: parent && parent.path
+            }
+      },
+      create: create && %{label: create.label, attrs: bundle(Attrs.create(id, target))},
+      actions:
+        for action <- actions do
+          %{
+            name: action.name,
+            label: action.label,
+            attrs: bundle(Attrs.table_action(id, action, target))
+          }
+        end,
+      clear: %{id: "#{id}-related-clear", path: clear, text: texts.show_all_records}
+    }
+  end
+
+  @doc """
+  What is said in place of the rows (the part `message`): its element
+  `ID-KIND`, an alert where it is the error of a read, and its text.
+  """
+  def message(id, kind, text, nested?),
+    do: %{id: "#{id}-#{kind}", kind: kind, alert: kind == :error, text: text, nested: nested?}
+
+  @doc """
   The pagination (the part `pagination`, and a nested table's in its
   footer): its element (`Attrs.pagination/3`), the range, Previous, the
   page numbers, Next and "Rows per page", with the events they send.

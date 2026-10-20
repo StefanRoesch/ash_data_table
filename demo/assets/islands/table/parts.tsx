@@ -12,10 +12,13 @@ import {Columns} from "./Columns"
 import {Editor, EDITORS, type EditorComponents} from "./Editors"
 import {Argument, ArgumentLine, Heading} from "./Heading"
 import {Filter} from "./Filter"
+import {Message} from "./Message"
 import {Pagination} from "./Pagination"
+import {Related} from "./Related"
 
 export const DEFAULT_PARTS = {
   Heading,
+  Related,
   Columns,
   ArgumentLine,
   Argument,
@@ -30,6 +33,7 @@ export const DEFAULT_PARTS = {
   Footer,
   SummaryCell,
   Pagination,
+  Message,
   Editor,
   components: COMPONENTS as Components,
   editors: EDITORS as EditorComponents,
