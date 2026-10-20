@@ -60,7 +60,7 @@ defmodule Demo.MixProject do
       # An MCP endpoint into the running demo for coding agents, at /tidewave/mcp.
       {:tidewave, "~> 0.9", only: :dev},
       {:phoenix_live_view, "~> 1.2.0"},
-      {:lazy_html, ">= 0.1.0", only: :test},
+      {:lazy_html, ">= 0.1.0", only: [:test, :e2e]},
       # LiveReact.Test.get_react/2 reads an island with it (react_kit_test.exs)
       {:floki, ">= 0.30.0", only: :test},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},

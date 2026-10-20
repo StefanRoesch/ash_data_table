@@ -96,8 +96,12 @@ function mount(behaviour, part, el, transport, options = {}) {
     }
   }
   hook.mounted()
-  check(hook, part)
   let live = true
+  // the development check, once what is drawn with it is drawn too: a kit
+  // that draws in the browser draws its parts one after another as LiveView
+  // mounts them (a React kit's islands, the question's after the grid's),
+  // all in the task of the patch that brings them
+  queueMicrotask(() => { if (live) check(hook, part) })
 
   return {
     beforeUpdate() {

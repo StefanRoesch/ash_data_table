@@ -368,8 +368,9 @@ defmodule AshDataTable.KitCase do
   @doc """
   What the page `html` lacks of what the table's hooks need in the state
   `state` (one of `states/0`, or `:filter_panel`, the panel of a filter's
-  values on the way to `:filtered`, `:related` and `:full_view` of
-  `:links`), what opens drawn as `presentation` says (one of
+  values on the way to `:filtered`, `:row_selected`, the row selected on
+  the way to `:selected`, `:related` and `:full_view` of `:links`), what
+  opens drawn as `presentation` says (one of
   `presentations/0`): the markers, ids, `data-*` values, element kinds
   and Tab stops this case checks, as a list of what is missing, `[]` for
   nothing. `key` is the key of the first record (`Anchor`). `html` is the
@@ -383,8 +384,18 @@ defmodule AshDataTable.KitCase do
   demo's React kit.
   """
   @spec problems(String.t(), atom, atom, String.t()) :: [String.t()]
-  def problems(html, state, presentation, key) when is_binary(html),
-    do: problems_of(LazyHTML.from_fragment(html), state, key, presentation)
+  def problems(html, state, presentation, key) when is_binary(html) do
+    at = if state == :row_selected, do: {:row_selected, :selected}, else: state
+    Process.put({__MODULE__, :drawn}, true)
+    problems_of(LazyHTML.from_fragment(html), at, key, presentation)
+  after
+    Process.delete({__MODULE__, :drawn})
+  end
+
+  # The element of a hook LiveView mounts names it (`phx-hook`); in a page
+  # the browser drew, a kit that draws there mounted it itself (`mountGrid`
+  # and its kin), and the element names none.
+  defp hooked, do: if(Process.get({__MODULE__, :drawn}), do: "", else: "[phx-hook]")
 
   defp problems_of(page, at, key, presentation),
     do: common(page, at, presentation) ++ special(page, at, key, presentation)
@@ -603,7 +614,7 @@ defmodule AshDataTable.KitCase do
     grid =
       need(
         page,
-        "[id='kit-grid'][data-ash-data-table][data-table='kit'][phx-hook][data-lead][data-select='multi'][tabindex='-1']",
+        "[id='kit-grid'][data-ash-data-table][data-table='kit']#{hooked()}[data-lead][data-select='multi'][tabindex='-1']",
         "the grid's hook, with how many columns lead and how rows are selected, no Tab stop"
       ) ++
         need(page, "[id='kit-sender'][data-sender][data-table='kit'][phx-hook]", "its sender") ++
@@ -935,7 +946,7 @@ defmodule AshDataTable.KitCase do
   defp special(page, :rows, key, _presentation),
     do:
       record(page, key) ++
-        need(page, "[id='kit-pagination'][data-table='kit'][phx-hook]", "the pagination") ++
+        need(page, "[id='kit-pagination'][data-table='kit']#{hooked()}", "the pagination") ++
         need(page, "[id='kit-pagination'] [id='kit-next']", "Next")
 
   defp special(page, :filtered, _key, _presentation),

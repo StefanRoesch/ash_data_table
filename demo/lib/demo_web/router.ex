@@ -328,8 +328,10 @@ defmodule DemoWeb.Router do
   # draws a panel of its table itself; a grid of `div`s that carries the
   # table's markers and the grid's hook; one whose saves wait
   # until the test lets them go; a table drawn with the demo's kit of
-  # `div`s; the ids of `AshDataTable.Ids`, for `assets/js/ids.js`; and
-  # /tasks with what opens in the page.
+  # `div`s; the kit check's states of `AshDataTable.KitCase`'s table, drawn
+  # with the kit the request asks for, its check of what the browser drew,
+  # and the table of that table's parts; the ids of `AshDataTable.Ids`, for
+  # `assets/js/ids.js`; and /tasks with what opens in the page.
   if Application.compile_env(:demo, :e2e_routes, false) do
     # what the page of a test sent its LiveViews, by the page's session
     # (`DemoWeb.E2E.Recorder`)
@@ -351,6 +353,7 @@ defmodule DemoWeb.Router do
       post "/comments/break", DemoWeb.E2E.DataController, :break_comments
       post "/comments/mend", DemoWeb.E2E.DataController, :mend_comments
       post "/held/release", DemoWeb.E2E.HeldController, :release
+      post "/kit/check", DemoWeb.E2E.KitCheckController, :check
     end
 
     scope "/e2e", DemoWeb.E2E do
@@ -366,8 +369,19 @@ defmodule DemoWeb.Router do
         live "/markers", MarkersLive
         live "/held", HeldLive
         live "/kit", KitLive
+        live "/kit/states", KitStatesLive
         live "/ids", IdsLive
         live "/react/tag", ReactTagLive
+      end
+    end
+
+    # the parts of `AshDataTable.Test.Resource`, which the full view of the
+    # kit check's nested table links to, in the tenant the page is given
+    scope "/e2e" do
+      pipe_through :browser
+
+      live_session :e2e_kit, on_mount: [DemoWeb.E2E.KitTenant] do
+        ash_data_table "/kit/parts", AshDataTable.Test.Resource.Part, id: "kit"
       end
     end
 
