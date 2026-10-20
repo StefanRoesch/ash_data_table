@@ -898,10 +898,9 @@ test.describe("what is open in a column when it is hidden", () => {
 })
 
 test.describe("each table on its own", () => {
-  test("a nested table has its own button, which looks and works as any table's", async ({ page, tasks }) => {
+  test("a nested table has its own button and list, which look as any table's", async ({ tasks }) => {
     await tasks.open()
     const comments = await tasks.openLine(FIRST, "comments")
-    const outer = await tasks.shownColumns()
     const inner = await comments.columns()
 
     // the same button, and the same list
@@ -943,6 +942,14 @@ test.describe("each table on its own", () => {
     const last = (await comments.columnBox(inner.at(-1)!).boundingBox())!
     expect(last.y + last.height).toBeLessThanOrEqual(list.y + list.height)
     await expect(comments.columnBox(inner.at(-1)!)).toBeVisible()
+  })
+
+  // (each of these on its own: in one test they ran past its time under load, #52)
+  test("a nested table hides its own columns, and the table around it its own", async ({ page, tasks }) => {
+    await tasks.open()
+    const comments = await tasks.openLine(FIRST, "comments")
+    const outer = await tasks.shownColumns()
+    const inner = await comments.columns()
 
     await comments.hide("body")
     await expect(comments.header("body")).toBeHidden()
@@ -967,8 +974,15 @@ test.describe("each table on its own", () => {
     const line = (await tasks.lineCell(FIRST, "comments").boundingBox())!
     const row = (await tasks.rowLine(FIRST).boundingBox())!
     expect(line.width).toBeCloseTo(row.width, 0)
+  })
 
-    // Tab passes over the nested table's hidden column, as over any table's
+  test("Tab passes over a nested table's hidden column, as over any table's", async ({ page, tasks }) => {
+    await tasks.open()
+    const comments = await tasks.openLine(FIRST, "comments")
+    await comments.hide("body")
+    await page.keyboard.press("Escape")
+    await expect(comments.header("body")).toBeHidden()
+
     const inBody = (stops: string[]) =>
       stops.filter((id) => id.startsWith(`${comments.id}-`) && (id.endsWith("-c-body") || id.includes("-filter-body-") || id === `${comments.id}-sort-body`))
     expect(inBody(await tasks.stops())).toEqual([])
