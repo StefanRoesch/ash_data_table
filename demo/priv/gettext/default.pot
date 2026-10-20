@@ -23,7 +23,7 @@ msgid_plural "%{action}: %{count} tasks done"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/demo_web/live/planner_live.ex:265
+#: lib/demo_web/live/planner_live.ex:277
 #, elixir-autogen, elixir-format
 msgid "%{billable} + %{unknown} unknown"
 msgstr ""
@@ -38,12 +38,12 @@ msgstr ""
 msgid "%{columns} of “%{title}” saved"
 msgstr ""
 
-#: lib/demo_web/live/planner_live.ex:258
+#: lib/demo_web/live/planner_live.ex:270
 #, elixir-autogen, elixir-format
 msgid "%{hours} h"
 msgstr ""
 
-#: lib/demo_web/live/planner_live.ex:259
+#: lib/demo_web/live/planner_live.ex:271
 #, elixir-autogen, elixir-format
 msgid "%{hours} h + %{unknown} unknown"
 msgstr ""
@@ -69,37 +69,37 @@ msgstr ""
 msgid "Attempting to reconnect"
 msgstr ""
 
-#: lib/demo_web/live/planner_live.ex:248
+#: lib/demo_web/live/planner_live.ex:260
 #, elixir-autogen, elixir-format
 msgid "Billable"
 msgstr ""
 
-#: lib/demo_web/live/planner_live.ex:195
+#: lib/demo_web/live/planner_live.ex:207
 #, elixir-autogen, elixir-format
 msgid "Clear selection"
 msgstr ""
 
-#: lib/demo_web/live/planner_live.ex:246
+#: lib/demo_web/live/planner_live.ex:258
 #, elixir-autogen, elixir-format
 msgid "Estimate"
 msgstr ""
 
-#: lib/demo_web/live/planner_live.ex:207
+#: lib/demo_web/live/planner_live.ex:219
 #, elixir-autogen, elixir-format
 msgid "Last changes"
 msgstr ""
 
-#: lib/demo_web/live/planner_live.ex:236
+#: lib/demo_web/live/planner_live.ex:248
 #, elixir-autogen, elixir-format
 msgid "No tasks selected. Tick rows in the table below."
 msgstr ""
 
-#: lib/demo_web/live/planner_live.ex:212
+#: lib/demo_web/live/planner_live.ex:224
 #, elixir-autogen, elixir-format
 msgid "Nothing changed yet."
 msgstr ""
 
-#: lib/demo_web/live/planner_live.ex:184
+#: lib/demo_web/live/planner_live.ex:196
 #, elixir-autogen, elixir-format
 msgid "Selected for the sprint"
 msgstr ""
@@ -110,7 +110,7 @@ msgid "Something went wrong!"
 msgstr ""
 
 #: lib/demo_web/live/planner_live.ex:32
-#: lib/demo_web/live/planner_live.ex:174
+#: lib/demo_web/live/planner_live.ex:180
 #, elixir-autogen, elixir-format
 msgid "Sprint planner"
 msgstr ""
@@ -120,7 +120,7 @@ msgstr ""
 msgid "Task “%{title}” created"
 msgstr ""
 
-#: lib/demo_web/live/planner_live.ex:244
+#: lib/demo_web/live/planner_live.ex:256
 #, elixir-autogen, elixir-format
 msgid "Tasks"
 msgstr ""
@@ -133,4 +133,9 @@ msgstr ""
 #: lib/demo_web/components/core_components.ex:74
 #, elixir-autogen, elixir-format
 msgid "close"
+msgstr ""
+
+#: lib/demo_web/live/planner_live.ex:182
+#, elixir-autogen, elixir-format
+msgid "This page shows how the rest of a page can follow a table. Tick tasks below: the card adds up their hours. Edit or create a task: the feed lists it. “Clear selection” goes the other way: the page tells the table what to do."
 msgstr ""
