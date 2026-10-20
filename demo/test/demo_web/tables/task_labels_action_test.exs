@@ -74,6 +74,16 @@ defmodule DemoWeb.Tables.TaskLabelsActionTest do
   defp field(html, name \\ "labels"), do: Enum.find(panel(html).fields, &(&1.name == name))
 
   # A world with three labels of its own, called by what they are for.
+  # "Write the report" with Urgent and Bug, and the panel of "Set labels"
+  # open on it, as the admin
+  defp set_labels(%{conn: conn, world: world, bug: bug, urgent: urgent}) do
+    task = carry(task(world, "Write the report"), [urgent, bug])
+    {:ok, view, _html} = conn |> log_in(world.admin) |> live("/tasks")
+    act(view, task.id, "set_labels")
+
+    %{task: task, view: view}
+  end
+
   defp labelled(_context) do
     world = world(tasks: 0, other_tasks: 0, labels: 0)
     [bug, docs, urgent] = for name <- ["Bug", "Docs", "Urgent"], do: label(world, name)
@@ -220,15 +230,7 @@ defmodule DemoWeb.Tables.TaskLabelsActionTest do
   end
 
   describe "the picker of the labels" do
-    setup :labelled
-
-    setup %{conn: conn, world: world, bug: bug, urgent: urgent} do
-      task = carry(task(world, "Write the report"), [urgent, bug])
-      {:ok, view, _html} = conn |> log_in(world.admin) |> live("/tasks")
-      act(view, task.id, "set_labels")
-
-      %{task: task, view: view}
-    end
+    setup [:labelled, :set_labels]
 
     test "opens on top of the panel, with the table of the labels, in which any number of rows is selected",
          %{view: view} do
@@ -358,15 +360,7 @@ defmodule DemoWeb.Tables.TaskLabelsActionTest do
   end
 
   describe "running the action" do
-    setup :labelled
-
-    setup %{conn: conn, world: world, bug: bug, urgent: urgent} do
-      task = carry(task(world, "Write the report"), [urgent, bug])
-      {:ok, view, _html} = conn |> log_in(world.admin) |> live("/tasks")
-      act(view, task.id, "set_labels")
-
-      %{task: task, view: view}
-    end
+    setup [:labelled, :set_labels]
 
     test "gives the task the labels the field holds, and takes the others off", %{
       view: view,

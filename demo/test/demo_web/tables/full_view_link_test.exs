@@ -12,6 +12,7 @@ defmodule DemoWeb.Tables.FullViewLinkTest do
 
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage
+  import Demo.Records, only: [label: 3]
 
   alias Demo.Generator
 
@@ -42,21 +43,6 @@ defmodule DemoWeb.Tables.FullViewLinkTest do
         body: body
       )
     )
-  end
-
-  defp label(world, task, name) do
-    label =
-      Generator.generate(Generator.label(organization_id: world.organization.id, name: name))
-
-    Generator.generate(
-      Generator.task_label(
-        organization_id: world.organization.id,
-        task_id: task.id,
-        label_id: label.id
-      )
-    )
-
-    label
   end
 
   # Where the link of the nested table `id` goes, nil when it has none.

@@ -14,35 +14,16 @@ defmodule DemoWeb.Tables.PickerPanelTest do
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage
 
-  alias Demo.Generator
+  import Demo.Records,
+    only: [
+      assigned: 1,
+      foreign: 1,
+      person: 2,
+      task_in_progress: 2,
+      task_in_progress: 3
+    ]
+
   alias Demo.Tracker.Task
-
-  @moment ~U[2026-01-01 12:00:00.000000Z]
-
-  defp task(world, title, overrides \\ []) do
-    [project | _] = world.projects
-
-    Generator.generate(
-      Generator.task(
-        [
-          organization_id: world.organization.id,
-          project_id: project.id,
-          reporter_id: world.admin.id,
-          assignee_id: nil,
-          title: title,
-          status: :in_progress,
-          progress: 40,
-          internal_note: nil,
-          inserted_at:
-            DateTime.add(@moment, System.unique_integer([:positive, :monotonic]), :millisecond)
-        ] ++ overrides
-      )
-    )
-  end
-
-  defp person(world, name) do
-    Generator.generate(Generator.user(organization_id: world.organization.id, name: name))
-  end
 
   defp stored!(task), do: Ash.get!(Task, task.id, authorize?: false)
   defp field(html, name), do: Enum.find(panel(html).fields, &(&1.name == name))
@@ -60,15 +41,7 @@ defmodule DemoWeb.Tables.PickerPanelTest do
   @projects "task-pick-project_id"
 
   describe "the field of a key, in the panel of a row action" do
-    setup %{conn: conn} do
-      world = world(tasks: 0, other_tasks: 0)
-      ada = person(world, "Ada Lovelace")
-      grace = person(world, "Grace Hopper")
-      task = task(world, "Write the report", assignee_id: ada.id)
-      {:ok, view, _html} = conn |> log_in(world.admin) |> live("/tasks")
-
-      %{world: world, ada: ada, grace: grace, task: task, view: view}
-    end
+    setup %{conn: conn}, do: assigned(conn)
 
     test "holds the key, says what the record is called, and has a button that opens the picker",
          %{view: view, task: task, ada: ada} do
@@ -102,10 +75,10 @@ defmodule DemoWeb.Tables.PickerPanelTest do
 
     test "is empty where the record has no related record, or one this person may not read",
          %{conn: conn, world: world} do
-      free = task(world, "Assigned to nobody", reporter_id: world.member.id)
+      free = task_in_progress(world, "Assigned to nobody", reporter_id: world.member.id)
 
       abroad =
-        task(world, "Assigned abroad",
+        task_in_progress(world, "Assigned abroad",
           reporter_id: world.member.id,
           assignee_id: world.outsider.id
         )
@@ -302,8 +275,8 @@ defmodule DemoWeb.Tables.PickerPanelTest do
     setup %{conn: conn} do
       world = world(tasks: 0, other_tasks: 0)
       grace = person(world, "Grace Hopper")
-      first = task(world, "First")
-      second = task(world, "Second")
+      first = task_in_progress(world, "First")
+      second = task_in_progress(world, "Second")
       {:ok, view, _html} = conn |> log_in(world.admin) |> live("/tasks")
 
       %{world: world, grace: grace, first: first, second: second, view: view}
@@ -331,20 +304,7 @@ defmodule DemoWeb.Tables.PickerPanelTest do
   end
 
   describe "a hand-made event" do
-    setup %{conn: conn} do
-      world = world(tasks: 0, other_tasks: 0)
-
-      foreign =
-        Generator.generate(
-          Generator.project(organization_id: world.other_organization.id, name: "Foreign")
-        )
-
-      ada = person(world, "Ada Lovelace")
-      task = task(world, "Write the report", assignee_id: ada.id)
-      {:ok, view, _html} = conn |> log_in(world.admin) |> live("/tasks")
-
-      %{world: world, ada: ada, task: task, foreign: foreign, view: view}
-    end
+    setup %{conn: conn}, do: foreign(conn)
 
     test "that chooses a record the person cannot read puts nothing into the field", %{
       view: view,
@@ -420,7 +380,7 @@ defmodule DemoWeb.Tables.PickerPanelTest do
 
     test "that submits the key of a record the person cannot read runs on none of the selected rows",
          %{world: world, task: task, ada: ada} do
-      other = task(world, "Another")
+      other = task_in_progress(world, "Another")
       {:ok, view, _html} = build_conn() |> log_in(world.admin) |> live("/tasks")
 
       bulk(view, "reassign", [task.id, other.id])
@@ -437,7 +397,7 @@ defmodule DemoWeb.Tables.PickerPanelTest do
       # reported by the member, who may reassign it; assigned to a person
       # of another organization, whom the member may not read
       abroad =
-        task(world, "Assigned abroad",
+        task_in_progress(world, "Assigned abroad",
           reporter_id: world.member.id,
           assignee_id: world.outsider.id
         )

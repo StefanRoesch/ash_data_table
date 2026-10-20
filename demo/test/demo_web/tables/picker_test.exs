@@ -16,39 +16,17 @@ defmodule DemoWeb.Tables.PickerTest do
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage
 
+  import Demo.Records,
+    only: [
+      assigned: 1,
+      foreign: 1,
+      person: 2,
+      task_in_progress: 2,
+      task_in_progress: 3
+    ]
+
   alias Demo.Generator
   alias Demo.Tracker.Task
-
-  @moment ~U[2026-01-01 12:00:00.000000Z]
-
-  # A task of the world's first organization, in its first project, reported
-  # by the admin and assigned to nobody.
-  defp task(world, title, overrides \\ []) do
-    [project | _] = world.projects
-
-    Generator.generate(
-      Generator.task(
-        [
-          organization_id: world.organization.id,
-          project_id: project.id,
-          reporter_id: world.admin.id,
-          assignee_id: nil,
-          title: title,
-          status: :in_progress,
-          progress: 40,
-          internal_note: nil,
-          inserted_at:
-            DateTime.add(@moment, System.unique_integer([:positive, :monotonic]), :millisecond)
-        ] ++ overrides
-      )
-    )
-  end
-
-  defp person(world, name, overrides \\ []) do
-    Generator.generate(
-      Generator.user([organization_id: world.organization.id, name: name] ++ overrides)
-    )
-  end
 
   defp stored!(task), do: Ash.get!(Task, task.id, authorize?: false)
 
@@ -60,7 +38,7 @@ defmodule DemoWeb.Tables.PickerTest do
     setup %{conn: conn} do
       world = world(tasks: 0, other_tasks: 0)
       ada = person(world, "Ada Lovelace")
-      task = task(world, "Write the report", assignee_id: ada.id)
+      task = task_in_progress(world, "Write the report", assignee_id: ada.id)
       {:ok, view, html} = conn |> log_in(world.admin) |> live("/tasks")
 
       %{world: world, ada: ada, task: task, view: view, html: html}
@@ -156,7 +134,7 @@ defmodule DemoWeb.Tables.PickerTest do
 
       # none where the cell points at nobody
       cancel_picker(view)
-      free = task(world, "Assigned to nobody")
+      free = task_in_progress(world, "Assigned to nobody")
       {:ok, view, _html} = build_conn() |> log_in(world.admin) |> live("/tasks")
       html = pick(view, free.id, "assignee")
       assert current(html, @people) == []
@@ -222,7 +200,7 @@ defmodule DemoWeb.Tables.PickerTest do
           Generator.project(organization_id: world.other_organization.id, name: "Foreign")
         )
 
-      task = task(world, "Write the report", reporter_id: world.member.id)
+      task = task_in_progress(world, "Write the report", reporter_id: world.member.id)
       %{world: world, task: task, foreign: foreign, conn: conn}
     end
 
@@ -299,15 +277,7 @@ defmodule DemoWeb.Tables.PickerTest do
   end
 
   describe "choosing" do
-    setup %{conn: conn} do
-      world = world(tasks: 0, other_tasks: 0)
-      ada = person(world, "Ada Lovelace")
-      grace = person(world, "Grace Hopper")
-      task = task(world, "Write the report", assignee_id: ada.id)
-      {:ok, view, _html} = conn |> log_in(world.admin) |> live("/tasks")
-
-      %{world: world, ada: ada, grace: grace, task: task, view: view}
-    end
+    setup %{conn: conn}, do: assigned(conn)
 
     test "saves the key of the chosen record through the column's update action, and shows the row from its result",
          %{view: view, task: task, grace: grace} do
@@ -419,7 +389,7 @@ defmodule DemoWeb.Tables.PickerTest do
          %{world: world, grace: grace} do
       # a task that is done, and not at 100: every update of it is refused
       # by the tasks' validation
-      stuck = task(world, "Stuck", status: :done, progress: 50)
+      stuck = task_in_progress(world, "Stuck", status: :done, progress: 50)
       {:ok, view, _html} = build_conn() |> log_in(world.admin) |> live("/tasks")
 
       pick(view, stuck.id, "assignee")
@@ -477,20 +447,7 @@ defmodule DemoWeb.Tables.PickerTest do
   end
 
   describe "a hand-made event" do
-    setup %{conn: conn} do
-      world = world(tasks: 0, other_tasks: 0)
-
-      foreign =
-        Generator.generate(
-          Generator.project(organization_id: world.other_organization.id, name: "Foreign")
-        )
-
-      ada = person(world, "Ada Lovelace")
-      task = task(world, "Write the report", assignee_id: ada.id)
-      {:ok, view, _html} = conn |> log_in(world.admin) |> live("/tasks")
-
-      %{world: world, ada: ada, task: task, foreign: foreign, view: view}
-    end
+    setup %{conn: conn}, do: foreign(conn)
 
     test "that names a record the person cannot read changes nothing: a person of another organization",
          %{view: view, world: world, task: task, ada: ada} do
@@ -563,7 +520,7 @@ defmodule DemoWeb.Tables.PickerTest do
       ada: ada,
       world: world
     } do
-      other = task(world, "Another task")
+      other = task_in_progress(world, "Another task")
       pick(view, task.id, "assignee")
       render_async(view)
       select(view, chooser_table(view), [world.member.id])
@@ -664,7 +621,7 @@ defmodule DemoWeb.Tables.PickerTest do
       world = world(tasks: 0, other_tasks: 0)
       [project, other] = world.projects
       grace = person(world, "Grace Hopper")
-      task = task(world, "Write the report")
+      task = task_in_progress(world, "Write the report")
 
       %{world: world, project: project, other: other, grace: grace, task: task, conn: conn}
     end
@@ -735,7 +692,7 @@ defmodule DemoWeb.Tables.PickerTest do
   describe "in German" do
     test "the picker's heading, its buttons and its table are translated", %{conn: conn} do
       world = world(tasks: 0, other_tasks: 0)
-      task = task(world, "Write the report")
+      task = task_in_progress(world, "Write the report")
 
       {:ok, view, _html} = conn |> log_in(world.admin) |> in_locale("de") |> live("/tasks")
       html = pick(view, task.id, "assignee")

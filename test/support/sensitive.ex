@@ -247,3 +247,41 @@ defmodule AshDataTable.Test.Sensitive do
     end
   end
 end
+
+defmodule AshDataTable.Test.Sensitive.Vaults do
+  @moduledoc """
+  A vault as a read gives it, every sensitive value filled in: what the
+  tests of what a table keeps of a record (`present_test.exs`,
+  `item_test.exs`, `sensitive_test.exs`) look for in what it keeps.
+  """
+
+  alias AshDataTable.Test.Sensitive
+  alias AshDataTable.Test.Sensitive.{Login, Owner, Shown}
+
+  @doc "The vault, with `more` over its fields."
+  def vault(more \\ %{}) do
+    struct!(
+      Sensitive,
+      Map.merge(
+        %{
+          id: "0b000000-0000-4000-8000-000000000001",
+          name: "Main",
+          token: "tok-123",
+          pin: 4711,
+          locked: false,
+          expires_on: ~D[2027-01-01],
+          codes: ["a", "b"],
+          sealed: "wax",
+          login: %Login{user: "ada", password: "hunter2", pin: 99},
+          shown: %Shown{user: "bob", password: "swordfish"},
+          logins: [%Login{user: "cy", password: "letmein"}],
+          owner: %Owner{id: "0c000000-0000-4000-8000-000000000001", name: "Ada", badge: "B-7"},
+          calculations: %{whisper: "tok-123?"},
+          token_length: 7,
+          shout: "tok-123!"
+        },
+        more
+      )
+    )
+  end
+end

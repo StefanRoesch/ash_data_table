@@ -8,6 +8,7 @@ defmodule AshDataTable.SensitiveTest do
   """
   use ExUnit.Case, async: false
 
+  import AshDataTable.Test.Sensitive.Vaults, only: [vault: 0, vault: 1]
   import Spark.Test
 
   alias AshDataTable.Act
@@ -106,32 +107,6 @@ defmodule AshDataTable.SensitiveTest do
   end
 
   describe "what a table keeps of a record" do
-    defp vault(more \\ %{}) do
-      struct!(
-        Vault,
-        Map.merge(
-          %{
-            id: "0b000000-0000-4000-8000-000000000001",
-            name: "Main",
-            token: "tok-123",
-            pin: 4711,
-            locked: false,
-            expires_on: ~D[2027-01-01],
-            codes: ["a", "b"],
-            sealed: "wax",
-            login: %Login{user: "ada", password: "hunter2", pin: 99},
-            shown: %Shown{user: "bob", password: "swordfish"},
-            logins: [%Login{user: "cy", password: "letmein"}],
-            owner: %Owner{id: "0c000000-0000-4000-8000-000000000001", name: "Ada", badge: "B-7"},
-            calculations: %{whisper: "tok-123?"},
-            token_length: 7,
-            shout: "tok-123!"
-          },
-          more
-        )
-      )
-    end
-
     test "holds a mark in place of every sensitive value, whatever the value is" do
       kept = Sensitive.scrub(vault(), model().columns)
 

@@ -12,27 +12,12 @@ defmodule DemoWeb.Tables.FullViewTest do
 
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage
+  import Demo.Records, only: [labels: 3, task: 2, task: 3]
 
   alias Demo.Generator
   alias Demo.Tracker.Task
 
   @moment ~U[2026-01-01 12:00:00.000000Z]
-
-  defp task(world, title, overrides \\ []) do
-    [project | _] = world.projects
-
-    Generator.generate(
-      Generator.task(
-        [
-          organization_id: world.organization.id,
-          project_id: project.id,
-          reporter_id: world.admin.id,
-          title: title,
-          inserted_at: @moment
-        ] ++ overrides
-      )
-    )
-  end
 
   # Comments on a task with the bodies given, each written a minute after
   # the one before it, so the last one is the newest.
@@ -47,23 +32,6 @@ defmodule DemoWeb.Tables.FullViewTest do
           inserted_at: DateTime.add(@moment, index, :minute)
         )
       )
-    end
-  end
-
-  defp labels(world, task, names) do
-    for name <- names do
-      label =
-        Generator.generate(Generator.label(organization_id: world.organization.id, name: name))
-
-      Generator.generate(
-        Generator.task_label(
-          organization_id: world.organization.id,
-          task_id: task.id,
-          label_id: label.id
-        )
-      )
-
-      label
     end
   end
 

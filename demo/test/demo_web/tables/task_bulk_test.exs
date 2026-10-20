@@ -14,38 +14,9 @@ defmodule DemoWeb.Tables.TaskBulkTest do
 
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage
+  import Demo.Records, only: [task_on_day: 3]
 
-  alias Demo.Generator
   alias Demo.Tracker.Task
-
-  # One task of the world's first organization, reported by the admin and
-  # assigned to nobody. Each is created a day after `day`: the highest first.
-  defp task(world, day, overrides) do
-    [project | _] = world.projects
-
-    Generator.generate(
-      Generator.task(
-        [
-          organization_id: world.organization.id,
-          project_id: project.id,
-          reporter_id: world.admin.id,
-          assignee_id: nil,
-          title: "Task #{String.pad_leading("#{day}", 2, "0")}",
-          description: nil,
-          status: :in_progress,
-          priority: :medium,
-          progress: 40,
-          estimate_hours: Decimal.new("12.5"),
-          billable?: false,
-          due_on: nil,
-          completed_at: nil,
-          external_ref: nil,
-          internal_note: nil,
-          inserted_at: DateTime.add(~U[2026-01-01 12:00:00.000000Z], day, :day)
-        ] ++ overrides
-      )
-    )
-  end
 
   defp stored(task), do: Ash.get(Task, task.id, authorize?: false, not_found_error?: false)
   defp stored!(task), do: Ash.get!(Task, task.id, authorize?: false)
@@ -69,7 +40,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
   describe "the boxes" do
     setup do
       world = world(tasks: 0)
-      %{world: world, task: task(world, 1, [])}
+      %{world: world, task: task_on_day(world, 1, [])}
     end
 
     test "are the first column of the grid: a box in every row, one in the header for the page, and an empty filter cell",
@@ -157,7 +128,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
   describe "the line above the grid" do
     setup do
       world = world(tasks: 0)
-      for day <- 1..3, do: task(world, day, [])
+      for day <- 1..3, do: task_on_day(world, day, [])
       %{world: world}
     end
 
@@ -224,7 +195,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
       {:ok, view, _html} = live(conn, "/tasks")
       refute selection(select_page(view)).offered?
 
-      for day <- 4..30, do: task(world, day, [])
+      for day <- 4..30, do: task_on_day(world, day, [])
       {:ok, more, _html} = live(conn, "/tasks")
       [first | _rows] = page_rows(render(more))
       # not while some of the page is not selected
@@ -264,7 +235,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
   describe "using a button of the line" do
     setup %{conn: conn} do
       world = world(tasks: 0)
-      tasks = for day <- 1..3, do: task(world, day, [])
+      tasks = for day <- 1..3, do: task_on_day(world, day, [])
       conn = log_in(conn, world.admin)
       {:ok, view, _html} = live(conn, "/tasks")
 
@@ -378,7 +349,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
   describe "an action on the selected rows" do
     setup %{conn: conn} do
       world = world(tasks: 0)
-      tasks = for day <- 1..4, do: task(world, day, [])
+      tasks = for day <- 1..4, do: task_on_day(world, day, [])
       conn = log_in(conn, world.admin)
       {:ok, view, _html} = live(conn, "/tasks")
 
@@ -425,7 +396,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
 
     test "runs on rows of other pages too: a selection outlives its page",
          %{conn: conn, world: world, tasks: tasks} do
-      more = for day <- 5..30, do: task(world, day, [])
+      more = for day <- 5..30, do: task_on_day(world, day, [])
       {:ok, view, html} = live(conn, "/tasks")
 
       # the first page holds the 25 newest
@@ -461,10 +432,10 @@ defmodule DemoWeb.Tables.TaskBulkTest do
   describe "an action that is refused on some of the selected rows" do
     setup %{conn: conn} do
       world = world(tasks: 0)
-      own = task(world, 1, title: "Mine", assignee_id: world.member.id)
-      reported = task(world, 2, title: "Reported", reporter_id: world.member.id)
-      other = task(world, 3, title: "Hers")
-      another = task(world, 4, title: "Theirs")
+      own = task_on_day(world, 1, title: "Mine", assignee_id: world.member.id)
+      reported = task_on_day(world, 2, title: "Reported", reporter_id: world.member.id)
+      other = task_on_day(world, 3, title: "Hers")
+      another = task_on_day(world, 4, title: "Theirs")
 
       %{conn: conn, world: world, own: own, reported: reported, other: other, another: another}
     end
@@ -531,7 +502,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
 
     test "by a validation: the others are done, and the action's message says why this one was not",
          %{conn: conn, world: world, own: own, other: other} do
-      done = task(world, 5, title: "Done", status: :done, progress: 100)
+      done = task_on_day(world, 5, title: "Done", status: :done, progress: 100)
       {:ok, view, _html} = conn |> log_in(world.admin) |> live("/tasks")
 
       html = bulk(view, "set_progress", [own.id, done.id, other.id])
@@ -556,7 +527,12 @@ defmodule DemoWeb.Tables.TaskBulkTest do
     test "for more than one reason: each message with the number of records it is about",
          %{conn: conn, world: world, own: own, other: other} do
       done =
-        task(world, 5, title: "Done", status: :done, progress: 100, assignee_id: world.member.id)
+        task_on_day(world, 5,
+          title: "Done",
+          status: :done,
+          progress: 100,
+          assignee_id: world.member.id
+        )
 
       {:ok, view, _html} = conn |> log_in(world.member) |> live("/tasks")
 
@@ -576,7 +552,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
   describe "a selected record that is gone, or not the person's" do
     setup %{conn: conn} do
       world = world(tasks: 0)
-      task = task(world, 1, [])
+      task = task_on_day(world, 1, [])
       conn = log_in(conn, world.admin)
       {:ok, view, _html} = live(conn, "/tasks")
 
@@ -584,7 +560,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
     end
 
     test "counts as not done, and is no error", %{view: view, world: world, task: task} do
-      deleted = task(world, 2, title: "Deleted")
+      deleted = task_on_day(world, 2, title: "Deleted")
       Ash.destroy!(deleted, authorize?: false)
 
       html = run_bulk(view, "archive", [task.id, deleted.id])
@@ -646,8 +622,8 @@ defmodule DemoWeb.Tables.TaskBulkTest do
   describe "events a table never sends" do
     setup %{conn: conn} do
       world = world(tasks: 0)
-      task = task(world, 1, [])
-      mine = task(world, 2, title: "Mine", assignee_id: world.member.id)
+      task = task_on_day(world, 1, [])
+      mine = task_on_day(world, 2, title: "Mine", assignee_id: world.member.id)
 
       %{conn: conn, world: world, task: task, mine: mine}
     end
@@ -761,7 +737,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
   describe "all that match" do
     setup %{conn: conn} do
       world = world(tasks: 0)
-      for day <- 1..30, do: task(world, day, [])
+      for day <- 1..30, do: task_on_day(world, day, [])
       conn = log_in(conn, world.admin)
       {:ok, view, _html} = live(conn, "/tasks")
 
@@ -815,7 +791,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
   describe "the panel of an action on the selected rows" do
     setup %{conn: conn} do
       world = world(tasks: 0)
-      tasks = for day <- 1..2, do: task(world, day, [])
+      tasks = for day <- 1..2, do: task_on_day(world, day, [])
       conn = log_in(conn, world.admin)
       {:ok, view, _html} = live(conn, "/tasks")
 
@@ -882,8 +858,8 @@ defmodule DemoWeb.Tables.TaskBulkTest do
     test "the line, the question and the result are the table's own texts, translated",
          %{conn: conn} do
       world = world(tasks: 0)
-      own = task(world, 1, assignee_id: world.member.id)
-      other = task(world, 2, [])
+      own = task_on_day(world, 1, assignee_id: world.member.id)
+      other = task_on_day(world, 2, [])
 
       {:ok, view, html} =
         conn |> log_in(world.member) |> in_locale("de") |> live("/tasks")

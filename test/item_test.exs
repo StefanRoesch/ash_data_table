@@ -7,45 +7,20 @@ defmodule AshDataTable.ItemTest do
   """
   use ExUnit.Case, async: false
 
+  import AshDataTable.Test.Sensitive.Vaults, only: [vault: 0, vault: 1]
+
   alias AshDataTable.Item
   alias AshDataTable.Model
   alias AshDataTable.Model.Column
   alias AshDataTable.Present
   alias AshDataTable.Test.Sensitive, as: Vault
-  alias AshDataTable.Test.Sensitive.{Login, Owner, Shown}
 
-  # every sensitive value of the vault below, and what was typed for one
+  # every sensitive value of the vault (`Vaults.vault/1`), and what was typed for one
   @secrets ~r/tok-123|4711|hunter2|swordfish|letmein|wax|B-7|2027|typed-secret/
 
   @table %{time_zone: "Etc/UTC", editing?: true, selecting: :multi}
 
   defp model, do: Model.build(Vault)
-
-  defp vault(more \\ %{}) do
-    struct!(
-      Vault,
-      Map.merge(
-        %{
-          id: "0b000000-0000-4000-8000-000000000001",
-          name: "Main",
-          token: "tok-123",
-          pin: 4711,
-          locked: false,
-          expires_on: ~D[2027-01-01],
-          codes: ["a", "b"],
-          sealed: "wax",
-          login: %Login{user: "ada", password: "hunter2", pin: 99},
-          shown: %Shown{user: "bob", password: "swordfish"},
-          logins: [%Login{user: "cy", password: "letmein"}],
-          owner: %Owner{id: "0c000000-0000-4000-8000-000000000001", name: "Ada", badge: "B-7"},
-          calculations: %{whisper: "tok-123?"},
-          token_length: 7,
-          shout: "tok-123!"
-        },
-        more
-      )
-    )
-  end
 
   defp item(record, failed \\ nil, more \\ %{}) do
     model = model()

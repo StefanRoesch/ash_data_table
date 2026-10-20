@@ -13,6 +13,7 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
   import ExUnit.CaptureLog
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage
+  import Demo.Records, only: [task_on_day: 3]
 
   alias AshDataTable.Model
   alias AshDataTable.Query
@@ -21,53 +22,23 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
   alias Demo.Support.Sums.Effort
   alias Demo.Tracker.Task
 
-  # One task of the world's first organization, in its first project,
-  # reported by the admin and assigned to nobody. Each is created a day
-  # after `day`: the highest first.
-  defp task(world, day, overrides) do
-    [project | _] = world.projects
-
-    Generator.generate(
-      Generator.task(
-        [
-          organization_id: world.organization.id,
-          project_id: project.id,
-          reporter_id: world.admin.id,
-          assignee_id: nil,
-          title: "Task #{String.pad_leading("#{day}", 2, "0")}",
-          description: nil,
-          status: :in_progress,
-          priority: :medium,
-          progress: 40,
-          estimate_hours: Decimal.new("12.5"),
-          billable?: false,
-          due_on: nil,
-          completed_at: nil,
-          external_ref: nil,
-          internal_note: nil,
-          inserted_at: DateTime.add(~U[2026-01-01 12:00:00.000000Z], day, :day)
-        ] ++ overrides
-      )
-    )
-  end
-
   # Three tasks: the member's own, one that is completed, and one without
   # an estimate and a due date.
   defp three(world) do
     [
-      task(world, 3,
+      task_on_day(world, 3,
         progress: 40,
         estimate_hours: Decimal.new("12.5"),
         due_on: ~D[2026-03-01],
         assignee_id: world.member.id
       ),
-      task(world, 2,
+      task_on_day(world, 2,
         progress: 60,
         estimate_hours: Decimal.new("7.5"),
         due_on: ~D[2026-05-01],
         completed_at: ~U[2026-02-01 10:00:00Z]
       ),
-      task(world, 1, progress: 80, estimate_hours: nil, due_on: nil)
+      task_on_day(world, 1, progress: 80, estimate_hours: nil, due_on: nil)
     ]
   end
 
@@ -215,7 +186,7 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
   describe "what a summary is over" do
     test "every task that matches, not the page", %{conn: conn} do
       world = world(tasks: 0)
-      for day <- 1..30, do: task(world, day, progress: day, estimate_hours: Decimal.new(2))
+      for day <- 1..30, do: task_on_day(world, day, progress: day, estimate_hours: Decimal.new(2))
 
       {view, html} = open_table(conn, world.admin)
 
@@ -238,7 +209,12 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
     test "it follows the filters, and the argument of the read action", %{conn: conn} do
       world = world(tasks: 0)
       three(world)
-      task(world, 4, title: "Write the report", progress: 10, estimate_hours: Decimal.new(1))
+
+      task_on_day(world, 4,
+        title: "Write the report",
+        progress: 10,
+        estimate_hours: Decimal.new(1)
+      )
 
       {view, html} = open_table(conn, world.admin)
       assert footer(html, "estimate_hours") == {"Sum", "21.0"}
@@ -489,7 +465,7 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
       world = world(tasks: 0)
       [project, other | _] = world.projects
       three(world)
-      task(world, 9, project_id: other.id, progress: 0, estimate_hours: Decimal.new("100"))
+      task_on_day(world, 9, project_id: other.id, progress: 0, estimate_hours: Decimal.new("100"))
 
       {view, html} = open_table(conn, world.admin, "/projects")
       # the table of the projects declares no summary
@@ -571,7 +547,7 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
     setup %{conn: conn} do
       world = world(tasks: 0, other_tasks: 0)
       three(world)
-      task(world, 0, title: "Sealed", progress: 100, estimate_hours: Decimal.new("1000"))
+      task_on_day(world, 0, title: "Sealed", progress: 100, estimate_hours: Decimal.new("1000"))
       %{world: world, conn: conn}
     end
 
