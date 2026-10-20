@@ -29,13 +29,20 @@ defmodule AshDataTable.Test do
   ## Nested tables and pickers
 
   The tables nested in a row, and the tables of pickers, are drawn by the
-  table on the page. A nested table is moved into the cell of its row by a
-  `<.portal>`: `Phoenix.LiveViewTest` renders it in a `<template>` where
-  the portal stands and does not look into it. `page/1` reads the page as
-  the browser shows it; `send_event/5` sends a table its event by its name,
-  whichever table it is; `send_form/5` sends a form of a nested table as
-  the browser does. They read the page with `LazyHTML`, which
-  `Phoenix.LiveViewTest` needs too.
+  table on the page, and moved where they are shown by a `<.portal>`: a
+  nested table into the cell of its row (`AshDataTable.Ids.nested_cell/2`)
+  and its heading into its line (`AshDataTable.Ids.line_heading/2`); a
+  picker's table into the picker's place (`AshDataTable.Ids.picker_place/1`);
+  a picker a field of a modal panel opened, where the picker is inline,
+  into the panel's place (`AshDataTable.Ids.panel_place/1`); and, where
+  questions are asked in the page, the question's copy inside a modal
+  panel or picker into that panel's or picker's place.
+  `Phoenix.LiveViewTest` renders each in a `<template>` where the portal
+  stands and does not look into it. `page/1` reads the page as the browser
+  shows it; `send_event/5` sends a table its event by its name, whichever
+  table it is; `send_form/5` sends a form inside a portal as the browser
+  does. They read the page with `LazyHTML`, which `Phoenix.LiveViewTest`
+  needs too.
 
       html = render(view)
       AshDataTable.Test.page(html) |> LazyHTML.query("[id='task-row-1-t-comments-table']")
@@ -109,9 +116,14 @@ defmodule AshDataTable.Test do
 
   @doc """
   The page as a person sees it in the browser, as a `LazyHTML`: the content
-  of each portal of a table (a nested table) at the end of the cell it goes
-  into, as LiveView's client puts it there, parents first. The content says
-  which cell that is (`data-ash-data-table-portal`). `html` is what
+  of each portal of a table at the end of the element it goes into, as
+  LiveView's client puts it there, parents first: a nested table in the
+  cell of its row and its heading in its line
+  (`AshDataTable.Ids.line_heading/2`), a picker's table in the picker's place
+  (`AshDataTable.Ids.picker_place/1`), a picker or the question's copy in
+  the panel's place (`AshDataTable.Ids.panel_place/1`), the question's copy
+  in the picker's place. The content says which element that is
+  (`data-ash-data-table-portal`). `html` is what
   `Phoenix.LiveViewTest.render/1` gives.
   """
   @spec page(String.t()) :: struct
@@ -133,9 +145,9 @@ defmodule AshDataTable.Test do
   hook, the table's grid unless `from:` names another part (`:panel`,
   `:picker`). Returns what `Phoenix.LiveViewTest.render_hook/3` returns.
 
-  A table inside a portal (a nested table, or a picker opened in one) is
-  reached through the component that draws it, or the LiveView it is
-  attached to, which finds it by the name.
+  A table inside a portal (a nested table, a picker's table, or one of
+  either opened in one) is reached through the component that draws it,
+  or the LiveView it is attached to, which finds it by the name.
   An element that is on no page raises, as `Phoenix.LiveViewTest.element/2`
   does.
   """

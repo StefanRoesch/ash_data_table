@@ -72,13 +72,18 @@ See [Live updates](live-updates.md).
 
 ## Nested tables and pickers
 
-The tables nested in a row are moved into their cells by LiveView portals.
+The tables nested in a row are moved into their cells by LiveView portals,
+and so are a picker's table into the picker's place
+(`AshDataTable.Ids.picker_place/1`), a picker opened from a modal panel and
+the question's copy inside a modal panel or picker into its place
+(`AshDataTable.Ids.panel_place/1`, `picker_place/1`).
 `Phoenix.LiveViewTest` renders a portal's content where the portal stands,
 in a `<template>`, and does not look into it, so `element/2` and `has_element?/2`
-do not find a nested table's rows. Three helpers do:
+do not find a nested table's rows, nor a picker's. Three helpers do:
 
 - `AshDataTable.Test.page/1` is the page as a person sees it in the browser,
-  as a `LazyHTML`, each nested table in its cell. Query it as you would
+  as a `LazyHTML`, each nested table in its cell, each picker's table in
+  its place. Query it as you would
   `render/1`'s output.
 - `AshDataTable.Test.send_event/5` reaches a nested table, or a picker opened
   in one, by its id: `"task-row-1-t-comments"`.

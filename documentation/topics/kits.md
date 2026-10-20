@@ -447,7 +447,10 @@ changed.
   of the table on the page, of each nested table and of each picker's table.
   The tag keeps a plain element of its own around it (a live component's
   root must be static).
-- **Nested tables are moved into their cells** by LiveView portals. The
+- **Nested tables are moved into their cells** by LiveView portals, a
+  picker's table into the picker's place, what opens inside a modal panel
+  or picker into its place (`AshDataTable.Kit`, "The places a nested table
+  is moved into"). The
   wrapper LiveView puts around each takes the kit's `class(:portal, …)`;
   the elements inside it are styled by their markers
   (`data-ash-data-table-portal`, `data-ash-data-table-view`), which the
