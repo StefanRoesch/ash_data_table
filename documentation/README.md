@@ -1,34 +1,34 @@
 # ash_data_table: the documentation
 
 An Ash extension that presents a resource to people as an editable table in
-Phoenix LiveView. It is an interface to Ash resources in the way
-`ash_json_api` and `ash_graphql` are, for humans.
+Phoenix LiveView: an interface to Ash for humans, as `ash_json_api` and
+`ash_graphql` are for machines.
 
 Add the extension to a resource, optionally describe the table in a
-`table do … end` block, and mount it with one line in the router. You write
-no HEEx.
+`table do … end` block, and mount it with one line in the router. No HEEx.
 
-> **This is the first version, 0.1.0, and it is not on Hex yet.**
+> **Version 0.1.0, not on Hex yet.**
 
-The table offers what the resource offers, as the person asking may use it:
+The table offers what the resource offers, as far as the person asking may
+use it:
 
-- It reads, sorts, filters and pages on the server, through the read action,
-  and gives the read action's arguments in a line above the rows.
-- A cell is edited in place through an update action; lists, maps, embedded
-  resources and unions are edited in a side panel, field by field.
-- Rows have buttons for update, destroy and generic actions; the table has
-  a create button and table actions. An action with inputs asks for them in
-  the action panel, files included.
-- Rows can be selected, and a row action runs on all of them at once.
+- Reads, sorts, filters and pages on the server through the read action; the
+  read action's arguments sit in a line above the rows.
+- Edits a cell in place through an update action; lists, maps, embedded
+  resources and unions are edited field by field in a side panel.
+- Row buttons for update, destroy and generic actions; a create button and
+  table actions. An action with inputs asks for them in the action panel,
+  files included.
+- Selected rows: a row action runs on all of them at once.
 - A row expands into the tables of its related records; a cell shows a
-  related record by its label, and another one is chosen in a picker.
-- It follows what other people change (`live? true`), sums a column in its
-  footer, and shows datetimes in the person's time zone.
-- Its columns adapt to who is looking: Ash's policies and field policies
-  decide, and a `sensitive?` field stays masked until a person asks for it.
-- It is translated through Gettext, and works with the keyboard alone:
-  every control is a Tab stop, and a screen reader reads a plain table.
-- Its look is a kit: every part can be drawn with markup of your own.
+  related record by its label, and a picker chooses another.
+- Follows other people's changes (`live? true`), sums a column in its
+  footer, shows datetimes in the person's time zone.
+- Columns adapt to who is looking: policies and field policies decide, and
+  a `sensitive?` field stays masked until the person asks for it.
+- Translated through Gettext; works with the keyboard alone: every control
+  is a Tab stop, and a screen reader reads a plain table.
+- Its look is a kit: every part can be drawn with your own markup.
 
 ## Install
 
@@ -37,11 +37,11 @@ The table offers what the resource offers, as the person asking may use it:
 mix igniter.install ash_data_table@github:StefanRoesch/ash_data_table
 ```
 
-Once the package is on Hex this is `mix igniter.install ash_data_table`. It
-needs Elixir 1.17, Ash 3.36.1, `ash_phoenix` 2.3, Phoenix 1.8 and LiveView
-1.2.12 or later. The [Installation](topics/installation.md)
-guide says what the installer changes, gives the manual steps, and explains
-a setting it leaves to you: compressing LiveView's websocket.
+On Hex it will be `mix igniter.install ash_data_table`. Needs Elixir 1.17,
+Ash 3.36.1, `ash_phoenix` 2.3, Phoenix 1.8 and LiveView 1.2.12 or later.
+[Installation](topics/installation.md) lists what the installer changes,
+the manual steps, and the one setting left to you: compressing LiveView's
+websocket.
 
 ## A first table
 
@@ -76,19 +76,18 @@ live_session :default, on_mount: [{MyAppWeb.UserAuth, :mount_current_scope}] do
 end
 ```
 
-`/tasks` now shows the three columns, read as the person through the
-primary read action, and saves a cell through `update`. Without a `table`
-block the table shows the resource's public attributes and edits nothing.
+`/tasks` shows the three columns, read as the person through the primary
+read action, and saves a cell through `update`. Without a `table` block it
+shows the resource's public attributes and edits nothing.
 
-A table can also be placed in a LiveView of yours, with a tag:
+Or place a table in your own LiveView with a tag:
 
 <!-- sketch -->
 ```heex
 <AshDataTable.table resource={MyApp.Tracker.Task} scope={@current_scope} />
 ```
 
-or attached to it, so that the page can give it commands and draw what it
-opens:
+or attach it, so the page can give it commands and draw what it opens:
 
 <!-- sketch -->
 ```elixir
@@ -100,10 +99,9 @@ compares the three.
 
 ## Guides
 
-The [tutorial](tutorials/get-started-with-ash-data-table.md)
-takes one of your resources to an editable table. The topic guides go
-deeper, one topic each, with examples from the demo app and each topic's
-edge cases.
+The [tutorial](tutorials/get-started-with-ash-data-table.md) takes one of
+your resources to an editable table. Each topic guide covers one topic, with
+examples from the demo app and its edge cases.
 
 **The table**
 
@@ -143,7 +141,7 @@ edge cases.
 - [Testing](topics/testing.md)
 - [Mistakes at compile time](topics/mistakes-at-compile-time.md)
 
-The options of the two extensions are listed in the DSL reference,
+Every option of the two extensions is in the DSL reference,
 [`AshDataTable.Resource`](dsls/DSL-AshDataTable.Resource.md) and
 [`AshDataTable.Domain`](dsls/DSL-AshDataTable.Domain.md).
 
@@ -168,6 +166,6 @@ The options of the two extensions are listed in the DSL reference,
 
 `demo/` is a Phoenix and Ash app on Postgres that shows all of this: an
 issue tracker with one of everything a table has to cope with, five actors
-to switch between, and German beside English. How to start it is in the
-[README](../README.md); every page and what it shows is in
+to switch between, and German beside English. How to start it:
+[README](../README.md); every page and what it shows:
 [demo/README.md](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/README.md).

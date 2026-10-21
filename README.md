@@ -5,8 +5,7 @@ LiveView — an interface to Ash for people, the way `ash_json_api` and
 `ash_graphql` are interfaces for machines.**
 
 > **Early preview, looking for feedback.** Version 0.1, not on Hex, not meant
-> for production. I'd like to know two things: **is there a need for
-> something like this, and is it worth polishing?**
+> for production. Two questions for you: [What I'd like to know](#what-id-like-to-know).
 
 ![The tasks table of the demo, a row opened into its comments](docs/images/tasks.png)
 
@@ -21,11 +20,10 @@ tables. Ash's policies decide who sees and changes what.
 
 ## Try it
 
-You need Git and Docker. The repository is private: you need read access to
-`StefanRoesch/ash_data_table`.
+You need Git and Docker.
 
 ```sh
-git clone git@github.com:StefanRoesch/ash_data_table.git
+git clone https://github.com/StefanRoesch/ash_data_table.git
 cd ash_data_table
 docker compose --profile demo up --build
 ```
@@ -47,11 +45,11 @@ mix phx.server                  # http://localhost:4478
 ```
 </details>
 
-**If it doesn't start:** port 4478 or 5477 is taken by something else. Stop
-it, or pick other ports: `DEMO_PORT=4500 POSTGRES_PORT=5500 docker compose
+**If it doesn't start:** port 4478 or 5477 is taken. Stop what uses it, or
+pick other ports: `DEMO_PORT=4500 POSTGRES_PORT=5500 docker compose
 --profile demo up --build` (with Elixir: `PORT` and `POSTGRES_PORT`, see
-`.env.example`). Or Docker isn't running. The first build needs internet for
-Hex and npm.
+`.env.example`). Or Docker isn't running. The first build needs internet
+(Hex and npm).
 
 ## Ten minutes in the demo
 
@@ -62,9 +60,9 @@ The demo is a small issue tracker: projects, tasks, comments, labels, people.
 
    ![Editing a title on /tasks](docs/images/edit-cell.gif)
 
-2. Open a row with its **arrow**: a line for each related resource (comments,
-   labels, project, …). Open one, and its records appear as a nested table,
-   a full table of its own.
+2. Open a row with its **arrow**: one line per related resource (comments,
+   labels, project, …). Open one: its records appear as a nested table, a
+   full table of its own.
 
    ![A task opened into its comments, a nested table](docs/images/nested-table.gif)
 
@@ -86,33 +84,29 @@ The demo is a small issue tracker: projects, tasks, comments, labels, people.
    but the update action.
 10. **`/react/tasks`:** the same table drawn with React and shadcn, to show
     the drawing can be swapped.
-11. **`/tasks/planner`:** the sprint planner. Tick tasks in the table and
-    watch the cards above follow: the page and the table talk through
-    events and commands.
+11. **`/tasks/planner`:** the sprint planner. Tick tasks in the table; the
+    cards above follow. The page and the table talk through events and
+    commands.
 
-More pages and what each shows:
+Every page and what it shows:
 [demo/README.md](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/README.md).
 
 ## What I'd like to know
 
 Two questions, not a review; answer where you found the link:
 
-- **Is there a need for something like this?** Would you, or your team, use
-  a table like this over an Ash app, instead of building one or using
-  `ash_admin`?
+- **Is there a need for something like this?** Would you or your team use
+  it over an Ash app, instead of building one or using `ash_admin`?
 - **Is it worth polishing?** What would have to be true for you to use it?
 
 ## Known limits
 
 - Not on Hex; the API may still change.
-- No record page yet (one record on a page of its own): a row opens into
-  nested tables and a side panel instead.
 - The React drawing is a proof that it can be done, not polished.
 
 ## For developers
 
-How a table is declared, mounted and customized, and the guide for every
-topic: [the documentation](documentation/README.md).
+How to declare, mount and customize a table, and a guide per topic: [the documentation](documentation/README.md).
 
 ## Licence
 
