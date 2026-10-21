@@ -6,8 +6,8 @@ defmodule AshDataTable.Live.Core.Picker do
   alias AshDataTable.Ids
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Cells
+  alias AshDataTable.Live.Core.Opener
   alias AshDataTable.Live.Core.Reading
-  alias AshDataTable.Live.Core.Requests
   alias AshDataTable.Live.Core.Selection
   alias AshDataTable.Model
   alias AshDataTable.Operation
@@ -288,11 +288,12 @@ defmodule AshDataTable.Live.Core.Picker do
   @doc """
   The choice of a related record for a reference cell
   (`AshDataTable.Operation.refer/1`), `confirmed?` once the column's
-  question was answered. In controlled mode the host asks it: the choice
-  waits, the picker closes and the hook is told the cell waits (`held`).
-  Where the host draws the picker and the table asks its own questions,
-  the host has shown the question with its chooser (`question` of its
-  request), and its choice is the answer.
+  question was answered. The question is asked (`Opener.ask/4`): where
+  the host asks it (controlled mode), the choice waits, the picker closes
+  and the hook is told the cell waits (`held`). Where the table asks it,
+  the hook does, but where the host draws the picker: the host has shown
+  the question with its chooser (`question` of its request), and its
+  choice is the answer.
   """
   def refer(socket, key, name, named, arguments, confirmed?, by \\ :hook) do
     %{model: model, rows: rows} = Core.table(socket).entry
@@ -304,24 +305,17 @@ defmodule AshDataTable.Live.Core.Picker do
         {:reply, %{ok: false}, Core.put(socket, picker: nil)}
 
       {:ask, question} ->
-        cond do
-          Requests.controlled?(socket, :confirm) ->
-            socket
-            |> Core.put(picker: nil)
-            |> Core.Panel.yielded()
-            |> Requests.ask_cell(
-              {:refer, key, name, named, arguments},
-              column,
-              rows[key].pk,
-              shown_key(column.reference.destination, named)
-            )
-            |> Cells.held()
+        about = %{
+          action: column.update_action,
+          key: rows[key].pk,
+          column: column,
+          value: shown_key(column.reference.destination, named)
+        }
 
-          by == :host ->
-            refer(socket, key, name, named, arguments, true, by)
-
-          true ->
-            Cells.referred({:ask, question}, socket, key, column)
+        case Opener.ask(socket, {:refer, key, name, named, arguments}, column.confirm, about) do
+          {:held, reply, socket} -> {:reply, reply, Core.put(socket, picker: nil)}
+          {:run, socket} when by == :host -> refer(socket, key, name, named, arguments, true, by)
+          {:run, socket} -> Cells.referred({:ask, question}, socket, key, column)
         end
 
       result ->

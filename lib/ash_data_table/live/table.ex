@@ -34,7 +34,7 @@ defmodule AshDataTable.Table do
   #     records).
   #   * `controlled`: what the host draws itself, of `:confirm` (the
   #     questions), `:panel` (the action panels) and `:picker`, with
-  #     `attach(…, controlled: …)` (`AshDataTable.Live.Core.Requests`), for
+  #     `attach(…, controlled: …)` (`AshDataTable.Live.Core.Opener`), for
   #     every table the table shows, nested tables and pickers' tables too.
   #   * `kit`: the module the table is drawn with (`AshDataTable.Kit`),
   #     which the wiring names; every table it shows is drawn with it.

@@ -19,9 +19,9 @@ defmodule AshDataTable.Live.Core.Panel do
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Files
   alias AshDataTable.Live.Core.Notify
+  alias AshDataTable.Live.Core.Opener
   alias AshDataTable.Live.Core.Picker
   alias AshDataTable.Live.Core.Reading
-  alias AshDataTable.Live.Core.Requests
   alias AshDataTable.Model
   alias AshDataTable.Operation
   alias AshDataTable.Panel
@@ -62,8 +62,9 @@ defmodule AshDataTable.Live.Core.Panel do
   # table that could not read offers nothing.
   #
   # An action with inputs opens the action panel, and nothing runs. One
-  # with a question has the hook ask it, and runs when the answer comes
-  # (`table_run`). Any other runs now.
+  # with a question asks it (`Opener.ask/4`): the table has the hook ask
+  # it, or the host does (controlled mode), and it runs when the answer
+  # comes (`table_run`). Any other runs now.
   def on({:table_act, name}, socket) do
     %{id: id} = Core.table(socket).entry
 
@@ -73,15 +74,18 @@ defmodule AshDataTable.Live.Core.Panel do
         {:noreply, socket}
 
       %Model.Action{confirm: question} = action when is_binary(question) ->
-        if Requests.controlled?(socket, :confirm),
-          do: {:noreply, socket |> yielded() |> Requests.ask({:table_run, name}, action, nil)},
-          else:
+        case Opener.ask(socket, {:table_run, name}, question, %{action: action.name}) do
+          {:run, socket} ->
             {:noreply,
              push_event(socket, "ash_data_table:ask", %{
                table: id,
                action: action.name,
                question: question
              })}
+
+          {:held, _reply, socket} ->
+            {:noreply, socket}
+        end
 
       %Model.Action{} = action ->
         {:noreply, run_table(socket, {:table_act, name}, action)}
@@ -220,20 +224,10 @@ defmodule AshDataTable.Live.Core.Panel do
   @doc "Closes the panel (a new read, a run, Cancel); the picker is the caller's."
   def close(socket), do: Core.put(socket, panel: nil)
 
-  @doc """
-  A question held for the host (controlled mode, `Requests.ask/4`) ends a
-  panel the host holds: it closes, and the picker over it. Asked before the
-  question is held.
-  """
-  def yielded(socket) do
-    if Requests.holds?(socket, :panel),
-      do: socket |> close() |> Core.put(picker: nil),
-      else: socket
-  end
-
-  # A row action, `confirmed?` once its question was answered: by the hook
-  # before it sent `act`, or in controlled mode by the host, which the
-  # table holds the question for (`Requests.ask/4`).
+  # A row action, `confirmed?` once its question was answered by the host
+  # (controlled mode). A question not yet answered is asked
+  # (`Opener.ask/4`): the hook asked it before it sent `act`, or the host
+  # asks it, and the action waits for its answer.
   defp act(socket, key, name, confirmed?) do
     %{model: model, rows: rows} = Core.table(socket).entry
 
@@ -243,17 +237,24 @@ defmodule AshDataTable.Live.Core.Panel do
         action.panel? ->
           open_act(socket, key, row, action)
 
-        is_binary(action.confirm) and not confirmed? and Requests.controlled?(socket, :confirm) ->
-          {:reply, %{ok: true},
-           socket |> yielded() |> Requests.ask({:act, key, name}, action, row.pk)}
+        is_binary(action.confirm) and not confirmed? ->
+          about = %{action: action.name, key: row.pk}
+
+          case Opener.ask(socket, {:act, key, name}, action.confirm, about) do
+            {:run, socket} -> run_act(socket, key, name, action)
+            {:held, _reply, socket} -> {:reply, %{ok: true}, socket}
+          end
 
         true ->
-          ran(Operation.run(Core.operation(socket, {:act, key, name})), socket, key, action)
+          run_act(socket, key, name, action)
       end
     else
       _ -> {:reply, %{ok: false}, socket}
     end
   end
+
+  defp run_act(socket, key, name, action),
+    do: ran(Operation.run(Core.operation(socket, {:act, key, name})), socket, key, action)
 
   # A row action with inputs opens the action panel: the record is read
   # again, as the person (`Panel.open/4`). Nothing runs yet. A row action

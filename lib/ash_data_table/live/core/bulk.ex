@@ -11,8 +11,8 @@ defmodule AshDataTable.Live.Core.Bulk do
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Files
   alias AshDataTable.Live.Core.Notify
+  alias AshDataTable.Live.Core.Opener
   alias AshDataTable.Live.Core.Reading
-  alias AshDataTable.Live.Core.Requests
   alias AshDataTable.Live.Core.Selection
   alias AshDataTable.Model
   alias AshDataTable.Operation
@@ -125,19 +125,14 @@ defmodule AshDataTable.Live.Core.Bulk do
         question = question(action, selected(selection, entry))
         token = Selection.token(entry)
 
-        cond do
-          action.panel? ->
-            {:reply, %{panel: true}, open_bulk(socket, action, selection, question)}
-
-          # in controlled mode the host asks it (`Requests.ask/4`)
-          Requests.controlled?(socket, :confirm) ->
-            {:reply, %{ok: true},
-             socket
-             |> Core.Panel.yielded()
-             |> Requests.ask({:bulk_run, name, token}, %{action | confirm: question}, nil)}
-
-          true ->
-            {:reply, %{ask: Text.say(question), selection: token}, socket}
+        if action.panel? do
+          {:reply, %{panel: true}, open_bulk(socket, action, selection, question)}
+        else
+          # the hook asks it, or the host does (controlled mode)
+          case Opener.ask(socket, {:bulk_run, name, token}, question, %{action: name}) do
+            {:run, socket} -> {:reply, %{ask: Text.say(question), selection: token}, socket}
+            {:held, _reply, socket} -> {:reply, %{ok: true}, socket}
+          end
         end
 
       :error ->

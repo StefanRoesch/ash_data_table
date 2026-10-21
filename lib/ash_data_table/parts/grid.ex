@@ -766,7 +766,7 @@ defmodule AshDataTable.Parts.Grid do
 
   attr :open, :string, required: true
   # whether the hook asks the question of a row action; in controlled mode
-  # the host does (`AshDataTable.Live.Core.Requests`)
+  # the host does (`AshDataTable.Live.Core.Opener.Host`)
   attr :asks?, :boolean, required: true
   attr :busy?, :any, required: true
   attr :choose, :any, required: true

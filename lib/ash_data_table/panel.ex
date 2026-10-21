@@ -832,7 +832,7 @@ defmodule AshDataTable.Panel do
 
   @doc """
   What a panel is made for, as a request held for the host tells two
-  panels apart (`AshDataTable.Live.Core.Requests`): its kind, its action's
+  panels apart (`AshDataTable.Live.Core.Opener.Host`): its kind, its action's
   name, its row and its column.
   """
   @spec made_for(t) :: tuple

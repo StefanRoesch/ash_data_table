@@ -169,7 +169,7 @@ defmodule AshDataTable.Live.Registry do
   too (`reconcile`): a table is never left without the one it is in.
   """
   def close(socket, id) do
-    socket = within(socket, id, &(&1 |> Core.Requests.closing() |> shut()))
+    socket = within(socket, id, &(&1 |> Core.Opener.closed(:all) |> shut()))
 
     %{entries: %{^id => %{stream: stream}} = entries} = table = Core.table(socket)
 

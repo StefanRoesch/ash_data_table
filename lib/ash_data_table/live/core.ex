@@ -21,10 +21,10 @@ defmodule AshDataTable.Live.Core do
   alias AshDataTable.Live.Core.Bulk
   alias AshDataTable.Live.Core.Cells
   alias AshDataTable.Live.Core.Nesting
+  alias AshDataTable.Live.Core.Opener
   alias AshDataTable.Live.Core.Panel
   alias AshDataTable.Live.Core.Picker
   alias AshDataTable.Live.Core.Reading
-  alias AshDataTable.Live.Core.Requests
   alias AshDataTable.Live.Core.Selection
   alias AshDataTable.Live.Core.Updates
   alias AshDataTable.Live.Core.Url
@@ -131,32 +131,28 @@ defmodule AshDataTable.Live.Core do
 
   # The answers of the host to what a table holds for it (controlled mode,
   # `AshDataTable.confirm_request/3` and the other commands): the request
-  # `ref`, where the table that holds it holds it as one of `kinds`
-  # (`Requests.holder/3`). `answer` gives the intent it stands for, which
-  # runs within that table through the module of its topic, as a browser's
-  # does (`run/2`), and what came of it is told (`Requests.replied/3`); nil
+  # `ref`, where the table that holds it holds it as one of `kinds`. Each
+  # table shown is asked (`Opener.answer/3`); the one that holds it gives
+  # the intent `answer` makes of it, which runs within that table through
+  # the module of its topic, as a browser's does (`run/2`), and what came
+  # of it is told (`Opener.Host.replied/4`: only the host answers); nil
   # runs nothing. A stale or forged `ref` does nothing.
   def answer(socket, ref, kinds, answer) do
-    case Requests.holder(socket, ref, kinds) do
-      {:ok, id} ->
-        Registry.within(socket, id, fn socket ->
-          request = table(socket).entry.request
+    each(socket, fn socket ->
+      case Opener.answer(socket, ref, {kinds, answer}) do
+        {:ok, nil, socket} ->
+          socket
 
-          case answer.(socket, request) do
-            {nil, socket} ->
-              socket
-
-            {intent, socket} ->
-              case run(intent, socket) do
-                {:noreply, socket} -> Requests.replied(socket, request, nil)
-                {:reply, reply, socket} -> Requests.replied(socket, request, reply)
-              end
+        {:ok, intent, socket} ->
+          case run(intent, socket) do
+            {:noreply, socket} -> Opener.Host.replied(socket, ref, intent, nil)
+            {:reply, reply, socket} -> Opener.Host.replied(socket, ref, intent, reply)
           end
-        end)
 
-      :none ->
-        socket
-    end
+        :none ->
+          socket
+      end
+    end)
   end
 
   # Runs an intent within the table the callback works on, through the
@@ -627,8 +623,9 @@ defmodule AshDataTable.Live.Core do
   #     let go in the same render. It may take rows away, and so tables
   #     under them, which are closed;
   #   * a selection made under other filters is given up (`Selection.scoped/1`);
-  #   * in controlled mode, a panel or picker that opened or closed is held
-  #     or let go as a request, in every table (`Requests.follow/1`);
+  #   * what draws the panel and the picker is told whether each is open
+  #     (`Opener.opened/3`): in controlled mode one is held or let go as a
+  #     request, in every table;
   #   * the summaries that are due are asked for.
   defp tidy(socket) do
     socket
@@ -637,8 +634,15 @@ defmodule AshDataTable.Live.Core do
     |> Nesting.reconcile()
     |> each(&Selection.scoped/1)
     |> each(&Nesting.counted/1)
-    |> each(&Requests.follow/1)
+    |> each(&opened/1)
     |> each(&Reading.summarise/1)
+  end
+
+  # The panel and the picker, as what draws them is told (the panel
+  # first: a picker the host draws comes before it).
+  defp opened(socket) do
+    %{panel: panel, picker: picker} = table(socket).entry
+    socket |> Opener.opened(:panel, panel) |> Opener.opened(:picker, picker)
   end
 
   # Runs `fun` on every table shown, parents first.

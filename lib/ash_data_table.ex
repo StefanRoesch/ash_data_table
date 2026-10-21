@@ -768,7 +768,7 @@ defmodule AshDataTable do
   def requests(nil), do: []
 
   def requests(%AshDataTable.Table{} = table),
-    do: Enum.map(AshDataTable.Live.Core.Requests.projections(table), &in_words/1)
+    do: Enum.map(AshDataTable.Live.Core.Opener.Host.projections(table), &in_words/1)
 
   # A request as the page shows it: its messages in words, and beside them.
   defp in_words(request) do
@@ -847,7 +847,7 @@ defmodule AshDataTable do
         ref,
         [:confirm],
         "AshDataTable.confirm_request/3",
-        &AshDataTable.Live.Core.Requests.confirmed/2
+        &AshDataTable.Live.Core.Opener.Host.confirmed/2
       )
 
   @doc """
@@ -915,7 +915,7 @@ defmodule AshDataTable do
     do:
       answer(socket, name, ref, [:panel], "AshDataTable.add_group_request/4", fn socket,
                                                                                  _request ->
-        {AshDataTable.Live.Core.Requests.group(:panel_add, path), socket}
+        {AshDataTable.Live.Core.Opener.Host.group(:panel_add, path), socket}
       end)
 
   @doc """
@@ -936,7 +936,7 @@ defmodule AshDataTable do
         [:panel],
         "AshDataTable.remove_group_request/4",
         fn socket, _request ->
-          {AshDataTable.Live.Core.Requests.group(:panel_remove, path), socket}
+          {AshDataTable.Live.Core.Opener.Host.group(:panel_remove, path), socket}
         end
       )
 
@@ -951,7 +951,7 @@ defmodule AshDataTable do
         ref,
         :any,
         "AshDataTable.cancel_request/3",
-        &AshDataTable.Live.Core.Requests.cancelled/2
+        &AshDataTable.Live.Core.Opener.Host.cancelled/2
       )
 
   # The host's answer to request `ref`: `fun` gives the intent it stands

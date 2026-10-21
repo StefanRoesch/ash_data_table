@@ -6,9 +6,9 @@ defmodule AshDataTable.Live.Core.Cells do
   alias AshDataTable.Format
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Notify
+  alias AshDataTable.Live.Core.Opener
   alias AshDataTable.Live.Core.Picker
   alias AshDataTable.Live.Core.Reading
-  alias AshDataTable.Live.Core.Requests
   alias AshDataTable.Model
   alias AshDataTable.Operation
   alias AshDataTable.Text
@@ -17,21 +17,11 @@ defmodule AshDataTable.Live.Core.Cells do
   # Enter or left the cell: the row by the key in its DOM id, the column, and
   # the value as it was typed.
   #
-  # A column with a question, in controlled mode: the save waits for the
-  # host's answer (`Requests.ask_cell/5`), what was typed held here, and the
-  # hook is told that the cell waits (`held`).
-  def on({:save, _key, _name, typed} = intent, socket) do
-    case asked(socket, intent) do
-      {column, row} ->
-        socket
-        |> Core.Panel.yielded()
-        |> Requests.ask_cell(intent, column, row.pk, typed)
-        |> held()
-
-      nil ->
-        write(intent, socket)
-    end
-  end
+  # A column with a question asks it (`Opener.ask/4`): the hook asked it
+  # before it sent the save, or the host asks it (controlled mode), what
+  # was typed held until it answers, and the hook is told that the cell
+  # waits (`held`).
+  def on({:save, _key, _name, typed} = intent, socket), do: asked(socket, intent, typed)
 
   # Sent by the hook when a person uses "Clear" in the editor of a sensitive
   # cell: the row by the key in its DOM id, and the column. Nothing typed
@@ -39,15 +29,7 @@ defmodule AshDataTable.Live.Core.Cells do
   # is asked for by name, and is the save of a cell in everything else: the
   # column has to be one this person edits and one that can be emptied, the
   # row one of the page, and the record is read again, as the person.
-  def on({:clear, _key, _name} = intent, socket) do
-    case asked(socket, intent) do
-      {column, row} ->
-        socket |> Core.Panel.yielded() |> Requests.ask_cell(intent, column, row.pk, "") |> held()
-
-      nil ->
-        write(intent, socket)
-    end
-  end
+  def on({:clear, _key, _name} = intent, socket), do: asked(socket, intent, "")
 
   # Sent by the hook when a person asks for the value of a sensitive cell:
   # the row by the key in its DOM id, and the column. The record is read
@@ -134,28 +116,27 @@ defmodule AshDataTable.Live.Core.Cells do
     end
   end
 
-  @doc """
-  The reply to an event whose cell waits for the host's answer to its
-  column's question: `held`, with the `ref` of that request, by which the
-  hook knows the answer (`ash_data_table:answered`).
-  """
-  def held(socket), do: {:reply, %{held: true, ref: Requests.ref(socket)}, socket}
-
-  # Whether the column of a cell asks before a value is given to it, and
-  # the host asks it (controlled mode): the column and the row, for one this
-  # person edits on a row of the page; else nil, and the save goes the way
-  # it goes, refused where it is no cell of theirs.
-  defp asked(socket, intent) do
+  # Whether the column of a cell asks before a value is given to it, for
+  # one this person edits on a row of the page: then the question is asked
+  # (`Opener.ask/4`), and the save runs, or waits for the host's answer
+  # with the reply `held` and the `ref` of the request, by which the hook
+  # knows the answer (`ash_data_table:answered`). Any other save goes the
+  # way it goes, refused where it is no cell of theirs.
+  defp asked(socket, intent, value) do
     [_kind, key, name | _rest] = Tuple.to_list(intent)
     %{model: model, rows: rows} = Core.table(socket).entry
 
-    with true <- Requests.controlled?(socket, :confirm),
-         %{editable?: true, confirm: question} = column when is_binary(question) <-
+    with %{editable?: true, confirm: question} = column when is_binary(question) <-
            Operation.column(model, name),
          %{} = row <- rows[key] do
-      {column, row}
+      about = %{action: column.update_action, key: row.pk, column: column, value: value}
+
+      case Opener.ask(socket, intent, question, about) do
+        {:run, socket} -> write(intent, socket)
+        {:held, reply, socket} -> {:reply, reply, socket}
+      end
     else
-      _other -> nil
+      _other -> write(intent, socket)
     end
   end
 

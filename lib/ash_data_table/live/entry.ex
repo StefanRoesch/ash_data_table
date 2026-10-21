@@ -157,7 +157,7 @@ defmodule AshDataTable.Live.Entry do
     # table; a new read closes it. Put and taken out by its adapter only
     # (`AshDataTable.Live.Core.Panel`).
     panel: nil,
-    # In controlled mode (`AshDataTable.Live.Core.Requests`): the question
+    # In controlled mode (`AshDataTable.Live.Core.Opener.Host`): the question
     # or the panel the host draws, with its `ref`; nil for none.
     request: nil,
     # The picker, while it is open: the cell, or the field of the panel,

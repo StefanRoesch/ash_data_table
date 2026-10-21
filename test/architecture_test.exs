@@ -29,14 +29,21 @@ defmodule AshDataTable.ArchitectureTest do
       `AshDataTable.Geometry` (stage 9c, which ended the cycle of `Attrs`
       and `Parts.Common`);
     * the adapter of the action panel (`live/core/panel.ex`), the cells,
-      the actions on a selection and controlled mode (`cells.ex`,
-      `bulk.ex`, `requests.ex`) call each other in no circle (stage 9d): a
+      the actions on a selection and the opener with its two adapters
+      (`cells.ex`, `bulk.ex`, `opener.ex`, `opener/table.ex`,
+      `opener/host.ex`) call each other in no circle (stages 9d, 9e): a
       host's answer is the intent it stands for, which `Live.Core` runs
       through the module of its topic (`Live.Core.answer/4`), and what a
       panel's run hands on goes the same way (`Live.Core.run/2`). Every
       topic is called through `Live.Core`, which they all ask for the
-      table; the check is of the edges among the four. `requests.ex` has
-      no edge to any topic module;
+      table; the check is of the edges among them. The opener has no edge
+      to any topic module: the topics ask it;
+    * no module but the opener and its adapters reads what the host draws
+      itself (`controlled`, stage 9e): the drawing and the topics ask
+      `Opener`. `AshDataTable.attach/4` checks the option, `Live.Core`
+      puts it among the table's options and `AshDataTable.Table` holds it;
+      the drawing hands it to `Opener.draws?/2` alone, for LiveView's
+      change tracking;
     * `act.ex`, `edit.ex` and `present.ex` have no edge to `panel.ex`: the
       panel builds its forms through `Act` and `Edit` and makes what a
       part draws of it (`Panel.shown/2`), and `Operation` gives `Act` and
@@ -201,7 +208,8 @@ defmodule AshDataTable.ArchitectureTest do
     bundles =
       for cycle <- cycles(graph), (@lib <> "/attrs.ex") in cycle, do: Enum.join(cycle, ", ")
 
-    among = Enum.map(~w(panel cells bulk requests), &"#{@lib}/live/core/#{&1}.ex")
+    openers = Enum.map(~w(opener opener/table opener/host), &"#{@lib}/live/core/#{&1}.ex")
+    among = Enum.map(~w(panel cells bulk), &"#{@lib}/live/core/#{&1}.ex") ++ openers
 
     # what asks the panel, and what it asks: one way (9d fix-up)
     to_panel =
@@ -209,23 +217,33 @@ defmodule AshDataTable.ArchitectureTest do
           is_map_key(Map.get(graph, from, %{}), @lib <> "/panel.ex"),
           do: "#{from} -> #{@lib}/panel.ex"
 
-    # controlled mode calls no topic (9d): an answer is an intent
+    # the opener calls no topic (9d, 9e): an answer is an intent
     topics =
       Enum.map(
         ~w(panel cells bulk picker reading url nesting selection updates),
         &"#{@lib}/live/core/#{&1}.ex"
       )
 
-    from_requests =
-      for to <- topics,
-          is_map_key(Map.get(graph, @lib <> "/live/core/requests.ex", %{}), to),
-          do: "#{@lib}/live/core/requests.ex -> #{to}"
+    from_opener =
+      for from <- openers,
+          to <- topics,
+          is_map_key(Map.get(graph, from, %{}), to),
+          do: "#{from} -> #{to}"
+
+    # an adapter's `@behaviour` is an edge to the opener, which xref counts
+    # as a call; with the opener's choice of its adapter it is the seam, no
+    # circle of calls
+    seam = fn from, sinks ->
+      if from in tl(openers), do: Map.delete(sinks, hd(openers)), else: sinks
+    end
 
     panel =
       for cycle <-
             graph
             |> Map.take(among)
-            |> Map.new(fn {from, sinks} -> {from, Map.take(sinks, among)} end)
+            |> Map.new(fn {from, sinks} ->
+              {from, sinks |> Map.take(among) |> then(&seam.(from, &1))}
+            end)
             |> cycles(),
           do: Enum.join(cycle, ", ")
 
@@ -236,12 +254,38 @@ defmodule AshDataTable.ArchitectureTest do
       {"verifiers or transformers reading what is not pure (5.3, rule 1)", Enum.sort(impure)},
       {"cycles across parts or with a compile edge Spark does not need (5.4)", cycles},
       {"the bundles in a cycle (9c)", bundles},
-      {"the panel's adapter, Cells, Bulk and Requests in a cycle (9d)", panel},
+      {"the panel's adapter, Cells, Bulk and the opener in a cycle (9d, 9e)", panel},
       {"Act, Edit or Present calling the panel (9d)", to_panel},
-      {"Requests calling a topic of the live core (9d)", from_requests},
+      {"the opener calling a topic of the live core (9d, 9e)", from_opener},
+      {"modules but the opener reading `controlled` (9e)", controlled()},
       {"2a naming LiveView, PubSub, Gettext or the words (5.5)", data_layer_mentions()},
       {"reads from Ash outside Query, Record, Pick and Bulk (S1)", reads()}
     ])
+  end
+
+  # Who reads what the host draws itself (stage 9e): `.controlled`,
+  # `:controlled` or `controlled:` on a line that is no comment, in a file
+  # of `lib/` but the opener's, the option's check (`attach/4`), the
+  # table's options (`Live.Core.told/2`) and their struct. The drawing
+  # hands `Opener.draws?/2` the options' `controlled` alone
+  # (`%{controlled: @options.controlled}`), which it does not read: so that
+  # LiveView marks what it gives a part changed only when that changed, not
+  # with every option (measured, stage 9e: all of them sent a page change
+  # again with every patch of the URL).
+  @controlled ~r/\.controlled\b|[^\w:]:controlled\b|\bcontrolled:/
+  @handed "Opener.draws?(%{controlled: @options.controlled}, "
+  @controlling ~w(live/core/opener.ex live/core/opener/table.ex live/core/opener/host.ex) ++
+                 ~w(live/core.ex live/table.ex)
+
+  defp controlled do
+    for file <- Path.wildcard("lib/**/*.ex"),
+        file != "lib/ash_data_table.ex",
+        String.replace_prefix(file, @lib <> "/", "") not in @controlling,
+        {line, at} <- file |> File.read!() |> String.split("\n") |> Enum.with_index(1),
+        not String.starts_with?(String.trim_leading(line), "#"),
+        Regex.match?(@controlled, line),
+        not (file == @lib <> "/live/drawing.ex" and String.contains?(line, @handed)),
+        do: "#{file}:#{at}"
   end
 
   # The presentation hints (stage 7, D14): a key `component:`,
