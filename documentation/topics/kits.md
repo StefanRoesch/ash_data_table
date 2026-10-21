@@ -305,7 +305,10 @@ A spread (`{cell}`) turns LiveView's change tracking off for the part it
 draws: the part is sent again whole each time it is drawn. Where only some
 of an inner part's keys change, pass them one by one (`element={cell.element}`
 …), as `Kit.Default` draws its footer and summary cells: LiveView then sends
-again only what changed.
+again only what changed. The table gives each part its keys the same way,
+with what each key was before (out of a comprehension of one), so a part
+draws again only what changed of a key, and a kit that draws in the browser
+with LiveReact is sent a patch of a prop, not the prop whole.
 
 What a cell holds and a column's editor are drawn with `Kit.cell/1` and
 `Kit.editor/1`, which call the column's component before the kit's `cell` and

@@ -126,78 +126,86 @@ defmodule AshDataTable.Live.Drawing do
   defp heading(assigns) do
     ~H"""
     <Kit.part
+      :for={
+        projection <- [
+          %{
+            shown?:
+              Projection.of({:heading, :shown?}, %{
+                nested?: @entry.nested?,
+                heading: @heading,
+                model: @entry.model,
+                page?: not is_nil(@entry.page),
+                offered: @entry.offered,
+                related?: not is_nil(@entry.related)
+              }),
+            nested?: Projection.of({:heading, :nested?}, %{nested?: @entry.nested?}),
+            element: Projection.of({:heading, :element}, %{id: @entry.id}),
+            title:
+              Projection.of({:heading, :title}, %{
+                id: @entry.id,
+                heading: @heading,
+                nested?: @entry.nested?,
+                label: @entry.label
+              }),
+            columns:
+              Projection.of({:heading, :columns}, %{
+                id: @entry.id,
+                model: @entry.model,
+                filters: @entry.state.filters,
+                sort: @entry.state.sort,
+                label: @entry.label,
+                nested?: @entry.nested?
+              }),
+            argument_line:
+              Projection.of({:heading, :argument_line}, %{
+                id: @entry.id,
+                model: @entry.model,
+                myself: @myself,
+                nested?: @entry.nested?,
+                lines: @entry.lines,
+                state: @entry.state,
+                refused: @entry.refused
+              }),
+            acts?:
+              Projection.of({:heading, :acts?}, %{
+                page?: not is_nil(@entry.page),
+                model: @entry.model,
+                offered: @entry.offered,
+                related?: not is_nil(@entry.related)
+              }),
+            create:
+              Projection.of({:heading, :create}, %{
+                id: @entry.id,
+                myself: @myself,
+                page?: not is_nil(@entry.page),
+                model: @entry.model,
+                offered: @entry.offered,
+                related?: not is_nil(@entry.related)
+              }),
+            actions:
+              Projection.of({:heading, :actions}, %{
+                id: @entry.id,
+                myself: @myself,
+                page?: not is_nil(@entry.page),
+                model: @entry.model,
+                offered: @entry.offered,
+                related?: not is_nil(@entry.related)
+              })
+          }
+        ]
+      }
       part={:heading}
       kit={@kit}
       id={@entry.id}
-      shown?={
-        Projection.of({:heading, :shown?}, %{
-          nested?: @entry.nested?,
-          heading: @heading,
-          model: @entry.model,
-          page?: not is_nil(@entry.page),
-          offered: @entry.offered,
-          related?: not is_nil(@entry.related)
-        })
-      }
-      nested?={Projection.of({:heading, :nested?}, %{nested?: @entry.nested?})}
-      element={Projection.of({:heading, :element}, %{id: @entry.id})}
-      title={
-        Projection.of({:heading, :title}, %{
-          id: @entry.id,
-          heading: @heading,
-          nested?: @entry.nested?,
-          label: @entry.label
-        })
-      }
-      columns={
-        Projection.of({:heading, :columns}, %{
-          id: @entry.id,
-          model: @entry.model,
-          filters: @entry.state.filters,
-          sort: @entry.state.sort,
-          label: @entry.label,
-          nested?: @entry.nested?
-        })
-      }
-      argument_line={
-        Projection.of({:heading, :argument_line}, %{
-          id: @entry.id,
-          model: @entry.model,
-          myself: @myself,
-          nested?: @entry.nested?,
-          lines: @entry.lines,
-          state: @entry.state,
-          refused: @entry.refused
-        })
-      }
-      acts?={
-        Projection.of({:heading, :acts?}, %{
-          page?: not is_nil(@entry.page),
-          model: @entry.model,
-          offered: @entry.offered,
-          related?: not is_nil(@entry.related)
-        })
-      }
-      create={
-        Projection.of({:heading, :create}, %{
-          id: @entry.id,
-          myself: @myself,
-          page?: not is_nil(@entry.page),
-          model: @entry.model,
-          offered: @entry.offered,
-          related?: not is_nil(@entry.related)
-        })
-      }
-      actions={
-        Projection.of({:heading, :actions}, %{
-          id: @entry.id,
-          myself: @myself,
-          page?: not is_nil(@entry.page),
-          model: @entry.model,
-          offered: @entry.offered,
-          related?: not is_nil(@entry.related)
-        })
-      }
+      shown?={projection.shown?}
+      nested?={projection.nested?}
+      element={projection.element}
+      title={projection.title}
+      columns={projection.columns}
+      argument_line={projection.argument_line}
+      acts?={projection.acts?}
+      create={projection.create}
+      actions={projection.actions}
     />
     """
   end
@@ -366,131 +374,152 @@ defmodule AshDataTable.Live.Drawing do
         messages={line.messages}
       />
       <Kit.part
+        :for={
+          projection <- [
+            %{
+              region: Projection.of({:status, :region}, %{id: @entry.id}),
+              again?: Projection.of({:status, :again?}, %{announcements: @entry.announcements}),
+              result: Projection.of({:status, :result}, %{id: @entry.id, result: @entry.result}),
+              texts:
+                Projection.of({:status, :texts}, %{
+                  announcement: @entry.announcement,
+                  result: @entry.result
+                }),
+              messages:
+                Projection.of({:status, :messages}, %{
+                  announcement: @entry.announcement,
+                  result: @entry.result
+                })
+            }
+          ]
+        }
         part={:status}
         kit={@options.kit}
         id={@entry.id}
-        region={Projection.of({:status, :region}, %{id: @entry.id})}
-        again?={Projection.of({:status, :again?}, %{announcements: @entry.announcements})}
-        result={Projection.of({:status, :result}, %{id: @entry.id, result: @entry.result})}
-        texts={
-          Projection.of({:status, :texts}, %{
-            announcement: @entry.announcement,
-            result: @entry.result
-          })
-        }
-        messages={
-          Projection.of({:status, :messages}, %{
-            announcement: @entry.announcement,
-            result: @entry.result
-          })
-        }
+        region={projection.region}
+        again?={projection.again?}
+        result={projection.result}
+        texts={projection.texts}
+        messages={projection.messages}
       />
       <Kit.part
+        :for={
+          projection <- [
+            %{
+              nested?: Projection.of({:grid, :nested?}, %{nested?: @entry.nested?}),
+              sender: Projection.of({:grid, :sender}, %{id: @entry.id}),
+              skip: Projection.of({:grid, :skip}, %{id: @entry.id}),
+              scrollbar: Projection.of({:grid, :scrollbar}, %{id: @entry.id}),
+              filter_form:
+                Projection.of({:grid, :filter_form}, %{
+                  id: @entry.id,
+                  geometry: @entry.geometry,
+                  myself: @myself
+                }),
+              grid:
+                Projection.of({:grid, :grid}, %{
+                  id: @entry.id,
+                  myself: @myself,
+                  geometry: @entry.geometry,
+                  selecting: @entry.selecting,
+                  choose: @entry.choose
+                }),
+              table:
+                Projection.of({:grid, :table}, %{
+                  id: @entry.id,
+                  label: @entry.label,
+                  labelledby: @entry.labelledby,
+                  geometry: @entry.geometry,
+                  page: @entry.page,
+                  busy?: @entry.busy?,
+                  running: @entry.running && @entry.running.action
+                }),
+              head:
+                Projection.of({:grid, :head}, %{
+                  id: @entry.id,
+                  model: @entry.model,
+                  state: @entry.state,
+                  geometry: @entry.geometry,
+                  selecting: @entry.selecting,
+                  expandable?: @entry.expandable?,
+                  myself: @myself
+                }),
+              filters:
+                Projection.of({:grid, :filters}, %{
+                  id: @entry.id,
+                  model: @entry.model,
+                  geometry: @entry.geometry,
+                  selecting: @entry.selecting,
+                  expandable?: @entry.expandable?,
+                  myself: @myself,
+                  rejected: @entry.rejected,
+                  pending: @entry.pending,
+                  state: @entry.state
+                }),
+              row:
+                Projection.of({:grid, :row}, %{
+                  id: @entry.id,
+                  model: @entry.model,
+                  geometry: @entry.geometry,
+                  selecting: @entry.selecting,
+                  expandable?: @entry.expandable?,
+                  open: @entry.open_label,
+                  asks?: Opener.draws?(%{controlled: @options.controlled}, :confirm)
+                }),
+              footer:
+                Projection.of({:grid, :footer}, %{
+                  id: @entry.id,
+                  model: @entry.model,
+                  page: @entry.page,
+                  state: @entry.state,
+                  geometry: @entry.geometry,
+                  selecting: @entry.selecting,
+                  expandable?: @entry.expandable?,
+                  row_count: @entry.row_count,
+                  label: @entry.label,
+                  full_view: @entry.full_view,
+                  summary: @entry.summary,
+                  summing?: @entry.summing?,
+                  time_zone: @time_zone,
+                  nested?: @entry.nested?,
+                  myself: @myself
+                }),
+              editors:
+                Projection.of({:grid, :editors}, %{
+                  id: @entry.id,
+                  model: @entry.model,
+                  asks?: Opener.draws?(%{controlled: @options.controlled}, :confirm)
+                }),
+              failure:
+                Projection.of({:grid, :failure}, %{
+                  id: @entry.id,
+                  model: @entry.model,
+                  geometry: @entry.geometry
+                }),
+              texts: Projection.of({:grid, :texts}, %{label: @entry.label, model: @entry.model}),
+              messages: Projection.of({:grid, :messages}, %{label: @entry.label, model: @entry.model})
+            }
+          ]
+        }
         part={:grid}
         kit={@options.kit}
         id={@entry.id}
         rows={@rows}
-        nested?={Projection.of({:grid, :nested?}, %{nested?: @entry.nested?})}
-        sender={Projection.of({:grid, :sender}, %{id: @entry.id})}
-        skip={Projection.of({:grid, :skip}, %{id: @entry.id})}
-        scrollbar={Projection.of({:grid, :scrollbar}, %{id: @entry.id})}
-        filter_form={
-          Projection.of({:grid, :filter_form}, %{
-            id: @entry.id,
-            geometry: @entry.geometry,
-            myself: @myself
-          })
-        }
-        grid={
-          Projection.of({:grid, :grid}, %{
-            id: @entry.id,
-            myself: @myself,
-            geometry: @entry.geometry,
-            selecting: @entry.selecting,
-            choose: @entry.choose
-          })
-        }
-        table={
-          Projection.of({:grid, :table}, %{
-            id: @entry.id,
-            label: @entry.label,
-            labelledby: @entry.labelledby,
-            geometry: @entry.geometry,
-            page: @entry.page,
-            busy?: @entry.busy?,
-            running: @entry.running && @entry.running.action
-          })
-        }
-        head={
-          Projection.of({:grid, :head}, %{
-            id: @entry.id,
-            model: @entry.model,
-            state: @entry.state,
-            geometry: @entry.geometry,
-            selecting: @entry.selecting,
-            expandable?: @entry.expandable?,
-            myself: @myself
-          })
-        }
-        filters={
-          Projection.of({:grid, :filters}, %{
-            id: @entry.id,
-            model: @entry.model,
-            geometry: @entry.geometry,
-            selecting: @entry.selecting,
-            expandable?: @entry.expandable?,
-            myself: @myself,
-            rejected: @entry.rejected,
-            pending: @entry.pending,
-            state: @entry.state
-          })
-        }
-        row={
-          Projection.of({:grid, :row}, %{
-            id: @entry.id,
-            model: @entry.model,
-            geometry: @entry.geometry,
-            selecting: @entry.selecting,
-            expandable?: @entry.expandable?,
-            open: @entry.open_label,
-            asks?: Opener.draws?(%{controlled: @options.controlled}, :confirm)
-          })
-        }
-        footer={
-          Projection.of({:grid, :footer}, %{
-            id: @entry.id,
-            model: @entry.model,
-            page: @entry.page,
-            state: @entry.state,
-            geometry: @entry.geometry,
-            selecting: @entry.selecting,
-            expandable?: @entry.expandable?,
-            row_count: @entry.row_count,
-            label: @entry.label,
-            full_view: @entry.full_view,
-            summary: @entry.summary,
-            summing?: @entry.summing?,
-            time_zone: @time_zone,
-            nested?: @entry.nested?,
-            myself: @myself
-          })
-        }
-        editors={
-          Projection.of({:grid, :editors}, %{
-            id: @entry.id,
-            model: @entry.model,
-            asks?: Opener.draws?(%{controlled: @options.controlled}, :confirm)
-          })
-        }
-        failure={
-          Projection.of({:grid, :failure}, %{
-            id: @entry.id,
-            model: @entry.model,
-            geometry: @entry.geometry
-          })
-        }
-        texts={Projection.of({:grid, :texts}, %{label: @entry.label, model: @entry.model})}
-        messages={Projection.of({:grid, :messages}, %{label: @entry.label, model: @entry.model})}
+        nested?={projection.nested?}
+        sender={projection.sender}
+        skip={projection.skip}
+        scrollbar={projection.scrollbar}
+        filter_form={projection.filter_form}
+        grid={projection.grid}
+        table={projection.table}
+        head={projection.head}
+        filters={projection.filters}
+        row={projection.row}
+        footer={projection.footer}
+        editors={projection.editors}
+        failure={projection.failure}
+        texts={projection.texts}
+        messages={projection.messages}
       />
       <%!-- keyed by its kind: a message of another kind is another
       element, drawn anew, not the one before it changed --%>
@@ -637,13 +666,16 @@ defmodule AshDataTable.Live.Drawing do
 
   # A part whose projection is made whole (`Projection.of/2`: the line of
   # a table of related records and the panel, parts whose keys change
-  # together): made once of the `inputs`
-  # it is given, and handed on an attribute per key. LiveView draws it
-  # again when an input changes (what the `inputs` attribute reads), and
-  # the part keeps LiveView's change tracking: given its projection as a
-  # spread (`{map}`), the part would be drawn as if for the first time,
-  # and a kit that draws in the browser would be told nothing changed
-  # (LiveReact reads its props' changes from LiveView's).
+  # together): made once of the `inputs` it is given, and handed on an
+  # attribute per key, as every part is, out of a comprehension of one.
+  # LiveView draws it again when an input changes (what the `inputs`
+  # attribute reads) and compares each key with what it was, as it does a
+  # comprehension's variables: the part sends again only what changed of a
+  # key, and LiveReact, given the old value, a patch of an island's prop.
+  # Given its projection as a spread (`{map}`), the part would be drawn as
+  # if for the first time, and a kit that draws in the browser would be
+  # told nothing changed (LiveReact reads its props' changes from
+  # LiveView's).
   attr :part, :atom, required: true
   attr :kit, :atom, required: true
   attr :id, :string, required: true
@@ -651,47 +683,45 @@ defmodule AshDataTable.Live.Drawing do
   attr :uploads, :map, default: nil
 
   defp whole(%{part: :related} = assigns) do
-    assigns = assign(assigns, :projection, Projection.of(:related, assigns.inputs))
-
     ~H"""
     <Kit.part
+      :for={projection <- [Projection.of(:related, @inputs)]}
       part={:related}
       kit={@kit}
       id={@id}
-      element={@projection.element}
-      heading={@projection.heading}
-      record={@projection.record}
-      create={@projection.create}
-      actions={@projection.actions}
-      clear={@projection.clear}
-      texts={@projection.texts}
-      messages={@projection.messages}
+      element={projection.element}
+      heading={projection.heading}
+      record={projection.record}
+      create={projection.create}
+      actions={projection.actions}
+      clear={projection.clear}
+      texts={projection.texts}
+      messages={projection.messages}
     />
     """
   end
 
   defp whole(%{part: :panel} = assigns) do
-    assigns = assign(assigns, :projection, Projection.of(:panel, assigns.inputs))
-
     ~H"""
     <Kit.part
+      :for={projection <- [Projection.of(:panel, @inputs)]}
       part={:panel}
       kit={@kit}
       id={@id}
       uploads={@uploads}
-      open?={@projection.open?}
-      presentation={@projection.presentation}
-      destructive?={@projection.destructive?}
-      place={@projection.place}
-      frame={@projection.frame}
-      form={@projection.form}
-      title={@projection.title}
-      errors={@projection.errors}
-      cancel={@projection.cancel}
-      submit={@projection.submit}
-      fields={@projection.fields}
-      texts={@projection.texts}
-      messages={@projection.messages}
+      open?={projection.open?}
+      presentation={projection.presentation}
+      destructive?={projection.destructive?}
+      place={projection.place}
+      frame={projection.frame}
+      form={projection.form}
+      title={projection.title}
+      errors={projection.errors}
+      cancel={projection.cancel}
+      submit={projection.submit}
+      fields={projection.fields}
+      texts={projection.texts}
+      messages={projection.messages}
     />
     """
   end
@@ -772,33 +802,48 @@ defmodule AshDataTable.Live.Drawing do
   defp picker_part(assigns) do
     ~H"""
     <Kit.part
+      :for={
+        projection <- [
+          %{
+            open?: Projection.of({:picker, :open?}, %{picker: open_picker(@held, @drawn?)}),
+            presentation: Projection.of({:picker, :presentation}, %{presentation: @presentation}),
+            place: Projection.of({:picker, :place}, %{id: @id}),
+            frame:
+              Projection.of({:picker, :frame}, %{
+                id: @id,
+                picker: open_picker(@held, @drawn?),
+                presentation: @presentation,
+                target: @myself
+              }),
+            title: Projection.of({:picker, :title}, %{id: @id}),
+            error: Projection.of({:picker, :error}, %{id: @id, picker: open_picker(@held, @drawn?)}),
+            cancel: Projection.of({:picker, :cancel}, %{id: @id}),
+            none: Projection.of({:picker, :none}, %{id: @id, picker: open_picker(@held, @drawn?)}),
+            take:
+              Projection.of({:picker, :take}, %{
+                id: @id,
+                picker: open_picker(@held, @drawn?),
+                takes?: @takes?
+              }),
+            texts: Projection.of({:picker, :texts}, %{picker: open_picker(@held, @drawn?)}),
+            messages: Projection.of({:picker, :messages}, %{picker: open_picker(@held, @drawn?)})
+          }
+        ]
+      }
       part={:picker}
       kit={@kit}
       id={@id}
-      open?={Projection.of({:picker, :open?}, %{picker: open_picker(@held, @drawn?)})}
-      presentation={Projection.of({:picker, :presentation}, %{presentation: @presentation})}
-      place={Projection.of({:picker, :place}, %{id: @id})}
-      frame={
-        Projection.of({:picker, :frame}, %{
-          id: @id,
-          picker: open_picker(@held, @drawn?),
-          presentation: @presentation,
-          target: @myself
-        })
-      }
-      title={Projection.of({:picker, :title}, %{id: @id})}
-      error={Projection.of({:picker, :error}, %{id: @id, picker: open_picker(@held, @drawn?)})}
-      cancel={Projection.of({:picker, :cancel}, %{id: @id})}
-      none={Projection.of({:picker, :none}, %{id: @id, picker: open_picker(@held, @drawn?)})}
-      take={
-        Projection.of({:picker, :take}, %{
-          id: @id,
-          picker: open_picker(@held, @drawn?),
-          takes?: @takes?
-        })
-      }
-      texts={Projection.of({:picker, :texts}, %{picker: open_picker(@held, @drawn?)})}
-      messages={Projection.of({:picker, :messages}, %{picker: open_picker(@held, @drawn?)})}
+      open?={projection.open?}
+      presentation={projection.presentation}
+      place={projection.place}
+      frame={projection.frame}
+      title={projection.title}
+      error={projection.error}
+      cancel={projection.cancel}
+      none={projection.none}
+      take={projection.take}
+      texts={projection.texts}
+      messages={projection.messages}
     />
     """
   end
@@ -837,18 +882,34 @@ defmodule AshDataTable.Live.Drawing do
   defp confirm(assigns) do
     ~H"""
     <Kit.part
+      :for={
+        projection <- [
+          %{
+            asks?: Projection.of({:confirm, :asks?}, %{model: @model, bulk: @bulk}),
+            presentation: Projection.of({:confirm, :presentation}, %{presentation: @presentation}),
+            holder: Projection.of({:confirm, :holder}, %{id: @id, place: @place}),
+            dialog:
+              Projection.of({:confirm, :dialog}, %{
+                id: @id,
+                presentation: @presentation,
+                place: @place
+              }),
+            question: Projection.of({:confirm, :question}, %{id: @id, place: @place}),
+            texts: Projection.of({:confirm, :texts}, %{}),
+            messages: Projection.of({:confirm, :messages}, %{})
+          }
+        ]
+      }
       part={:confirm}
       kit={@kit}
       id={@id}
-      asks?={Projection.of({:confirm, :asks?}, %{model: @model, bulk: @bulk})}
-      presentation={Projection.of({:confirm, :presentation}, %{presentation: @presentation})}
-      holder={Projection.of({:confirm, :holder}, %{id: @id, place: @place})}
-      dialog={
-        Projection.of({:confirm, :dialog}, %{id: @id, presentation: @presentation, place: @place})
-      }
-      question={Projection.of({:confirm, :question}, %{id: @id, place: @place})}
-      texts={Projection.of({:confirm, :texts}, %{})}
-      messages={Projection.of({:confirm, :messages}, %{})}
+      asks?={projection.asks?}
+      presentation={projection.presentation}
+      holder={projection.holder}
+      dialog={projection.dialog}
+      question={projection.question}
+      texts={projection.texts}
+      messages={projection.messages}
     />
     """
   end
@@ -868,47 +929,59 @@ defmodule AshDataTable.Live.Drawing do
   defp pagination(assigns) do
     ~H"""
     <Kit.part
+      :for={
+        projection <- [
+          %{
+            element:
+              Projection.of({:pagination, :element}, %{id: @id, label: @label, nested?: false}),
+            range: Projection.of({:pagination, :range}, %{id: @id}),
+            previous:
+              Projection.of({:pagination, :previous}, %{id: @id, page: @page, target: @target}),
+            next: Projection.of({:pagination, :next}, %{id: @id, page: @page, target: @target}),
+            pages:
+              Projection.of({:pagination, :pages}, %{
+                id: @id,
+                page: @page,
+                state: @state,
+                model: @model,
+                target: @target
+              }),
+            sizes:
+              Projection.of({:pagination, :sizes}, %{
+                id: @id,
+                model: @model,
+                state: @state,
+                target: @target
+              }),
+            texts:
+              Projection.of({:pagination, :texts}, %{
+                page: @page,
+                row_count: @row_count,
+                state: @state,
+                label: @label
+              }),
+            messages:
+              Projection.of({:pagination, :messages}, %{
+                page: @page,
+                row_count: @row_count,
+                state: @state,
+                label: @label
+              })
+          }
+        ]
+      }
       part={:pagination}
       kit={@kit}
       id={@id}
       nested?={false}
-      element={Projection.of({:pagination, :element}, %{id: @id, label: @label, nested?: false})}
-      range={Projection.of({:pagination, :range}, %{id: @id})}
-      previous={Projection.of({:pagination, :previous}, %{id: @id, page: @page, target: @target})}
-      next={Projection.of({:pagination, :next}, %{id: @id, page: @page, target: @target})}
-      pages={
-        Projection.of({:pagination, :pages}, %{
-          id: @id,
-          page: @page,
-          state: @state,
-          model: @model,
-          target: @target
-        })
-      }
-      sizes={
-        Projection.of({:pagination, :sizes}, %{
-          id: @id,
-          model: @model,
-          state: @state,
-          target: @target
-        })
-      }
-      texts={
-        Projection.of({:pagination, :texts}, %{
-          page: @page,
-          row_count: @row_count,
-          state: @state,
-          label: @label
-        })
-      }
-      messages={
-        Projection.of({:pagination, :messages}, %{
-          page: @page,
-          row_count: @row_count,
-          state: @state,
-          label: @label
-        })
-      }
+      element={projection.element}
+      range={projection.range}
+      previous={projection.previous}
+      next={projection.next}
+      pages={projection.pages}
+      sizes={projection.sizes}
+      texts={projection.texts}
+      messages={projection.messages}
     />
     """
   end
