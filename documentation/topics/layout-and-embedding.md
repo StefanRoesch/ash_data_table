@@ -124,9 +124,10 @@ It is called with the table as its inner block and these assigns:
 | `current_user`, `current_tenant` | The socket's, each only when the socket has that assign. |
 | The assigns the resource's domain names as `scope_assign`, `actor_assign` and `tenant_assign` | The socket's, under those names, each only when the socket has that assign. |
 | The assign it names as `time_zone_assign` (`time_zone` by default) | The socket's, when it has it: the zone the table's datetimes are in ([Time zones](time-zones.md)). |
+| `current_path` | The page's path with the query of its URL as it is now (`/tasks?task[sort]=-title`): it changes with every sort, filter and page, so a link of the layout can keep them. |
 
 This fits the `app/1` Phoenix 1.8 generates; with the default names the
-last rows add nothing. A domain that names its own assigns has a layout
+rows of the domain's names add nothing. A domain that names its own assigns has a layout
 that gets them under those names. The demo's domains keep the defaults, so
 this example is from the demo's tests
 ([`demo/test/support/guarded_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/guarded_tables.ex)).

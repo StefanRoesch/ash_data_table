@@ -66,22 +66,45 @@ defmodule DemoWeb.Layouts do
   @doc """
   The layout of /tasks (`ash_data_table "/tasks", Task, layout: …`): the app
   layout with a link to the same table drawn by the React kit
-  (`DemoWeb.ReactTasksLive`), which links back. The router's page gives a
-  layout no URL, so this link does not carry the sort and filters over.
+  (`DemoWeb.ReactTasksLive`), which links back. The link keeps the query of
+  the page's URL (`current_path`, which the router's page gives its
+  layout): both tables have the id "task", so the sort, filters and page
+  carry over.
   """
   attr :flash, :map, required: true, doc: "the map of flash messages"
   attr :time_zone, :string, default: nil, doc: "as `app/1` takes it"
+
+  attr :current_path, :string,
+    default: nil,
+    doc: "the page's path and query, as the router's page gives it"
+
   slot :inner_block, required: true
 
   def tasks(assigns) do
     ~H"""
     <.app flash={@flash} time_zone={@time_zone}>
       <:same_table>
-        <.link navigate={~p"/react/tasks"} class="link">{gettext("The same table in React")}</.link>
+        <.link navigate={same_query(~p"/react/tasks", @current_path)} class="link">
+          {gettext("The same table in React")}
+        </.link>
       </:same_table>
       {render_slot(@inner_block)}
     </.app>
     """
+  end
+
+  @doc """
+  `path` with the query of `current` (a path with its query, or a URL; nil
+  for none): a link to the same table drawn by the other kit, /tasks and
+  /react/tasks, whose tables both have the id "task", so that the sort,
+  filters and page carry over.
+  """
+  @spec same_query(String.t(), String.t() | nil) :: String.t()
+  def same_query(path, current) do
+    case current && URI.parse(current).query do
+      nil -> path
+      query -> path <> "?" <> query
+    end
   end
 
   @doc """

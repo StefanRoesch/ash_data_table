@@ -9,7 +9,8 @@ defmodule DemoWeb.ReactTasksLive do
   (the status), the pagination, the question, the action panel and the
   picker. Its sort, filters and page are in the URL, as on /tasks. The
   front page links to it, and so does /tasks (`DemoWeb.Layouts.tasks/1`);
-  its link back keeps the URL's query, so the sort and filters carry over.
+  each link keeps the URL's query (`DemoWeb.Layouts.same_query/2`), so the
+  sort, filters and page carry over both ways.
   """
   use DemoWeb, :live_view
 
@@ -31,15 +32,8 @@ defmodule DemoWeb.ReactTasksLive do
   # the table patches the URL: LiveView calls this on every patch. Both
   # tables have the id "task", so /tasks reads the same query.
   @impl true
-  def handle_params(_params, url, socket) do
-    heex =
-      case URI.parse(url).query do
-        nil -> ~p"/tasks"
-        query -> ~p"/tasks" <> "?" <> query
-      end
-
-    {:noreply, assign(socket, heex: heex)}
-  end
+  def handle_params(_params, url, socket),
+    do: {:noreply, assign(socket, heex: Layouts.same_query(~p"/tasks", url))}
 
   @impl true
   def render(assigns) do
