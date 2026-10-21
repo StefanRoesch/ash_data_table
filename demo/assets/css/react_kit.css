@@ -339,7 +339,21 @@
 .ash-react-line-above { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
 
 .ash-react-pagination { margin-top: 1rem; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
-.ash-react-pagination-nested { position: sticky; left: 1rem; display: flex; width: fit-content; flex-wrap: wrap; align-items: center; gap: 1rem; }
+/* a nested table's pages stand as a table's on the page: the range at the
+   left, the controls at the right end of what is seen of the table (as wide
+   as it, `--ash-data-table-view`, no wider than the table), at the inset of
+   its link to the full view */
+.ash-react-pagination-nested {
+  position: sticky;
+  left: 1rem;
+  display: flex;
+  width: min(100%, calc(var(--ash-data-table-view, 100%) - 2rem));
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.ash-react-grid-table > tfoot > tr > td[data-pager] { padding-inline: 1rem; }
 .ash-react-join { display: inline-flex; }
 .ash-react-join > :is(button, span) > button, .ash-react-join > button { border-radius: 0; margin-inline-start: -1px; }
 .ash-react-join > button:first-child { border-start-start-radius: 0.375rem; border-end-start-radius: 0.375rem; margin-inline-start: 0; }

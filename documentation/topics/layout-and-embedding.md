@@ -403,7 +403,8 @@ scrolls sideways in an area of its own; the page around it does not.
   that table. It stays in place while the outer table scrolls under it,
   and scrolls by itself: a wide nested table in a wide table are two things
   to scroll, each without the other. So do the line that opens it (with its
-  "Columns" button) and its pages.
+  "Columns" button) and its pages, which stand as a table's on the page do:
+  the range at the left, the buttons at the right end of what is seen.
 - **Shift and the mouse wheel** (or a sideways swipe) scroll the table
   under the pointer, as the browser has it. A nested table scrolled to its
   end does not go on to scroll the outer one. The wheel alone scrolls the
