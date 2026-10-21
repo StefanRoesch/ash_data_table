@@ -6966,6 +6966,311 @@ defmodule AshDataTable.TableBlockTest do
     end
   end
 
+  describe "actions on the selection" do
+    test "a generic action with `selection_argument` is one, offered for a selection in the declared order, with neither the keys nor the sort as an input" do
+      refute_dsl_errors do
+        defmodule Elixir.AshDataTable.TableBlockTest.SelectionActions do
+          use Ash.Resource,
+            domain: AshDataTable.Test.Domain,
+            data_layer: Ash.DataLayer.Ets,
+            extensions: [AshDataTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :title, :string, public?: true
+          end
+
+          actions do
+            defaults [:read]
+
+            action :export, Ash.Type.File do
+              argument :ids, {:array, :uuid}, allow_nil?: false
+              argument :sort, :string
+              argument :heading, :string
+              run fn _input, _context -> {:ok, nil} end
+            end
+
+            update :archive do
+              accept []
+            end
+
+            action :count, :integer do
+              argument :ids, {:array, :uuid}, allow_nil?: false
+              run fn _input, _context -> {:ok, 0} end
+            end
+          end
+
+          table do
+            action :export do
+              selection_argument :ids
+              sort_argument :sort
+            end
+
+            action :archive
+
+            action :count do
+              selection_argument :ids
+            end
+          end
+        end
+      end
+
+      model = AshDataTable.Model.build(AshDataTable.TableBlockTest.SelectionActions)
+
+      # neither a row action nor a table action
+      assert Enum.map(model.actions, & &1.name) == [:archive]
+      assert model.table_actions == []
+
+      assert [
+               %{
+                 name: :export,
+                 selection_argument: :ids,
+                 sort_argument: :sort,
+                 file?: true,
+                 bulk?: false,
+                 panel?: false
+               },
+               %{name: :count, selection_argument: :ids, sort_argument: nil, file?: false}
+             ] = model.selection_actions
+
+      # the keys and the sort are the table's to give: the other argument
+      # is the one input
+      assert [%{inputs: [%{name: :heading}]} | _] = model.selection_actions
+
+      # offered for a selection beside the row actions, in the declared order
+      assert Enum.map(AshDataTable.Model.bulk_actions(model), & &1.name) ==
+               [:export, :archive, :count]
+    end
+
+    test "`selection_argument` has to name a public argument of a generic action, a list of the type of the primary key, and not beside `record_argument` or `bulk?`" do
+      [{AshDataTable.TableBlockTest.SelectionArguments, errors}] =
+        dsl_errors do
+          defmodule Elixir.AshDataTable.TableBlockTest.SelectionArguments do
+            use Ash.Resource,
+              domain: AshDataTable.Test.Domain,
+              extensions: [AshDataTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read]
+
+              update :archive do
+                accept []
+                argument :ids, {:array, :uuid}
+              end
+
+              action :unknown do
+                argument :ids, {:array, :uuid}
+                run fn _input, _context -> :ok end
+              end
+
+              action :hidden do
+                argument :ids, {:array, :uuid}, public?: false
+                run fn _input, _context -> :ok end
+              end
+
+              action :one do
+                argument :ids, :uuid
+                run fn _input, _context -> :ok end
+              end
+
+              action :numbered do
+                argument :ids, {:array, :integer}
+                run fn _input, _context -> :ok end
+              end
+
+              action :both do
+                argument :id, :uuid
+                argument :ids, {:array, :uuid}
+                run fn _input, _context -> :ok end
+              end
+
+              action :switched do
+                argument :ids, {:array, :uuid}
+                run fn _input, _context -> :ok end
+              end
+            end
+
+            table do
+              action :archive do
+                selection_argument :ids
+              end
+
+              action :unknown do
+                selection_argument :other_ids
+              end
+
+              action :hidden do
+                selection_argument :ids
+              end
+
+              action :one do
+                selection_argument :ids
+              end
+
+              action :numbered do
+                selection_argument :ids
+              end
+
+              action :both do
+                record_argument :id
+                selection_argument :ids
+              end
+
+              action :switched do
+                selection_argument :ids
+                bulk? false
+              end
+            end
+          end
+        end
+
+      assert Enum.map(errors, &{&1.path, &1.message}) == [
+               {[:table, :action, :archive],
+                "The action `archive` says `selection_argument :ids`, and is an update action, which runs on the record of a row, and on each selected record alike. `selection_argument` is for a generic action, which takes no record: it names the argument that is given the primary keys of the selected rows. Leave it out."},
+               {[:table, :action, :unknown],
+                "The action `unknown` says `selection_argument :other_ids`, and has no argument named `other_ids`."},
+               {[:table, :action, :hidden],
+                "The action `hidden` says `selection_argument :ids`, and its argument `ids` is not public. A private argument is not given from the outside, and a table is the outside."},
+               {[:table, :action, :one],
+                "The action `one` says `selection_argument :ids`, and that argument is of the type Ash.Type.UUID. It is given the primary keys of the selected rows as a list, so it has to be a list of values stored as the primary key `id` is: `{:array, Ash.Type.UUID}`."},
+               {[:table, :action, :numbered],
+                "The action `numbered` says `selection_argument :ids`, and that argument is of the type {:array, Ash.Type.Integer}. It is given the primary keys of the selected rows as a list, so it has to be a list of values stored as the primary key `id` is: `{:array, Ash.Type.UUID}`."},
+               {[:table, :action, :both],
+                "The action `both` says both `record_argument` and `selection_argument`. An action runs on the record of a row (`record_argument`), or once on all the selected rows (`selection_argument`). Keep one of them."},
+               {[:table, :action, :switched],
+                "The action `switched` says `selection_argument` and `bulk?`. An action with `selection_argument` runs on the selected rows, once for all of them: `bulk?` has nothing to switch. Leave it out."}
+             ]
+    end
+
+    test "`sort_argument` names a public, optional text argument of an action on the selection, which neither the page nor a picker gives" do
+      [{AshDataTable.TableBlockTest.SortArguments, errors}] =
+        dsl_errors do
+          defmodule Elixir.AshDataTable.TableBlockTest.SortArguments do
+            use Ash.Resource,
+              domain: AshDataTable.Test.Domain,
+              extensions: [AshDataTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read]
+
+              action :alone do
+                argument :sort, :string
+                run fn _input, _context -> :ok end
+              end
+
+              action :same do
+                argument :ids, {:array, :uuid}
+                run fn _input, _context -> :ok end
+              end
+
+              action :unknown do
+                argument :ids, {:array, :uuid}
+                run fn _input, _context -> :ok end
+              end
+
+              action :hidden do
+                argument :ids, {:array, :uuid}
+                argument :sort, :string, public?: false
+                run fn _input, _context -> :ok end
+              end
+
+              action :required do
+                argument :ids, {:array, :uuid}
+                argument :sort, :string, allow_nil?: false
+                run fn _input, _context -> :ok end
+              end
+
+              action :numbered do
+                argument :ids, {:array, :uuid}
+                argument :sort, :integer
+                run fn _input, _context -> :ok end
+              end
+
+              action :paged do
+                argument :ids, {:array, :uuid}
+                argument :sort, :string
+                run fn _input, _context -> :ok end
+              end
+
+              action :chosen do
+                argument :ids, {:array, :uuid}
+                run fn _input, _context -> :ok end
+              end
+            end
+
+            table do
+              action :alone do
+                sort_argument :sort
+              end
+
+              action :same do
+                selection_argument :ids
+                sort_argument :ids
+              end
+
+              action :unknown do
+                selection_argument :ids
+                sort_argument :sort
+              end
+
+              action :hidden do
+                selection_argument :ids
+                sort_argument :sort
+              end
+
+              action :required do
+                selection_argument :ids
+                sort_argument :sort
+              end
+
+              action :numbered do
+                selection_argument :ids
+                sort_argument :sort
+              end
+
+              action :paged do
+                selection_argument :ids
+                sort_argument :sort
+                page_argument :sort
+              end
+
+              action :chosen do
+                selection_argument :ids
+                reference :ids, AshDataTable.Test.Referring.Member
+              end
+            end
+          end
+        end
+
+      assert Enum.map(errors, &{&1.path, &1.message}) == [
+               {[:table, :action, :alone],
+                "The action `alone` says `sort_argument :sort` without `selection_argument`. The sort is given to an action on the selection, beside the keys of the selected rows."},
+               {[:table, :action, :same],
+                "The action `same` says `sort_argument :ids`, and `ids` is its `selection_argument`, which the table gives the keys of the selected rows. It cannot be both."},
+               {[:table, :action, :unknown],
+                "The action `unknown` says `sort_argument :sort`, and has no argument named `sort`."},
+               {[:table, :action, :hidden],
+                "The action `hidden` says `sort_argument :sort`, and its argument `sort` is not public. A private argument is not given from the outside, and a table is the outside."},
+               {[:table, :action, :required],
+                "The action `required` says `sort_argument :sort`, and its argument `sort` says `allow_nil? false`. It is given nil where the person has chosen no sort, and the action would then not run. Leave `allow_nil?` out."},
+               {[:table, :action, :numbered],
+                "The action `numbered` says `sort_argument :sort`, and that argument is of the type Ash.Type.Integer. It is given the table's sort as `Ash.Query.sort_input/2` takes it, as text (`\"-due_on\"`): give it the type `:string`."},
+               {[:table, :action, :paged],
+                "The action `paged` says `page_argument :sort`, and `sort` is its `sort_argument`, which the table gives the table's sort. It cannot be both."},
+               {[:table, :action, :chosen],
+                "The action `chosen` says `reference :ids`, and `ids` is its `selection_argument`: the table gives it the keys of the selected rows, and nobody chooses it. Leave the `reference` out."}
+             ]
+    end
+  end
+
   describe "component" do
     test "is accepted on a column and read through AshDataTable.Resource.Info" do
       refute_dsl_errors do

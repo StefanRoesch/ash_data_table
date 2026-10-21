@@ -10,6 +10,10 @@
 //
 // `hooks` has them by the names the table renders in `phx-hook`.
 //
+// Importing this module also sets up, once per window, the listener that
+// saves a file a table's action returned (download.js): every kit has it
+// with the hooks.
+//
 // Each hook is one object; the grid's is put together from one module
 // per section (grid/index.js). They talk to the server through one
 // transport object (transport/live_view.js).
@@ -29,6 +33,7 @@ import picker from "./picker.js"
 import sender from "./sender.js"
 import {hook} from "./transport/live_view.js"
 import {LENGTH} from "./grid/shared.js"
+import "./download.js"
 
 export const Grid = hook(grid, "grid")
 export const Pagination = hook(pagination, "pagination")

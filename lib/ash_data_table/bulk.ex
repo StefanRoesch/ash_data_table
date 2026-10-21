@@ -59,6 +59,17 @@ defmodule AshDataTable.Bulk do
   # the action as the argument its declaration names, with the inputs of
   # the panel. Whether it runs in a transaction is the action's own to say
   # (`transaction?`).
+  #
+  # ## An action on the selection
+  #
+  # A generic action whose declaration says `selection_argument` runs once,
+  # on the selection as a whole (`once/5`): it is given the primary keys of
+  # every selected record the person may read, as that argument, and the
+  # table's sort as its `sort_argument`. The rows that were named are read
+  # as the person, as above; "all that match" is read now, through the
+  # table's read action with the person's filters, keys only. Nothing but
+  # keys is kept: what the action does with them (reads them again, writes
+  # a file of them) is its own, as the person, with their policies.
 
   alias AshDataTable.Act
 
@@ -145,6 +156,68 @@ defmodule AshDataTable.Bulk do
       failed: failed,
       failures: outcome.failures |> count({:text, :record_gone, []}, gone) |> Enum.reverse()
     }
+  end
+
+  @doc """
+  Runs the action on the selection `action` of `model` once, on every
+  record of `selection` the person may read: given their primary keys as
+  its `selection_argument`, and the table's sort as its `sort_argument`
+  (`AshDataTable.Act.selected/3`), with `input` as the action's other
+  inputs (`AshDataTable.Panel.values/4`). Takes the options of `run/5`.
+
+  Returns `{:done, value, keys}`, what the action returned and the keys it
+  was given, or `{:error, message}`: what it said, or that none of the
+  selected records is there for the person, and then it does not run.
+  Never raises: a failure underneath is logged.
+  """
+  @spec once(Model.t(), Action.t(), selection, map, keyword) ::
+          {:done, term, [map]} | {:error, Errors.message()}
+  def once(
+        %Model{} = model,
+        %Action{type: :action, selection_argument: name} = action,
+        selection,
+        input,
+        opts
+      )
+      when not is_nil(name) and is_map(input) do
+    case rescued(model, :error, fn -> {:ok, readable(model, selection, opts)} end) do
+      {:ok, []} ->
+        {:error, {:text, :selection_gone, []}}
+
+      {:ok, keys} ->
+        sort = Query.sort_text(model, Keyword.get(opts, :state))
+        params = Map.merge(input, Act.selected(action, keys, sort))
+
+        ran =
+          rescued(model, {:error, {:text, :action_failed, []}}, fn ->
+            Act.run_generic(model, action, params, opts)
+          end)
+
+        case ran do
+          {:done, value} -> {:done, value, keys}
+          {:error, message} -> {:error, message}
+        end
+
+      :error ->
+        {:error, {:text, :action_failed, []}}
+    end
+  end
+
+  # The primary keys of the selected records the person may read, each
+  # once: "all that match" read now, keys only; the rows that were named
+  # read as the person, as a run reads them.
+  defp readable(%Model{via: nil} = model, :all, opts),
+    do: Query.matching(model, Keyword.fetch!(opts, :state), opts)
+
+  defp readable(%Model{} = model, :all, opts), do: model |> named(:all, opts) |> elem(0)
+
+  defp readable(%Model{} = model, selection, opts) do
+    {keys, _unnamed} = named(model, selection, opts)
+
+    model
+    |> batches(keys, opts)
+    |> Enum.flat_map(fn records -> Enum.map(records, &Map.take(&1, model.primary_key)) end)
+    |> Enum.uniq()
   end
 
   # The primary keys a selection names, each once, and how many of its rows

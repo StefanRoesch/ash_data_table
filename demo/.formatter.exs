@@ -4,6 +4,7 @@
     :ash_phoenix,
     :ash_postgres,
     :ash,
+    :ash_csv_interchange,
     :reactor,
     :ecto,
     :ecto_sql,

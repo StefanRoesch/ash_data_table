@@ -5,12 +5,15 @@ defmodule AshDataTable.Resource.Acting do
   # verifiers (which report a mistake) and the table model (which builds on
   # the answer).
   #
-  # An `action` of the block is one of two things, by what the action is on
-  # the resource. An update or a destroy action is given a record: it is a
-  # row action. A generic action is given arguments and nothing else: it is
-  # a table action, run on the table as a whole, unless the block names the
-  # argument that takes a row's primary key (`record_argument`), which makes
-  # it a row action too.
+  # An `action` of the block is one of three things, by what the action is
+  # on the resource. An update or a destroy action is given a record: it is
+  # a row action. A generic action is given arguments and nothing else: it
+  # is a table action, run on the table as a whole, unless the block names
+  # the argument that takes a row's primary key (`record_argument`), which
+  # makes it a row action too, or the argument that takes the primary keys
+  # of the selected rows (`selection_argument`), which makes it an action
+  # on the selection: run once, on all of them. The arguments the table
+  # fills itself are no inputs (`given/1`).
 
   alias Ash.Resource.Info
   alias AshDataTable.Resource.CellType
@@ -28,7 +31,7 @@ defmodule AshDataTable.Resource.Acting do
     :reference_not_found,
     :reference_not_public,
     :reference_twice,
-    :reference_record_argument,
+    :reference_given,
     :reference_sensitive,
     :reference_managed,
     :reference_no_table,
@@ -83,9 +86,24 @@ defmodule AshDataTable.Resource.Acting do
           | {:page_argument_is_record_argument, atom, atom}
           | {:page_argument_twice, atom, atom}
           | {:record_argument_not_a_key, atom, atom, term, atom, term}
+          | {:selection_argument_not_generic, atom, atom, atom}
+          | {:selection_and_record_argument, atom}
+          | {:selection_argument_not_found, atom, atom}
+          | {:selection_argument_not_public, atom, atom}
+          | {:selection_argument_no_single_key, atom, atom, [atom]}
+          | {:selection_argument_not_keys, atom, atom, term, atom, term}
+          | {:selection_argument_bulk, atom}
+          | {:sort_argument_without_selection, atom, atom}
+          | {:sort_argument_is_selection_argument, atom, atom}
+          | {:sort_argument_not_found, atom, atom}
+          | {:sort_argument_not_public, atom, atom}
+          | {:sort_argument_required, atom, atom}
+          | {:sort_argument_not_text, atom, atom, term}
+          | {:page_argument_given, atom, atom, atom}
           | Referencing.undeclarable()
-          | {:no_field, :row | :table | :create, atom, input}
-          | {:no_field, :row | :table | :create, atom, input, struct, Referencing.no_picker()}
+          | {:no_field, :row | :table | :selection | :create, atom, input}
+          | {:no_field, :row | :table | :selection | :create, atom, input, struct,
+             Referencing.no_picker()}
           | {:not_a_create_action, atom, atom}
           | {:result_read_not_public, atom}
           | {:result_read_needs_argument, atom, atom}
@@ -93,7 +111,9 @@ defmodule AshDataTable.Resource.Acting do
   @doc """
   What an `action` of the block is, with the action it names, or what is
   wrong with it: `:row` for a row action, which runs on the record of a
-  row, and `:table` for a table action, which runs on the table as a whole.
+  row, `:table` for a table action, which runs on the table as a whole,
+  and `:selection` for an action on the selection, which runs once on the
+  selected rows (`selection_argument`).
 
   `declaration` is the `action` as written in the block
   (`AshDataTable.Resource.Action`). A `reference` of it that cannot be used is
@@ -101,20 +121,40 @@ defmodule AshDataTable.Resource.Acting do
   and so is a `page_argument` (`page_arguments/2`).
   """
   @spec offered(Ash.Resource.t() | Spark.Dsl.t(), struct) ::
-          {:ok, :row | :table, struct} | {:error, reason}
+          {:ok, :row | :table | :selection, struct} | {:error, reason}
   def offered(resource, declaration) do
     with {:ok, kind, action} <- named(resource, declaration),
+         :ok <- sort_argument(action, declaration),
          :ok <- page_arguments(action, declaration),
          :ok <-
            Referencing.undeclarable(
              resource,
              action,
              Map.get(declaration, :references) || [],
-             Map.get(declaration, :record_argument)
+             given(declaration)
            ) do
       {:ok, kind, action}
     end
   end
+
+  @doc """
+  The arguments of an action that the table fills itself, as its
+  declaration names them, each by the option that names it:
+  `record_argument` (a row's primary key), `selection_argument` (the
+  primary keys of the selected rows) and `sort_argument` (the table's
+  sort). None of them is an input.
+  """
+  @spec given(struct) :: [{:record_argument | :selection_argument | :sort_argument, atom}]
+  def given(declaration) do
+    for option <- [:record_argument, :selection_argument, :sort_argument],
+        name = Map.get(declaration, option),
+        not is_nil(name),
+        do: {option, name}
+  end
+
+  @doc "The names of the arguments the table fills itself (`given/1`)."
+  @spec given_names(struct) :: [atom]
+  def given_names(declaration), do: Keyword.values(given(declaration))
 
   @doc """
   The names of the arguments the page fills, as an action's declaration
@@ -124,22 +164,27 @@ defmodule AshDataTable.Resource.Acting do
   def page_names(declaration),
     do: for(%{name: name} <- Map.get(declaration, :page_arguments) || [], do: name)
 
-  # A `page_argument` names a public argument of the action, other than the
-  # one a row's key goes to, and that once.
+  # A `page_argument` names a public argument of the action, other than
+  # those the table fills (a row's key, the selected keys, the sort), and
+  # that once.
   defp page_arguments(action, declaration) do
     names = page_names(declaration)
     twice = names -- Enum.uniq(names)
-    record_argument = Map.get(declaration, :record_argument)
+    given = given(declaration)
 
     Enum.find_value(names, :ok, fn name ->
       argument = Enum.find(action.arguments, &(&1.name == name))
+      by = List.keyfind(given, name, 1)
 
       cond do
         name in twice ->
           {:error, {:page_argument_twice, action.name, name}}
 
-        name == record_argument ->
+        by == {:record_argument, name} ->
           {:error, {:page_argument_is_record_argument, action.name, name}}
+
+        not is_nil(by) ->
+          {:error, {:page_argument_given, action.name, name, elem(by, 0)}}
 
         is_nil(argument) ->
           {:error, {:page_argument_not_found, action.name, name}}
@@ -155,6 +200,7 @@ defmodule AshDataTable.Resource.Acting do
 
   defp named(resource, %{name: name} = declaration) do
     record_argument = Map.get(declaration, :record_argument)
+    selection_argument = Map.get(declaration, :selection_argument)
 
     case Info.action(resource, name) do
       nil ->
@@ -166,6 +212,14 @@ defmodule AshDataTable.Resource.Acting do
       %{public?: false} ->
         {:error, {:not_public, name}}
 
+      %{type: :action} when not is_nil(record_argument) and not is_nil(selection_argument) ->
+        {:error, {:selection_and_record_argument, name}}
+
+      %{type: :action} = action when not is_nil(selection_argument) ->
+        with :ok <- selection_argument(resource, action, selection_argument),
+             :ok <- not_bulk(action, declaration),
+             do: {:ok, :selection, action}
+
       %{type: :action} = action when is_nil(record_argument) ->
         {:ok, :table, action}
 
@@ -175,9 +229,20 @@ defmodule AshDataTable.Resource.Acting do
       %{type: type} when not is_nil(record_argument) ->
         {:error, {:record_argument_not_generic, name, type, record_argument}}
 
+      %{type: type} when not is_nil(selection_argument) ->
+        {:error, {:selection_argument_not_generic, name, type, selection_argument}}
+
       action ->
         {:ok, :row, action}
     end
+  end
+
+  # An action on the selection runs on the selected rows only, all of them
+  # at once: `bulk?` has nothing to switch, on or off.
+  defp not_bulk(action, declaration) do
+    if is_nil(Map.get(declaration, :bulk?)),
+      do: :ok,
+      else: {:error, {:selection_argument_bulk, action.name}}
   end
 
   @doc """
@@ -212,6 +277,81 @@ defmodule AshDataTable.Resource.Acting do
     do: Ash.Type.storage_type(type, constraints || [])
 
   @doc """
+  Whether an argument of a generic action can be given the primary keys of
+  the selected rows: it is one of the action's arguments, public, and a
+  list of values stored as the resource's primary key is, which has to be
+  one attribute.
+  """
+  @spec selection_argument(Ash.Resource.t() | Spark.Dsl.t(), struct, atom) ::
+          :ok | {:error, reason}
+  def selection_argument(resource, %{name: action, arguments: arguments}, name) do
+    case {Enum.find(arguments, &(&1.name == name)), Info.primary_key(resource)} do
+      {nil, _key} ->
+        {:error, {:selection_argument_not_found, action, name}}
+
+      {%{public?: false}, _key} ->
+        {:error, {:selection_argument_not_public, action, name}}
+
+      {argument, [key]} ->
+        attribute = Info.attribute(resource, key)
+
+        case argument.type do
+          {:array, item} ->
+            constraints = Keyword.get(argument.constraints || [], :items, [])
+
+            if Ash.Type.storage_type(item, constraints) == stored_as(attribute),
+              do: :ok,
+              else: not_keys(action, name, argument, key, attribute)
+
+          _one ->
+            not_keys(action, name, argument, key, attribute)
+        end
+
+      {_argument, keys} ->
+        {:error, {:selection_argument_no_single_key, action, name, keys}}
+    end
+  end
+
+  defp not_keys(action, name, argument, key, attribute),
+    do: {:error, {:selection_argument_not_keys, action, name, argument.type, key, attribute.type}}
+
+  # The argument that is given the table's sort: of an action on the
+  # selection, another than the keys', public, text, and one the action
+  # takes empty, as it is where the person has chosen no sort.
+  defp sort_argument(action, declaration) do
+    name = Map.get(declaration, :sort_argument)
+    selection_argument = Map.get(declaration, :selection_argument)
+
+    cond do
+      is_nil(name) ->
+        :ok
+
+      is_nil(selection_argument) ->
+        {:error, {:sort_argument_without_selection, action.name, name}}
+
+      name == selection_argument ->
+        {:error, {:sort_argument_is_selection_argument, action.name, name}}
+
+      true ->
+        case Enum.find(action.arguments, &(&1.name == name)) do
+          nil ->
+            {:error, {:sort_argument_not_found, action.name, name}}
+
+          %{public?: false} ->
+            {:error, {:sort_argument_not_public, action.name, name}}
+
+          %{allow_nil?: false} ->
+            {:error, {:sort_argument_required, action.name, name}}
+
+          argument ->
+            if stored_as(argument) in [:string, :text],
+              do: :ok,
+              else: {:error, {:sort_argument_not_text, action.name, name, argument.type}}
+        end
+    end
+  end
+
+  @doc """
   The create action of `table` (an `AshDataTable.Resource.Table`): `:none` when
   its block names none.
   """
@@ -231,17 +371,18 @@ defmodule AshDataTable.Resource.Acting do
   @doc """
   The inputs of an action, in its own order: the public attributes it
   accepts, then its public arguments. A private attribute or argument is
-  never given from the outside. Nor is the argument that takes a row's
-  primary key (`record_argument`): the table gives it. Nor are those the
-  page fills (`page`, the names of the action's `page_argument`s).
+  never given from the outside. Nor are those the table gives (`given`,
+  `given_names/1`: a row's primary key, the selected keys, the sort). Nor
+  are those the page fills (`page`, the names of the action's
+  `page_argument`s).
 
   An argument that hands keys to a relationship is given by choosing the
   related records, where there is something to choose them with
   (`managing/3`). So is one whose resource the block names: `references`
   are the `reference`s of the action's declaration (`referring/5`).
   """
-  @spec inputs(Ash.Resource.t() | Spark.Dsl.t(), struct, atom | nil, [struct], [atom]) :: [input]
-  def inputs(resource, action, record_argument \\ nil, references \\ [], page \\ []) do
+  @spec inputs(Ash.Resource.t() | Spark.Dsl.t(), struct, [atom], [struct], [atom]) :: [input]
+  def inputs(resource, action, given \\ [], references \\ [], page \\ []) do
     attributes =
       for name <- Map.get(action, :accept) || [],
           attribute = Info.attribute(resource, name),
@@ -251,13 +392,13 @@ defmodule AshDataTable.Resource.Acting do
 
     arguments =
       for %{public?: true, name: name} = argument <- action.arguments,
-          name != record_argument,
+          name not in given,
           name not in page,
           do:
             argument
             |> argument()
             |> managing(resource, action)
-            |> referring(resource, action, references, record_argument)
+            |> referring(resource, action, references)
 
     Enum.map(attributes ++ arguments, &hidden_as_typed/1)
   end
@@ -311,10 +452,10 @@ defmodule AshDataTable.Resource.Acting do
   as for an argument that hands keys to a relationship. Any other input is
   the input it was.
   """
-  @spec referring(input, Ash.Resource.t() | Spark.Dsl.t(), struct, [struct], atom | nil) :: input
-  def referring(%{kind: :argument, name: name} = input, resource, action, references, given) do
+  @spec referring(input, Ash.Resource.t() | Spark.Dsl.t(), struct, [struct]) :: input
+  def referring(%{kind: :argument, name: name} = input, resource, action, references) do
     with [reference] <- Enum.filter(references, &(&1.name == name)),
-         {:ok, declared} <- Referencing.declared(resource, action, reference, given) do
+         {:ok, declared} <- Referencing.declared(resource, action, reference) do
       %{
         input
         | editor: if(declared.several?, do: :references, else: :reference),
@@ -325,7 +466,7 @@ defmodule AshDataTable.Resource.Acting do
     end
   end
 
-  def referring(input, _resource, _action, _references, _given), do: input
+  def referring(input, _resource, _action, _references), do: input
 
   @doc """
   Why an argument that hands keys to a relationship is not given by choosing
@@ -447,11 +588,11 @@ defmodule AshDataTable.Resource.Acting do
   The required inputs of an action that a table has no field for. An action
   with one cannot be run from a table.
   """
-  @spec unusable(Ash.Resource.t() | Spark.Dsl.t(), struct, atom | nil, [struct], [atom]) ::
+  @spec unusable(Ash.Resource.t() | Spark.Dsl.t(), struct, [atom], [struct], [atom]) ::
           [input]
-  def unusable(resource, action, record_argument \\ nil, references \\ [], page \\ []) do
+  def unusable(resource, action, given \\ [], references \\ [], page \\ []) do
     for %{editor: nil, required?: true} = input <-
-          inputs(resource, action, record_argument, references, page),
+          inputs(resource, action, given, references, page),
         do: input
   end
 
@@ -699,6 +840,93 @@ defmodule AshDataTable.Resource.Acting do
   def message({:page_argument_twice, name, argument}),
     do: "The action `#{name}` says `page_argument :#{argument}` more than once."
 
+  def message({:page_argument_given, name, argument, option}),
+    do:
+      "The action `#{name}` says `page_argument :#{argument}`, and `#{argument}` is its " <>
+        "`#{option}`, which the table gives #{given_what(option)}. It cannot be both."
+
+  def message({:selection_argument_not_generic, name, type, argument}),
+    do:
+      "The action `#{name}` says `selection_argument :#{argument}`, and is #{kind(type)} " <>
+        "action, which runs on the record of a row, and on each selected record alike. " <>
+        "`selection_argument` is for a generic action, which takes no record: it names the " <>
+        "argument that is given the primary keys of the selected rows. Leave it out."
+
+  def message({:selection_and_record_argument, name}),
+    do:
+      "The action `#{name}` says both `record_argument` and `selection_argument`. An action " <>
+        "runs on the record of a row (`record_argument`), or once on all the selected rows " <>
+        "(`selection_argument`). Keep one of them."
+
+  def message({:selection_argument_not_found, name, argument}),
+    do:
+      "The action `#{name}` says `selection_argument :#{argument}`, and has no argument named " <>
+        "`#{argument}`."
+
+  def message({:selection_argument_not_public, name, argument}),
+    do:
+      "The action `#{name}` says `selection_argument :#{argument}`, and its argument " <>
+        "`#{argument}` is not public. A private argument is not given from the outside, and a " <>
+        "table is the outside."
+
+  def message({:selection_argument_no_single_key, name, argument, []}),
+    do:
+      "The action `#{name}` says `selection_argument :#{argument}`, and the resource has no " <>
+        "primary key: a row that cannot be named cannot be selected."
+
+  def message({:selection_argument_no_single_key, name, argument, keys}),
+    do:
+      "The action `#{name}` says `selection_argument :#{argument}`, and the primary key of the " <>
+        "resource is #{Enum.map_join(keys, ", ", &"`#{&1}`")}: several attributes. One argument " <>
+        "takes the primary keys of the selected rows only where that is one attribute."
+
+  def message({:selection_argument_not_keys, name, argument, type, key, key_type}),
+    do:
+      "The action `#{name}` says `selection_argument :#{argument}`, and that argument is of the " <>
+        "type #{inspect(type)}. It is given the primary keys of the selected rows as a list, so it " <>
+        "has to be a list of values stored as the primary key `#{key}` is: " <>
+        "`{:array, #{inspect(key_type)}}`."
+
+  def message({:selection_argument_bulk, name}),
+    do:
+      "The action `#{name}` says `selection_argument` and `bulk?`. An action with " <>
+        "`selection_argument` runs on the selected rows, once for all of them: `bulk?` has " <>
+        "nothing to switch. Leave it out."
+
+  def message({:sort_argument_without_selection, name, argument}),
+    do:
+      "The action `#{name}` says `sort_argument :#{argument}` without `selection_argument`. " <>
+        "The sort is given to an action on the selection, beside the keys of the selected rows."
+
+  def message({:sort_argument_is_selection_argument, name, argument}),
+    do:
+      "The action `#{name}` says `sort_argument :#{argument}`, and `#{argument}` is its " <>
+        "`selection_argument`, which the table gives the keys of the selected rows. It cannot " <>
+        "be both."
+
+  def message({:sort_argument_not_found, name, argument}),
+    do:
+      "The action `#{name}` says `sort_argument :#{argument}`, and has no argument named " <>
+        "`#{argument}`."
+
+  def message({:sort_argument_not_public, name, argument}),
+    do:
+      "The action `#{name}` says `sort_argument :#{argument}`, and its argument `#{argument}` " <>
+        "is not public. A private argument is not given from the outside, and a table is the " <>
+        "outside."
+
+  def message({:sort_argument_required, name, argument}),
+    do:
+      "The action `#{name}` says `sort_argument :#{argument}`, and its argument `#{argument}` " <>
+        "says `allow_nil? false`. It is given nil where the person has chosen no sort, and the " <>
+        "action would then not run. Leave `allow_nil?` out."
+
+  def message({:sort_argument_not_text, name, argument, type}),
+    do:
+      "The action `#{name}` says `sort_argument :#{argument}`, and that argument is of the type " <>
+        "#{inspect(type)}. It is given the table's sort as `Ash.Query.sort_input/2` takes it, " <>
+        "as text (`\"-due_on\"`): give it the type `:string`."
+
   def message(reason) when elem(reason, 0) in @undeclarable,
     do: Referencing.undeclarable_message(reason)
 
@@ -745,6 +973,8 @@ defmodule AshDataTable.Resource.Acting do
 
   def message({:not_a_create_action, name, type}),
     do: "`#{name}` is #{kind(type)} action, not a create action."
+
+  defp given_what(option), do: Referencing.given_what(option)
 
   defp kind(:action), do: "a generic"
   defp kind(:update), do: "an update"

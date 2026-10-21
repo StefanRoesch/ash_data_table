@@ -21,8 +21,11 @@ defmodule AshDataTable.Model do
   #   * `relationships`, the ordered list of `AshDataTable.Model.Relationship`: what
   #     a row can be expanded into;
   #   * `actions`, the ordered list of `AshDataTable.Model.Action`: the row
-  #     actions; `table_actions`, the table actions, likewise; and `create`,
-  #     the table's create action or nil;
+  #     actions; `table_actions`, the table actions, likewise;
+  #     `selection_actions`, the actions on the selection, likewise; and
+  #     `create`, the table's create action or nil. `declared` holds the
+  #     names of all the block's `action`s in the declared order, which the
+  #     line above the grid offers its actions in (`bulk_actions/1`);
   #   * `name`, what one record of the resource is called: its short name in
   #     words ("task label");
   #   * `max_depth`, how deep a person can expand from this table when it is
@@ -232,13 +235,17 @@ defmodule AshDataTable.Model do
   # public generic action whose declaration names the argument that takes
   # the row's primary key (`record_argument`). The table actions are the
   # other `action`s, in the declared order: public generic actions, which
-  # run on the table as a whole. The create action is the one the block
+  # run on the table as a whole, but those whose declaration names the
+  # argument that takes the primary keys of the selected rows
+  # (`selection_argument`): those are the actions on the selection, run
+  # once on all of them, and offered beside the row actions that run on a
+  # selection (`bulk_actions/1`). The create action is the one the block
   # names with `create_action`. Each carries its inputs, the attributes it
   # accepts and then its arguments, as far as a table has a field for their
   # type (`AshDataTable.Model.Input`): an optional input without a field is left
   # out, and an action that requires one is no action of the model at all.
-  # The argument that takes a row's primary key is no input: the table
-  # gives it.
+  # The arguments the table gives (a row's primary key, the selected keys,
+  # the sort) are no inputs.
   #
   # `panel?` says whether using an action opens the action panel first: it
   # does when the action accepts an attribute, has an argument that is given
@@ -309,6 +316,8 @@ defmodule AshDataTable.Model do
     relationships: [],
     actions: [],
     table_actions: [],
+    selection_actions: [],
+    declared: [],
     arguments: [],
     read_arguments: %{},
     max_depth: 3,
@@ -334,6 +343,8 @@ defmodule AshDataTable.Model do
           relationships: [Relationship.t()],
           actions: [Action.t()],
           table_actions: [Action.t()],
+          selection_actions: [Action.t()],
+          declared: [atom],
           create: Action.t() | nil,
           name: String.t(),
           max_depth: non_neg_integer,
@@ -452,6 +463,8 @@ defmodule AshDataTable.Model do
       relationships: relationships!(resource, table, read_action),
       actions: for({:row, action} <- offered, do: action),
       table_actions: for({:table, action} <- offered, do: action),
+      selection_actions: for({:selection, action} <- offered, do: action),
+      declared: Enum.map(table.actions, & &1.name),
       create: create!(resource, table, columns, via),
       name: name(resource),
       max_depth: table.max_depth,
@@ -492,6 +505,7 @@ defmodule AshDataTable.Model do
         relationships: [],
         actions: [],
         table_actions: [],
+        selection_actions: [],
         create: nil
     }
   end
@@ -548,11 +562,13 @@ defmodule AshDataTable.Model do
       filters them when the nested table is read.
 
     * A row action the person can **never** run is left out, and so are a
-      table action and the create action (`Ash.can/3`, once per action). One
-      they may run on some records only stays: whether it runs on one record
-      is the action's to say when it is run. A generic action is asked about
-      without its arguments, the one that takes a row's primary key among
-      them: what its policy makes of an argument is known when it is run. An input of a field the person can never see is
+      table action, an action on the selection and the create action
+      (`Ash.can/3`, once per action). One they may run on some records
+      only stays: whether it runs on one record is the action's to say
+      when it is run. A generic action is asked about without its
+      arguments, those the table gives (a row's primary key, the selected
+      keys) among them: what its policy makes of an argument is known when
+      it is run. An input of a field the person can never see is
       left out of an action's inputs, and one of a field they see on some
       records only is marked `partly_hidden?`: it is no input of theirs
       when the action runs on several records at once (`bulk_inputs/1`).
@@ -642,13 +658,15 @@ defmodule AshDataTable.Model do
         label_column: label_column(model)
     }
 
-  # The row actions, the table actions and the create action as this person
-  # meets them: without an action they can never run, and without the
+  # The row actions, the table actions, the actions on the selection and
+  # the create action as this person meets them: without an action they
+  # can never run, and without the
   # inputs of fields they can never see. A field policy is about reading;
   # the table takes it to mean that what a person never sees is not theirs
   # to write through a table either, as it does for a cell.
   defp runnable(model, opts) do
-    offered = model.actions ++ model.table_actions ++ List.wrap(model.create)
+    offered =
+      model.actions ++ model.table_actions ++ model.selection_actions ++ List.wrap(model.create)
 
     forbidden = Access.forbidden_actions(model.resource, Enum.map(offered, & &1.name), opts)
 
@@ -691,6 +709,7 @@ defmodule AshDataTable.Model do
       model
       | actions: model.actions |> Enum.map(met) |> Enum.reject(&is_nil/1),
         table_actions: model.table_actions |> Enum.map(met) |> Enum.reject(&is_nil/1),
+        selection_actions: model.selection_actions |> Enum.map(met) |> Enum.reject(&is_nil/1),
         create: met.(model.create)
     }
   end
@@ -834,11 +853,15 @@ defmodule AshDataTable.Model do
     do: Enum.find(arguments, &(Argument.key(&1) == key))
 
   @doc """
-  The row actions that are also offered for the rows a person has selected,
-  in the declared order.
+  The actions offered for the rows a person has selected, in the declared
+  order: the row actions that also run on each of them, and the actions on
+  the selection, which run once on all of them.
   """
   @spec bulk_actions(t) :: [Action.t()]
-  def bulk_actions(%__MODULE__{actions: actions}), do: Enum.filter(actions, & &1.bulk?)
+  def bulk_actions(%__MODULE__{actions: actions, selection_actions: selection} = model) do
+    place = model.declared |> Enum.with_index() |> Map.new()
+    Enum.sort_by(Enum.filter(actions, & &1.bulk?) ++ selection, &Map.get(place, &1.name))
+  end
 
   @doc """
   The inputs of a row action when it runs on several records at once:
@@ -1364,10 +1387,11 @@ defmodule AshDataTable.Model do
     :ok
   end
 
-  # The `action`s of the block, each with what it is: a row action or a
-  # table action. One that names no public update, destroy or generic action
-  # of the resource is refused, and so is a `record_argument` that cannot
-  # take a row's primary key.
+  # The `action`s of the block, each with what it is: a row action, a table
+  # action or an action on the selection. One that names no public update,
+  # destroy or generic action of the resource is refused, and so is a
+  # `record_argument` that cannot take a row's primary key, and a
+  # `selection_argument` that cannot take the keys of the selected rows.
   defp actions!(resource, table, columns) do
     declared = table.actions
     names = Enum.map(declared, & &1.name)
@@ -1384,11 +1408,16 @@ defmodule AshDataTable.Model do
               label: declaration.label,
               confirm: declaration.confirm || nil,
               record_argument: declaration.record_argument,
+              selection_argument: declaration.selection_argument,
+              sort_argument: declaration.sort_argument,
+              given: Acting.given_names(declaration),
               references: declaration.references,
               page: Acting.page_names(declaration)
             })
 
-          # a table action runs on no record, and so on no selection of them
+          # a table action runs on no record, and so on no selection of
+          # them; an action on the selection runs once on all of them, not
+          # on each
           {kind,
            %{built | bulk?: kind == :row and Acting.bulk?(resource, action, declaration.bulk?)}}
 
@@ -1408,7 +1437,7 @@ defmodule AshDataTable.Model do
         if Acting.unusable(
              resource,
              action,
-             declaration.record_argument,
+             Acting.given_names(declaration),
              declaration.references,
              Acting.page_names(declaration)
            ) ==
@@ -1439,6 +1468,9 @@ defmodule AshDataTable.Model do
             label: "New #{name(resource)}",
             confirm: nil,
             record_argument: nil,
+            selection_argument: nil,
+            sort_argument: nil,
+            given: [],
             references: [],
             page: []
           })
@@ -1538,21 +1570,25 @@ defmodule AshDataTable.Model do
 
   # An action as a table offers it, with the inputs a table has a field for,
   # and what its declaration says (`declared`: `label`, `confirm`,
-  # `record_argument`, `references`, the names of its `page` arguments).
-  # `record_argument` is the argument of a generic action that the table
-  # gives itself, which is no input.
+  # `record_argument`, `selection_argument`, `sort_argument`, `references`,
+  # the names of its `page` arguments). Those three are arguments of a
+  # generic action that the table gives itself (`given`), which are no
+  # inputs.
   defp action(resource, table, action, columns, declared) do
     %{
       label: label,
       confirm: confirm,
       record_argument: record_argument,
+      selection_argument: selection_argument,
+      sort_argument: sort_argument,
+      given: given,
       references: references,
       page: page
     } = declared
 
     inputs =
       for %{editor: editor} = input when not is_nil(editor) <-
-            Acting.inputs(resource, action, record_argument, references, page) do
+            Acting.inputs(resource, action, given, references, page) do
         Input
         |> struct!(
           Map.merge(input, %{
@@ -1574,10 +1610,18 @@ defmodule AshDataTable.Model do
       inputs: inputs,
       panel?: Acting.panel?(inputs),
       record_argument: record_argument,
+      selection_argument: selection_argument,
+      sort_argument: sort_argument,
       page_arguments: page,
-      returns: returns(action)
+      returns: returns(action),
+      file?: file?(action)
     }
   end
+
+  # Whether a generic action returns a file (`Ash.Type.File`): the person's
+  # browser saves what it returns.
+  defp file?(%{type: :action, returns: type}) when not is_nil(type), do: Acting.file?(type)
+  defp file?(_action), do: false
 
   # What a generic action says it returns, where that is an enum value: the
   # value is then said by its label.

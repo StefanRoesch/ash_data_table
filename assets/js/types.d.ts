@@ -13,6 +13,11 @@ interface Element {
   focus(options?: FocusOptions): void
 }
 
+interface Window {
+  // the listener of the files the server pushes is set up (download.js)
+  _ashDataTableDownload?: boolean
+}
+
 interface Node {
   // what is cloned is an element of a template
   cloneNode(deep?: boolean): any

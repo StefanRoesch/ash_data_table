@@ -299,7 +299,9 @@ defmodule AshDataTable.Attrs do
     {"ash_data_table:leaving", "{table, row}",
      "a row whose record a live update found gone; answered with `left`"},
     {"ash_data_table:answered", "{table, ref, cell, saved, error}",
-     "controlled mode: the host's answer to a save, clear or choice that waited (`{held: true, ref}`)"}
+     "controlled mode: the host's answer to a save, clear or choice that waited (`{held: true, ref}`)"},
+    {"ash_data_table:download", "{table, name, type, data}",
+     "a file a generic action returned (`returns Ash.Type.File`), its content in Base64: the library's own window listener (`assets/js/download.js`) has the browser save it, in every kit"}
   ]
 
   @by %{

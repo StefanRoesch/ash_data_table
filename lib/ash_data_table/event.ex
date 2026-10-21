@@ -28,7 +28,7 @@ defmodule AshDataTable.Event do
   | `:row_saved` | a cell was saved, emptied, given a chosen record, or saved from the side panel (a list, a map cell, a union) | `action`, `key`, `changed` (the columns), `record` |
   | `:row_created` | a create | `action`, `key`, `arguments`, `record` |
   | `:row_destroyed` | a destroy action on a row | `action`, `key`, `arguments` |
-  | `:action_ran` | an update or a generic action on a row, a table action | `action`, `key` (nil for a table action), `arguments`, `record` or `result` |
+  | `:action_ran` | an update or a generic action on a row, a table action, an action on the selection (`selection_argument`) | `action`, `key` (nil for a table action and an action on the selection), `arguments`, `record` or `result`; of an action on the selection also `selected` (the keys it was given) and `all?` |
   | `:bulk_ran` | an action on a selection is done | `action`, `arguments`, `all?`, `succeeded` and `failed` (keys) |
   | `:selection_changed` | what is selected changed: by the person, or as the table ends or narrows it | `selected` (keys, as the browser named them: claims, not read again), `all?` (every record that matches) |
   | `:row_opened` | "Open" on a row, which the page offers with `open` (sent whatever `notify` says) | `key` |
@@ -43,7 +43,9 @@ defmodule AshDataTable.Event do
   the record yourself for a sensitive field. It is nil where the record is
   no longer the person's to read. `arguments` are what the action was
   given, as typed, by name: without sensitive ones, and a file by its name
-  and type (`%{filename: …, content_type: …}`), without its content. The
+  and type (`%{filename: …, content_type: …}`), without its content. A file
+  a generic action returned (`returns Ash.Type.File`), which the person's
+  browser saves, is its `result` the same way: by its name and type. The
   list of events only grows, and an event keeps its name and what it
   carries.
   """
@@ -147,7 +149,7 @@ defmodule AshDataTable.Event do
        action: action.name,
        key: key,
        arguments: arguments(model, action, given),
-       result: Sensitive.scrub(outcome.value)
+       result: result(outcome)
      }}
   end
 
@@ -160,6 +162,24 @@ defmodule AshDataTable.Event do
        record: if(outcome.gone?, do: nil, else: shown(model, outcome.record))
      }}
   end
+
+  @doc false
+  # An action on the selection that ran once on all of it
+  # (`selection_argument`): as a table action, with the keys it was given,
+  # read again as the person, and whether it was of everything that
+  # matches.
+  @spec selection_ran(Model.t(), Model.Action.t(), :all | {:rows, list}, map, [map], map) :: t
+  def selection_ran(model, action, selection, given, keys, outcome) do
+    {:action_ran, details} = ran(model, action, nil, given, outcome)
+    {:action_ran, Map.merge(details, %{selected: keys, all?: selection == :all})}
+  end
+
+  # What a generic action returned: scrubbed, and a file by its name and
+  # type (`AshDataTable.Download`), without its content.
+  defp result(%{download: %AshDataTable.Download{} = download}),
+    do: AshDataTable.Download.told(download)
+
+  defp result(outcome), do: Sensitive.scrub(outcome.value)
 
   @doc false
   # A run on a selection that is done: what each record was given, whether

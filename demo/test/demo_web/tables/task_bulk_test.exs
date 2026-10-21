@@ -144,7 +144,8 @@ defmodule DemoWeb.Tables.TaskBulkTest do
                  "Reassign",
                  "Set progress",
                  "Destroy",
-                 "Set labels"
+                 "Set labels",
+                 "Export CSV"
                ],
                selected: "",
                controls?: false,
@@ -174,13 +175,13 @@ defmodule DemoWeb.Tables.TaskBulkTest do
       assert attribute(html, "#task-bulk-destroy", "data-destructive") == [""]
       assert attribute(html, "#task-bulk-archive", "data-destructive") == []
 
-      # of five actions the first two are on the line, the others in the
+      # of six actions the first two are on the line, the others in the
       # menu "More" opens, the browser's popover
       assert attribute(html, "#task-bulk-more-button", "popovertarget") == ["task-bulk-more"]
       assert attribute(html, "#task-bulk-more", "popover") == ["auto"]
 
       assert attribute(html, "#task-bulk-more [data-bulk]", "data-bulk") ==
-               ["set_progress", "destroy", "set_labels"]
+               ["set_progress", "destroy", "set_labels", "export_csv"]
 
       # "Clear selection" is a quiet button
       assert [clear] = attribute(html, "#task-clear-selection", "class")
@@ -228,7 +229,15 @@ defmodule DemoWeb.Tables.TaskBulkTest do
       {:ok, _view, html} = conn |> log_in(world.member) |> live("/tasks")
 
       assert ["Select all 3 that match", "Clear selection" | actions] = selection(html).buttons
-      assert actions == ["Archive", "Reassign", "Set progress", "Destroy", "Set labels"]
+
+      assert actions == [
+               "Archive",
+               "Reassign",
+               "Set progress",
+               "Destroy",
+               "Set labels",
+               "Export CSV"
+             ]
     end
   end
 
