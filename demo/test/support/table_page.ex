@@ -1177,9 +1177,18 @@ defmodule DemoWeb.TablePage do
     inspect(sent_by(view.pid, []), limit: :infinity, printable_limit: :infinity)
   end
 
+  # What goes to the browser of what the view sent: its channel's messages
+  # and replies, not the answers of the calls a test makes of the process
+  # (`AshDataTable.Test.flush/1`'s `:sys.get_state/1` answers with all the
+  # process holds, which no browser is sent).
   defp sent_by(pid, sent) do
     receive do
-      {:trace, ^pid, :send, message, _to} -> sent_by(pid, [message | sent])
+      {:trace, ^pid, :send, %struct{} = message, _to}
+      when struct in [Phoenix.Socket.Message, Phoenix.Socket.Reply] ->
+        sent_by(pid, [message | sent])
+
+      {:trace, ^pid, :send, _message, _to} ->
+        sent_by(pid, sent)
     after
       0 -> Enum.reverse(sent)
     end
