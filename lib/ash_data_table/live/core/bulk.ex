@@ -9,13 +9,13 @@ defmodule AshDataTable.Live.Core.Bulk do
 
   alias AshDataTable.Caller
   alias AshDataTable.Live.Core
-  alias AshDataTable.Live.Core.Notify
   alias AshDataTable.Live.Core.Opener
   alias AshDataTable.Live.Core.Reading
   alias AshDataTable.Live.Core.Selection
   alias AshDataTable.Live.Registry
   alias AshDataTable.Model
   alias AshDataTable.Operation
+  alias AshDataTable.Table
   alias AshDataTable.Text
 
   # What became of an action that ran on the selected rows: said above the
@@ -34,7 +34,7 @@ defmodule AshDataTable.Live.Core.Bulk do
     # the host is told what was done, whoever asks now
     socket =
       case result do
-        {:ok, %{event: event}} -> Notify.told(socket, event)
+        {:ok, %{event: event}} -> Core.notify(socket, event)
         _exit -> socket
       end
 
@@ -58,12 +58,17 @@ defmodule AshDataTable.Live.Core.Bulk do
       for {message, count} <- outcome.failures,
           do: {:text, :bulk_failure, message: message, count: count}
 
+    # the rows it did not run on stay selected, and no others
+    failed = {:rows, Enum.map(outcome.failed, &Selection.named(model, &1))}
+
+    socket =
+      socket
+      |> Core.put(running: nil, result: %{summary: summary, failures: failures})
+      |> Core.say({:join, " ", [summary | failures]})
+
     {:noreply,
      socket
-     |> Core.put(running: nil, result: %{summary: summary, failures: failures})
-     |> Core.say({:join, " ", [summary | failures]})
-     # the rows it did not run on stay selected, and no others
-     |> Selection.put({:rows, Enum.map(outcome.failed, &Selection.named(model, &1))}, true)
+     |> Core.stepped(Selection.put(Core.table(socket), failed, true))
      |> Reading.reread()}
   end
 
@@ -103,6 +108,11 @@ defmodule AshDataTable.Live.Core.Bulk do
     )
   end
 
+  # Sent by the hook when the person changes the selection while the table
+  # still says what the last run came to: that is said no longer. A step
+  # over the table (stage 9g).
+  def step(:bulk_seen, table, _context), do: {Table.put(table, result: nil), [], nil}
+
   # Sent by the hook when a person uses a button of the line above the grid,
   # on what they have selected (`AshDataTable.Live.Core.Selection`): `rows`,
   # each as the hook names it (its primary key), or every record the filters
@@ -116,7 +126,10 @@ defmodule AshDataTable.Live.Core.Bulk do
   # outlives its page: they are claims, and the run reads each as the
   # person before anything is done to it (`AshDataTable.Bulk`).
   def on({:bulk, name} = intent, socket) do
-    case Operation.bulk_action(Core.operation(socket, intent), name) do
+    case Operation.bulk_action(
+           Core.operation(Core.table(socket), Core.context(socket), intent),
+           name
+         ) do
       {:ok, action, selection} ->
         %{entry: entry} = Core.table(socket)
         question = question(action, selected(selection, entry))
@@ -146,7 +159,7 @@ defmodule AshDataTable.Live.Core.Bulk do
   # (as it may while a host asks it, in controlled mode). Then nothing runs,
   # and the person is told why.
   def on({:bulk_run, name, token}, socket) do
-    input = Core.operation(socket, {:bulk_run, name})
+    input = Core.operation(Core.table(socket), Core.context(socket), {:bulk_run, name})
 
     with {:ok, action, _selection} <- Operation.bulk_action(input, name),
          :named <- named(socket, token),
@@ -168,10 +181,6 @@ defmodule AshDataTable.Live.Core.Bulk do
         {:noreply, socket}
     end
   end
-
-  # Sent by the hook when the person changes the selection while the table
-  # still says what the last run came to: that is said no longer.
-  def on(:bulk_seen, socket), do: {:noreply, Core.put(socket, result: nil)}
 
   # The host's Confirm of the question before a run (controlled mode).
   def on({:confirmed, {:bulk_run, _name, _token} = intent}, socket), do: on(intent, socket)

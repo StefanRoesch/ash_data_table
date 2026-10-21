@@ -7,7 +7,6 @@ defmodule AshDataTable.Live.Core.Nesting do
   alias AshDataTable.Event
   alias AshDataTable.Ids
   alias AshDataTable.Live.Core
-  alias AshDataTable.Live.Core.Notify
   alias AshDataTable.Live.Core.Reading
   alias AshDataTable.Live.Core.Url
   alias AshDataTable.Live.Registry
@@ -154,7 +153,7 @@ defmodule AshDataTable.Live.Core.Nesting do
        socket
        |> Core.put(open: Map.put(open, key, lines))
        |> Reading.put_detail(key)
-       |> Notify.told(Event.line(event, pk, name))}
+       |> Core.notify(Event.line(event, pk, name))}
     else
       _ -> {:noreply, socket}
     end

@@ -3,7 +3,8 @@ defmodule AshDataTable.Live.Core.Reading do
   # Reading: the read in place or beside the process, what it
   # shows, a row put into the stream or taken out of it, the fill and error
   # messages, the footer summaries beside the read; sort, filter, page and
-  # page size.
+  # page size, which are steps over the table (stage 9g, `step/3`: the
+  # state changed, and `:read` or the URL's patch as their effect).
 
   require Logger
 
@@ -16,7 +17,6 @@ defmodule AshDataTable.Live.Core.Reading do
   alias AshDataTable.Ids
   alias AshDataTable.Item
   alias AshDataTable.Live.Core
-  alias AshDataTable.Live.Core.Notify
   alias AshDataTable.Live.Core.Selection
   alias AshDataTable.Live.Core.Url
   alias AshDataTable.Live.Registry
@@ -26,6 +26,7 @@ defmodule AshDataTable.Live.Core.Reading do
   alias AshDataTable.Present
   alias AshDataTable.Query
   alias AshDataTable.State
+  alias AshDataTable.Table
   alias AshDataTable.Text
 
   require AshDataTable.Live.Current, as: Current
@@ -297,7 +298,7 @@ defmodule AshDataTable.Live.Core.Reading do
           Event.read_failed(error && Text.say(error), forbidden?)
       end
 
-    Notify.told(socket, event)
+    Core.notify(socket, event)
   end
 
   defp shown(socket, {:ok, %Query.Page{} = page}, _read) do
@@ -599,7 +600,7 @@ defmodule AshDataTable.Live.Core.Reading do
       |> Core.put(page: %{page | total: page.total && max(page.total - 1, 0)})
       |> stream_delete_by_dom_id(Core.table(socket).entry.stream, Ids.row(id, key))
       |> stream_delete_by_dom_id(Core.table(socket).entry.stream, Ids.detail(Ids.row(id, key)))
-      |> Selection.gone(pk)
+      |> then(&Core.stepped(&1, Selection.gone(Core.table(&1), pk)))
       |> due(:force)
 
     if rows == %{}, do: reread(socket), else: socket
@@ -710,21 +711,62 @@ defmodule AshDataTable.Live.Core.Reading do
     end)
   end
 
-  def on({:sort, name}, socket) do
-    %{state: state, model: model} = Core.table(socket).entry
-    {:noreply, Url.go(socket, State.cycle_sort(state, model, name))}
+  def step({:sort, name}, table, _context) do
+    %{state: state, model: model} = table.entry
+    table |> Url.go(State.cycle_sort(state, model, name)) |> noreply()
   end
 
   # Sent by the form of the filter row when a filter is left or a choice is
   # made, with every filter of the row.
-  def on({:filter, form}, socket) do
-    %{state: state, model: model} = Core.table(socket).entry
+  def step({:filter, form}, table, _context) do
+    %{state: state, model: model} = table.entry
 
     {filtered, rejected} = State.filter(state, model, form)
     pending = %{controls: State.pending(model, form), among: [state.filters, filtered.filters]}
 
-    {:noreply, socket |> Core.put(rejected: rejected, pending: pending) |> Url.refilter(filtered)}
+    table
+    |> Table.put(rejected: rejected, pending: pending)
+    |> Url.refilter(filtered)
+    |> noreply()
   end
+
+  def step({:clear_filter, name}, table, _context) do
+    %{state: state, pending: pending} = table.entry
+    cleared = State.clear_filter(state, name)
+
+    # the other columns keep the controls they show
+    pending = %{
+      controls:
+        Map.reject(pending.controls, fn {column, _} -> Atom.to_string(column) == name end),
+      among: [state.filters, cleared.filters]
+    }
+
+    table |> Table.put(pending: pending) |> Url.refilter(cleared) |> noreply()
+  end
+
+  def step(:clear_filters, table, _context) do
+    state = State.clear_filters(table.entry.state)
+
+    table
+    |> Table.put(rejected: %{}, pending: %{controls: %{}, among: []})
+    |> Url.refilter(state)
+    |> noreply()
+  end
+
+  def step({:page, to}, table, _context),
+    do: table |> Url.go(target(table.entry, to)) |> noreply()
+
+  # Sent by the "Rows per page" menu: the size as text. It is a claim: only
+  # a size the table offers is taken (`AshDataTable.State.resize/3`), and
+  # anything else changes nothing. The table starts at its first page with
+  # it, as after a new sort; the sort, the filters and the arguments stay.
+  def step({:page_size, size}, table, _context) do
+    %{state: state, model: model} = table.entry
+    table |> Url.go(State.resize(state, model, size)) |> noreply()
+  end
+
+  # what a change of the state gave (`Url.go/2`), as a step with no reply
+  defp noreply({table, effects}), do: {table, effects, nil}
 
   # Sent by the button of a filter for several of a column's values ("is
   # any of", "is none of"): the side panel opens with a box per value of the
@@ -754,51 +796,16 @@ defmodule AshDataTable.Live.Core.Reading do
     end
   end
 
-  def on({:clear_filter, name}, socket) do
-    %{state: state, pending: pending} = Core.table(socket).entry
-    cleared = State.clear_filter(state, name)
-
-    # the other columns keep the controls they show
-    pending = %{
-      controls:
-        Map.reject(pending.controls, fn {column, _} -> Atom.to_string(column) == name end),
-      among: [state.filters, cleared.filters]
-    }
-
-    {:noreply, socket |> Core.put(pending: pending) |> Url.refilter(cleared)}
-  end
-
-  def on(:clear_filters, socket) do
-    state = State.clear_filters(Core.table(socket).entry.state)
-
-    {:noreply,
-     socket
-     |> Core.put(rejected: %{}, pending: %{controls: %{}, among: []})
-     |> Url.refilter(state)}
-  end
-
-  def on({:page, to}, socket) do
-    {:noreply, Url.go(socket, target(Core.table(socket).entry, to))}
-  end
-
-  # Sent by the "Rows per page" menu: the size as text. It is a claim: only
-  # a size the table offers is taken (`AshDataTable.State.resize/3`), and
-  # anything else changes nothing. The table starts at its first page with
-  # it, as after a new sort; the sort, the filters and the arguments stay.
-  def on({:page_size, size}, socket) do
-    %{state: state, model: model} = Core.table(socket).entry
-    {:noreply, Url.go(socket, State.resize(state, model, size))}
-  end
-
   @doc """
   The side panel of a filter for several values was sent, and went
   (`AshDataTable.Panel.submitted/2`): the column is filtered by the values
   that were ticked, with the panel's operator. The other filters stay as
   they are. A value that is none of the column's is no filter
-  (`AshDataTable.State.filter_column/4`).
+  (`AshDataTable.State.filter_column/4`). `{table, effects}`, as
+  `Url.refilter/2`.
   """
-  def filtered(socket, %{column: column, operator: operator, values: values}) do
-    %{state: state, model: model, pending: pending} = Core.table(socket).entry
+  def filtered(%Table{} = table, %{column: column, operator: operator, values: values}) do
+    %{state: state, model: model, pending: pending} = table.entry
     name = Atom.to_string(column)
     entry = %{"o" => Atom.to_string(operator), "in" => values}
     filtered = State.filter_column(state, model, name, entry)
@@ -812,10 +819,7 @@ defmodule AshDataTable.Live.Core.Reading do
       among: [state.filters, filtered.filters]
     }
 
-    {:noreply,
-     socket
-     |> Core.put(pending: pending)
-     |> Url.refilter(filtered)}
+    table |> Table.put(pending: pending) |> Url.refilter(filtered)
   end
 
   defp target(%{page: %{previous: %State{} = state}}, "previous"), do: state

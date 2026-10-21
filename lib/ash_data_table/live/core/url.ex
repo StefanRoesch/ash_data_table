@@ -2,8 +2,10 @@ defmodule AshDataTable.Live.Core.Url do
   @moduledoc false
   # The URL: the arguments of the line, and a change of the state,
   # which is a patch where the state is in the URL.
-
-  import Phoenix.LiveView
+  #
+  # Over the table (stage 9g): the intents of the line are steps
+  # (`step/3`), and a change of the state gives the table and its effects
+  # (`go/2`: `{:patch, url}`, or the state put and `:read`).
 
   alias AshDataTable.Ids
   alias AshDataTable.Live.Core
@@ -11,13 +13,12 @@ defmodule AshDataTable.Live.Core.Url do
   alias AshDataTable.Model
   alias AshDataTable.Related
   alias AshDataTable.State
-
-  require AshDataTable.Live.Current, as: Current
+  alias AshDataTable.Table
 
   # Sent by the form of the argument line when one of its controls changes
   # or is left, and on Enter, with everything the line holds.
-  def on({:arguments, form}, socket) do
-    %{state: state, model: model} = Core.table(socket).entry
+  def step({:arguments, form}, table, context) do
+    %{state: state, model: model} = table.entry
 
     # the rows of the arguments that are given value by value, as they stand
     lines =
@@ -26,53 +27,55 @@ defmodule AshDataTable.Live.Core.Url do
           into: %{},
           do: {Model.Argument.key(argument), rows}
 
-    {:noreply, socket |> Core.put(lines: lines) |> reargue(State.argue(state, model, form))}
+    {table, effects} =
+      table |> Table.put(lines: lines) |> reargue(State.argue(state, model, form), context)
+
+    {table, effects, nil}
   end
 
   # Sent by the button of an argument that is given value by value: a row
   # is added for one more value. An empty row holds no value, so nothing is
   # read for it; focus goes into it.
-  def on({:argument_add, named}, socket) do
-    %{id: id, lines: lines} = Core.table(socket).entry
+  def step({:argument_add, named}, table, _context) do
+    %{id: id, lines: lines} = table.entry
 
-    case listed(Core.table(socket).entry, named) do
+    case listed(table.entry, named) do
       nil ->
-        {:noreply, socket}
+        {table, [], nil}
 
       {key, rows} ->
-        {:noreply,
-         socket
-         |> Core.put(lines: Map.put(lines, key, rows ++ [""]))
-         |> push_event("ash_data_table:focus", %{
-           table: id,
-           cell: Ids.argument_value(Ids.argument(id, named), length(rows))
-         })}
+        {Table.put(table, lines: Map.put(lines, key, rows ++ [""])),
+         [focus(id, named, length(rows))], nil}
     end
   end
 
   # And by the button of one of its rows: the value is taken away. Focus
   # goes to the row that stands in its place, else to the one before it,
   # else to the button that adds one.
-  def on({:argument_remove, named, at}, socket) do
-    %{id: id, state: state, model: model, lines: lines} = Core.table(socket).entry
+  def step({:argument_remove, named, at}, table, context) do
+    %{id: id, state: state, model: model, lines: lines} = table.entry
 
-    with {key, rows} <- listed(Core.table(socket).entry, named),
+    with {key, rows} <- listed(table.entry, named),
          true <- at < length(rows) do
       rows = List.delete_at(rows, at)
       focus = if rows == [], do: :add, else: min(at, length(rows) - 1)
 
-      {:noreply,
-       socket
-       |> Core.put(lines: Map.put(lines, key, rows))
-       |> reargue(State.put_argument(state, model, key, rows))
-       |> push_event("ash_data_table:focus", %{
-         table: id,
-         cell: Ids.argument_value(Ids.argument(id, named), focus)
-       })}
+      {table, effects} =
+        table
+        |> Table.put(lines: Map.put(lines, key, rows))
+        |> reargue(State.put_argument(state, model, key, rows), context)
+
+      {table, effects ++ [focus(id, named, focus)], nil}
     else
-      _ -> {:noreply, socket}
+      _ -> {table, [], nil}
     end
   end
+
+  # Where focus goes in the line: a row of an argument's values, or `:add`.
+  defp focus(id, named, at),
+    do:
+      {:push, "ash_data_table:focus",
+       %{table: id, cell: Ids.argument_value(Ids.argument(id, named), at)}}
 
   # A change of the arguments, by the line's form or by one of its buttons:
   # `chosen` is the state as the person would have it. Ash is asked what it
@@ -82,15 +85,16 @@ defmodule AshDataTable.Live.Core.Url do
   # one of the filters.
   # A state the host put (`AshDataTable.put_state/3`): as the URL's
   # parameters are read, with what the model does not allow dropped, and
-  # then as the person's own choice of arguments is taken.
-  def put_state(socket, params) do
-    %{model: model} = Core.table(socket).entry
-    reargue(socket, model |> State.from_params(params) |> State.fit(model))
+  # then as the person's own choice of arguments is taken. `{table,
+  # effects}`.
+  def put_state(%Table{} = table, params, context) do
+    %{model: model} = table.entry
+    reargue(table, model |> State.from_params(params) |> State.fit(model), context)
   end
 
-  defp reargue(socket, chosen) do
-    %{model: model, state: state} = Core.table(socket).entry
-    reader = Core.reader(socket)
+  defp reargue(table, chosen, context) do
+    %{model: model, state: state} = table.entry
+    reader = Core.reader(table, context)
 
     {next, model, missing, refused} =
       case Reading.settle(model, chosen, reader) do
@@ -115,8 +119,8 @@ defmodule AshDataTable.Live.Core.Url do
           message <- messages,
           do: {:text, :error_on_field, field: argument.label, message: message}
 
-    socket
-    |> Core.put(model: model, missing: missing, refused: refused)
+    table
+    |> Table.put(model: model, missing: missing, refused: refused)
     |> then(&if(said == [], do: &1, else: Core.say(&1, {:join, "; ", said})))
     |> refilter(next)
   end
@@ -142,33 +146,34 @@ defmodule AshDataTable.Live.Core.Url do
   defp listed(_assigns, _named), do: nil
 
   # A change of the filters is announced once its rows have been read.
-  def refilter(socket, state) when Current.entry(socket, :state) == state, do: socket
+  # `{table, effects}`, as `go/2`.
+  def refilter(table, state) when table.entry.state == state, do: {table, []}
 
   # With the filters goes what the last run on a selection came to (the
   # selection itself is given up by `Selection.scoped/1`).
-  def refilter(socket, state),
-    do: socket |> Core.put(announce?: true, result: nil) |> go(state)
+  def refilter(table, state),
+    do: table |> Table.put(announce?: true, result: nil) |> go(state)
 
   # With the state in the URL the change is a patch, and the new state comes
-  # back through `update/2`. Otherwise the entry holds it.
-  def go(socket, state) when Current.entry(socket, :state) == state, do: socket
+  # back through `update/2`. Otherwise the entry holds it, and the table
+  # reads for it (`:read`, `Reading.read/1` on the socket). `{table,
+  # effects}`.
+  def go(table, state) when table.entry.state == state, do: {table, []}
 
-  def go(socket, state) when is_binary(Current.option(socket, :url)) do
-    %{options: %{url: url}, entry: %{id: id}} = Core.table(socket)
+  def go(table, state) when is_binary(table.options.url) do
+    %{options: %{url: url}, entry: %{id: id, related: related, model: model}} = table
 
     # what the table is limited to stays, whatever else changes
     limit =
-      case Core.table(socket).entry.related do
+      case related do
         nil -> %{}
         %{param: param} -> %{Related.param() => param}
       end
 
-    push_patch(socket,
-      to: path(url, id, Map.merge(State.to_params(state, Core.table(socket).entry.model), limit))
-    )
+    {table, [{:patch, path(url, id, Map.merge(State.to_params(state, model), limit))}]}
   end
 
-  def go(socket, state), do: socket |> Core.put(state: state) |> Reading.read()
+  def go(table, state), do: {Table.put(table, state: state), [:read]}
 
   # The URL with these parameters for the table `id`, and those of the
   # page's other tables as they are.

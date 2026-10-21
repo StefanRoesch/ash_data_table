@@ -85,7 +85,7 @@ defmodule AshDataTable.Live.Core.Files do
   # says of each), or has not received one (`:waiting`).
   def filed(socket, panel) do
     inputs = Panel.file_inputs(panel)
-    refused = refused(socket, panel)
+    refused = refused(socket.assigns[:uploads], Core.table(socket).entry.id, panel)
 
     # LiveView's client sends the files before the form; a form that
     # comes without them was not sent by it
@@ -165,26 +165,25 @@ defmodule AshDataTable.Live.Core.Files do
   end
 
   # What LiveView says of the files of a panel that it does not take: by
-  # field, what is shown at the field.
-  def refused(socket, panel) do
+  # field, what is shown at the field. `uploads` are the LiveView's, `id`
+  # the table's (a step's `context` holds them).
+  def refused(uploads, id, panel) do
     for input <- Panel.file_inputs(panel),
-        texts =
-          upload_errors_of(
-            upload_of(socket.assigns[:uploads], Core.table(socket).entry.id, input)
-          ),
+        texts = upload_errors_of(upload_of(uploads, id, input)),
         texts != [],
         do: {input.label, texts}
   end
 
-  # What LiveView does not take of the files, read out.
-  def say_files(socket, []), do: socket
+  # What LiveView does not take of the files, read out: into a step's
+  # table, or the socket's (`Core.say/2`).
+  def say_files(table_or_socket, []), do: table_or_socket
 
-  def say_files(socket, refused) do
+  def say_files(table_or_socket, refused) do
     said =
       for {label, texts} <- refused,
           do: {:text, :error_on_field, field: label, message: {:join, " ", texts}}
 
-    Core.say(socket, {:join, "; ", said})
+    Core.say(table_or_socket, {:join, "; ", said})
   end
 
   # The name of the upload of a field: with the table's id before the

@@ -5,13 +5,38 @@ defmodule AshDataTable.Live.Core.Cells do
 
   alias AshDataTable.Format
   alias AshDataTable.Live.Core
-  alias AshDataTable.Live.Core.Notify
   alias AshDataTable.Live.Core.Opener
   alias AshDataTable.Live.Core.Picker
   alias AshDataTable.Live.Core.Reading
   alias AshDataTable.Model
   alias AshDataTable.Operation
   alias AshDataTable.Text
+
+  # Sent by the hook when a person asks for the value of a sensitive cell:
+  # the row by the key in its DOM id, and the column. The record is read
+  # again, as the person, through the table's read action, and the answer
+  # is the value as the cell would show it. It goes to the hook alone:
+  # nothing of it is rendered, kept or said. A step over the table (stage
+  # 9g).
+  #
+  # Only a cell of a sensitive column this person has, in a row of the page.
+  # A value Ash hides from them on this record is not given; whoever may
+  # see the field may ask (`sensitive?` is no access rule).
+  def step({:reveal, _key, name} = intent, table, context) do
+    %{model: model} = table.entry
+
+    case Operation.reveal(Core.operation(table, context, intent)) do
+      {:ok, value} ->
+        text = Format.format(Operation.column(model, name), value, model.time_zone)
+        {table, [], %{ok: true, value: text}}
+
+      {:error, message} ->
+        {table, [], %{ok: false, error: Text.say(message)}}
+
+      _hidden_or_refused ->
+        {table, [], %{ok: false}}
+    end
+  end
 
   # Sent by the hook when a person has changed a cell's value and pressed
   # Enter or left the cell: the row by the key in its DOM id, the column, and
@@ -30,31 +55,6 @@ defmodule AshDataTable.Live.Core.Cells do
   # column has to be one this person edits and one that can be emptied, the
   # row one of the page, and the record is read again, as the person.
   def on({:clear, _key, _name} = intent, socket), do: asked(socket, intent, "")
-
-  # Sent by the hook when a person asks for the value of a sensitive cell:
-  # the row by the key in its DOM id, and the column. The record is read
-  # again, as the person, through the table's read action, and the answer
-  # is the value as the cell would show it. It goes to the hook alone:
-  # nothing of it is rendered, kept or said.
-  #
-  # Only a cell of a sensitive column this person has, in a row of the page.
-  # A value Ash hides from them on this record is not given; whoever may
-  # see the field may ask (`sensitive?` is no access rule).
-  def on({:reveal, _key, name} = intent, socket) do
-    %{model: model} = Core.table(socket).entry
-
-    case Operation.reveal(Core.operation(socket, intent)) do
-      {:ok, value} ->
-        text = Format.format(Operation.column(model, name), value, model.time_zone)
-        {:reply, %{ok: true, value: text}, socket}
-
-      {:error, message} ->
-        {:reply, %{ok: false, error: Text.say(message)}, socket}
-
-      _hidden_or_refused ->
-        {:reply, %{ok: false}, socket}
-    end
-  end
 
   # Sent by the hook when a person opens the editor of a cell that is
   # edited in the side panel (an array, a map cell, a union): the row by the
@@ -145,7 +145,7 @@ defmodule AshDataTable.Live.Core.Cells do
   the hook sends, or Confirm runs after a question the host asked.
   """
   def write({:save, key, name, typed} = intent, socket) do
-    case Operation.save(Core.operation(socket, intent)) do
+    case Operation.save(Core.operation(Core.table(socket), Core.context(socket), intent)) do
       # not a cell this table lets anyone edit: nothing a person can send
       # through the table, so nothing is shown for it either
       :refused ->
@@ -163,7 +163,7 @@ defmodule AshDataTable.Live.Core.Cells do
   end
 
   def write({:clear, key, name} = intent, socket) do
-    case Operation.clear(Core.operation(socket, intent)) do
+    case Operation.clear(Core.operation(Core.table(socket), Core.context(socket), intent)) do
       :refused ->
         {:reply, %{ok: false}, socket}
 
@@ -182,7 +182,7 @@ defmodule AshDataTable.Live.Core.Cells do
          socket
          |> Reading.put_failure(key, column.name, nil)
          |> Reading.put_row(key, record)
-         |> Notify.told(outcome.event)}
+         |> Core.notify(outcome.event)}
 
       {:error, %Operation.Failure{record: %_{} = record, message: message}} ->
         # what was typed into a sensitive cell is not kept, and not shown
@@ -225,7 +225,7 @@ defmodule AshDataTable.Live.Core.Cells do
          |> Core.put(picker: nil)
          |> Reading.put_failure(key, column.name, nil)
          |> Reading.put_row(key, record)
-         |> Notify.told(outcome.event)}
+         |> Core.notify(outcome.event)}
 
       {:error, %Operation.Failure{record: %_{} = record, message: message, chosen: chosen}} ->
         {:reply, %{ok: false},

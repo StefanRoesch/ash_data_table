@@ -7,24 +7,23 @@ defmodule AshDataTable.Live.Core.Notify do
   # process, so the tag's host hears them as an attached table's does. The
   # table's own hooks never halt them. A picker's table, and every table
   # inside one, sends none.
-
-  alias AshDataTable.Live.Core
-
-  @doc """
-  Tells the host `event` of the table the callback works on, where the page
-  asked for it. Nil is no event. Returns the socket.
-  """
-  def told(socket, nil), do: socket
-
-  def told(socket, event), do: told(socket, event, false)
+  #
+  # Over the table (stage 9g): what is told is an effect of a step,
+  # `{:tell, top, {event, details}}`, which `Live.Core.effects/2` sends;
+  # the socket's way of a topic tells with `Live.Core.notify/3`.
 
   @doc """
-  The same, `always?` sent whatever `notify` says: `:row_opened`, which
-  the page asked for with `open`.
+  What the host is told of `event` of `table` (the table the callback
+  works on), where the page asked for it: the effects, `[]` or one
+  `{:tell, top, {name, details}}`. Nil is no event. `always?` is told
+  whatever `notify` says: `:row_opened`, which the page asked for with
+  `open`.
   """
-  def told(socket, {name, details}, always?) do
-    %{caller: %{notify: notify}, entry: entry} = table = Core.table(socket)
+  def told(table, event, always? \\ false)
 
+  def told(_table, nil, _always?), do: []
+
+  def told(%{caller: %{notify: notify}, entry: entry} = table, {name, details}, always?) do
     if (always? or wanted?(notify, name)) and not picking?(table) do
       [top | _] = entry.path
 
@@ -34,10 +33,10 @@ defmodule AshDataTable.Live.Core.Notify do
         |> Map.put(:resource, entry.resource)
         |> then(&if(length(entry.path) > 1, do: Map.put(&1, :path, entry.path), else: &1))
 
-      send(self(), {:ash_data_table, top, {name, details}})
+      [{:tell, top, {name, details}}]
+    else
+      []
     end
-
-    socket
   end
 
   defp wanted?(true, _name), do: true

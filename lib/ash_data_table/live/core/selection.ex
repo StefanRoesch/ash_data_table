@@ -19,8 +19,10 @@ defmodule AshDataTable.Live.Core.Selection do
   # selection too, for the picker's own flow (`picked`), and never ends it
   # under a filter: what is chosen there is kept while the person looks for
   # another record.
-
-  import Phoenix.LiveView, only: [push_event: 3]
+  #
+  # Over the table (stage 9g): `select` is a step (`step/3`), and `put/3`,
+  # `scoped/1` and `gone/2` give the table and the effects
+  # (`Live.Core.stepped/2` puts them where a socket asks).
 
   alias AshDataTable.Errors
   alias AshDataTable.Event
@@ -30,19 +32,24 @@ defmodule AshDataTable.Live.Core.Selection do
   alias AshDataTable.Query
   alias AshDataTable.Record
   alias AshDataTable.Sensitive
+  alias AshDataTable.Table
   alias AshDataTable.Text
 
   # Sent by the hook on every change of what a person has selected: every
   # record that matches (`all`), or the rows, by their primary keys.
-  def on({:select, selection}, socket), do: {:noreply, put(socket, selection, false)}
+  def step({:select, selection}, table, _context) do
+    {table, effects} = put(table, selection, false)
+    {table, effects, nil}
+  end
 
   @doc """
-  Makes `selection` (`:all`, or `{:rows, rows}`) what is selected, and tells
-  the host when that changed (`:selection_changed`). `told?` is for a change
-  the server made, of which the hook is told.
+  Makes `selection` (`:all`, or `{:rows, rows}`) what is selected in
+  `table`, and tells the host when that changed (`:selection_changed`).
+  `told?` is for a change the server made, of which the hook is told
+  (`ash_data_table:select`). `{table, effects}`.
   """
-  def put(socket, selection, told?) do
-    %{id: id, model: model, selected: before, all?: all_before} = Core.table(socket).entry
+  def put(%Table{} = table, selection, told?) do
+    %{id: id, model: model, selected: before, all?: all_before} = table.entry
 
     {all?, rows} =
       case selection do
@@ -50,51 +57,55 @@ defmodule AshDataTable.Live.Core.Selection do
         {:rows, rows} -> {false, Enum.uniq(rows)}
       end
 
-    socket = Core.put(socket, selected: rows, all?: all?)
+    table = Table.put(table, selected: rows, all?: all?)
 
-    socket =
+    pushed =
       if told?,
-        do:
-          push_event(socket, "ash_data_table:select", %{
-            table: id,
-            all: all?,
-            rows: for(row <- rows, pk = key(model, row), do: as_kept(model, pk))
-          }),
-        else: socket
+        do: [
+          {:push, "ash_data_table:select",
+           %{
+             table: id,
+             all: all?,
+             rows: for(row <- rows, pk = key(model, row), do: as_kept(model, pk))
+           }}
+        ],
+        else: []
 
-    if {all?, MapSet.new(rows)} != {all_before, MapSet.new(before)},
-      do:
-        Notify.told(
-          socket,
-          Event.selection(Enum.flat_map(rows, &List.wrap(key(model, &1))), all?)
-        ),
-      else: socket
+    told =
+      if {all?, MapSet.new(rows)} != {all_before, MapSet.new(before)},
+        do:
+          Notify.told(
+            table,
+            Event.selection(Enum.flat_map(rows, &List.wrap(key(model, &1))), all?)
+          ),
+        else: []
+
+    {table, pushed ++ told}
   end
 
   # A selection is given up when what it was made under changes: the
   # filters, the arguments, and the record the table is limited to. Not the
   # sort, nor the page: a selection outlives its page.
-  def scoped(socket) do
-    %{state: state, related: related, choose: choose, selected_under: held} =
-      entry = Core.table(socket).entry
+  def scoped(%Table{} = table) do
+    %{state: state, related: related, choose: choose, selected_under: held} = entry = table.entry
 
     scope =
       if choose, do: :choose, else: {state.filters, state.arguments, related && related.param}
 
-    socket = Core.put(socket, selected_under: scope)
+    table = Table.put(table, selected_under: scope)
 
     if not is_nil(held) and held != scope and (entry.all? or entry.selected != []),
-      do: put(socket, {:rows, []}, true),
-      else: socket
+      do: put(table, {:rows, []}, true),
+      else: {table, []}
   end
 
   # A row that went, with the primary key `pk`, is selected no longer.
-  def gone(socket, pk) do
-    %{model: model, selected: selected} = Core.table(socket).entry
+  def gone(%Table{} = table, pk) do
+    %{model: model, selected: selected} = table.entry
 
     case Enum.reject(selected, &(key(model, &1) == pk)) do
-      ^selected -> socket
-      rows -> put(socket, {:rows, rows}, true)
+      ^selected -> {table, []}
+      rows -> put(table, {:rows, rows}, true)
     end
   end
 

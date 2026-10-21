@@ -12,6 +12,7 @@ defmodule AshDataTable.Live.Core.Updates do
   alias AshDataTable.Query
   alias AshDataTable.Resource.Listening
   alias AshDataTable.Resource.Notifier
+  alias AshDataTable.Table
 
   require AshDataTable.Live.Current, as: Current
 
@@ -246,6 +247,12 @@ defmodule AshDataTable.Live.Core.Updates do
       else: socket
   end
 
+  # Sent by "Read again", beside the notice that there are new or changed
+  # records: the page is read again as it is asked for now, with its sort,
+  # filters and position, beside the process (`:read`, as `Reading.reread/1`
+  # does on the socket). A step over the table (stage 9g).
+  def step(:read_again, table, _context), do: {Table.put(table, read: :again), [:read], nil}
+
   # Sent by the hook for a row it was asked about (`ash_data_table:leaving`): no
   # cell of the row is being edited, and it can go. Only a row that is on
   # its way out is taken away, and only while nothing is open in it or
@@ -265,9 +272,4 @@ defmodule AshDataTable.Live.Core.Updates do
         {:noreply, socket |> stay(row) |> Reading.remove_row(row)}
     end
   end
-
-  # Sent by "Read again", beside the notice that there are new or changed
-  # records: the page is read again as it is asked for now, with its sort,
-  # filters and position.
-  def on(:read_again, socket), do: {:noreply, Reading.reread(socket)}
 end

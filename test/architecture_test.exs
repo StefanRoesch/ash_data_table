@@ -335,6 +335,39 @@ defmodule AshDataTable.ArchitectureTest do
     assert found == []
   end
 
+  # The step over the table (stage 9g, question 30 b): a clause of `step/3`
+  # in the live core, from its head to the next function or comment,
+  # names no socket and calls nothing of LiveView; what it asks of the
+  # socket is its `context`, what it does to it are its effects.
+  test "a step of the live core names no socket (9g)" do
+    found =
+      for file <- [@lib <> "/live/core.ex" | Path.wildcard(@lib <> "/live/core/**/*.ex")],
+          {line, number} <- step_lines(file),
+          line =~ ~r/\bsocket\b|Phoenix\.LiveView|push_event|push_patch|start_async|stream/,
+          do: "#{file}:#{number}: #{String.trim(line)}"
+
+    assert found == []
+  end
+
+  # The lines of every `def step(` clause of a file but `Live.Core.step/3`
+  # itself (the dispatch), each to the next function, doc or comment.
+  defp step_lines(file) do
+    file
+    |> File.read!()
+    |> String.split("\n")
+    |> Enum.with_index(1)
+    |> Enum.flat_map_reduce(false, fn {line, number}, in_step? ->
+      cond do
+        line =~ ~r/^  def step\((%Table|table)/ -> {[], false}
+        line =~ ~r/^  def step\(/ -> {[{line, number}], true}
+        line =~ ~r/^  (defp? |@doc|@spec|# |end)/ or line == "end" -> {[], false}
+        in_step? -> {[{line, number}], true}
+        true -> {[], false}
+      end
+    end)
+    |> elem(0)
+  end
+
   # The lines of `Live.Core.in_words/1`: from its head to the next function.
   defp in_words(@lib <> "/live/core.ex" = file) do
     lines = file |> File.read!() |> String.split("\n") |> Enum.with_index(1)

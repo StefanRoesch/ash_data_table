@@ -56,6 +56,8 @@ defmodule AshDataTable do
   """
   use Phoenix.Component
 
+  alias AshDataTable.Live.Core
+  alias AshDataTable.Live.Core.Selection
   alias AshDataTable.Live.Core.Url
   alias AshDataTable.Routes
 
@@ -671,7 +673,13 @@ defmodule AshDataTable do
   """
   @spec put_state(Phoenix.LiveView.Socket.t(), atom, map) :: Phoenix.LiveView.Socket.t()
   def put_state(socket, name, params) when is_atom(name) and is_map(params),
-    do: command(socket, name, "AshDataTable.put_state/3", &Url.put_state(&1, params))
+    do:
+      command(
+        socket,
+        name,
+        "AshDataTable.put_state/3",
+        &Core.stepped(&1, Url.put_state(Core.table(&1), params, Core.context(&1)))
+      )
 
   @doc "Takes every row out of the selection of the table under `name`."
   @spec clear_selection(Phoenix.LiveView.Socket.t(), atom) :: Phoenix.LiveView.Socket.t()
@@ -681,7 +689,7 @@ defmodule AshDataTable do
         socket,
         name,
         "AshDataTable.clear_selection/2",
-        &AshDataTable.Live.Core.Selection.put(&1, {:rows, []}, true)
+        &Core.stepped(&1, Selection.put(Core.table(&1), {:rows, []}, true))
       )
 
   @doc """
@@ -702,7 +710,7 @@ defmodule AshDataTable do
         name,
         "AshDataTable.selected_records/2",
         fn socket ->
-          {:reply, AshDataTable.Live.Core.Selection.records(socket), socket}
+          {:reply, Selection.records(socket), socket}
         end
       )
 

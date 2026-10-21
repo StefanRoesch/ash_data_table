@@ -61,7 +61,6 @@ defmodule AshDataTable.Live.Core.Opener.Host do
   alias AshDataTable.Ids
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Files
-  alias AshDataTable.Live.Core.Notify
   alias AshDataTable.Panel
 
   @doc "The host draws every kind this adapter is chosen for: the table, none."
@@ -168,7 +167,7 @@ defmodule AshDataTable.Live.Core.Opener.Host do
     |> let_go()
     |> done()
     |> Core.put(request: request)
-    |> Notify.told({:requested, %{ref: request.ref, kind: request.kind}})
+    |> Core.notify({:requested, %{ref: request.ref, kind: request.kind}})
   end
 
   # The request is held no more: the host is told it (`:request_ended`).
@@ -177,7 +176,7 @@ defmodule AshDataTable.Live.Core.Opener.Host do
       %{ref: ref, kind: kind} ->
         socket
         |> Core.put(request: nil)
-        |> Notify.told({:request_ended, %{ref: ref, kind: kind}})
+        |> Core.notify({:request_ended, %{ref: ref, kind: kind}})
 
       nil ->
         socket

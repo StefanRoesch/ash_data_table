@@ -2,6 +2,11 @@ defmodule AshDataTable.Live.Core.Picker do
   @moduledoc false
   # The picker: open, choose, cancel, and the fields of the
   # action panel given by choosing related records.
+  #
+  # Over the table (stage 9g): opening the picker (`pick`, `pick_input`),
+  # Cancel and taking a chosen record out of a field (`panel_unpick`) are
+  # steps (`step/3`); a choice saves or fills the panel on the socket
+  # (`on/2`).
 
   alias AshDataTable.Ids
   alias AshDataTable.Live.Core
@@ -16,6 +21,7 @@ defmodule AshDataTable.Live.Core.Picker do
   alias AshDataTable.Query
   alias AshDataTable.Record
   alias AshDataTable.State
+  alias AshDataTable.Table
   alias AshDataTable.Text
 
   require AshDataTable.Live.Current, as: Current
@@ -25,8 +31,8 @@ defmodule AshDataTable.Live.Core.Picker do
   # the record's key as the field holds it. The panel is rendered again
   # without it, and the action is told as it is of anything typed. The
   # answer says where focus goes: to what stands where the record stood.
-  def on({:panel_unpick, name, key}, socket) when is_map(Current.entry(socket, :panel)) do
-    %{id: id, model: model, panel: panel} = Core.table(socket).entry
+  def step({:panel_unpick, name, key}, table, _context) when is_map(table.entry.panel) do
+    %{id: id, model: model, panel: panel} = table.entry
 
     with %{editor: :references} = input <- Panel.reference(panel, name),
          held = Panel.keys(panel, name),
@@ -41,33 +47,31 @@ defmodule AshDataTable.Live.Core.Picker do
           true -> Ids.choose(field)
         end
 
-      {:noreply,
-       socket
-       |> Core.Panel.put(Panel.hold(panel, model, input, keys))
-       |> Core.Panel.focus(focus)}
+      {Core.Panel.put(table, Panel.hold(panel, model, input, keys)),
+       [Core.Panel.focus(table, focus)], nil}
     else
-      _ -> {:noreply, socket}
+      _ -> {table, [], nil}
     end
   end
 
-  def on({:panel_unpick, _name, _key}, socket), do: {:noreply, socket}
+  def step({:panel_unpick, _name, _key}, table, _context), do: {table, [], nil}
 
   # Sent by the hook when a person opens the editor of a reference cell: the
   # row by the key in its DOM id, and the column. The picker opens; nothing
   # is saved. The record is read first, as the person: the picker opens on
   # the record the cell points at now.
-  def on({:pick, key, name}, socket) do
-    %{model: model, rows: rows} = Core.table(socket).entry
+  def step({:pick, key, name}, table, context) do
+    %{model: model, rows: rows} = table.entry
 
     with %{editable?: true, kind: :reference, reference: reference} = column <-
            Operation.column(model, name),
          %{} = row <- rows[key] do
-      case Record.fetch(model, row.pk, Query.reader_opts(Core.reader(socket))) do
+      case Record.fetch(model, row.pk, Query.reader_opts(Core.reader(table, context))) do
         {:ok, record} ->
           case Map.get(record, reference.source_attribute) do
             # not theirs to see on this record, and so not theirs to change
             %Ash.ForbiddenField{} ->
-              {:reply, %{ok: false}, socket}
+              {table, [], %{ok: false}}
 
             current ->
               picker = %{
@@ -83,29 +87,29 @@ defmodule AshDataTable.Live.Core.Picker do
                 error: nil
               }
 
-              {:reply, %{ok: true}, Core.put(socket, picker: picker)}
+              {Table.put(table, picker: picker), [], %{ok: true}}
           end
 
         :error ->
           message = {:text, :record_gone, []}
 
-          {:reply, %{ok: false, error: Text.say(message)},
-           Core.say(socket, {:text, :not_saved, column: column.label, message: message})}
+          {Core.say(table, {:text, :not_saved, column: column.label, message: message}), [],
+           %{ok: false, error: Text.say(message)}}
       end
     else
-      _ -> {:reply, %{ok: false}, socket}
+      _ -> {table, [], %{ok: false}}
     end
   end
 
   # Sent by the button of a field of the action panel that holds the key of
   # a related record: the picker opens on top of the panel, on the record
   # the field holds now.
-  def on({:pick_input, name}, socket) when is_map(Current.entry(socket, :panel)) do
-    panel = Core.table(socket).entry.panel
+  def step({:pick_input, name}, table, _context) when is_map(table.entry.panel) do
+    panel = table.entry.panel
 
     case Panel.reference(panel, name) do
       nil ->
-        {:noreply, socket}
+        {table, [], nil}
 
       # several records: the picker opens with the rows selected of the
       # records the field holds now, on whatever page they are
@@ -126,7 +130,7 @@ defmodule AshDataTable.Live.Core.Picker do
           error: nil
         }
 
-        {:noreply, Core.put(socket, picker: picker)}
+        {Table.put(table, picker: picker), [], nil}
 
       input ->
         picker = %{
@@ -142,11 +146,14 @@ defmodule AshDataTable.Live.Core.Picker do
           error: nil
         }
 
-        {:noreply, Core.put(socket, picker: picker)}
+        {Table.put(table, picker: picker), [], nil}
     end
   end
 
-  def on({:pick_input, _name}, socket), do: {:noreply, socket}
+  def step({:pick_input, _name}, table, _context), do: {table, [], nil}
+
+  # Sent by the picker's hook for Cancel and Escape.
+  def step(:picker_cancel, table, _context), do: {Table.put(table, picker: nil), [], nil}
 
   # Sent by the picker's hook when the person has chosen: the row they
   # selected, as the grid's hook names it (its primary key), or nil for no
@@ -185,10 +192,6 @@ defmodule AshDataTable.Live.Core.Picker do
   end
 
   def on({:picked, _picked}, socket), do: {:reply, %{ok: false}, socket}
-
-  # Sent by the picker's hook for Cancel and Escape.
-  def on(:picker_cancel, socket),
-    do: {:noreply, Core.put(socket, picker: nil)}
 
   # The host's choice for the picker it draws (`picked/2`).
   def on({:chosen, keys}, socket), do: picked(socket, keys)
@@ -300,7 +303,7 @@ defmodule AshDataTable.Live.Core.Picker do
     column = Enum.find(model.columns, &(&1.name == name))
     intent = {:refer, key, name, named, confirmed?, arguments}
 
-    case Operation.refer(Core.operation(socket, intent)) do
+    case Operation.refer(Core.operation(Core.table(socket), Core.context(socket), intent)) do
       :refused ->
         {:reply, %{ok: false}, Core.put(socket, picker: nil)}
 

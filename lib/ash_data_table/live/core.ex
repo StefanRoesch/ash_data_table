@@ -5,15 +5,35 @@ defmodule AshDataTable.Live.Core do
   # (what the table is told), `handle_event/3` (each event parsed once by
   # `AshDataTable.Intent` and handed to the module of its topic) and
   # `handle_async/3`, each ending in `tidy/1`. Besides: the fields of the
-  # table (`put/2`), who is asking (`reader/1`), what a write is given
-  # (`operation/3`), the live region (`say/2`), the resource's wording as
+  # table (`put/2`), who is asking (`reader/1,2`), what a write is given
+  # (`operation/4`), the live region (`say/2`), the resource's wording as
   # the person reads it (`in_words/1`). Every table a placed table shows is
   # an entry of its `AshDataTable.Table` (`AshDataTable.Live.Registry`).
+  #
+  # The step (stage 9g, the partial form of question 30 b): an intent of a
+  # topic that needs none of LiveView's resources (no stream, no async
+  # task, no upload) is a step over the table, `step/3`: `(table, intent,
+  # context)` → `{table, effects, reply}`, with no socket. `context` is
+  # what the socket gives (`context/1`: the page's assigns, LiveView's
+  # uploads); the effects are data, which `effects/2` applies to the
+  # socket in their order:
+  #
+  #   * `{:push, event, payload}`: an event to the hooks (`push_event/3`);
+  #   * `{:tell, top, message}`: an event to the host, sent to the
+  #     LiveView's own process (`AshDataTable.Live.Core.Notify`);
+  #   * `{:patch, url}`: the URL of a table whose state is in it
+  #     (`push_patch/2`);
+  #   * `:read`: the table reads for its state (`Reading.read/1`, which
+  #     streams and starts tasks, and stays on the socket).
+  #
+  # The intents that step are `@steps`; every other intent runs on the
+  # socket, through `on/2` of its topic (streams, async reads, summaries
+  # and runs, uploads, the opener's questions). `run/2` takes either way.
 
   require Logger
 
   import Phoenix.Component, only: [assign: 2, assign: 3]
-  import Phoenix.LiveView, only: [put_private: 3]
+  import Phoenix.LiveView, only: [push_event: 3, push_patch: 2, put_private: 3]
 
   alias AshDataTable.Caller
   alias AshDataTable.Geometry
@@ -21,6 +41,7 @@ defmodule AshDataTable.Live.Core do
   alias AshDataTable.Live.Core.Bulk
   alias AshDataTable.Live.Core.Cells
   alias AshDataTable.Live.Core.Nesting
+  alias AshDataTable.Live.Core.Notify
   alias AshDataTable.Live.Core.Opener
   alias AshDataTable.Live.Core.Panel
   alias AshDataTable.Live.Core.Picker
@@ -38,6 +59,13 @@ defmodule AshDataTable.Live.Core do
 
   # the page's values of the callback that runs, by the table that asks (`callback/1`)
   @values {__MODULE__, :page_values}
+
+  # The intents that are a step over the table (`step/3`): of the topics,
+  # those that need no stream, no async task and no upload.
+  @steps [:select, :sort, :filter, :clear_filter, :clear_filters, :page, :page_size] ++
+           [:arguments, :argument_add, :argument_remove, :bulk_seen, :read_again, :reveal] ++
+           [:open, :panel_validate, :panel_add, :panel_remove, :panel_clear, :panel_cancel] ++
+           [:pick, :pick_input, :panel_unpick, :picker_cancel]
 
   def mount(socket) do
     # Everything the table holds, in one value: what it was told, who is
@@ -158,8 +186,58 @@ defmodule AshDataTable.Live.Core do
   # Runs an intent within the table the callback works on, through the
   # module of its topic: what an event asks for once it is parsed, a host's
   # answer, and what a topic hands on (a run on the selection its panel
-  # started, `{:bulk_start, …}`).
-  def run(intent, socket), do: topic(intent).on(intent, socket)
+  # started, `{:bulk_start, …}`). An intent of `@steps` is a step over the
+  # table (`step/3`), whose table is put and whose effects are applied;
+  # every other runs on the socket (`on/2` of its topic).
+  def run(intent, socket) do
+    if step?(intent) do
+      {table, effects, reply} = step(table(socket), intent, context(socket))
+      socket = socket |> put(table) |> effects(effects)
+      if reply, do: {:reply, reply, socket}, else: {:noreply, socket}
+    else
+      topic(intent).on(intent, socket)
+    end
+  end
+
+  # The step of an intent of `@steps` over `table`, the table the callback
+  # works on, with what the socket gives (`context/1`): the table as it is
+  # then, the effects to apply (`effects/2`) and the reply to the hook (nil
+  # for none). No socket: the step reads through Ash and calls the page's
+  # functions as the socket's way did, nothing else.
+  def step(%Table{} = table, intent, context), do: topic(intent).step(intent, table, context)
+
+  defp step?({:confirmed, _intent}), do: false
+  defp step?(intent) when is_tuple(intent), do: step?(elem(intent, 0))
+  defp step?(event), do: event in @steps
+
+  # What a step is given of the socket: the page's assigns (`page_assigns/1`)
+  # and the uploads LiveView knows (`uploads`, `%{}` for none).
+  def context(socket),
+    do: %{page_assigns: page_assigns(socket), uploads: socket.assigns[:uploads] || %{}}
+
+  # Puts what a function over the table gave, `{table, effects}`, into the
+  # socket: the table, then its effects (`effects/2`). For the socket's way
+  # of a topic that calls one (`Selection.put/3` after a run, `tidy/1`'s
+  # `Selection.scoped/1`, `Url.put_state/3`).
+  def stepped(socket, {%Table{} = table, effects}), do: socket |> put(table) |> effects(effects)
+
+  # Applies the effects of a step to the socket, in their order (see the top).
+  def effects(socket, effects), do: Enum.reduce(effects, socket, &effect/2)
+
+  defp effect({:push, event, payload}, socket), do: push_event(socket, event, payload)
+
+  defp effect({:tell, top, message}, socket) do
+    send(self(), {:ash_data_table, top, message})
+    socket
+  end
+
+  defp effect({:patch, url}, socket), do: push_patch(socket, to: url)
+  defp effect(:read, socket), do: Reading.read(socket)
+
+  # Tells the host `event` of the table the callback works on, where the
+  # page asked for it (`Notify.told/3`); `always?` whatever `notify` says.
+  def notify(socket, event, always? \\ false),
+    do: effects(socket, Notify.told(table(socket), event, always?))
 
   # The module of an intent's topic. A host's Confirm (`{:confirmed,
   # intent}`) is of the intent's.
@@ -215,7 +293,7 @@ defmodule AshDataTable.Live.Core do
 
   # One callback of the LiveView, the tables' and every table's under them:
   # the page's values are called once in it for each table that asks
-  # (`values/1`), and forgotten when it ends, also when it raises. A
+  # (`values/2`), and forgotten when it ends, also when it raises. A
   # callback inside another (a command a hook of the page gives while the
   # table's own runs) shares the outer one's.
   defp callback(fun) do
@@ -567,9 +645,9 @@ defmodule AshDataTable.Live.Core do
   # (`origin`): what it changes itself is not announced to it, as it shows
   # what its action returned (`AshDataTable.Query.reader_opts/1`).
   # Who is asking, with what the page gives every call to Ash for the table
-  # the callback works on (`values/1`).
-  def reader(%Phoenix.LiveView.Socket{} = socket),
-    do: reader(table(socket)) ++ [page_values: values(socket)]
+  # the callback works on (`values/2`): of the socket, or of a step's table
+  # and context.
+  def reader(%Phoenix.LiveView.Socket{} = socket), do: reader(table(socket), context(socket))
 
   def reader(%Table{} = table) do
     # with what the table resolved of `authorize?` for itself
@@ -580,6 +658,9 @@ defmodule AshDataTable.Live.Core do
       _not_listening -> reader
     end
   end
+
+  def reader(%Table{} = table, context),
+    do: reader(table) ++ [page_values: values(table, context)]
 
   # When who is asking changes (another `scope`, `actor`, `tenant` or
   # `authorize?`), the table forgets what is open in it: its expanded rows
@@ -632,7 +713,7 @@ defmodule AshDataTable.Live.Core do
     |> Nesting.reconcile()
     |> each(&Updates.follow/1)
     |> Nesting.reconcile()
-    |> each(&Selection.scoped/1)
+    |> each(&stepped(&1, Selection.scoped(table(&1))))
     |> each(&Nesting.counted/1)
     |> each(&opened/1)
     |> each(&Reading.summarise/1)
@@ -676,9 +757,9 @@ defmodule AshDataTable.Live.Core do
   # change of what they return reads nothing again by itself.
   #
   # Each function is called once per callback and table (`callback/1`): the
-  # reads and the write of one event are given the same values.
-  def values(socket) do
-    %{entry: entry} = table(socket)
+  # reads and the write of one event are given the same values. `context`
+  # is a step's (`context/1`): its `page_assigns` are what they are given.
+  def values(%Table{entry: entry} = table, context) do
     ref = %{table: entry.id, path: entry.path, resource: entry.resource}
 
     case Process.get(@values) do
@@ -686,19 +767,16 @@ defmodule AshDataTable.Live.Core do
         values
 
       %{} = known ->
-        values = values(socket, ref)
+        values = values(table, context.page_assigns, ref)
         Process.put(@values, Map.put(known, ref, values))
         values
 
       nil ->
-        values(socket, ref)
+        values(table, context.page_assigns, ref)
     end
   end
 
-  defp values(socket, ref) do
-    %{caller: caller} = table(socket)
-    assigns = page_assigns(socket)
-
+  defp values(%Table{caller: caller}, assigns, ref) do
     %{
       context: value(caller.context, :context, assigns, ref),
       private_arguments: value(caller.private_arguments, :private_arguments, assigns, ref),
@@ -740,9 +818,8 @@ defmodule AshDataTable.Live.Core do
   # and says which table asks. It answers `:cont` or `{:halt, message}`;
   # any other answer raises, as a veto that answers `:ok` would otherwise
   # refuse every write without a word.
-  def veto(socket) do
-    %{caller: %{before_action: before}, entry: entry} = table(socket)
-    assigns = page_assigns(socket)
+  def veto(%Table{caller: %{before_action: before}, entry: entry}, context) do
+    assigns = context.page_assigns
 
     fn request ->
       request = %{request | table: entry.id, path: entry.path}
@@ -766,10 +843,12 @@ defmodule AshDataTable.Live.Core do
   defp answer(fun, request, _assigns) when is_function(fun, 1), do: fun.(request)
   defp answer(fun, request, assigns), do: fun.(request, assigns)
 
-  # Puts a text into the live region, to be read out.
-  def say(socket, text) do
-    put(socket, announcement: text, announcements: table(socket).entry.announcements + 1)
-  end
+  # Puts a text into the live region, to be read out: into a step's table,
+  # or into the socket's (its table head's table put).
+  def say(%Table{} = table, text),
+    do: Table.put(table, announcement: text, announcements: table.entry.announcements + 1)
+
+  def say(socket, text), do: put(socket, say(table(socket), text))
 
   # What an event of a shape the table never sends is answered with: what
   # the hook that sends it takes as "nothing came of it". An event the table
@@ -799,9 +878,9 @@ defmodule AshDataTable.Live.Core do
   end
 
   # What a write is given (`AshDataTable.Operation.Input`): the intent, the
-  # table as it is now, and the page's veto and values, made now.
-  def operation(socket, intent, more \\ []) do
-    table = table(socket)
+  # table as it is now, and the page's veto and values, made now of what
+  # the socket gives (`context/1`).
+  def operation(%Table{} = table, context, intent, more \\ []) do
     entry = table.entry
 
     parent =
@@ -819,8 +898,8 @@ defmodule AshDataTable.Live.Core do
         state: entry.state,
         parent: parent,
         opts: reader(table),
-        veto: veto(socket),
-        page_values: values(socket),
+        veto: veto(table, context),
+        page_values: values(table, context),
         picking: Picker.picking(table),
         rows: entry.rows,
         selection: if(entry.all?, do: :all, else: {:rows, entry.selected}),
