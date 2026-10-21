@@ -109,7 +109,8 @@ defmodule AshDataTable.Live.Core.Files do
   # last, by the argument's name. LiveView takes a file away when the
   # function it is given for it returns. A run on a selection outlasts the
   # event, which is as long as LiveView keeps the file: it runs with a copy,
-  # which is this process's until the run is done (`Plug.Upload`).
+  # which its own process is given (`Core.Bulk`), and which goes with it
+  # (`Plug.Upload`).
   def attach(socket, panel, run) do
     attach(socket, Panel.file_inputs(panel), %{}, fn files ->
       run.(if Panel.outlasts?(panel), do: copies(files), else: files)
@@ -153,25 +154,13 @@ defmodule AshDataTable.Live.Core.Files do
   end
 
   # Copies of the files for a run that outlasts the event: temporary files
-  # of this process, which are gone when it is (`Plug.Upload.random_file!/1`).
+  # of this process until the run's process is given them, which are gone
+  # when their process is (`Plug.Upload.random_file!/1`).
   defp copies(files) do
     for {name, %Plug.Upload{path: path} = file} <- files, into: %{} do
       copy = Plug.Upload.random_file!("ash_data_table")
       File.cp!(path, copy)
       {name, %{file | path: copy}}
-    end
-  end
-
-  # The copies a run on the selection holds (`running.files`), once it is
-  # done or its table closes.
-  def drop_copies(socket) do
-    case Core.table(socket).entry.running do
-      %{files: files} = running ->
-        Enum.each(files, &File.rm/1)
-        Core.put(socket, running: %{running | files: []})
-
-      nil ->
-        socket
     end
   end
 

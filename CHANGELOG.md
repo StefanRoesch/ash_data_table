@@ -296,6 +296,10 @@ declared in the resource and mounted with one line in the router.
 - Loading, empty and failed states. An error the read action returned on
   purpose is shown; any other failure is logged and shown as "The records
   could not be loaded."
+- A read, the footer summaries and a run on the selected rows that are on
+  their way when the page is left, or when their table closes, finish
+  their query, and what they bring is dropped. A running query is not
+  cancelled.
 
 ### Editing
 
@@ -751,6 +755,8 @@ declared in the resource and mounted with one line in the router.
   person's to read, counts as not done.
 - The run is beside the page's process: the page stays in use, its rows are
   dimmed and the buttons of the line are `aria-disabled` until it is over.
+  A run whose page is left, or whose table closes, goes on to its end, and
+  what it came to is not shown.
 - New messages in the Gettext template: "Select row", "Select all rows of
   this page", "Selected rows", "%{count} selected", "All %{count} that
   match are selected", "All that match are selected", "Select all %{count}
@@ -1212,6 +1218,11 @@ declared in the resource and mounted with one line in the router.
   in the middle of a statement, and its end was then shown as "The records
   could not be loaded." in place of "Fill in … to see records.". It is now
   left to finish, and what it brings is not shown.
+- Leaving a page while a read, the summaries or a run on the selected rows
+  was in the middle of its query no longer stops that query: stopping it
+  could break off the connection the query held, which ended a browser
+  test's sandbox transaction, and in production was logged as an error.
+  The query finishes, and its answer is dropped (#66).
 - Two tables of one LiveView can each take a file for an argument of the
   same name: two placed tables, a table and its nested table, a picker.
   Before, the second file that was chosen crashed the LiveView ("existing

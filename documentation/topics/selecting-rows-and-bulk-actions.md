@@ -525,9 +525,11 @@ no other mark, and no colour of their own.
   the action runs on it is whether it matches when the action runs.
 - **One run at a time.** While a bulk action runs the buttons of the line
   do nothing, and the server refuses a second run of that table.
-- **A run that the page does not live to see the end of stops.** It runs
-  beside the page's process and ends with it. The records it had reached
-  are changed, each in its own transaction; the others are not.
+- **A run goes on to its end when the page is left.** It runs beside the
+  page's process, and finishes when that process is gone, or when its table
+  closes (a nested table that is folded); what it came to is not shown to
+  anyone. Stopped, it would be stopped in the middle of a record's
+  statement. A run that has started cannot be cancelled.
 - **A new read closes the panel**, as for a row: the selection the panel
   was opened for is kept by the panel, not by the page.
 - **A record that somebody else changed between its read and its turn** is

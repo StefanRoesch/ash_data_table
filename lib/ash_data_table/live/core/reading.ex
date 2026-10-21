@@ -57,7 +57,10 @@ defmodule AshDataTable.Live.Core.Reading do
   # Reads again only when something a read depends on has changed. The first
   # read is done in place, so that the first render has rows; later ones run
   # beside the process, with the previous rows left in view and the grid
-  # marked busy.
+  # marked busy. A read beside the process finishes its query when the page
+  # is left or the table closes meanwhile, and what it brings is dropped
+  # (`Registry.finishing/1`): stopped in the middle of a statement, it
+  # would take down the connection it holds.
   #
   # A nested table reads beside the process from the start: its line opens at
   # once, and several that are opened together read side by side. Until its
@@ -108,13 +111,13 @@ defmodule AshDataTable.Live.Core.Reading do
         socket
         |> Core.put(read: read, busy?: true)
         |> due(due)
-        |> start_async(Registry.async(socket, :read), fetch)
+        |> start_async(Registry.async(socket, :read), Registry.finishing(fetch))
 
       Core.table(socket).entry.nested? ->
         socket
         |> Core.put(read: read, busy?: true, loading?: is_nil(Core.table(socket).entry.read))
         |> due(due)
-        |> start_async(Registry.async(socket, :read), fetch)
+        |> start_async(Registry.async(socket, :read), Registry.finishing(fetch))
 
       is_nil(Core.table(socket).entry.read) ->
         socket |> Core.put(read: read) |> due(due) |> show(fetch.(), :first)
@@ -123,7 +126,7 @@ defmodule AshDataTable.Live.Core.Reading do
         socket
         |> Core.put(read: read, busy?: true)
         |> due(due)
-        |> start_async(Registry.async(socket, :read), fetch)
+        |> start_async(Registry.async(socket, :read), Registry.finishing(fetch))
     end
   end
 
@@ -173,9 +176,12 @@ defmodule AshDataTable.Live.Core.Reading do
     else
       socket
       |> Core.put(summing?: true, summed: of)
-      |> start_async(Registry.async(socket, :summary), fn ->
-        Query.summaries(model, state, parent, opts)
-      end)
+      # finishes its query when the page is left meanwhile, and the answer
+      # is dropped (`Registry.finishing/1`)
+      |> start_async(
+        Registry.async(socket, :summary),
+        Registry.finishing(fn -> Query.summaries(model, state, parent, opts) end)
+      )
     end
   end
 

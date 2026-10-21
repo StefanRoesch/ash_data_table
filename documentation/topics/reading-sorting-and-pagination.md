@@ -371,7 +371,9 @@ The first read of the table on the page runs in place, before the first
 render, so that render already has its rows. Later reads, and every read of
 a nested table, run beside the LiveView process: the table is marked
 `aria-busy`, and the previous rows stay in view, dimmed, until the new ones
-arrive.
+arrive. A read that is on its way when the page is left, or when its table
+closes, finishes its query, and what it brings is dropped: stopping it
+could cut a statement off in the middle. A running query is not cancelled.
 
 A read that succeeds and finds nothing shows "No records".
 

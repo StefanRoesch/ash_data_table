@@ -185,10 +185,9 @@ defmodule AshDataTable.Live.Entry do
     selected_under: nil,
     bulk: [],
     # The action that is running on the selected rows, while it does, with
-    # who started it and the copies of the files it runs with, taken away
-    # when it is done (`%{action: action, by: AshDataTable.Caller.who/1,
-    # files: paths}`), and what the last one came to, until the person
-    # selects something else.
+    # who started it (`%{action: action, by: AshDataTable.Caller.who/1}`),
+    # and what the last one came to, until the person selects something
+    # else.
     running: nil,
     result: nil,
     # Live updates (see "Live updates" at the top of `AshDataTable.Attrs`). `live`

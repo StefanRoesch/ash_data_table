@@ -82,10 +82,29 @@ defmodule AshDataTable.Live.Registry do
   end
 
   @doc """
+  The function of an async task that runs a query (`start_async/3`): it
+  finishes its query whatever happens to the LiveView meanwhile. The task
+  traps exits, so neither the end of the LiveView it is linked to nor
+  `Phoenix.LiveView.cancel_async/3` would stop it (a table that closes
+  leaves its tasks be); what it answers then is dropped, by LiveView when
+  the LiveView is gone, else by `current?/2`.
+
+  Stopped in the middle of a statement, it would take down the database
+  connection it holds, and in a browser test the sandbox's transaction
+  with it (#66). A running query cannot be cancelled in exchange.
+  """
+  def finishing(fun) when is_function(fun, 0) do
+    fn ->
+      Process.flag(:trap_exit, true)
+      fun.()
+    end
+  end
+
+  @doc """
   Whether an async key is of a table that is shown now: its id known and
   its token that table's. A task of a table that closed answers all the
-  same, `{:exit, {:shutdown, :cancel}}` (`Phoenix.LiveView.cancel_async/3`),
-  maybe after a table of the same id has opened.
+  same once its query is done (`finishing/1`), maybe after a table of the
+  same id has opened.
   """
   def current?(socket, {:ash_data_table, id, {_kind, token}}) do
     case Core.table(socket) do
@@ -195,17 +214,14 @@ defmodule AshDataTable.Live.Registry do
     give_back(socket, Core.table(socket).entry.stream)
   end
 
-  # What closes with a table: its listener, its tasks, the copies of a
-  # run's files, its uploads.
+  # What closes with a table: its listener, its uploads. Its async tasks
+  # are not stopped: each finishes its query (`finishing/1`), and its
+  # answer is dropped (`current?/2`); a run on the selection goes on to its
+  # end with the copies of its files, which are its own.
   defp shut(socket) do
     %{live: live, uploads: uploads} = Core.table(socket).entry
 
     if live, do: AshDataTable.Listener.stop(live.pid)
-
-    socket =
-      [:read, :summary, :bulk]
-      |> Enum.reduce(socket, &cancel_async(&2, async(&2, &1)))
-      |> AshDataTable.Live.Core.Files.drop_copies()
 
     # an upload with entries cannot be given up: they are cancelled
     # first. One that is being sent is only told to stop, and is there

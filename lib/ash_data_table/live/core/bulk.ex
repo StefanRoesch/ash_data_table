@@ -9,11 +9,11 @@ defmodule AshDataTable.Live.Core.Bulk do
 
   alias AshDataTable.Caller
   alias AshDataTable.Live.Core
-  alias AshDataTable.Live.Core.Files
   alias AshDataTable.Live.Core.Notify
   alias AshDataTable.Live.Core.Opener
   alias AshDataTable.Live.Core.Reading
   alias AshDataTable.Live.Core.Selection
+  alias AshDataTable.Live.Registry
   alias AshDataTable.Model
   alias AshDataTable.Operation
   alias AshDataTable.Text
@@ -60,7 +60,6 @@ defmodule AshDataTable.Live.Core.Bulk do
 
     {:noreply,
      socket
-     |> Files.drop_copies()
      |> Core.put(running: nil, result: %{summary: summary, failures: failures})
      |> Core.say({:join, " ", [summary | failures]})
      # the rows it did not run on stay selected, and no others
@@ -79,7 +78,6 @@ defmodule AshDataTable.Live.Core.Bulk do
 
     {:noreply,
      socket
-     |> Files.drop_copies()
      |> Core.put(running: nil, result: %{summary: summary, failures: []})
      |> Core.say(summary)
      |> Reading.reread()}
@@ -92,7 +90,6 @@ defmodule AshDataTable.Live.Core.Bulk do
     with {:exit, reason} <- result, do: went_down(socket, reason)
 
     socket
-    |> Files.drop_copies()
     |> Core.put(running: nil, result: nil)
     |> Reading.reread()
   end
@@ -224,23 +221,35 @@ defmodule AshDataTable.Live.Core.Bulk do
 
   # Runs an action on the selected rows, beside the process: a run takes as
   # long as its records are many, and the page stays in use meanwhile. The
-  # grid is marked busy until `handle_async/3` has the outcome. `files` are
-  # the copies of the panel's files the run holds (`running.files`), removed
-  # when it is done (`Files.drop_copies/1`). An open panel closes.
+  # grid is marked busy until `handle_async/3` has the outcome. An open
+  # panel closes.
+  #
+  # A run goes on to its end when the page is left or the table closes
+  # meanwhile, and what it came to is dropped (`Registry.finishing/1`):
+  # stopped, it would leave a record's transaction in the middle of a
+  # statement. `files` are the copies of the panel's files it runs with
+  # (`Core.Files.attach/3`): they are handed to the run's process, and go
+  # when it ends (`Plug.Upload.give_away/3`), whether the page is there
+  # then or not.
   defp start_bulk(socket, action, run, files) do
+    view = self()
+    copies = for {_name, %{path: path}} <- files, do: path
+
     socket
     |> Core.Panel.close()
     # who started it: what it comes to is said to that person only
     |> Core.put(
-      running: %{
-        action: action,
-        by: Caller.who(Core.table(socket).caller),
-        files: for({_name, %{path: path}} <- files, do: path)
-      },
+      running: %{action: action, by: Caller.who(Core.table(socket).caller)},
       result: nil
     )
     # The run says why a record was not done as message terms: their words
     # are made when the outcome is drawn, in this process, whose locale it is.
-    |> start_async(AshDataTable.Live.Registry.async(socket, :bulk), run)
+    |> start_async(
+      Registry.async(socket, :bulk),
+      Registry.finishing(fn ->
+        Enum.each(copies, &Plug.Upload.give_away(&1, self(), view))
+        run.()
+      end)
+    )
   end
 end
