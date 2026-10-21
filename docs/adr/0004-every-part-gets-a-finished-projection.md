@@ -12,8 +12,12 @@ A part of a table was given its inputs in four layers: the drawing picked entry 
 ## Consequences
 
 - One place per text, bundle and rule. A kit no longer reads `Model`, `State` or `Present` structs: what a part may draw is its projection's keys, which `AshDataTable.Kit.Projection` documents part by part (a test compares them both ways), and a missing fact is a contract change.
-- Beside its projection a part is given only `kit`, `id`, the stream (or a row's item, a cell's), the panel's uploads (LiveView's own, which are no plain data), the root's slots, and a `class` where a part of `Kit.Default` places another. `AshDataTable.KitCase` checks it.
-- Every projection goes to JSON as it is, but a column's component (`module` and its `AshDataTable.Component.Column`), which a bridge encodes, as ADR 0002 lets a component's value in an item.
+- Beside its projection a part is given only `kit`, `id`, the stream (or a row's item, a cell's), the panel's uploads, the root's slots, and a `class` where a part of `Kit.Default` places another. `AshDataTable.KitCase` checks it.
+- Every projection goes to JSON as it is. Two exceptions, approved by the owner (2026-10-21), are the only ones:
+  1. **A column's component.** A column projection with a custom component holds `component: %{module: module, column: %AshDataTable.Component.Column{}}`: the module is the host's own code, which a kit calls, and no plain value can stand for it. A bridge encodes it (the React kit sends the module by its name and the column's name, label and bounds), as ADR 0002 lets a component's value in an item.
+  2. **The panel's uploads.** The panel part is handed LiveView's `uploads` (`@uploads`) beside its projection: `<.live_file_input>` needs LiveView's own `Phoenix.LiveView.UploadConfig`, which is no plain data and which only LiveView makes. The projection holds every fact about a file field (its name, its texts, its bundles); the uploads only feed the input.
+
+  Any other value that is no plain data is a contract change, decided and recorded here.
 - Every event a kit sends is in a bundle; the ids a part draws per row are made with `AshDataTable.Ids`, every other id is in the projection. No kit counts a column.
 - `requests/1` makes a panel request's fields of the same panel projection, without its bundles.
 - Kit contract 6. `Kit.Words` and `Kit.fields/arguments/editors` are gone, and so is `DemoWeb.ReactKit.Props` (a rule of one function in the kit). Reversing it means giving kits the structs again.
