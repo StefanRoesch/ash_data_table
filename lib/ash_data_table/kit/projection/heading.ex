@@ -15,7 +15,7 @@ defmodule AshDataTable.Kit.Projection.Heading do
 
   @doc false
   def keys,
-    do: [:shown?, :nested?, :element, :name, :columns, :argument_line, :acts?, :create, :actions]
+    do: [:shown?, :nested?, :element, :title, :columns, :argument_line, :acts?, :create, :actions]
 
   @doc false
   # `heading` is what the page asks of the table's name (a level, true, or
@@ -30,9 +30,9 @@ defmodule AshDataTable.Kit.Projection.Heading do
       shown?: nested? or !!given.heading or columns? or model.arguments != [] or acts?,
       nested?: nested?,
       element: %{"id" => "#{id}-header"},
-      # the table's name: not a nested table's, which its line names; a
+      # the table's name (`title`): not a nested table's, which its line names; a
       # heading of `level` (nil for a plain element)
-      name:
+      title:
         if(given.heading && not nested?,
           do: %{
             element: %{"id" => "#{id}-name"},

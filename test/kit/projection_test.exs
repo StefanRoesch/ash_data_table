@@ -199,7 +199,7 @@ defmodule AshDataTable.Kit.ProjectionTest do
 
     projection = Projection.of(:heading, given)
     assert projection.shown?
-    assert projection.name == %{element: %{"id" => "t-name"}, level: 2, text: "Things"}
+    assert projection.title == %{element: %{"id" => "t-name"}, level: 2, text: "Things"}
     assert projection.acts?
 
     hideable =
@@ -219,8 +219,56 @@ defmodule AshDataTable.Kit.ProjectionTest do
     expected = Words |> apply(:texts, [:argument, argument_words(model)])
     assert hd(projection.argument_line.arguments).texts == expected
 
-    assert Projection.of(:heading, %{given | nested?: true}).name == nil
+    assert Projection.of(:heading, %{given | nested?: true}).title == nil
     json!(projection)
+  end
+
+  test "heading: an argument's input, what the person chose and what Ash refused of it" do
+    model = model()
+    [argument] = model.arguments
+    key = Model.Argument.key(argument)
+
+    given = %{
+      id: "t",
+      heading: false,
+      label: "T",
+      model: model,
+      offered: [],
+      page: nil,
+      related: nil,
+      nested?: false,
+      myself: nil,
+      state: %State{},
+      lines: %{},
+      refused: %{}
+    }
+
+    [input] = Projection.of({:heading, :argument_line}, given).arguments
+
+    assert Map.take(input, [:id, :named, :name, :value, :invalid?, :limits, :counted]) == %{
+             id: "t-arg-near",
+             named: "near",
+             name: "arguments[a][near]",
+             value: "",
+             invalid?: false,
+             limits: %{min: nil, max: nil, step: nil},
+             counted: nil
+           }
+
+    assert input.texts.add_value == "Add value"
+
+    state = %State{arguments: %{key => "x"}}
+    refused = %{key => %{typed: "y", messages: [{:ash, "is required", []}], held: nil}}
+
+    assert [%{value: "x"}] =
+             Projection.of({:heading, :argument_line}, %{given | state: state}).arguments
+
+    assert [%{value: "y", invalid?: true, error: %{"id" => "t-arg-near-error"}} = refusal] =
+             Projection.of({:heading, :argument_line}, %{given | state: state, refused: refused}).arguments
+
+    assert refusal.texts.errors == ["is required"]
+    assert refusal.messages.errors == [%{key: :ash, values: %{message: "is required", vars: %{}}}]
+    json!(refusal)
   end
 
   defp argument_words(model) do

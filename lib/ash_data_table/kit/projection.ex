@@ -43,12 +43,61 @@ defmodule AshDataTable.Kit.Projection do
       else: module.of(inputs)
   end
 
+  # The parts drawn inside another, whose projections are in that one's
+  # (question 25 of the design note): the keys of each.
+  @inner %{
+    columns: [
+      :control,
+      :button,
+      :text,
+      :count,
+      :list,
+      :status,
+      :label,
+      :entries,
+      :reset,
+      :least,
+      :most,
+      :texts,
+      :messages
+    ],
+    argument_line: [:form, :nested?, :arguments],
+    argument: [
+      :id,
+      :named,
+      :name,
+      :label,
+      :editor,
+      :item,
+      :required?,
+      :values,
+      :value,
+      :invalid?,
+      :limits,
+      :counted,
+      :element,
+      :described,
+      :error,
+      :count,
+      :group,
+      :rows,
+      :add,
+      :texts,
+      :messages
+    ],
+    count: [:element, :length, :max, :over?]
+  }
+
   @doc false
   # The parts given a projection.
-  def parts, do: [:status, :message, :confirm, :pagination, :picker, :related]
+  def parts,
+    do:
+      [:status, :message, :confirm, :pagination, :picker, :related, :selection_line, :heading] ++
+        Map.keys(@inner)
 
   @doc false
   # The keys of the projection of `part`.
+  def keys(part) when is_map_key(@inner, part), do: Map.fetch!(@inner, part)
   def keys(part), do: Map.fetch!(@parts, part).keys()
 
   # Whether a part's projection is made key by key (`key/2`), else whole

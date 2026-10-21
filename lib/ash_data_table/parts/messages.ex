@@ -1,42 +1,10 @@
 defmodule AshDataTable.Parts.Messages do
   @moduledoc false
   # What the table says: the live region and the result of a run (the
-  # part `status`), the notice of changes, the question dialog (`confirm`),
+  # part `status`), the question dialog (`confirm`),
   # and the error, loading, fill
   # and empty messages (`message`), of `AshDataTable.Kit.Default`.
   use Phoenix.Component
-
-  alias AshDataTable.Attrs
-  alias Phoenix.LiveView.JS
-
-  attr :id, :any, required: true
-  attr :myself, :any, required: true
-  attr :notice?, :any, required: true
-  # the selection line's texts: `changed_records` and `read_again`
-  attr :texts, :map, required: true
-
-  def notice(assigns) do
-    ~H"""
-    <%!-- What others have changed that the page does not show: said once
-    through the live region below, and here for as long as it holds, with the
-    button that reads the page again. The button goes away with the notice,
-    so focus is sent on to the table's first Tab stop. --%>
-    <p :if={@notice?} id={"#{@id}-notice"} class="flex items-center gap-2 text-sm">
-      <span>{@texts.changed_records}</span>
-      <button
-        type="button"
-        id={"#{@id}-read-again"}
-        class="btn btn-sm"
-        phx-click={
-          JS.push(Attrs.event(@id, "read_again"), target: @myself)
-          |> JS.focus_first(to: "##{@id}-table")
-        }
-      >
-        {@texts.read_again}
-      </button>
-    </p>
-    """
-  end
 
   # its projection (`AshDataTable.Kit.Projection`, `status`)
   attr :id, :any, required: true

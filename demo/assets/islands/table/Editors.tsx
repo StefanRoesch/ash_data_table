@@ -83,13 +83,17 @@ const INPUT: Record<string, string> = {number: "number", date: "date", datetime:
 // any number, not only whole ones; a datetime to the second, as it is shown
 const STEP: Record<string, string> = {number: "any", datetime: "1"}
 
+// The projection of the part `count` (`AshDataTable.Kit.Projection`).
+export type CountProps = {element: Bundle; length: number; max: number; "over?": boolean}
+
 // The part `Count`: the counter of a text, how long it is and the most it
-// can be (`text`), which the hook counts again as it is typed
-// (`Attrs.count/2`): under a cell's editor and beside an argument's input.
-export function Count({id, bundle, text, className}: {id: string; bundle: Bundle | false | null; text: string; className?: string}) {
+// can be, which the hook counts again as it is typed (its element's
+// bundle, `Attrs.count/2`): under a cell's editor and beside an argument's
+// input. `className` is its look where it stands.
+export function Count({count, className}: {count: CountProps; className?: string}) {
   return (
-    <span id={id} {...attrs(bundle)} className={"shrink-0 text-xs whitespace-nowrap tabular-nums opacity-70 data-[over]:font-semibold data-[over]:opacity-100 " + (className ?? "")}>
-      {text}
+    <span {...attrs(count.element)} className={"shrink-0 text-xs whitespace-nowrap tabular-nums opacity-70 data-[over]:font-semibold data-[over]:opacity-100 " + (className ?? "")}>
+      {count.length}/{count.max}
     </span>
   )
 }
@@ -131,7 +135,7 @@ export function Editor({id, editor}: {id: string; editor: EditorProps}) {
       return (
         <div>
           <textarea rows={1} {...attrs(editor.control)} className={TEXT}></textarea>
-          <Count id={`${id}-count`} bundle={editor.count} text={`0/${editor.counted.max}`} className="block text-end" />
+          <Count count={{element: {...(editor.count || {}), id: `${id}-count`}, length: 0, max: editor.counted.max, "over?": false}} className="block text-end" />
         </div>
       )
     // Enter on the cell toggles it: the box is shown while the value is saved

@@ -130,17 +130,21 @@ defmodule AshDataTable.Live.Drawing do
     <Kit.part
       part={:heading}
       kit={@kit}
-      heading={@heading}
       id={@entry.id}
-      arguments={Kit.arguments(@entry.id, @entry.model, @entry.lines, @entry.state, @entry.refused)}
-      label={@entry.label}
-      model={@entry.model}
-      myself={@myself}
-      nested?={@entry.nested?}
-      offered={@entry.offered}
-      page={@entry.page}
-      related={@entry.related}
-      state={@entry.state}
+      {Projection.of(:heading, %{
+        id: @entry.id,
+        heading: @heading,
+        label: @entry.label,
+        model: @entry.model,
+        offered: @entry.offered,
+        page: @entry.page,
+        related: @entry.related,
+        nested?: @entry.nested?,
+        myself: @myself,
+        state: @entry.state,
+        lines: @entry.lines,
+        refused: @entry.refused
+      })}
     />
     """
   end
@@ -264,35 +268,23 @@ defmodule AshDataTable.Live.Drawing do
       <Kit.part
         part={:selection_line}
         kit={@options.kit}
-        bulk={@entry.bulk}
-        choose={@entry.choose}
         id={@entry.id}
-        model={@entry.model}
-        myself={@myself}
-        nested?={@entry.nested?}
-        notice?={@entry.notice?}
-        page={@entry.page}
-        row_count={@entry.row_count}
-        running={@entry.running && @entry.running.action}
-        selecting={@entry.selecting}
-        selected={length(@entry.selected)}
-        all?={@entry.all?}
-        whole_page?={Selection.whole_page?(@entry)}
-        state={@entry.state}
-        texts={
-          Words.texts(:selection_line, %{
-            page: @entry.page,
-            selected: length(@entry.selected),
-            all?: @entry.all?
-          })
-        }
-        messages={
-          Words.messages(:selection_line, %{
-            page: @entry.page,
-            selected: length(@entry.selected),
-            all?: @entry.all?
-          })
-        }
+        {Projection.of(:selection_line, %{
+          id: @entry.id,
+          bulk: @entry.bulk,
+          choose: @entry.choose,
+          myself: @myself,
+          nested?: @entry.nested?,
+          notice?: @entry.notice?,
+          page: @entry.page,
+          row_count: @entry.row_count,
+          running: @entry.running && @entry.running.action,
+          selecting: @entry.selecting,
+          selected: length(@entry.selected),
+          all?: @entry.all?,
+          whole_page?: Selection.whole_page?(@entry),
+          state: @entry.state
+        })}
       />
       <Kit.part
         part={:status}

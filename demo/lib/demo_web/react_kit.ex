@@ -123,21 +123,16 @@ defmodule DemoWeb.ReactKit do
       id={"#{@id}-heading-island"}
       name="AshHeading"
       class="contents"
-      heading={
-        Props.heading(
-          @id,
-          @heading,
-          @label,
-          @model,
-          @offered,
-          @page,
-          @related,
-          @nested?,
-          @myself
-        )
-      }
-      columns={Props.heading_columns(@id, @model, @state, @label, @nested?)}
-      arguments={Props.arguments(@id, @model, @arguments, @nested?, @myself)}
+      table={@id}
+      shown?={@shown?}
+      nested?={@nested?}
+      element={Props.of(@element)}
+      title={Props.of(@title)}
+      columns={Props.of(@columns)}
+      argument_line={Props.of(@argument_line)}
+      acts?={@acts?}
+      create={Props.of(@create)}
+      actions={Props.of(@actions)}
     />
     """
   end
@@ -148,25 +143,14 @@ defmodule DemoWeb.ReactKit do
       id={"#{@id}-selection-island"}
       name="AshSelectionLine"
       class="contents"
-      line={
-        Props.selection_line(
-          @id,
-          @bulk,
-          @choose,
-          @notice?,
-          @page,
-          @row_count,
-          @running,
-          @selecting,
-          @selected,
-          @all?,
-          @whole_page?,
-          @state,
-          @nested?,
-          @myself,
-          @texts
-        )
-      }
+      table={@id}
+      shown?={@shown?}
+      nested?={@nested?}
+      selection={Props.of(@selection)}
+      notice={Props.of(@notice)}
+      clear_filters={Props.of(@clear_filters)}
+      texts={@texts}
+      messages={@messages}
     />
     """
   end

@@ -4,68 +4,57 @@
 // "Clear filters"; no room while none of them is there. Its buttons are
 // heard by the grid's hook at the document (`selecting.js`), or send their
 // event (`phx-click`). "Read again" and "Clear filters" go away with what
-// they did: focus goes on at once, as the HEEx kit's `JS.focus_first` sends
-// it, to the table's first stop and to the filter row's.
+// they did: their bundles send focus on (a JS command of LiveView's, as in
+// the HEEx kit), to the table's first stop and to the filter row's. It
+// draws the part's projection (`AshDataTable.Kit.Projection`), each key a
+// prop of the island.
 import * as React from "react"
 
-import {attrs, type Bundle} from "./props"
+import {attrs, type Bundle, type Message} from "./props"
 import {Strict} from "./mounting"
 import {usePart} from "./parts"
 import {button} from "./look"
 
-type Action = {label: string; destroys: boolean; attrs: Bundle}
+type Action = {name: string; label: string; "destroys?": boolean; button: Bundle}
 
 export type LineProps = {
-  line: {
-    id: string
-    shown: boolean
-    nested: boolean
-    selection:
-      | false
-      | {
-          group: Bundle
-          selected: Bundle
-          controls: Bundle
-          select_all: Bundle
-          clear: Bundle
-          inline: Action[]
-          menu: Action[]
-          more_button: Bundle | false
-          more: Bundle | false
-          running: boolean
-        }
-    notice: false | {id: string; read_again: Bundle; focus: string}
-    clear_filters: false | Bundle
-    filter_row: string
-    texts: Record<string, string | null>
+  // the table's id
+  table: string
+  "shown?": boolean
+  "nested?": boolean
+  selection: null | {
+    group: Bundle
+    selected: Bundle
+    controls: Bundle
+    select_all: Bundle
+    clear: Bundle
+    inline: Action[]
+    more: null | {button: Bundle; menu: Bundle; actions: Action[]}
+    "running?": boolean
   }
-}
-
-const FOCUSABLE = "a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex='-1'])"
-
-// focus on the first stop inside the element of `id`, as `JS.focus_first`
-function focusFirst(id: string) {
-  const within = document.getElementById(id)
-  const first = within && (within.querySelector(FOCUSABLE) as HTMLElement | null)
-  if (first) first.focus()
+  notice: null | {element: Bundle; read_again: Bundle}
+  clear_filters: null | Bundle
+  texts: Record<string, string | null>
+  messages: Record<string, Message | null>
 }
 
 export function AshSelectionLine(props: LineProps) {
   const SelectionLinePart = usePart("SelectionLine")
   return (
     <Strict>
-      <SelectionLinePart {...props} />
+      <SelectionLinePart line={props} />
     </Strict>
   )
 }
 
 // The part `SelectionLine`.
-export function SelectionLine({line}: LineProps) {
-  const {id, selection, notice, texts} = line
-  const anchor = `--ash-data-table-more-${id}`
+export function SelectionLine({line}: {line: LineProps}) {
+  const {table, selection, notice, texts} = line
+  const anchor = `--ash-data-table-more-${table}`
+  const running = !!selection && selection["running?"]
 
   return (
-    <div className={line.shown ? (line.nested ? "ash-react-line-above mb-1" : "ash-react-line-above mb-2") : undefined}>
+    <div className={line["shown?"] ? (line["nested?"] ? "ash-react-line-above mb-1" : "ash-react-line-above mb-2") : undefined}>
       {selection && (
         <div {...attrs(selection.group)} className="flex flex-wrap items-center gap-2">
           <p {...attrs(selection.selected)} className="text-sm">{texts.selected}</p>
@@ -74,43 +63,43 @@ export function SelectionLine({line}: LineProps) {
             <button type="button" {...attrs(selection.clear)} className={button("ghost", "sm")}>{texts.clear_selection}</button>
             {selection.inline.map(action => (
               <button
-                key={action.attrs.id as string}
+                key={action.name}
                 type="button"
-                {...attrs(action.attrs)}
-                className={button("outline", "sm", action.destroys && "border-destructive text-destructive", selection.running && "opacity-50")}
+                {...attrs(action.button)}
+                className={button("outline", "sm", action["destroys?"] && "border-destructive text-destructive", running && "opacity-50")}
               >
                 {action.label}
               </button>
             ))}
-            {selection.more_button && (
-              <button type="button" {...attrs(selection.more_button)} style={{anchorName: anchor} as React.CSSProperties} className={button("outline", "sm")}>
-                {texts.more_actions} <span aria-hidden="true">▾</span>
-              </button>
-            )}
             {selection.more && (
-              <ul {...attrs(selection.more)} style={{positionAnchor: anchor} as React.CSSProperties} className="ash-react-menu">
-                {selection.menu.map(action => (
-                  <li key={action.attrs.id as string}>
-                    <button type="button" {...attrs(action.attrs)} className={["whitespace-nowrap", action.destroys && "text-destructive", selection.running && "opacity-50"].filter(Boolean).join(" ")}>
-                      {action.label}
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <button type="button" {...attrs(selection.more.button)} style={{anchorName: anchor} as React.CSSProperties} className={button("outline", "sm")}>
+                  {texts.more_actions} <span aria-hidden="true">▾</span>
+                </button>
+                <ul {...attrs(selection.more.menu)} style={{positionAnchor: anchor} as React.CSSProperties} className="ash-react-menu">
+                  {selection.more.actions.map(action => (
+                    <li key={action.name}>
+                      <button type="button" {...attrs(action.button)} className={["whitespace-nowrap", action["destroys?"] && "text-destructive", running && "opacity-50"].filter(Boolean).join(" ")}>
+                        {action.label}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
           </div>
         </div>
       )}
       {notice && (
-        <p id={notice.id} className="flex items-center gap-2 text-sm">
+        <p {...attrs(notice.element)} className="flex items-center gap-2 text-sm">
           <span>{texts.changed_records}</span>
-          <button type="button" {...attrs(notice.read_again)} onClick={() => focusFirst(notice.focus)} className={button("outline", "sm")}>
+          <button type="button" {...attrs(notice.read_again)} className={button("outline", "sm")}>
             {texts.read_again}
           </button>
         </p>
       )}
       {line.clear_filters && (
-        <button type="button" {...attrs(line.clear_filters)} onClick={() => focusFirst(line.filter_row)} className={button("ghost", "sm", "ms-auto")}>
+        <button type="button" {...attrs(line.clear_filters)} className={button("ghost", "sm", "ms-auto")}>
           {texts.clear_filters}
         </button>
       )}

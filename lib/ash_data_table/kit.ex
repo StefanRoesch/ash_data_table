@@ -884,7 +884,6 @@ defmodule AshDataTable.Kit do
   alias AshDataTable.Edit
   alias AshDataTable.GroupValue
   alias AshDataTable.Kit.Words
-  alias AshDataTable.Model
   alias AshDataTable.Model.Limits
 
   @contract 6
@@ -1196,40 +1195,6 @@ defmodule AshDataTable.Kit do
   end
 
   @doc false
-  # The `arguments` of `heading` and `argument_line`: one per argument of
-  # the model, in its order, what its input is drawn with: its ids, the
-  # name its control is sent under, what it holds (what its line was sent,
-  # else what the state gives it), what Ash said of a value it refused,
-  # the limits of a number and the counter of a text, and its words.
-  def arguments(id, model, lines, state, refused) do
-    for argument <- model.arguments do
-      named = Model.Argument.argument_id(argument)
-      key = Model.Argument.key(argument)
-      value = Map.get(lines, key) || Model.Argument.shown(argument, state, refused)
-
-      errors =
-        case refused[key] do
-          nil -> []
-          %{messages: messages} -> messages
-        end
-
-      words = %{argument: argument, value: value, errors: errors}
-
-      %{
-        id: AshDataTable.Ids.argument(id, named),
-        named: named,
-        name: argument_name(argument),
-        value: value,
-        errors: Enum.map(errors, &AshDataTable.Messages.of/1),
-        limits: Limits.of(argument),
-        counted: counted(argument),
-        texts: Words.texts(:argument, words),
-        messages: Words.messages(:argument, words)
-      }
-    end
-  end
-
-  @doc false
   # The `fields` of `panel`: per field of the open panel, in its order, the
   # assigns of its `field` part (but `kit` and `target`), and inside a value
   # made of fields the same for each field in it (`members`, `items`,
@@ -1438,18 +1403,6 @@ defmodule AshDataTable.Kit do
       do: Map.get(at.errors, at.place, []),
       else: []
   end
-
-  # What an argument's control is sent under.
-  defp argument_name(%{column: nil, name: name}), do: "arguments[a][#{name}]"
-  defp argument_name(%{column: column, name: name}), do: "arguments[c][#{column}][#{name}]"
-
-  # the counter of a text that has a most it can be long, as in the panel
-  defp counted(%{editor: :text} = argument), do: Limits.counted(argument)
-
-  defp counted(%{editor: :list, cell_type: {:array, :text}} = argument),
-    do: Limits.counted(argument)
-
-  defp counted(_argument), do: nil
 
   # Whether the column's component draws a cell: a value that is there and
   # that the person may see.

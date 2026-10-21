@@ -45,14 +45,31 @@ defmodule AshDataTable.AttrsTest do
   end
 
   # The hook clamps a width it is given (a drag, a width field) to what the
-  # width fields say, which the default kit writes as text: the same two
-  # numbers.
+  # width fields say, which every kit is given in the projection of
+  # "Columns": the same two numbers.
   test "the hook's narrowest and widest column are the width fields' min and max" do
     widths = File.read!("assets/js/grid/widths.js")
     assert widths =~ "const LEAST = #{Attrs.least_width()}\n"
     assert widths =~ "const MOST = #{Attrs.most_width()}\n"
 
-    assert File.read!("lib/ash_data_table/parts/grid.ex") =~
-             ~s(min="#{Attrs.least_width()}"\n            max="#{Attrs.most_width()}")
+    model = AshDataTable.Model.build(AshDataTable.Test.Resource)
+
+    columns =
+      AshDataTable.Kit.Projection.of({:heading, :columns}, %{
+        id: "t",
+        heading: false,
+        label: "T",
+        model: model,
+        offered: [],
+        page: nil,
+        related: nil,
+        nested?: false,
+        myself: nil,
+        state: %AshDataTable.State{},
+        lines: %{},
+        refused: %{}
+      })
+
+    assert {columns.least, columns.most} == {Attrs.least_width(), Attrs.most_width()}
   end
 end

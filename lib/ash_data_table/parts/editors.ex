@@ -30,34 +30,29 @@ defmodule AshDataTable.Parts.Editors do
   # It stands in the page as text, beside or under its control; in the
   # editor of a cell under the text, and the row grows to it while the
   # editor is open.
-  attr :id, :string, required: true
-  attr :counted, :map, required: true
-  attr :value, :any, required: true
+  #
+  # Its projection (`AshDataTable.Kit.Projection`, `count`); `class` is its
+  # look where it stands, which the part that draws it gives.
+  attr :element, :map, required: true
+  attr :length, :integer, required: true
+  attr :max, :integer, required: true
+  attr :over?, :boolean, required: true
   attr :class, :string, required: true
 
   def count(assigns) do
-    length = AshDataTable.Kit.count(assigns.value, assigns.counted)
-
-    assigns =
-      assign(assigns,
-        length: length,
-        over?: length > assigns.counted.max,
-        classes:
-          Enum.join(
-            [
-              "shrink-0 text-xs whitespace-nowrap tabular-nums opacity-70 data-[over]:font-semibold data-[over]:opacity-100"
-              | List.wrap(assigns.class)
-            ],
-            " "
-          )
-      )
-
     ~H"""
     <span
-      id={@id}
-      {Attrs.count(@counted, @over?)}
-      class={@classes}
-    >{@length}/{@counted.max}</span>
+      {@element}
+      class={
+        Enum.join(
+          [
+            "shrink-0 text-xs whitespace-nowrap tabular-nums opacity-70 data-[over]:font-semibold data-[over]:opacity-100"
+            | List.wrap(@class)
+          ],
+          " "
+        )
+      }
+    >{@length}/{@max}</span>
     """
   end
 
@@ -182,10 +177,8 @@ defmodule AshDataTable.Parts.Editors do
         :if={@item == :text && @counted}
         part={:count}
         kit={@kit}
-        id={@count_id}
-        counted={@counted}
-        value={@value}
         class={nil}
+        {AshDataTable.Kit.Projection.Count.of(@count_id, @counted, @value)}
       />
       <input
         :if={@item in [:number, :date, :datetime]}

@@ -4,8 +4,6 @@ defmodule AshDataTable.Parts.Arguments do
   # The parts `argument_line` and `argument` of `AshDataTable.Kit.Default`.
   use Phoenix.Component
 
-  alias AshDataTable.Attrs
-  alias AshDataTable.Ids
   alias AshDataTable.Kit
   alias AshDataTable.Parts
 
@@ -20,104 +18,95 @@ defmodule AshDataTable.Parts.Arguments do
   # an array the list of its values; for one that is given value by value,
   # its rows. A typed value is sent when its control is left or Enter is
   # used, as a filter's is; a choice at once.
+  #
+  # Its projection (`AshDataTable.Kit.Projection`, an argument of the
+  # heading's `argument_line`).
   attr :id, :string, required: true
   attr :named, :string, required: true
   attr :name, :string, required: true
-  attr :argument, :map, required: true
+  attr :label, :string, required: true
+  attr :editor, :atom, required: true
+  attr :item, :atom, required: true
+  attr :required?, :boolean, required: true
+  attr :values, :list, required: true
   attr :value, :any, required: true
-  attr :errors, :list, required: true
+  attr :invalid?, :boolean, required: true
   # the limits of a number, and the counter of a text (nil for none), as
   # for a field of the action panel
   attr :limits, :map, required: true
   attr :counted, :map, required: true
-  attr :target, :any, required: true
-  attr :table, :string, required: true
+  attr :element, :map, required: true
+  attr :described, :string, required: true
+  attr :error, :map, required: true
+  attr :count, :map, required: true
+  attr :group, :map, required: true
+  attr :rows, :list, required: true
+  attr :add, :map, required: true
   attr :kit, :atom, required: true
   attr :texts, :map, required: true
+  attr :messages, :map, required: true
 
   def argument(assigns) do
-    assigns =
-      assign(assigns,
-        array?: assigns.argument.editor in [:choices, :list],
-        described:
-          Parts.Editors.described([
-            assigns.errors != [] && Ids.error(assigns.id),
-            assigns.counted && assigns.argument.editor == :text && "#{assigns.id}-count"
-          ])
-      )
-
     ~H"""
-    <div class="flex flex-col" data-argument={@named}>
+    <div class="flex flex-col" {@element}>
       <div class="flex min-h-8 flex-wrap items-center gap-2">
         <%!-- an unchecked box sends nothing: this says "false" for it --%>
-        <input :if={@argument.editor == :boolean} type="hidden" name={@name} value="false" />
-        <label :if={not @array?} for={@id} class="label text-sm text-base-content">
+        <input :if={@editor == :boolean} type="hidden" name={@name} value="false" />
+        <label :if={!@group} for={@id} class="label text-sm text-base-content">
           <input
-            :if={@argument.editor == :boolean}
+            :if={@editor == :boolean}
             type="checkbox"
             id={@id}
             name={@name}
             value="true"
             checked={@value == "true"}
-            aria-invalid={@errors != [] && "true"}
+            aria-invalid={@invalid? && "true"}
             aria-describedby={@described}
             class={["checkbox checkbox-sm", Parts.Editors.box_edge()]}
           />
-          <span data-label>{@argument.label}</span>
-          <span :if={@argument.required? and @argument.editor != :boolean} aria-hidden="true">*</span>
+          <span data-label>{@label}</span>
+          <span :if={@required? and @editor != :boolean} aria-hidden="true">*</span>
         </label>
         <select
-          :if={@argument.editor == :enum}
+          :if={@editor == :enum}
           id={@id}
           name={@name}
-          aria-required={@argument.required? && "true"}
-          aria-invalid={@errors != [] && "true"}
+          aria-required={@required? && "true"}
+          aria-invalid={@invalid? && "true"}
           aria-describedby={@described}
           class={["select select-sm w-auto", Parts.Editors.control_edge()]}
         >
-          <option :if={not @argument.required? or @value == ""} value=""></option>
-          <option
-            :for={{choice, label} <- @argument.values}
-            value={choice}
-            selected={to_string(choice) == @value}
-          >
-            {label}
+          <option :if={not @required? or @value == ""} value=""></option>
+          <option :for={choice <- @values} value={choice.value} selected={choice.value == @value}>
+            {choice.label}
           </option>
         </select>
         <input
-          :if={@argument.editor in [:text, :number, :date, :datetime, :plain]}
-          type={argument_type(@argument.editor)}
-          step={@limits.step || Parts.Editors.input_step(@argument.editor)}
+          :if={@editor in [:text, :number, :date, :datetime, :plain]}
+          type={argument_type(@editor)}
+          step={@limits.step || Parts.Editors.input_step(@editor)}
           min={@limits.min}
           max={@limits.max}
           id={@id}
           name={@name}
           value={@value}
           phx-debounce="blur"
-          aria-required={@argument.required? && "true"}
-          aria-invalid={@errors != [] && "true"}
+          aria-required={@required? && "true"}
+          aria-invalid={@invalid? && "true"}
           aria-describedby={@described}
           class={["input input-sm w-40", Parts.Editors.control_edge()]}
         />
-        <Kit.part
-          :if={@counted && @argument.editor == :text}
-          part={:count}
-          kit={@kit}
-          id={"#{@id}-count"}
-          counted={@counted}
-          value={@value}
-          class={nil}
-        />
+        <Kit.part :if={@count} part={:count} kit={@kit} class={nil} {@count} />
         <%!-- An array has several controls, and its label is for none of them
         alone: they are a group, which the label names. --%>
-        <span :if={@array?} id={"#{@id}-label"} class="label text-sm text-base-content">
-          <span data-label>{@argument.label}</span>
+        <span :if={@group} {@group.label} class="label text-sm text-base-content">
+          <span data-label>{@label}</span>
         </span>
         <div
-          :if={@array?}
+          :if={@group}
           id={@id}
           role="group"
-          aria-labelledby={"#{@id}-label"}
+          aria-labelledby={@group.labelledby}
           aria-describedby={@described}
           class="flex flex-wrap items-center gap-2"
         >
@@ -126,76 +115,53 @@ defmodule AshDataTable.Parts.Arguments do
           <input type="hidden" name={@name <> "[]"} value="" />
           <%!-- multiple choice: one box per value of the enum --%>
           <label
-            :for={{choice, label} <- (@argument.editor == :choices && @argument.values) || []}
+            :for={choice <- (@editor == :choices && @values) || []}
             class="label text-sm text-base-content"
           >
             <input
               type="checkbox"
               name={@name <> "[]"}
-              value={choice}
-              checked={to_string(choice) in @value}
-              aria-invalid={@errors != [] && "true"}
+              value={choice.value}
+              checked={choice.value in @value}
+              aria-invalid={@invalid? && "true"}
               class={["checkbox checkbox-sm", Parts.Editors.box_edge()]}
             />
-            {label}
+            {choice.label}
           </label>
           <%!-- value by value: a row each, with the button that takes it away,
           and after them the one that adds a row --%>
-          <span
-            :for={{value, at} <- (@argument.editor == :list && Enum.with_index(@value)) || []}
-            class="flex items-center gap-1"
-          >
+          <span :for={{row, at} <- Enum.with_index(@rows)} class="flex items-center gap-1">
             <input
-              type={argument_type(elem(@argument.cell_type, 1))}
-              step={@limits.step || Parts.Editors.input_step(elem(@argument.cell_type, 1))}
+              type={argument_type(@item)}
+              step={@limits.step || Parts.Editors.input_step(@item)}
               min={@limits.min}
               max={@limits.max}
-              id={Ids.argument_value(@id, at)}
+              id={row.id}
               name={@name <> "[]"}
-              value={value}
+              value={row.value}
               phx-debounce="blur"
               aria-label={Enum.at(@texts.value_position, at)}
-              aria-invalid={@errors != [] && "true"}
-              aria-describedby={@counted && "#{@id}-#{at}-count"}
+              aria-invalid={@invalid? && "true"}
+              aria-describedby={row.described}
               class={["input input-sm w-40", Parts.Editors.control_edge()]}
             />
-            <Kit.part
-              :if={@counted}
-              part={:count}
-              kit={@kit}
-              id={"#{@id}-#{at}-count"}
-              counted={@counted}
-              value={value}
-              class={nil}
-            />
+            <Kit.part :if={row.count} part={:count} kit={@kit} class={nil} {row.count} />
             <button
               type="button"
-              id={"#{@id}-#{at}-remove"}
+              {row.remove}
               aria-label={Enum.at(@texts.remove_value, at)}
               class="btn btn-ghost btn-xs"
-              phx-click={Attrs.event(@table, "argument_remove")}
-              phx-value-argument={@named}
-              phx-value-at={at}
-              phx-target={@target}
             >
               <span aria-hidden="true">✕</span>
             </button>
           </span>
-          <button
-            :if={@argument.editor == :list}
-            type="button"
-            id={Ids.argument_value(@id, :add)}
-            class="btn btn-sm"
-            phx-click={Attrs.event(@table, "argument_add")}
-            phx-value-argument={@named}
-            phx-target={@target}
-          >
+          <button :if={@add} type="button" {@add} class="btn btn-sm">
             {@texts.add_value}
           </button>
         </div>
       </div>
       <%!-- in the text colour: the error colour is too faint for small text --%>
-      <div :if={@errors != []} id={Ids.error(@id)} class="mt-1 text-xs">
+      <div :if={@error} {@error} class="mt-1 text-xs">
         <p :for={message <- @texts.errors} data-error>{message}</p>
       </div>
     </div>
@@ -207,14 +173,13 @@ defmodule AshDataTable.Parts.Arguments do
   defp argument_type(editor) when editor in [:text, :plain], do: "text"
   defp argument_type(editor), do: Parts.Editors.input_type(editor)
 
+  # Its projection (`AshDataTable.Kit.Projection`, the heading's
+  # `argument_line`): the form and an `argument` each.
   attr :id, :any, required: true
   attr :kit, :atom, required: true
-  # one per argument of the model, what its input is drawn with
-  # (`AshDataTable.Kit`, `argument_line`)
+  attr :form, :map, required: true
+  attr :nested?, :boolean, required: true
   attr :arguments, :list, required: true
-  attr :model, :any, required: true
-  attr :myself, :any, required: true
-  attr :nested?, :any, required: true
 
   def argument_line(assigns) do
     ~H"""
@@ -223,25 +188,13 @@ defmodule AshDataTable.Parts.Arguments do
     is there whenever the table has arguments, so that nothing moves when the
     line under it fills. A table without arguments has none.
 
-    `novalidate`: an input of a number says the least and the most the
-    argument takes (`limits`), and the browser is not to hold the form back
-    over that. Ash is given what was typed and says what is wrong with it.
-    Only what the browser cannot read as a value at all is held back, by the
-    hook (`UNREADABLE`). --%>
-    <form
-      :if={@model.arguments != []}
-      {Attrs.arguments(@id, @myself)}
-      class={@kit.class(:argument_line, %{nested?: @nested?})}
-    >
-      <Kit.part
-        :for={{argument, given} <- Enum.zip(@model.arguments, @arguments)}
-        part={:argument}
-        kit={@kit}
-        argument={argument}
-        target={@myself}
-        table={@id}
-        {given}
-      />
+    `novalidate` (in its bundle): an input of a number says the least and the
+    most the argument takes (`limits`), and the browser is not to hold the
+    form back over that. Ash is given what was typed and says what is wrong
+    with it. Only what the browser cannot read as a value at all is held back,
+    by the hook (`UNREADABLE`). --%>
+    <form {@form} class={@kit.class(:argument_line, %{nested?: @nested?})}>
+      <Kit.part :for={argument <- @arguments} part={:argument} kit={@kit} {argument} />
     </form>
     """
   end

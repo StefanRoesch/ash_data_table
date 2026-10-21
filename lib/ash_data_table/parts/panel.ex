@@ -470,10 +470,8 @@ defmodule AshDataTable.Parts.Panel do
         :if={@counted && @input.editor == :text}
         part={:count}
         kit={@kit}
-        id={"#{@id}-count"}
-        counted={@counted}
-        value={@value}
         class="justify-self-end"
+        {AshDataTable.Kit.Projection.Count.of("#{@id}-count", @counted, @value)}
       />
       <%!-- in the text colour: the error colour is too faint for small text --%>
       <div :if={@errors != [] and not @group?} id={Ids.error(@id)} class="mt-1 text-sm">

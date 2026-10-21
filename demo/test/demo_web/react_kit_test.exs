@@ -26,11 +26,11 @@ defmodule DemoWeb.ReactKitTest do
 
   # the islands of a table and their props, by the suffix of their ids
   @props %{
-    "heading" => {"AshHeading", ~w(heading columns arguments)},
+    "heading" => {"AshHeading", {:heading, ~w(table)}},
     "grid" =>
       {"AshGrid",
        ~w(texts skip scrollbar grid table head filters columns row footer editors failure)},
-    "selection" => {"AshSelectionLine", ~w(line)},
+    "selection" => {"AshSelectionLine", {:selection_line, ~w(table)}},
     "status" => {"AshStatus", :status},
     "pagination" => {"AshPagination", :pagination}
   }
@@ -77,9 +77,10 @@ defmodule DemoWeb.ReactKitTest do
     # the heading line: "Columns", and the argument line with what the
     # table gives each argument's input
     assert %{
-             "heading" => %{"id" => "task-header", "shown" => true},
-             "columns" => %{"id" => "task"},
-             "arguments" => %{"form" => %{"id" => "task-arguments"}, "inputs" => inputs}
+             "element" => %{"id" => "task-header"},
+             "shown?" => true,
+             "columns" => %{"control" => %{"id" => "task-columns-control"}},
+             "argument_line" => %{"form" => %{"id" => "task-arguments"}, "arguments" => inputs}
            } = top["heading"]
 
     assert %{
@@ -87,7 +88,7 @@ defmodule DemoWeb.ReactKitTest do
              "name" => "arguments[a][search]",
              "value" => "",
              "counted" => %{"max" => 60, "unit" => _},
-             "count" => %{"data-max" => "60"}
+             "count" => %{"element" => %{"data-max" => "60"}}
            } = Enum.find(inputs, &(&1["named"] == "search"))
 
     task = hd(world.tasks)
@@ -107,7 +108,7 @@ defmodule DemoWeb.ReactKitTest do
     comments = nested("task", task.id, "comments")
     inner = islands!(html, comments, ~w(heading grid selection status))
     assert %{"grid" => %{"data-table" => ^comments}} = inner["grid"]
-    assert %{"heading" => %{"nested" => true}} = inner["heading"]
+    assert %{"nested?" => true} = inner["heading"]
     islands!(html, "task", Map.keys(@props))
 
     # sorted
@@ -120,17 +121,16 @@ defmodule DemoWeb.ReactKitTest do
     # filtered, then no longer
     html = send.("filter", %{"filter" => %{"title" => %{"o" => "contains", "v" => "a"}}})
     filtered = islands!(html, "task", Map.keys(@props))
-    assert %{"clear_filters" => %{"id" => _}} = filtered["selection"]["line"]
+    assert %{"clear_filters" => %{"id" => _}} = filtered["selection"]
 
     html = send.("filter", %{"filter" => %{}})
 
-    assert %{"clear_filters" => false} =
-             islands!(html, "task", Map.keys(@props))["selection"]["line"]
+    assert %{"clear_filters" => nil} = islands!(html, "task", Map.keys(@props))["selection"]
 
     # a row selected
     html = send.("select", %{"rows" => [[task.id, nil]], "all" => false})
     selected = islands!(html, "task", Map.keys(@props))
-    assert %{"selection" => %{"selected" => %{"id" => _}}} = selected["selection"]["line"]
+    assert %{"selection" => %{"selected" => %{"id" => _}}} = selected["selection"]
 
     # a filter that matches nothing: "No records" in place of the rows, an
     # island of its own
@@ -234,9 +234,17 @@ defmodule DemoWeb.ReactKitTest do
     end)
   end
 
-  # a part given its projection: a prop per key of it
-  defp island!(html, id, name, part) when is_atom(part),
-    do: island!(html, id, name, Enum.map(AshDataTable.Kit.Projection.keys(part), &to_string/1))
+  # a part given its projection: a prop per key of it, and `more`
+  defp island!(html, id, name, part) when is_atom(part), do: island!(html, id, name, {part, []})
+
+  defp island!(html, id, name, {part, more}) when is_atom(part),
+    do:
+      island!(
+        html,
+        id,
+        name,
+        Enum.map(AshDataTable.Kit.Projection.keys(part), &to_string/1) ++ more
+      )
 
   defp island!(html, id, name, props) do
     react = React.get_react(html, id: id)

@@ -339,7 +339,7 @@ export function Field({field}: {field: FieldProps}) {
 export function Counter({id, field, value, className}: {id: string; field: FieldProps; value: string; className?: string}) {
   const Count = usePart("Count")
   const counted = field.counted!
-  return <Count key={value} id={id} bundle={field.count} text={`${count(value, counted)}/${counted.max}`} className={className} />
+  return <Count key={value} count={{element: {...(field.count || {}), id}, length: count(value, counted), max: counted.max, "over?": false}} className={className} />
 }
 
 // The part `PanelBox`: a checkbox of the panel, checked as the server says
@@ -445,7 +445,7 @@ export function ListItem({field, listId, value, position, valueLabel, removeLabe
       {kind === "boolean" && <input type="hidden" name={name} value={String(value === "true")} />}
       {kind === "boolean" && <input type="checkbox" defaultChecked={value === "true"} aria-label={label} className={box()} />}
       {kind === "text" && <textarea rows={1} name={name} defaultValue={value} aria-label={label} aria-describedby={countId} className={input("h-auto min-h-0 flex-1 py-1 text-sm")} />}
-      {kind === "text" && field.counted && <Count id={countId ?? ""} bundle={field.count} text={`${count(value, field.counted)}/${field.counted.max}`} />}
+      {kind === "text" && field.counted && <Count count={{element: {...(field.count || {}), ...(countId ? {id: countId} : {})}, length: count(value, field.counted), max: field.counted.max, "over?": false}} />}
       {(kind === "number" || kind === "date" || kind === "datetime") && (
         <input
           type={INPUT[kind]}

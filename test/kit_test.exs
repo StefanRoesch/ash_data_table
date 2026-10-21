@@ -478,44 +478,7 @@ defmodule AshDataTable.KitTest do
     end
   end
 
-  test "the argument line is given what each argument's input is drawn with, as plain data" do
-    model = AshDataTable.Model.build(AshDataTable.Test.Resource)
-    [argument] = model.arguments
-    key = AshDataTable.Model.Argument.key(argument)
-
-    [given] = Kit.arguments("t", model, %{}, %AshDataTable.State{}, %{})
-
-    assert Map.take(given, [:id, :named, :name, :value, :errors, :limits, :counted]) == %{
-             id: "t-arg-near",
-             named: "near",
-             name: "arguments[a][near]",
-             value: "",
-             errors: [],
-             limits: %{min: nil, max: nil, step: nil},
-             counted: nil
-           }
-
-    assert given.texts.add_value == "Add value"
-    assert Map.keys(given.texts) == Map.keys(given.messages)
-
-    # what the person chose, and what Ash refused of it
-    state = %AshDataTable.State{arguments: %{key => "x"}}
-    refused = %{key => %{typed: "y", messages: [{:ash, "is required", []}], held: nil}}
-
-    assert [%{value: "x"}] = Kit.arguments("t", model, %{}, state, %{})
-
-    assert [%{value: "y", errors: [error], texts: %{errors: [text]}} = refusal] =
-             Kit.arguments("t", model, %{}, state, refused)
-
-    assert error == %{key: :ash, values: %{message: "is required", vars: %{}}}
-    assert text == "is required"
-
-    assert Jason.decode!(Jason.encode!(refusal))["errors"] == [
-             %{"key" => "ash", "values" => %{"message" => "is required", "vars" => %{}}}
-           ]
-  end
-
-  test "the heading line and the argument line are given their arguments, not what they are made of" do
+  test "the heading line and the argument line are given their projections" do
     kit =
       compile("""
       defmodule AshDataTable.KitTest.Line do
@@ -544,15 +507,12 @@ defmodule AshDataTable.KitTest do
     assert_received {:heading, heading}
     assert_received {:argument_line, line}
 
-    for name <- [:lines, :refused] do
-      refute name in heading
-      refute name in line
-    end
+    # its projection's keys, and nothing of what they are made of
+    assert heading -- [:__changed__] ==
+             Enum.sort([:id, :kit | AshDataTable.Kit.Projection.keys(:heading)])
 
-    refute :state in line
-    assert :arguments in heading and :arguments in line
-    # "Columns", which the heading draws, says what is filtered and sorted
-    assert :state in heading
+    assert line -- [:__changed__] ==
+             Enum.sort([:id, :kit | AshDataTable.Kit.Projection.keys(:argument_line)])
   end
 
   test "a text is counted as its counter counts it, as Ash does" do

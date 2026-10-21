@@ -101,21 +101,32 @@ defmodule AshDataTable.Parts.Grid do
   # it shows. The badge is the hook's too (`ID-columns-count`), empty and
   # out of sight while nothing is hidden. A Tab stop, in a nested table too,
   # where it stands on the table's line.
+  # Its projection (`AshDataTable.Kit.Projection`, the heading's `columns`):
+  # the button and the list, the label column's entry (`label`, nil for
+  # none), an entry per column that can be hidden, "Reset widths"; `class`
+  # is its look, which the part that draws it gives.
   attr :id, :string, required: true
-  attr :columns, :list, required: true
-  attr :label_column, :any, required: true
-  attr :keeps_one?, :boolean, required: true
-  attr :state, :map, required: true
-  attr :nested?, :boolean, required: true
+  attr :control, :map, required: true
+  attr :button, :map, required: true
+  attr :text, :map, required: true
+  attr :count, :map, required: true
+  attr :list, :map, required: true
+  attr :status, :map, required: true
+  attr :label, :map, required: true
+  attr :entries, :list, required: true
+  attr :reset, :map, required: true
+  attr :least, :integer, required: true
+  attr :most, :integer, required: true
   attr :class, :any, required: true
   attr :texts, :map, required: true
+  attr :messages, :map, required: true
 
   def columns(assigns) do
     ~H"""
-    <div id={"#{@id}-columns-control"} class={@class}>
+    <div {@control} class={@class}>
       <button
         type="button"
-        {Attrs.columns_button(@id, @texts)}
+        {@button}
         style={"anchor-name: #{anchor(@id)}"}
         class="btn btn-ghost btn-sm gap-1 px-2"
       >
@@ -132,80 +143,63 @@ defmodule AshDataTable.Parts.Grid do
           <path d="M3.98 8.22A10.48 10.48 0 0 0 1.93 12C3.23 16.34 7.24 19.5 12 19.5c.99 0 1.95-.14 2.86-.4M6.23 6.23A10.45 10.45 0 0 1 12 4.5c4.76 0 8.77 3.16 10.07 7.5a10.52 10.52 0 0 1-4.29 5.77M6.23 6.23 3 3m3.23 3.23 3.65 3.65m7.89 7.89L21 21m-3.23-3.23-3.65-3.65m0 0a3 3 0 1 0-4.24-4.24m4.24 4.24L9.88 9.88" />
         </svg>
         <span aria-hidden="true">{@texts.columns}</span>
-        <span id={"#{@id}-columns-text"} phx-update="ignore" class="sr-only">
+        <span {@text} phx-update="ignore" class="sr-only">
           {@texts.columns_name}
         </span>
         <span
-          id={"#{@id}-columns-count"}
+          {@count}
           phx-update="ignore"
           aria-hidden="true"
           class="badge badge-xs badge-neutral empty:hidden"
         ></span>
       </button>
       <div
-        {Attrs.columns(@id, @keeps_one?, @texts)}
+        {@list}
         style={"position-anchor: #{anchor(@id)}"}
         class="dropdown menu max-h-[60vh] flex-nowrap overflow-y-auto rounded-box bg-base-100 p-2 text-base-content shadow-sm forced-colors:border [position-area:bottom_span-right] [position-try-fallbacks:flip-inline,flip-block] supports-[position-area:bottom]:inset-auto supports-[position-area:bottom]:m-0 supports-[position-area:bottom]:mt-0.5"
       >
-        <div :if={@label_column} class="flex items-center gap-2">
-          <span class="grow py-0.5 ps-7 pe-1 whitespace-nowrap">{@label_column.label}</span>
+        <div :if={@label} class="flex items-center gap-2">
+          <span class="grow py-0.5 ps-7 pe-1 whitespace-nowrap">{@label.label}</span>
           <input
             type="number"
-            min="48"
-            max="1000"
-            {Attrs.width_field(@id, @label_column, @texts.label_width)}
+            min={@least}
+            max={@most}
+            {@label.width}
             class="input input-xs w-20"
           />
         </div>
-        <div
-          :for={
-            {column, flag, hidden, shown, width_of} <-
-              Enum.zip([
-                @columns,
-                @texts.flags,
-                @texts.column_hidden,
-                @texts.column_shown,
-                @texts.width_of
-              ])
-          }
-          class="flex items-center gap-2"
-        >
+        <div :for={entry <- @entries} class="flex items-center gap-2">
           <label
-            id={"#{@id}-column-#{column.name}-entry"}
+            {entry.entry}
             class="flex grow cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap"
           >
             <input
               type="checkbox"
-              id={"#{@id}-column-#{column.name}"}
+              {entry.box}
               checked
-              data-head={Ids.header_cell(@id, column.name)}
-              data-say-hidden={hidden}
-              data-say-shown={shown}
-              data-filtered={is_map_key(@state.filters, column.name)}
-              data-sorted={Attrs.aria_sort(@state.sort, column) != "none"}
               class={["peer checkbox checkbox-xs", Parts.Editors.box_edge()]}
             />
-            <span>{column.label}</span>
-            <span :if={flag} data-flag class="peer-checked:hidden">
-              ({flag})
+            <span>{entry.label}</span>
+            <span :if={entry.flag} data-flag class="peer-checked:hidden">
+              ({entry.flag})
             </span>
           </label>
           <input
             type="number"
-            min="48"
-            max="1000"
-            {Attrs.width_field(@id, column, width_of)}
+            min={@least}
+            max={@most}
+            {entry.width}
             class="input input-xs w-20"
           />
         </div>
-        <button {Attrs.reset_widths(@id)} class="btn btn-ghost btn-xs mt-1 self-start">
+        <button {@reset} class="btn btn-ghost btn-xs mt-1 self-start">
           {@texts.reset_widths}
         </button>
       </div>
       <%!-- What the hook says when a column is hidden or shown again. A live
       region of its own: the one above the grid is rendered by the server,
       and would say its last text once more when the next patch put it back. --%>
-      <p id={"#{@id}-columns-status"} role="status" phx-update="ignore" class="sr-only"></p>
+      <p {@status} role="status" phx-update="ignore" class="sr-only"></p>
     </div>
     """
   end
@@ -293,10 +287,8 @@ defmodule AshDataTable.Parts.Grid do
       <Kit.part
         part={:count}
         kit={@kit}
-        id={"#{@id}-count"}
-        counted={@counted}
-        value=""
         class="block text-end"
+        {AshDataTable.Kit.Projection.Count.of("#{@id}-count", @counted, "")}
       />
     </div>
     """
