@@ -1,7 +1,6 @@
 # Credo's default checks, with the ones every Ash extension turns off turned
 # off here too (ash_json_api, ash_graphql, ash_admin, ash_typescript), and
-# `Design.DuplicatedCode` turned on: the code-quality gate looks for copies
-# (docs/research/code-quality-tools.md).
+# `Design.DuplicatedCode` turned on: the code-quality gate looks for copies.
 %{
   configs: [
     %{

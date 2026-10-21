@@ -22,7 +22,7 @@
 //   * the places a nested table and its heading line are moved into
 //     (`Ids.nested_cell/2`, `Ids.line_heading/2`) are drawn for every line
 //     of every row ahead of time, hidden while the line is closed, and
-//     never drawn again as another element (the kit's note, C8).
+//     never drawn again as another element.
 import * as React from "react"
 import {flushSync} from "react-dom"
 import {ids, mountGrid} from "ash_data_table"

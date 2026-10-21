@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test"
 import { expect, test } from "./support/fixtures"
 import { answered } from "./support/table"
 
-// The kit check in the browser (the React kit's note, §7.2; stage 8, R4):
+// The kit check in the browser:
 // the states and presentations of `AshDataTable.KitCase`, each reached as a
 // person reaches it, by the table's controls, on /e2e/kit/states
 // (`DemoWeb.E2E.KitStatesLive`: the table `KitCase` draws, with its records

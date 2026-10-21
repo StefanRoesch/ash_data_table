@@ -1,7 +1,7 @@
 // What a cell of a record holds, of its item's cell (`AshDataTable.Item`):
 // the parts `Cell` and `Failure` of the React kit, and the components it
-// draws a column's cells with where the column has one (the kit's note,
-// Q10), by the module the column names. As the HEEx kit draws them
+// draws a column's cells with where the column has one,
+// by the module the column names. As the HEEx kit draws them
 // (`Parts.Grid`), so that the hook finds what it finds there.
 import * as React from "react"
 import {ids} from "ash_data_table"

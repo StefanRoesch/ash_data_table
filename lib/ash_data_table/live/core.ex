@@ -1,6 +1,6 @@
 defmodule AshDataTable.Live.Core do
   @moduledoc false
-  # The live core of a table (target.md 4.4), in two halves (stage 9g).
+  # The live core of a table, in two halves.
   #
   # The step, over the table: `step/3`, `(table, intent, context)` →
   # `{table, effects, reply}`, with no socket. `context` is what the socket
@@ -449,7 +449,7 @@ defmodule AshDataTable.Live.Core do
   defp topic(event) when event in [:left, :read_again, :heard], do: Updates
   defp topic(:told), do: Told
 
-  # The browser names an event with the table it is for (target.md Q4):
+  # The browser names an event with the table it is for:
   # `ash_data_table:ID:event`, split at the first and the last `:`. The
   # table's id, a claim that is looked up among the tables shown (nil for
   # an event without it), and the event's own name.

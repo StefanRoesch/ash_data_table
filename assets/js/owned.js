@@ -1,5 +1,5 @@
 // The attributes the table's hooks write in the page, and what a kit may
-// render of each (target.md S20, the React kit's note C6).
+// render of each.
 //
 // The hooks write some attributes of the elements a kit draws, after the
 // kit drew them: what is selected, a cell that is busy, being edited or

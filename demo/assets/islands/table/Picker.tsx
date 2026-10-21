@@ -4,7 +4,7 @@
 // always, closed too, with its place (`Ids.picker_place/1`): the picker's
 // table is a table of its own, drawn by the table on the page and moved
 // into the place by LiveView in the patch that opens the picker, so the
-// place is there before (the React kit's note, C8 and Q2), and is never
+// place is there before, and is never
 // drawn again as another element. As it opens the island mounts the
 // table's picker hook on it (`mountPicker`): focus into its table, Cancel,
 // "No record", "Choose"; as it closes it destroys it and closes the dialog.

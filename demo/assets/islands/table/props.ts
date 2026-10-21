@@ -1,4 +1,4 @@
-// The JS half of the bundle → props rule (the React kit's note, C3; the
+// The JS half of the bundle → props rule (the
 // server half is `AshDataTable.Attrs.props/1`, which the props rule of
 // `DemoWeb.ReactKit` calls): a bundle comes as HTML attributes, each value
 // text, `""` for an attribute without a value (an item's `attrs` keep
@@ -36,8 +36,7 @@ const NAMES: Record<string, string> = {
 
 const BOOLEAN = new Set(["hidden", "disabled", "checked", "selected", "readOnly", "required", "multiple", "noValidate", "inert", "open"])
 
-// The development check of what the hooks own (the React kit's note, C6;
-// owned.js): a bundle or an item's `attrs` that names an attribute a kit
+// The development check of what the hooks own (owned.js): a bundle or an item's `attrs` that names an attribute a kit
 // never renders is said on the console while React checks its components
 // (not in a production build). Left out are those the table itself gives
 // some elements of its own, which are not the ones the hooks write them on

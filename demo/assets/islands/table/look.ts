@@ -1,5 +1,5 @@
 // The look of the React kit's controls: shadcn/ui's (`../ui/`), with the
-// focus ring every control of a table has (stage 8a, the tab-model note):
+// focus ring every control of a table has:
 // the outline of 2 pixels in the text colour, as daisyUI draws its own,
 // the one colour a theme promises to be seen on its background. The
 // structure of the table and its states are drawn by the kit's style sheet

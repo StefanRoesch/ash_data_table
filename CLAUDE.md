@@ -14,4 +14,8 @@ Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/age
 
 ### Architecture map
 
-Read `docs/agents/architecture.md` before a build: where every module is, the table component's sections, the safety rules, the recipe for a feature and the commands.
+Read `docs/agents/architecture.md` before a build: where every module is, the safety rules, the recipe for a feature and the commands. The decisions behind the shape are the ADRs in `docs/adr/` (0001–0006).
+
+### Screen-reader check
+
+`docs/agents/tab-model-expert-check.md` is the checklist the accessibility expert runs by hand; its result goes into `documentation/topics/keyboard-and-accessibility.md`, "What has been tested".

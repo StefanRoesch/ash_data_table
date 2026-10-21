@@ -565,7 +565,7 @@ defmodule AshDataTable.Live.Core.Reading do
     # place. Never `at:` a position past 0, nor `limit:`: the grid's hook
     # moves the rows LiveView puts before the header after it (`headFirst`),
     # so LiveView's count of the container's children would count the
-    # header (tab-model-design.md section 15)
+    # header
     item =
       item(table, record, %{
         id: id,

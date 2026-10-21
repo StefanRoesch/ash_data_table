@@ -1,6 +1,5 @@
 // ESLint for the demo's React islands and its page JS, for the code-quality
-// gate (`mix check` in demo; docs/research/code-quality-tools.md in the
-// root). ESLint 9, not 10: eslint-plugin-jsx-a11y's peer range ends at 9.
+// gate (`mix check` in demo). ESLint 9, not 10: eslint-plugin-jsx-a11y's peer range ends at 9.
 import js from "@eslint/js"
 import tseslint from "typescript-eslint"
 import reactHooks from "eslint-plugin-react-hooks"

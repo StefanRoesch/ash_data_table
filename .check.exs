@@ -1,6 +1,5 @@
 # The code-quality gate: `mix check` (ex_check), run once when a feature is
-# finished. It reports; nothing in it is a threshold yet. What each tool is
-# for, and why: docs/research/code-quality-tools.md. The demo has its own
+# finished. It reports; nothing in it is a threshold yet. The demo has its own
 # (`demo/.check.exs`), with the demo's JS tools.
 [
   tools: [

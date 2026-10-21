@@ -1,7 +1,6 @@
 defmodule AshDataTable.MessagesTest do
   @moduledoc """
-  The public list of messages (`AshDataTable.Messages`, the design note of
-  stage 7, D23): every key has a text whose values are the list's names,
+  The public list of messages (`AshDataTable.Messages`): every key has a text whose values are the list's names,
   the table says no text that is not in the list, and a message as a part
   is given it.
   """

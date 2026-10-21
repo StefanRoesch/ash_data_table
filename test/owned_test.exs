@@ -1,6 +1,6 @@
 defmodule AshDataTable.OwnedTest do
   @moduledoc """
-  The attributes the hooks write (`assets/js/owned.js`, target.md S20): the
+  The attributes the hooks write (`assets/js/owned.js`): the
   list names every attribute the code of `assets/js/` writes, and no other.
   A kit that draws in the browser leaves them to the hooks, so a write
   added to the hooks without a line in the list is a bug.

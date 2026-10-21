@@ -1,6 +1,5 @@
 # The code-quality gate of the demo: `mix check` (ex_check), run once when a
-# feature is finished. It reports; nothing in it is a threshold yet. What
-# each tool is for: docs/research/code-quality-tools.md in the root. The JS
+# feature is finished. It reports; nothing in it is a threshold yet. The JS
 # tools are devDependencies of `assets/package.json` (Node from
 # `assets/.tool-versions`).
 [

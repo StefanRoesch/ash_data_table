@@ -1,6 +1,6 @@
 defmodule AshDataTable.Operation do
   @moduledoc false
-  # The one way a table writes (target.md 4.3). Each write is one
+  # The one way a table writes. Each write is one
   # function, given one input value (`Operation.Input`), and each runs the
   # same steps in the same order:
   #

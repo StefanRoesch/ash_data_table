@@ -1,6 +1,6 @@
 defmodule DemoWeb.ReactKit do
   @moduledoc """
-  The demo's React kit (`AshDataTable.Kit`, the React kit's design note):
+  The demo's React kit (`AshDataTable.Kit`):
   the parts of the grid drawn with React and shadcn/ui's look, through
   live_react (`LiveReact.react/1`, no server rendering), on the table's
   own hooks, which the islands mount by hand (`mountGrid`,
@@ -12,7 +12,7 @@ defmodule DemoWeb.ReactKit do
       handles, the filter row, the rows and their cells (every state, the
       columns' components, the actions, the boxes, the expander), the lines
       of an expanded row with the places their nested tables are moved
-      into, drawn ahead (the kit's note, C8), the footer with the summaries,
+      into, drawn ahead, the footer with the summaries,
       a nested table's pages and its link to the full view, and the
       templates of the editors (a column's, or its component's by the
       component's module) and of a failed cell's message. Outside the

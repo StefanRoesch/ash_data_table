@@ -78,8 +78,7 @@ defmodule Demo.MixProject do
        app: false,
        compile: false,
        depth: 1},
-      # The code-quality gate, `mix check` (`.check.exs`; the research note
-      # `docs/research/code-quality-tools.md` in the root). Exact versions: a
+      # The code-quality gate, `mix check` (`.check.exs`). Exact versions: a
       # new release of a checker changes its findings.
       {:ex_check, "0.17.0", only: [:dev, :test], runtime: false},
       {:credo, "1.7.19", only: [:dev, :test], runtime: false},

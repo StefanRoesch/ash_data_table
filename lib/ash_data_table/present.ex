@@ -1,7 +1,6 @@
 defmodule AshDataTable.Present do
   @moduledoc false
-  # What a part draws, made of what the core holds
-  # (docs/architecture/target.md 4.3). The core keeps keys and the
+  # What a part draws, made of what the core holds. The core keeps keys and the
   # panel's form; this turns them into the rows of the stream and the
   # picker, and defines what the action panel is drawn from
   # (`Present.Panel`, `Present.Field`), which the panel makes of itself

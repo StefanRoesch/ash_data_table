@@ -5,7 +5,7 @@ import { expect, test } from "./support/fixtures"
 import { Table } from "./support/table"
 
 // The public contract of the package's browser side, for a kit that draws
-// in the browser (the React kit's note, C5 and C7):
+// in the browser:
 //
 //   * `assets/js/ids.js` makes every id `AshDataTable.Ids` makes, function
 //     by function: /e2e/ids renders a sample of each, with what the server

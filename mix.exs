@@ -196,9 +196,8 @@ defmodule AshDataTable.MixProject do
       # Only `mix ash_data_table.install` needs it; without it the task is a stub.
       {:igniter, "~> 0.6", optional: true},
       {:ex_doc, "~> 0.37", only: [:dev, :test], runtime: false},
-      # The code-quality gate, `mix check` (`.check.exs`; the research note
-      # `docs/research/code-quality-tools.md`). Exact versions: a new release
-      # of a checker changes its findings.
+      # The code-quality gate, `mix check` (`.check.exs`). Exact versions: a
+      # new release of a checker changes its findings.
       {:ex_check, "0.17.0", only: [:dev, :test], runtime: false},
       {:credo, "1.7.19", only: [:dev, :test], runtime: false},
       {:dialyxir, "1.4.8", only: [:dev, :test], runtime: false},

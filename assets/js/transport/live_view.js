@@ -6,8 +6,8 @@
 //   push(event, payload)  sends an event to the table the hook's element
 //     is in, and gives a Promise of the reply. A push that fails gives a
 //     Promise that never settles, so no reply handler runs for it. The
-//     event goes named with the table (`ash_data_table:TABLE_ID:event`,
-//     target.md Q4); the hooks name it plainly.
+//     event goes named with the table (`ash_data_table:TABLE_ID:event`);
+//     the hooks name it plainly.
 //   on(event, handler)  hears an event the server sends (`push_event`).
 //   off(event)  stops hearing it.
 //   debug()  whether LiveView's client debug is on (`liveSocket.

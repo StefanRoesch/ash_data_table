@@ -1,6 +1,6 @@
 # The screen-reader check of stage 8a: a checklist by hand
 
-For the accessibility expert. Stage K4 of [tab-model-design.md](tab-model-design.md) is done only once this check has been run and its result written into the guide's "What has been tested" ([keyboard-and-accessibility.md](../../documentation/topics/keyboard-and-accessibility.md#what-has-been-tested)) or into issues.
+For the accessibility expert. The tab model (ADR 0003, [0003-table-semantics-controls-in-the-tab-order.md](../adr/0003-table-semantics-controls-in-the-tab-order.md)) is done only once this check has been run and its result written into the guide's "What has been tested" ([keyboard-and-accessibility.md](../../documentation/topics/keyboard-and-accessibility.md#what-has-been-tested)) or into issues.
 
 **What the table is now:** a plain table (`role="table"`). Every control and every editable cell is a Tab stop; a read-only cell is not, and is read with the screen reader's own table keys. No arrow key of the table's own. A link "Skip table *Name*" before each table, nested ones too.
 

@@ -1,7 +1,6 @@
 defmodule AshDataTable.KitTest do
   @moduledoc """
-  `use AshDataTable.Kit` (the design note of stage 7, D7, D15; test group
-  Z): what a kit gets from it, and what fails to compile.
+  `use AshDataTable.Kit` (test group Z): what a kit gets from it, and what fails to compile.
   """
   use ExUnit.Case, async: true
 

@@ -13,4 +13,4 @@ The project started from the premise that a table would be generated from `Ash.I
 - Ash's type rules are restated in our code and can drift. The spike's first attempt misclassified `utc_datetime`, caught only by comparing against the manifest. The test suite should keep such a comparison.
 - If the manifest later gains a stability promise, authorization-free runtime access and correct sortability, this decision is worth revisiting. The table model is built by one internal module, so the change would be contained there.
 
-Evidence: `docs/research/manifest-spike.md` on the branch `research/manifest-spike`, and the tickets "What Ash.Info.Manifest gives a table and what it lacks" (#4) and "Spike: does a runtime-generated manifest fit the table model" (#18).
+Evidence: the spike report `manifest-spike.md` on the branch `research/manifest-spike`, and the tickets "What Ash.Info.Manifest gives a table and what it lacks" (#4) and "Spike: does a runtime-generated manifest fit the table model" (#18).

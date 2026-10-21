@@ -159,7 +159,7 @@ end
 defmodule DemoWeb.Support.ItemsKit do
   @moduledoc """
   A kit for the measurement of the stream's items as JSON
-  (`item_bytes_test.exs`, M2 of the React kit's note): it draws what the
+  (`item_bytes_test.exs`): it draws what the
   default kit draws, and after the grid every item of its stream as JSON,
   as a kit that hands the stream to the browser sends it, one script each.
   """

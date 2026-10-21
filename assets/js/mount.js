@@ -1,5 +1,5 @@
 // The hooks of a table, for a kit that draws in the browser (a React kit):
-// public, as target.md S20 has it from stage 8.
+// public.
 //
 // A kit drawn in HEEx needs none of this: LiveView mounts the hooks by
 // their `phx-hook` (index.js). A kit whose parts a client framework draws

@@ -1,29 +1,29 @@
 defmodule AshDataTable.ArchitectureTest do
   @moduledoc """
   The direction of every dependency between the parts of the extension
-  (`docs/architecture/target.md`, section 5).
+  (`docs/agents/architecture.md`, "Parts").
 
-  Each file of `lib/` belongs to a part by its directory (5.5): the
+  Each file of `lib/` belongs to a part by its directory: the
   declaration (1, its verifiers and transformers apart), the data layer of
   the internals (2a), their live layer (2b), the UI components (3), the
   column component contract (3c), the words (3w), the wiring (4), the test
   support (T) and the installer (tooling). What may depend on what is the
-  table of 5.1. The edges come from `mix xref graph --format json`.
+  table `@allowed`. The edges come from `mix xref graph --format json`.
 
   Checked as well:
 
-    * every file that is compile-connected is of the declaration (5.3), or
+    * every file that is compile-connected is of the declaration, or
       the test resource the library ships for `AshDataTable.KitCase`
       (`test/resource.ex`, T), which uses the extension as a host's
       resource does, and which nothing compiles against;
     * a verifier or transformer reads, of the declaration, only the modules
       that are pure functions over the DSL and Ash's info modules: the topic
       modules, the info modules, `Resource.Table`, the entities, `CellType`,
-      `Operator`, `Words` and `Exposing` (5.3, rule 1). Never the extension
+      `Operator`, `Words` and `Exposing`. Never the extension
       itself, nor the notifier;
     * no cycle holds files of two parts, and no cycle has a compile edge
       but those Spark requires (an extension and its entities, verifiers and
-      transformers; an info module and its extension) (5.4, V10);
+      transformers; an info module and its extension);
     * the data layer (2a) is in no cycle: its files call each other one
       way (the finishing items of 2026-10-21 broke the six files' cycle of
       `GroupValue`, `Model`, `Model.Argument`, `Present`, `Typed` and
@@ -59,27 +59,27 @@ defmodule AshDataTable.ArchitectureTest do
     * no file of 2a names LiveView, `Phoenix.Component`, `Phoenix.HTML`,
       `Phoenix.PubSub`, Gettext or a module of the words, which xref cannot see, also not
       inside a multi-alias (`alias AshDataTable.{Format, Text}`). A router
-      is allowed, for `AshDataTable.Routes` (F15);
-    * only `Query`, `Record`, `Pick` and `Bulk` read from Ash (S1, Q11).
+      is allowed, for `AshDataTable.Routes`;
+    * only `Query`, `Record`, `Pick` and `Bulk` read from Ash.
 
   The live component of the tag (`live/embedded.ex`) is wiring (4): its
   callbacks hand the socket to `AshDataTable.Live.Core`, and it draws the
   table with `AshDataTable.attached/1`, which composes the parts.
 
-  What it cannot see (5.5): coupling through data, not through a call.
-  Known today, and allowed by the target until the stage named:
+  What it cannot see: coupling through data, not through a call.
+  Known, and allowed:
 
     * the parts name the hooks by the names the colocated hooks of
       `AshDataTable` have, as strings
-      (`phx-hook="AshDataTable.Grid"`; target 4.5, Q15);
+      (`phx-hook="AshDataTable.Grid"`);
     * the presentation hints of `Model.Column` (`component`, `max_lines`,
-      `sticky_label?`), which the core passes on (target 6, F3): the second
+      `sticky_label?`), which the core passes on: the second
       test checks that no module of 2a or 2b but the model, which makes
       them, reads one, but `Live.Core.Told.in_words/1`, which puts the words of
-      a component's column into it (the design note of stage 7, D14).
+      a component's column into it.
       `editor` is no hint: it decides how a value is given and written.
 
-  It fails on any finding from the end of stage 3c (target 5.5).
+  It fails on any finding.
   """
   use ExUnit.Case, async: false
 
@@ -90,13 +90,13 @@ defmodule AshDataTable.ArchitectureTest do
   # the files of the wiring, by name (4): the live component of the tag
   # hands the socket to the live core, and `AshDataTable.attached/1` draws
   @wiring ~w(router.ex not_found_error.ex live/page.ex live/embedded.ex live/drawing.ex)
-  # the files that may read from Ash (S1)
+  # the files that may read from Ash
   @readers ~w(query.ex record.ex pick.ex bulk.ex)
 
-  # the entities of the extension, which Spark compiles it with (5.3)
+  # the entities of the extension, which Spark compiles it with
   @entities ~w(action argument ask column reference relationship table upload)
 
-  # 5.3, rule 1: what a verifier or transformer may read of the declaration
+  # what a verifier or transformer may read of the declaration
   @pure_declaration Enum.map(
                       ~w(info table cell_type operator words exposing) ++
                         ~w(acting arguing editing embedding listening managing presenting) ++
@@ -104,7 +104,7 @@ defmodule AshDataTable.ArchitectureTest do
                       &"resource/#{&1}.ex"
                     ) ++ ["domain/info.ex"]
 
-  # 5.1: what a part may depend on, of the library
+  # what a part may depend on, of the library
   @allowed %{
     "1" => ~w(1 1v 3c),
     "1v" => ~w(1 1v 3c),
@@ -262,18 +262,18 @@ defmodule AshDataTable.ArchitectureTest do
 
     report([
       {"files no rule places", unplaced},
-      {"dependencies the parts do not allow (5.1)", Enum.sort(wrong)},
-      {"compile-connected files outside the declaration (5.3)", Enum.sort(connected)},
-      {"verifiers or transformers reading what is not pure (5.3, rule 1)", Enum.sort(impure)},
-      {"cycles across parts or with a compile edge Spark does not need (5.4)", cycles},
+      {"dependencies the parts do not allow", Enum.sort(wrong)},
+      {"compile-connected files outside the declaration", Enum.sort(connected)},
+      {"verifiers or transformers reading what is not pure", Enum.sort(impure)},
+      {"cycles across parts or with a compile edge Spark does not need", cycles},
       {"the bundles in a cycle (9c)", bundles},
       {"a cycle inside the data layer (2a)", data},
       {"the panel's adapter, Cells, Bulk and the opener in a cycle (9d, 9e)", panel},
       {"Act, Edit or Present calling the panel (9d)", to_panel},
       {"the opener calling a topic of the live core (9d, 9e)", from_opener},
       {"modules but the opener reading `controlled` (9e)", controlled()},
-      {"2a naming LiveView, PubSub, Gettext or the words (5.5)", data_layer_mentions()},
-      {"reads from Ash outside Query, Record, Pick and Bulk (S1)", reads()}
+      {"2a naming LiveView, PubSub, Gettext or the words", data_layer_mentions()},
+      {"reads from Ash outside Query, Record, Pick and Bulk", reads()}
     ])
   end
 
@@ -520,7 +520,7 @@ defmodule AshDataTable.ArchitectureTest do
           "  #{title} (#{length(items)}):\n" <> Enum.map_join(items, "\n", &"    #{&1}")
         end)
 
-      IO.puts("\nThe dependency rules of docs/architecture/target.md, section 5:\n" <> text)
+      IO.puts("\nThe dependency rules of the parts:\n" <> text)
     end
 
     assert found == []

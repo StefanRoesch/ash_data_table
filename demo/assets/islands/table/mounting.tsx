@@ -1,5 +1,5 @@
-// How an island mounts the table's hooks on the elements it draws (the
-// React kit's note, C5; `mount.js` of the library): LiveView mounts no hook
+// How an island mounts the table's hooks on the elements it draws
+// (`mount.js` of the library): LiveView mounts no hook
 // inside an island (`phx-update="ignore"`), so the island does, once its
 // element is in the page, and tells the hook of every commit that may
 // change it, before (`beforeUpdate`, while the DOM is as it was) and after

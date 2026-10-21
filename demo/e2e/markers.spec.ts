@@ -214,7 +214,7 @@ test.describe("a grid drawn with other elements than a table's", () => {
     await expect(cell(page, "a", "note")).toBeHidden()
     await expect(page.locator('[id="kit-filter-note"]')).toBeHidden()
 
-    // the note's "Show all" is hidden with its cell: Tab goes from the name to the line
+    // the "Show all" is hidden with its cell: Tab goes from the name to the line
     await cell(page, "a", "name").focus()
     expect(await kit(page).walk(1)).toEqual(["kit-row-a-l-parts-c>button"])
   })

@@ -2,7 +2,7 @@ defmodule AshDataTable.MarkersTest do
   @moduledoc """
   The markers the hooks find the table's elements by are named twice: in
   `assets/js/markers.js` for the hooks, and in `AshDataTable.Attrs.markers/0`
-  for the bundles that write them (target.md 6: two halves of one contract).
+  for the bundles that write them (two halves of one contract).
   The two lists are the same.
   """
   use ExUnit.Case, async: true
@@ -19,7 +19,7 @@ defmodule AshDataTable.MarkersTest do
     assert Enum.sort(named) == Enum.sort(AshDataTable.Attrs.markers())
   end
 
-  # The done-check of the design note of stage 7, section 9: the hooks find
+  # The hooks find
   # nothing by a tag of the table's structure, walk none of its structure,
   # and toggle no class nor read a variable of daisyUI.
   test "no hook finds the table's structure by a tag, nor knows daisyUI" do

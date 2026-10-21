@@ -1,5 +1,5 @@
 defmodule AshDataTable.Attrs do
-  # The events a table takes from the browser (target.md S6), each with
+  # The events a table takes from the browser, each with
   # what sends it, its payload, its answer and an example payload: the
   # "Events" section of the moduledoc is made of this list, and
   # `test/intent_test.exs` checks that `AshDataTable.Intent` parses each
@@ -372,7 +372,7 @@ defmodule AshDataTable.Attrs do
   #{Enum.map_join(@pushes, "\n", fn {name, payload, what} -> "  * `#{name}` `#{payload}` - #{what}" end)}
   """
 
-  # The attribute bundles (target.md S5): one function per element of the
+  # The attribute bundles: one function per element of the
   # table, returning every attribute the element carries besides its look,
   # its id, its ARIA role and states, the `data-*` markers the hooks find it
   # by, `phx-*` and `phx-hook`. A part spreads a bundle on its element
@@ -383,7 +383,7 @@ defmodule AshDataTable.Attrs do
   # elements by these markers only; `markers/0` names them, as
   # `assets/js/markers.js` does on the hooks' side, and a test compares the
   # two lists. A marker added here and not read there, or read there and
-  # not written here, is a bug (target.md 6).
+  # not written here, is a bug.
   #
   # What the bundles hold is the contract of a kit's parts, which
   # `AshDataTable.Kit`'s moduledoc documents part by part. Below, the markup

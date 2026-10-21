@@ -450,7 +450,7 @@ defmodule AshDataTable.Live.Core.Panel do
       # the detail first: each goes to the top, so the row ends up above it.
       # `at: 0`, or in place, and no `limit:`: the grid's hook moves the
       # rows LiveView puts before the header after it (`headFirst`), so a
-      # position past 0 would count the header (tab-model-design.md 15)
+      # position past 0 would count the header
       |> then(fn table ->
         if table.entry.expandable?,
           do:

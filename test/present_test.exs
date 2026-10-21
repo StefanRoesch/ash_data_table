@@ -3,7 +3,7 @@ defmodule AshDataTable.PresentTest do
   What a part draws (`AshDataTable.Present`): rows and their cells, the
   fields of the action panel, the picker and the labels of chosen records.
   Above all, that none of it holds a sensitive value: nothing reaches the
-  drawing but through these functions (target.md 1.5, F1).
+  drawing but through these functions.
   """
   use ExUnit.Case, async: false
 

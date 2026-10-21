@@ -1,6 +1,6 @@
 defmodule DemoWeb.ItemBytesTest do
   @moduledoc """
-  M2 of the React kit's note (`docs/architecture/react-kit-design.md`): the
+  The size of the stream's items: the
   first page of `/tasks`, 25 rows and their details, as JSON items of
   `AshDataTable.Item` (what a kit that hands the stream to the browser
   sends) beside the HTML the default kit draws of the same rows. Reported,

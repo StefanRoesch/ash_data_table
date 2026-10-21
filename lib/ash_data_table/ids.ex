@@ -8,7 +8,7 @@ defmodule AshDataTable.Ids do
   value of an argument focus goes back to after a change. A part draws
   these elements with the ids these functions make, and the core names
   them with the same functions, so neither writes an id by hand that the
-  other has to match (target §6, the id scheme).
+  other has to match.
 
   `id` is the table's id. A row is named by `key`, the key in its DOM id
   (`AshDataTable.Kit`'s parts are given it as a row's `key`). `row` is a

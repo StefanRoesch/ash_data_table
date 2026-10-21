@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# Renames the library ash_table to ash_data_table (stage 0 of the refactor,
-# docs/architecture/test-coupling.md, "Stage 0: rename"; the prefix is
-# question 3 of "Names and details" in docs/architecture/target-questions.md).
+# Renames the library ash_table to ash_data_table (stage 0 of the refactor).
 #
 #   scripts/rename_to_ash_data_table.sh           apply the rename
 #   scripts/rename_to_ash_data_table.sh --check   change nothing; list what
@@ -42,8 +40,6 @@
 #                         built assets
 #     demo/perf/*results*.json
 #                         recorded measurements; they name the version measured
-#     docs/architecture/  the plan and the baseline of the refactor; they talk
-#                         about the old names on purpose
 #     scripts/rename_to_ash_data_table.sh
 #                         this script names the old names on purpose
 #   Text (kept as it is wherever it occurs):
@@ -84,7 +80,6 @@ pathspec=(
   ':(exclude,glob)**/erl_crash.dump'
   ':(exclude,glob)demo/priv/static/assets/**'
   ':(exclude,glob)demo/perf/*results*.json'
-  ':(exclude,glob)docs/architecture/**'
   ':(exclude)scripts/rename_to_ash_data_table.sh'
 )
 

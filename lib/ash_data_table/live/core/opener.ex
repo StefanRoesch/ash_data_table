@@ -66,8 +66,8 @@ defmodule AshDataTable.Live.Core.Opener do
   @callback draws?(options :: map, kind) :: boolean
 
   @doc """
-  The adapter of `kind` for `table` (an `AshDataTable.Table`): the note's
-  `for/2`, a name Elixir keeps for its comprehensions.
+  The adapter of `kind` for `table` (an `AshDataTable.Table`): `for/2`
+  would be the name, but Elixir keeps it for its comprehensions.
   """
   @spec adapter(AshDataTable.Table.t(), kind) :: module
   def adapter(%{options: options}, kind), do: chosen(options, kind)

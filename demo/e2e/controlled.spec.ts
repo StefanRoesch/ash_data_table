@@ -91,8 +91,7 @@ test.describe("what the page draws of the questions and the picker", () => {
 
     // another cell of the row saves: the server sends the row again, and
     // the note waits still, showing what was typed, what the question is
-    // about, in every kit (`rehold`; react-kit-design.md §16, "The
-    // drift-check fix-up")
+    // about, in every kit (`rehold`)
     const name = cell(page, anchor, "name")
     await name.focus()
     await page.keyboard.press("Enter")

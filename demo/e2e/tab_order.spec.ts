@@ -3,10 +3,10 @@ import { SEED } from "./support/data"
 import { expect, test } from "./support/fixtures"
 import { Table } from "./support/table"
 
-// The table's keyboard model (docs/architecture/tab-model-design.md,
-// sections 2 and 3; ADR 0003): a table is a table, and every control in it
-// is a Tab stop of its own, in the order it stands in the page: the heading
-// line, the selection line, "Skip table", the header's box and sort
+// The table's keyboard model (ADR 0003): a table is a table, and every
+// control in it is a Tab stop of its own, in the order it stands in the
+// page: the heading line, the selection line, "Skip table", the header's
+// box and sort
 // buttons, the filters, each row left to right (its box, its expander, its
 // editable cells, the "Show all" of a cell that cuts its text off, its
 // actions), the lines under an expanded row with their nested tables in

@@ -23,7 +23,7 @@ defmodule AshDataTable.Live.Core.Opener.Host do
   #     groups, unions and chosen records;
   #   * `:picker` - the picker: `AshDataTable.pick_request/4` chooses.
   #
-  # The question is no safety check (target §1.5): the
+  # The question is no safety check: the
   # hook sends no `table_run`, `bulk_run`, `picked` with `confirmed` or
   # `panel_submit` for what the host holds, but the browser can, and the
   # write then runs without it, through the checks, the veto, the re-read

@@ -7,7 +7,7 @@ A part of a table was given its inputs in four layers: the drawing picked entry 
 - **Keep the four layers and document them.** Rejected: every kit keeps rebuilding the same facts and they drift.
 - **A projection only for kits that draw in the browser.** Rejected: two ways, and the HEEx kit keeps a way the others do not test (the reason of ADR 0002).
 - **Send the model and state and let a JS library derive.** Rejected: the words and the rules would live twice.
-- **One `projection` assign per part.** Measured first (design note 9f, question 27): it sent the whole part again with every change of any of its inputs (`/tasks` select a row 603 → 13,271 bytes, a page change +25 %). A part is given its projection an assign per key instead, each key made of the inputs it depends on (`Projection.of({part, key}, inputs)`), so LiveView's change tracking stays per part and per key.
+- **One `projection` assign per part.** Measured first: it sent the whole part again with every change of any of its inputs (`/tasks` select a row 603 → 13,271 bytes, a page change +25 %). A part is given its projection an assign per key instead, each key made of the inputs it depends on (`Projection.of({part, key}, inputs)`), so LiveView's change tracking stays per part and per key.
 
 ## Consequences
 

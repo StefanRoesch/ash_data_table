@@ -164,7 +164,7 @@ test.describe("a cell with several lines whose save is on its way (/e2e/held)", 
 
 
 test.describe("the whole text of a cell that cuts some off", () => {
-  // stage 8a, K2's fix-up (the note's risk 9, decided): the button is in
+  // the button is in
   // every cell that cuts its text off, read-only too, and a Tab stop
   test("every cell that cuts its text off has the button, a Tab stop named after its column; Enter and Space show all and cut it off again", async ({
     page,

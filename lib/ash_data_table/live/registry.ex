@@ -1,6 +1,6 @@
 defmodule AshDataTable.Live.Registry do
   @moduledoc false
-  # The tables one `AshDataTable.Table` shows (target.md 4.4): the
+  # The tables one `AshDataTable.Table` shows: the
   # table on the page, its `entry`, and every other in `entries`, by id. One
   # id names all that LiveView keeps of a table on the socket: its stream
   # (a name from the pool), its async tasks (`async/2`), its uploads

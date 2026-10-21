@@ -3,7 +3,7 @@
 // per editable column (`Attrs.editor_template/3`), which the grid's hook
 // finds by its id and copies into a cell it opens, and the template of a
 // failed cell's message. React draws each editor into its template's
-// content (`createPortal`, the React kit's note, Q8); the hook copies what
+// content (`createPortal`); the hook copies what
 // is there, and React never sees the copy.
 //
 // An editor is what the `editor` part is given (its projection, an editor

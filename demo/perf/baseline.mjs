@@ -1,4 +1,4 @@
-// The baseline of the refactor (docs/architecture/baseline.md): what five
+// The baseline of the refactor: what five
 // things a person does on /tasks cost, before the table is split up, so that
 // every stage can be measured the same way and compared. On the standard
 // seed (400 tasks), as the admin. Writes baseline-results.json.

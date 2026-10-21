@@ -466,8 +466,8 @@ defmodule AshDataTable.Kit.Projection do
 
   defp number(component), do: component |> to_string() |> String.to_integer()
 
-  # The parts drawn inside another, whose projections are in that one's
-  # (question 25 of the design note): the keys of each.
+  # The parts drawn inside another, whose projections are in that one's:
+  # the keys of each.
   @inner %{
     columns: [
       :control,

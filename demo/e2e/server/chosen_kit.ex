@@ -2,8 +2,7 @@ defmodule DemoWeb.E2E.ChosenKit do
   @moduledoc """
   The kit of the browser tests' tables (`config :ash_data_table, kit: …` in
   config/e2e.exs): `AshDataTable.Kit.Default`, or the demo's React kit
-  (`DemoWeb.ReactKit`) for a page the browser asked for it, by request (the
-  React kit's note, section 7, 3; Q15). The Playwright project `react`
+  (`DemoWeb.ReactKit`) for a page the browser asked for it, by request. The Playwright project `react`
   sends the header `x-demo-kit: react` with every request (a test that
   compares the kits sends `x-demo-kit: div` for the demo's kit of `div`s,
   `DemoWeb.DivKit`); the plug

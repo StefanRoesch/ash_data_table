@@ -1,7 +1,7 @@
 defmodule DemoWeb.MarkupSnapshotTest do
   @moduledoc """
-  The markup of the table in the states the refactor moves code under
-  (`docs/architecture/test-coupling.md`, "Markup snapshots"): rendered by
+  The markup of the table in the states the refactor moves code under:
+  rendered by
   LiveViewTest, normalised, and compared with the files in
   `test/snapshots/`. A stage of the refactor that changes none of the
   table's behaviour changes none of them.

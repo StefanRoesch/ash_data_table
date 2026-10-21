@@ -1,4 +1,4 @@
-// The markers the hooks find the table's elements by (target.md S5):
+// The markers the hooks find the table's elements by:
 // every selector a hook looks for, in one place. `AshDataTable.Attrs`
 // writes them, and names the same list (`AshDataTable.Attrs.markers/0`;
 // a test compares the two).

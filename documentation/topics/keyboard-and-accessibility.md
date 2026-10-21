@@ -322,8 +322,7 @@ that no row may be edited in has a lock after its header, named
 
 A first version described every editable cell with such a text. It made a
 `/tasks` page 9 % larger on the wire, against a budget of 2 %, so it was
-dropped (owner, 2026-10-19; question 2 of the
-[design note](https://github.com/StefanRoesch/ash_data_table/blob/main/docs/architecture/tab-model-design.md)).
+dropped (owner, 2026-10-19).
 If the accessibility check shows that editable cells cannot be recognised,
 the fallback is a description of the focused cell only.
 
@@ -469,7 +468,7 @@ both themes and in German) and must find nothing, with no exception.
 | axe-core, all its default rules | Tested, in Chromium |
 | Contrast of focus rings, failed cells, dimmed text, input edges | Measured in Chromium, in the demo's two themes |
 | Forced colours | Tested as Chromium emulates them; **not** in a Windows contrast theme |
-| NVDA (Firefox, Chrome), VoiceOver (Safari) | **Pending**: an accessibility expert's check by hand, with [this checklist](https://github.com/StefanRoesch/ash_data_table/blob/main/docs/architecture/tab-model-expert-check.md). Its result will be written here. |
+| NVDA (Firefox, Chrome), VoiceOver (Safari) | **Pending**: an accessibility expert's check by hand, with [this checklist](https://github.com/StefanRoesch/ash_data_table/blob/main/docs/agents/tab-model-expert-check.md). Its result will be written here. |
 | JAWS, TalkBack | **Not tested** |
 | Firefox, Safari, touch devices | **Not tested** |
 
