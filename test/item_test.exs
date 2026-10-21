@@ -200,6 +200,45 @@ defmodule AshDataTable.ItemTest do
     assert %{"detail" => true} = detail |> Jason.encode!() |> Jason.decode!()
   end
 
+  describe "a column's component" do
+    @drawn %Column{
+      name: :mood,
+      kind: :attribute,
+      sortable?: false,
+      operators: [],
+      label: "Mood",
+      cell_type: :integer,
+      editable?: true,
+      max_lines: 1,
+      component: %{module: AshDataTable.Test.Cells.Shout, cell?: true, editor?: false}
+    }
+
+    defp drawn(%Present.Cell{} = cell, column \\ @drawn) do
+      model = %{editing?: true, columns: [column], relationships: []}
+      row = %Present.Row{key: "1", dom_id: "t-row-1", rowindex: 3, cells: %{mood: cell}}
+      Item.row(model, row, @table).cells.mood
+    end
+
+    test "draws a value that is there, that the person may see, whose save did not fail" do
+      assert %{component: true, value: 3} = drawn(%Present.Cell{state: :value, value: 3})
+
+      for state <- [:empty, :masked, :forbidden] do
+        assert %{component: false} = drawn(%Present.Cell{state: state})
+      end
+
+      failed = %{typed: "x", message: "no"}
+
+      assert %{component: false, failure: %{typed: "x"}} =
+               drawn(%Present.Cell{state: :value, value: 3, editable?: true, failure: failed})
+    end
+
+    test "draws nothing of a column whose component only edits, nor of one without" do
+      edits = %{@drawn | component: %{@drawn.component | cell?: false, editor?: true}}
+      assert %{component: false} = drawn(%Present.Cell{state: :value, value: 3}, edits)
+      assert %{component: false} = drawn(%Present.Cell{state: :value, value: 3}, %{@drawn | component: nil})
+    end
+  end
+
   describe "a yes or no, and a union" do
     @flag %Column{
       name: :done,

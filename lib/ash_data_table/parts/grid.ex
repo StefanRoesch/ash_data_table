@@ -454,14 +454,14 @@ defmodule AshDataTable.Parts.Grid do
       aria-colindex={column.colindex}
       {Map.merge(column.attrs, cell.attrs)}
     ><Common.dynamic_component
-      :if={component?(column, cell)}
+      :if={cell.component}
       module={column.component.module}
       function={:cell}
       value={cell.value}
       text={cell.text}
       column={column.component.column}
     /><Kit.part
-      :if={!component?(column, cell)}
+      :if={!cell.component}
       part={:cell}
       kit={@kit}
       id={Ids.cell(@row.dom_id, column.name)}
@@ -476,14 +476,14 @@ defmodule AshDataTable.Parts.Grid do
       {Map.merge(column.attrs, cell.attrs)}
       class="text-start font-normal"
     ><Common.dynamic_component
-      :if={component?(column, cell)}
+      :if={cell.component}
       module={column.component.module}
       function={:cell}
       value={cell.value}
       text={cell.text}
       column={column.component.column}
     /><Kit.part
-      :if={!component?(column, cell)}
+      :if={!cell.component}
       part={:cell}
       kit={@kit}
       id={Ids.cell(@row.dom_id, column.name)}
@@ -496,14 +496,14 @@ defmodule AshDataTable.Parts.Grid do
       aria-colindex={column.colindex}
       {Map.merge(column.attrs, cell.attrs)}
     ><Common.dynamic_component
-      :if={component?(column, cell)}
+      :if={cell.component}
       module={column.component.module}
       function={:cell}
       value={cell.value}
       text={cell.text}
       column={column.component.column}
     /><Kit.part
-      :if={!component?(column, cell)}
+      :if={!cell.component}
       part={:cell}
       kit={@kit}
       id={Ids.cell(@row.dom_id, column.name)}
@@ -531,12 +531,11 @@ defmodule AshDataTable.Parts.Grid do
     for column <- taken[part], do: {column, row.cells[column.name]}
   end
 
-  # What a cell of a record holds: the
-  # column's component draws a value that is there and that the person may
-  # see; anything else is the kit's `cell/1`'s (`AshDataTable.Kit.cell/1`
-  # for a kit's own row; written out here, as a component of its own would
-  # send one more level of every cell of every row).
-  defdelegate component?(column, cell), to: Kit
+  # What a cell of a record holds is drawn by the column's component where
+  # the item's cell says so (`component`, `AshDataTable.Item`), else by the
+  # kit's `cell/1` (`AshDataTable.Kit.cell/1` for a kit's own row; written
+  # out in `row/1`, as a component of its own would send one more level of
+  # every cell of every row).
   # What a cell of a record shows (`AshDataTable.Kit.Default.cell/1`):
   # its value, as the column's type shows it, nothing where it is empty,
   # the mask of a sensitive value, "Not available" for the eye of nobody

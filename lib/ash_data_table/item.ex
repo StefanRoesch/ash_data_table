@@ -29,6 +29,7 @@ defmodule AshDataTable.Item do
             state: :value,
             text: "Buy milk",
             value: nil,
+            component: false,
             editable: true,
             failure: nil,
             attrs: %{}
@@ -66,6 +67,12 @@ defmodule AshDataTable.Item do
       holds one), which `Kit.Default` draws as a mark. Nil else. A
       component's value is what the record holds (a `Decimal`, a date, …),
       which a bridge to the browser encodes
+    * `component` - whether the column's component draws this cell: the
+      column has one that draws its cells (its projection's `component`),
+      the value is there and the person may see it, and no save of it
+      failed. The kit then calls the component with `value` and `text`
+      (`AshDataTable.Kit.cell/1` does); anything else the kit's `cell`
+      draws, which is never given a value the person may not see
     * `editable` - whether the person can edit this cell of this row
     * `failure` - after a save failed: `typed` (what was typed, `""` for a
       sensitive column), `text` and `message` (what the action said);
@@ -208,6 +215,7 @@ defmodule AshDataTable.Item do
       state: state,
       text: if(state == :value, do: Format.format(column, cell.value, zone)),
       value: value,
+      component: drawn_by_component?(column, state, cell),
       editable: cell.editable?,
       failure: cell.failure && Map.put(said(cell.failure.message), :typed, cell.failure.typed),
       attrs: plain(Map.new(editing(editing?, Ids.cell(dom_id, column.name), column, cell, zone)))
@@ -235,6 +243,12 @@ defmodule AshDataTable.Item do
        do: {:value, value}
 
   defp held_state(_column, cell), do: {cell.state, nil}
+
+  # Whether the column's component draws the cell: a value that is there,
+  # that the person may see, and whose save did not fail (a failed cell
+  # shows what was typed, and its message).
+  defp drawn_by_component?(%{component: %{cell?: true}}, :value, %{failure: nil}), do: true
+  defp drawn_by_component?(_column, _state, _cell), do: false
 
   # A message as a part is given it: its text and what it is made of.
   defp said(message), do: %{text: Text.say(message), message: Messages.of(message)}
