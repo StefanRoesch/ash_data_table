@@ -369,7 +369,7 @@ made of: a map `%{key: key, values: values}` of a key of
 `:ash`, with Ash's `message` and its `vars`). A message is plain data, so a
 kit hands it to a client as JSON as it is. A kit drawn in HEEx shows `texts`; one that translates for itself (a React or
 Vue kit) takes `messages` and looks each key up in its own catalogue.
-`AshDataTable.Kit.Words` makes both, and the `AshDataTable.Kit`
+Both are in each part's projection (`AshDataTable.Kit.Projection`), whose
 documentation says which names each part is given.
 
 ## What a person reads when something is missing

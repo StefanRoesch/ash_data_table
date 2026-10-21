@@ -170,11 +170,17 @@ of your own is given the resolved look, a map of all six, as `look` in its
 ## Drawing a part
 
 A part is a function component of the kit, named after the part
-(`AshDataTable.Kit.parts/0` lists the 32 of contract 6). It is given values,
-never a record, an `AshPhoenix.Form`, a changeset or the actor, and never the
-value of a `sensitive?` field. The moduledoc of `AshDataTable.Kit` says, part
-by part, what each is given, which elements it must draw with which markers,
-and the fields of every value it is given ("Kit contract 6").
+(`AshDataTable.Kit.parts/0` lists the 32 of contract 6). It is given its
+*projection* (`AshDataTable.Kit.Projection`, ADR 0004): what it draws,
+finished, as plain data, an assign per key: values looked up already, its
+texts in the person's language, the bundles of its elements, the facts
+derived from them, and the projections of the parts it draws inside it.
+Never a record, an `AshPhoenix.Form`, a changeset, the actor, the value of
+a `sensitive?` field, or a struct of the table's: a kit only draws. The
+moduledoc of `AshDataTable.Kit.Projection` lists every part's keys; the
+moduledoc of `AshDataTable.Kit` says which elements each part must draw
+with which markers, and what a part is given beside its projection (`kit`,
+`id`, a row's item, the stream, the panel's uploads, the root's slots).
 
 The demo has a kit of its own, `DemoWeb.DivKit`, which draws the grid, its
 rows, cells and footer with `div`s in place of a `<table>`, and opens
@@ -185,10 +191,8 @@ everything in the page
 ```elixir
 use AshDataTable.Kit, contract: 6
 
-alias AshDataTable.Attrs
 alias AshDataTable.Ids
 alias AshDataTable.Kit
-alias AshDataTable.Kit.Words
 
 def presentation(_thing), do: :inline
 ```
@@ -199,14 +203,8 @@ Its summary cell, one cell of the footer row:
 ```elixir
 def summary_cell(assigns) do
   ~H"""
-  <div
-    id={@id}
-    role="cell"
-    aria-colindex={@colindex}
-    {Attrs.summary(@column, @summing?)}
-    class="table-cell whitespace-nowrap"
-  >
-    <span :if={@column.summary}>{@texts.kind}{@text && " " <> @text}</span>
+  <div {@element} role="cell" class="table-cell whitespace-nowrap">
+    <span :if={@summary?}>{@texts.kind}{@text && " " <> @text}</span>
   </div>
   """
 end
@@ -221,42 +219,23 @@ the element has one (`table`, `rowgroup`, `row`, `cell`, `rowheader`,
 the table's id. So a part may draw any elements, as long as they carry the
 markers. `AshDataTable.Attrs.markers/0` names every marker.
 
-**Bundles.** Most markers come in bundles: the functions of
-`AshDataTable.Attrs`, maps of attributes a part spreads on its element
-(`{Attrs.summary(@column, @summing?)}`), made of the values the part is
-given. Where a part is drawn once per row, cell or column, the attributes that
-are the same on every one are written by the part itself, as `role` above
-(a bundle would send it again with every row), and the bundle holds what
-varies. The `Attrs` moduledoc is the contract.
+**Bundles.** Most markers come in bundles: maps of attributes
+(`AshDataTable.Attrs` makes them) that the projection holds and a part
+spreads on its element (`{@element}`). Where a part is drawn once per row,
+cell or column, the attributes that are the same on every one are written
+by the part itself, as `role` above (a bundle would send it again with
+every row), and the bundle holds what varies. Every event a part sends,
+every name a control is sent under and every id is in a bundle or in the
+projection: a part writes none of its own. A field of the action panel
+that holds a value made of fields (a map, a list of maps, a union) is
+given its hidden entries the same way, each a bundle spread on an
+`<input type="hidden">`, and the bundles of its buttons and of its kind's
+choice: what those entries are called and hold is the table's.
 
-A field of the action panel that holds a value made of fields (a map, a list
-of maps, a union) is given its hidden entries the same way: `hidden`, a list
-of bundles, each spread on an `<input type="hidden">` (of a list of maps the
-entry that sends the list when it has no values, of a union the one that says
-which kind its value was typed for), and the same in its `members` (the entry
-that says the value is there, and the key of each value of a list, which Ash
-tells them apart by). A union's choice of its kind is sent under `kind_name`
-and has the id `kind_id`; the buttons that add a value and take it away have
-the ids `add_id` and `remove_id` (an item of a list its own `remove_id`),
-which `Attrs.add_group/4` and `Attrs.remove_group/4` put into their bundles.
-What those entries are called and hold, and these ids, are the table's: a
-part draws them as it is given them, and writes no name or id of its own.
-
-Where a cell stands (`aria-colindex`, as the summary cell above writes it) and
-how many columns and rows the grid has are the table's too: the parts that
-place more than one cell or row (`grid`, `row`, `footer`, `full_view`) are
-given `geometry`, an `AshDataTable.Geometry` whose fields say how many columns
-come before the data columns (`lead`: the box at 1, the expander at `lead`),
-whether the actions cell comes after them (`trail`, at `colcount`), how many
-columns there are in all (`colcount`, what a cell spans that spans the grid),
-whether there is a filter row (`header_rows` 2) and a footer row of summaries
-(`summary?`). A cell drawn once per column is given its `colindex`; the
-bundles of the table, the header rows, a spanning cell and the footer row
-(`Attrs.table/6`, `Attrs.head_row/2`, `Attrs.filter_row/2`,
-`Attrs.spanning/3`, `Attrs.summaries/3`) take the geometry and count the
-rows themselves. The column a record is
-called by and whether a column can be edited are the model's
-(`model.label_column`, `model.editing?`).
+**Numbers.** Where a cell stands (`aria-colindex`) and how many columns and
+rows the grid has are the table's: they are in the bundles (`element`
+above) and in the projections (`colindex`, `colspan`, `lead`); a kit counts
+no column.
 
 **Tab stops.** A table is a table (`role="table"`), not an ARIA grid: the
 browser moves the focus with Tab, from control to control in the order they
@@ -265,23 +244,16 @@ control: a box, a button, a link, a menu or an input is a stop by itself. A
 cell is no stop, but an editable one, whose item's `attrs` hold
 `tabindex="0"`; a summary cell, as above, has none. Nor does a header: a column that sorts
 has a button in its header, which is the stop. The `grid` part draws a link
-"Skip table …" before the header row (`Attrs.skip/1`), and the `root` part
-the place it jumps to after the table's pages (`Attrs.skip_target/1`). The
+"Skip table …" before the header row (`skip`), and the `root` part
+the place it jumps to after the table's pages (`skip_target`). The
 `Kit` moduledoc, "Tab stops", has the rule; `KitCase` checks it.
 
-**Ids.** Where the table names an element a part draws (focus goes to it, a
-nested table is moved into it), the part makes its id with
-`AshDataTable.Ids`, as the table does: `Ids.cell/2`, `Ids.line_button/2` and
-the others. Every other id is the table's id and a suffix, listed per part in
-the `AshDataTable.Kit` moduledoc.
-
 **Texts.** A part shows the texts it is given, in the person's language:
-`texts` by name (`@texts.kind`), and for a part of one text or value `text`.
-Beside them it is given `messages`, what each text is made of, a map
+`texts` by name (`@texts.kind`), and for a part of one text `text`. Beside
+them it is given `messages`, what each text is made of, a map
 `%{key: key, values: values}` of a key of `AshDataTable.Messages`, and
-`locale`, for a kit that translates or formats for itself. They are made by `AshDataTable.Kit.Words`
-and passed as attributes, so LiveView sends a text again only when what it
-is made of changed. See
+`locale`, for a kit that translates or formats for itself. LiveView sends
+a text again only when what it is made of changed. See
 [Messages and translations](messages-and-translations.md).
 
 ### The rows: items of the stream
@@ -305,47 +277,28 @@ per item and spreads its `attrs`:
   phx-no-format
 ```
 
-and a cell with `Attrs.cell/2`, the column's attributes and the cell's:
+and a cell with its column's attributes and the item cell's:
 
 <!-- source: demo/lib/demo_web/div_kit.ex -->
 ```elixir
-{Attrs.cell(column, @row.cells[column.name])}
+{Map.merge(column.attrs, @row.cells[column.name].attrs)}
 ```
 
 A cell's `text` is what the cell shows; a masked cell has none, and no
-value. The item's moduledoc lists every key.
+value. The item's moduledoc lists every key. The ids of what a part draws
+per row are made with `AshDataTable.Ids` of the row's `dom_id`, as the
+table makes them (`Ids.record/1`, `Ids.cell/2`, `Ids.actions_cell/1`, …).
 
 ### A part inside a part
 
 A part draws the parts inside it through the kit, with `Kit.part/1`, never by
 calling another part's function, so that a kit that replaces one part keeps
-the others. It passes each part the assigns the `Kit` moduledoc lists, and
-its texts made with `Kit.Words`. The `DivKit`'s grid draws a header cell per
-column, with the id `AshDataTable.Ids` makes for it:
+the others. It passes each part its projection, which is in its own. The
+`DivKit`'s grid draws a header cell per column:
 
 <!-- source: demo/lib/demo_web/div_kit.ex -->
 ```elixir
-<Kit.part
-  :for={{column, index} <- Enum.with_index(@model.columns)}
-  part={:header_cell}
-  kit={@kit}
-  id={Ids.header_cell(@id, column.name)}
-  column={column}
-  colindex={@geometry.lead + index + 1}
-  attrs={
-    Attrs.column_header(
-      column,
-      @state.sort,
-      @model.sticky_label? and not is_nil(@model.label_column) and
-        column.name == @model.label_column.name
-    )
-  }
-  button={column.sortable? && Attrs.sort(@id, column, @myself)}
-  sort={@state.sort}
-  resizer={"#{@id}-resize-#{column.name}"}
-  texts={Words.texts(:header_cell, %{column: column, editing?: @model.editing?})}
-  messages={Words.messages(:header_cell, %{column: column, editing?: @model.editing?})}
-/>
+<Kit.part :for={cell <- @head.cells} part={:header_cell} kit={@kit} {cell} />
 ```
 
 What a cell holds and a column's editor are drawn with `Kit.cell/1` and
@@ -363,12 +316,12 @@ where it wants it, as it draws the cell `Ids.nested_cell/2`. The line gives
 the nested table its name; the nested table's controls there are Tab stops,
 after the line's button.
 
-The line of the selection (`selection_line`) says in its class's `state`
-whether anything is on it (`shown?`): the default kit gives it no room
-while nothing is selected, no filter is set and no notice shows. Of more
-than three actions on the selected rows it shows the first two and puts
-the others in a menu, "More" (the browser's popover); an action that
-destroys has the error colour's outline.
+The line of the selection (`selection_line`) says whether anything is on
+it (`shown?`): the default kit gives it no room while nothing is selected,
+no filter is set and no notice shows. Of more than three actions on the
+selected rows it shows the first two and puts the others in a menu, "More"
+(the browser's popover, its projection's `more`); an action that destroys
+has the error colour's outline.
 
 ## A kit that draws in the browser
 
@@ -376,16 +329,18 @@ A kit may draw a part with a client framework (React in a LiveView,
 through `live_react`). The table stays the same: its rows a stream, every
 write through the server's checks. What such a kit relies on is public:
 
-- **Props.** `AshDataTable.Attrs.props/1` turns a bundle into what a
-  framework takes: `true` as `""`, `false` and nil left out, every other
-  value as text; the kit renames what its framework names otherwise
-  (`class` to `className`, `tabindex` to `tabIndex`, …) and never renders a
-  bundle's `phx-hook`. An item's `attrs` are of the same form.
-- **Events.** A kit sends an event through a bundle wherever one exists
-  (`phx-click` and a form's `phx-change`/`phx-submit` work from a client
-  framework's elements: LiveView hears them at its root). The `Attrs`
-  moduledoc lists every event ("Events"), what sends it, its payload and its
-  answer; a kit sends by name only those it marks "a kit may send it".
+- **The projections.** Each part's projection is plain data that goes to
+  JSON as it is: the kit hands each key to its island as a prop.
+  `AshDataTable.Attrs.props/1` turns a bundle in it into what a framework
+  takes: `true` as `""`, `false` and nil left out, a JS command as its
+  JSON, every other value as text; the kit renames what its framework names
+  otherwise (`class` to `className`, `tabindex` to `tabIndex`, …) and never
+  renders a bundle's `phx-hook`. An item's `attrs` are of the same form.
+- **Events.** A kit sends every event through a bundle (`phx-click` and a
+  form's `phx-change`/`phx-submit` work from a client framework's elements:
+  LiveView hears them at its root, and runs a JS command it is given, as
+  "Clear filters" sends focus on). The `Attrs` moduledoc lists every event
+  ("Events"), what sends it, its payload and its answer.
 - **The hooks.** Inside an island LiveView mounts no hook, so the kit mounts
   them itself with the package's JS entries, `mountGrid`, `mountPanel`,
   `mountPicker` and `mountPagination`, given a transport that
@@ -399,14 +354,13 @@ write through the server's checks. What such a kit relies on is public:
   kit draws (a busy cell, a failed one, a box's state);
   `assets/js/owned.js` lists them, and what a kit may render of each.
 - **Ids.** `assets/js/ids.js` makes the ids of `AshDataTable.Ids`, function
-  by function, and `assets/js/geometry.js` counts the columns and rows as
-  `AshDataTable.Geometry` does (`colindex(index, lead)`, `rowindex(first,
-  n)`, and `lead(grid)`, `firstRow(grid)` of the grid's element).
+  by function, for what a kit draws per row; `assets/js/geometry.js` counts
+  the columns and rows as `AshDataTable.Geometry` does, as the hooks do.
 - **Two rules of the `Kit` moduledoc.** The place a nested table is moved
   into must be in the page before the patch that opens it: a kit that
   draws after LiveView's patch draws the place of every line of an expanded
   row ahead of time, hidden while it is closed. And the grid's sender
-  (`Attrs.sender/1`) is drawn as LiveView's markup, outside the island, so
+  (its `sender`) is drawn as LiveView's markup, outside the island, so
   that LiveView mounts its hook and locks it, never the grid.
 
 The demo checks the JS entries in the browser
@@ -504,12 +458,13 @@ changed.
 - **A part of your own gets an assign as nil.** A part called through the
   kit is given what its caller passes, and its `attr` defaults are not
   applied.
-- **A text that never changes.** A kit's own part that draws a part of the
-  table through `Kit.part/1` has to pass that part's `texts` and `messages`
-  made with `Kit.Words`.
-- **Reading a function of the table's structs.** A kit reads the fields
-  "Kit contract 6" lists; their modules' functions are the table's own, and
-  may change.
+- **A part draws a fact it has not got.** A part is given its projection
+  and nothing of what it is made of: a fact it lacks is asked for as a key
+  of it (a contract change), not worked out of other keys.
+- **A part of your own is told it is given something beside its
+  projection.** `KitCase` checks that a part is given every key of its
+  projection and nothing else: a kit's own part that draws another through
+  `Kit.part/1` passes that part's projection, which is in its own.
 - **A kit of contract 2 no longer compiles.** Contract 3 draws a table, not
   an ARIA grid: `role="table"`, `"cell"` and `"rowheader"` (the label
   column's cell, the `row` part's `label`), no `tabindex="-1"` on cells and
@@ -552,7 +507,12 @@ changed.
   `Attrs.filter_row?/1` are gone: a grid of your own reads `colcount` and
   `header_rows`. The panel (`AshDataTable.Present.Panel`) says `ask`
   (`"changed"` or nil, what `Attrs.panel/5` writes as `data-ask`) in place
-  of `kind`.
+  of `kind`. Last, every part is given its projection
+  (`AshDataTable.Kit.Projection`), an assign per key, in place of `model`,
+  `state`, `page`, `geometry`, `panel`, `picker`, `fields`, `arguments`,
+  `editors`, `filters` and the texts of `Kit.Words`, which is gone: a part
+  of your own reads its projection's keys, spreads its bundles, and calls
+  no function of `Attrs` but `props/1`.
 
 ## Not in the first version
 

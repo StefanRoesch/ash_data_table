@@ -78,7 +78,7 @@ LiveView:
 
 The kit is a kit of contract 6. Each part it draws is an island, given
 the part's projection (`AshDataTable.Kit.Projection`), each key a prop of
-its own, its bundles as props (`DemoWeb.ReactKit.Props.of/1`):
+its own, its bundles as props (one rule, `props/1` of the kit):
 
 <!-- source: demo/lib/demo_web/react_kit.ex -->
 ```elixir
@@ -90,7 +90,7 @@ def status(assigns) do
     id={"#{@id}-status-island"}
     name="AshStatus"
     class="contents"
-    region={Props.of(@region)}
+    region={props(@region)}
     again?={@again?}
     result={@result}
     texts={@texts}
@@ -108,18 +108,20 @@ documented in a moduledoc or a JS file of the package and checked by a test:
 - **The stream's items** (`AshDataTable.Item`): plain maps whose cells hold
   their finished, translated text. The `grid` part hands `rows` (the
   stream) to its island as it is.
-- **What each part is given** (`AshDataTable.Kit`, "Kit contract 6"): plain
-  values and the documented fields of the table's structs, with every text
-  said (`texts`, `messages`). The `editor`, `argument_line` and `field`
-  parts are given what their controls say (`limits`, `counted`), and
-  `Kit.count/2` counts a text as the counter does.
+- **What each part is given** (`AshDataTable.Kit.Projection`, ADR 0004):
+  its projection, finished plain data, every text said (`texts`,
+  `messages`), every bundle and every number in it, and the projections of
+  the parts inside it: the islands read the same shapes as the HEEx kit's
+  parts, and compute nothing (a counter's `length` too, which the hook
+  counts again as a person types).
 - **The bundles** (`AshDataTable.Attrs`): `Attrs.props/1` turns a bundle
   into text props (`true` as `""`, nil and false left out); the JS half maps
   the names React wants (`class` to `className`, …). A kit never renders a
   bundle's `phx-hook`: it mounts the hook itself.
-- **The events** (`Attrs`, "Events"): a kit sends an event through a
-  bundle (`phx-click`, a form's `phx-change` and `phx-submit`) wherever one
-  exists; LiveView hears them from its root.
+- **The events** (`Attrs`, "Events"): every event is sent through a
+  bundle (`phx-click`, a form's `phx-change` and `phx-submit`); LiveView
+  hears them from its root, and runs a JS command one holds ("Read again"
+  and "Clear filters" send focus on).
 - **The hooks, mounted by the kit** (`assets/js/mount.js`): `mountGrid`,
   `mountPanel`, `mountPicker` and `mountPagination`, each
   `(el, transport, options) -> {beforeUpdate, updated, destroy}`, and
@@ -130,8 +132,9 @@ documented in a moduledoc or a JS file of the package and checked by a test:
   never, once, or only as the table gives them.
 - **The ids** (`AshDataTable.Ids`, mirrored by `assets/js/ids.js`).
 - **The geometry** (`AshDataTable.Geometry`, mirrored by
-  `assets/js/geometry.js`): where the columns and rows stand. The islands
-  are given `lead` and place each column's cell with `geometry.colindex`.
+  `assets/js/geometry.js`): where the columns and rows stand, which the
+  hooks count with; the islands are given each cell's place in its
+  projection (`colindex`) and count nothing.
 - **The places what opens is moved into**: a nested table, its heading
   line, the picker's table, a picker a field opened and the question's copy
   are moved by LiveView (`Phoenix.Component.portal/1`) into a place a part

@@ -345,10 +345,17 @@ defmodule DemoWeb.Tables.ControlledWidenedTest do
       assert %{
                column: :place,
                question: "Change the place?",
-               fields: [%{name: :place, editor: :group, fields: fields, value: value}]
+               fields: [
+                 %{
+                   path: ["place"],
+                   editor: :group,
+                   group: %{members: %{fields: fields}},
+                   value: value
+                 }
+               ]
              } = request(view)
 
-      assert Enum.map(fields, & &1.name) == [:city, :zip]
+      assert Enum.map(fields, &List.last(&1.path)) == ["city", "zip"]
       assert %{"city" => "Bern", "zip" => "3000"} = value
 
       place = %{"_present" => "", "city" => "Thun", "zip" => "3600"}
@@ -370,7 +377,7 @@ defmodule DemoWeb.Tables.ControlledWidenedTest do
                action: nil,
                column: :tier,
                question: nil,
-               fields: [%{name: :tier, editor: :choices, value: [], values: [_ | _] = values}]
+               fields: [%{path: ["tier"], editor: :choices, value: [], values: [_ | _] = values}]
              } = request = request(view)
 
       # the choices as maps, and the whole request plain data, as JSON
@@ -396,7 +403,7 @@ defmodule DemoWeb.Tables.ControlledWidenedTest do
          %{view: view, tenant: tenant, key: key} do
       event(view, "edit", %{"row" => key, "column" => "stops"})
       {ref, :panel} = requested()
-      assert %{fields: [%{name: :stops, editor: :groups, value: held}]} = request(view)
+      assert %{fields: [%{path: ["stops"], editor: :groups, value: held}]} = request(view)
       assert map_size(Map.delete(held, "_present")) == 2
 
       answer(view, &AshDataTable.add_group_request(&1, :table, "r0", ["stops"]))
@@ -462,8 +469,11 @@ defmodule DemoWeb.Tables.ControlledWidenedTest do
     } do
       event(view, "edit", %{"row" => key, "column" => "kind"})
       {ref, :panel} = requested()
-      assert %{fields: [%{name: :kind, editor: :union, kinds: kinds}]} = request(view)
-      assert Enum.map(kinds, & &1.name) == [:count, :word]
+
+      assert %{fields: [%{path: ["kind"], editor: :union, union: %{kinds: kinds}}]} =
+               request(view)
+
+      assert Enum.map(kinds, & &1.value) == ["count", "word"]
 
       kind = %{"_of" => "word", "_union_type" => "word", "_union_value" => "loose"}
       answer(view, &AshDataTable.submit_request(&1, :table, ref, %{"kind" => kind}))
@@ -476,8 +486,10 @@ defmodule DemoWeb.Tables.ControlledWidenedTest do
       event(view, "act", %{"row" => key, "action" => "staff"})
       {ref, :panel} = requested()
 
-      assert %{fields: [%{name: :helpers, editor: :references, chosen: chosen}]} = request(view)
-      assert chosen == [%{key: "Bob Ray", label: "Bob Ray"}]
+      assert %{fields: [%{path: ["helpers"], editor: :references, references: references}]} =
+               request(view)
+
+      assert Enum.map(references.entries, &{&1.key, &1.text}) == [{"Bob Ray", "Bob Ray"}]
 
       # a key that names nothing the person may choose runs nothing: it is
       # read again after the veto, as every record is
@@ -507,7 +519,7 @@ defmodule DemoWeb.Tables.ControlledWidenedTest do
       event(view, "act", %{"row" => key, "action" => "stamp"})
       {ref, :panel} = requested()
       assert %{fields: fields} = request(view)
-      assert %{editor: :file, upload: "kit-file-file"} = Enum.find(fields, &(&1.name == :file))
+      assert %{editor: :file, upload: "kit-file-file"} = Enum.find(fields, &(&1.path == ["file"]))
 
       # without a file nothing runs
       view |> element("#host-form") |> render_submit(%{"panel" => %{"note" => "x"}})

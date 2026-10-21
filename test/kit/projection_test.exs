@@ -1,14 +1,13 @@
 defmodule AshDataTable.Kit.ProjectionTest do
   @moduledoc """
   The projections of `AshDataTable.Kit.Projection`, part by part: that
-  each goes to JSON as it is, says what `AshDataTable.Kit.Words` says of
-  its part (while the parts still draw from it), and its derived facts.
+  each goes to JSON as it is, says its texts beside the messages they are
+  made of, and its derived facts.
   """
   use ExUnit.Case, async: true
 
   alias AshDataTable.Geometry
   alias AshDataTable.Kit.Projection
-  alias AshDataTable.Kit.Words
   alias AshDataTable.Model
   alias AshDataTable.State
   alias AshDataTable.Test.Resource
@@ -20,6 +19,41 @@ defmodule AshDataTable.Kit.ProjectionTest do
   defp page(fields \\ []),
     do: struct(AshDataTable.Query.Page, Keyword.merge([total: 6, pages: 2, offset: 0], fields))
 
+  # Each part's keys, as `AshDataTable.Kit.Projection`'s moduledoc lists
+  # them under its heading.
+  defp documented do
+    {:docs_v1, _anno, _language, _format, %{"en" => doc}, _meta, _docs} =
+      Code.fetch_docs(Projection)
+
+    doc
+    |> String.split("\n### ")
+    |> tl()
+    |> Map.new(fn part ->
+      [heading | lines] = String.split(part, "\n")
+      [_, name] = Regex.run(~r/^`(\w+)`/, heading)
+
+      keys =
+        for line <- lines,
+            [_, names] <- [Regex.run(~r/^  \* ((?:`[\w?]+`(?:, )?)+)(?: -|$)/, line)],
+            [_, key] <- Regex.scan(~r/`([\w?]+)`/, names),
+            do: String.to_atom(key)
+
+      {String.to_atom(name), keys}
+    end)
+  end
+
+  test "every part's projection is documented, key by key, both ways" do
+    documented = documented()
+    assert Enum.sort(Map.keys(documented)) == Enum.sort(Projection.parts())
+    assert Enum.sort(Projection.parts()) == Enum.sort(AshDataTable.Kit.parts())
+
+    for {part, keys} <- documented do
+      assert Enum.sort(Enum.uniq(keys)) == Enum.sort(Projection.keys(part)),
+             "#{part}: documented but none #{inspect(keys -- Projection.keys(part))}, " <>
+               "there but not documented #{inspect(Projection.keys(part) -- keys)}"
+    end
+  end
+
   test "status: the live region, the run's result, the no-break space every other time" do
     result = %{summary: {:text, :records, count: 2}, failures: [{:text, :not_available, []}]}
     given = %{id: "t", announcement: {:text, :loading, []}, announcements: 3, result: result}
@@ -28,8 +62,14 @@ defmodule AshDataTable.Kit.ProjectionTest do
     assert projection.again?
     assert projection.region["id"] == "t-status"
     assert projection.result == %{id: "t-result"}
-    assert projection.texts == Words.texts(:status, given)
-    assert projection.messages == Words.messages(:status, given)
+
+    assert projection.texts == %{
+             announcement: "Loading…",
+             summary: "2 records",
+             failures: ["Not available"]
+           }
+
+    assert projection.messages.summary == %{key: :records, values: %{count: 2}}
     refute Projection.of(:status, %{given | announcements: 2, result: nil}).result
     json!(projection)
   end
@@ -40,7 +80,7 @@ defmodule AshDataTable.Kit.ProjectionTest do
     assert [%{kind: :loading, element: %{"id" => "t-loading"}, nested?: true} = loading] =
              Projection.of(:message, given)
 
-    assert loading.text == Words.text(:message, %{message: {:text, :loading, []}})
+    assert %{text: "Loading…", message: %{key: :loading, values: %{}}} = loading
     assert [%{kind: :empty}] = Projection.of(:message, %{given | loading?: false})
 
     assert [%{kind: :error, element: %{"role" => "alert"}}] =
@@ -60,7 +100,7 @@ defmodule AshDataTable.Kit.ProjectionTest do
     assert projection.asks?
     assert projection.holder == %{"id" => "t-dialogs-in-panel", "phx-update" => "ignore"}
     assert projection.question == %{"id" => "t-dialog-question-in-panel"}
-    assert projection.texts == Words.texts(:confirm)
+    assert projection.texts == %{cancel: "Cancel", confirm: "Confirm"}
     json!(projection)
   end
 
@@ -81,8 +121,7 @@ defmodule AshDataTable.Kit.ProjectionTest do
 
     projection = Projection.of(:pagination, given)
 
-    assert Enum.map(projection.pages, & &1.number) ==
-             Words.value(:pagination, %{page: given.page, state: state})
+    assert Enum.map(projection.pages, & &1.number) == [1, 2]
 
     assert [%{current?: false}, %{current?: true, button: %{"aria-current" => "page"}}] =
              projection.pages
@@ -90,8 +129,21 @@ defmodule AshDataTable.Kit.ProjectionTest do
     refute projection.previous["disabled"]
     assert projection.next["disabled"]
     assert projection.next["phx-value-to"] == "next"
-    assert projection.texts == Words.texts(:pagination, given)
-    assert projection.messages == Words.messages(:pagination, given)
+
+    assert projection.texts == %{
+             label: "Pagination: Things",
+             range: "6–6 of 6",
+             previous: "Previous",
+             next: "Next",
+             rows_per_page: "Rows per page",
+             go_to_page: ["Go to page 1", "Go to page 2"]
+           }
+
+    assert projection.messages.range == %{
+             key: :range_of_total,
+             values: %{from: 6, to: 6, total: 6}
+           }
+
     assert Projection.Pagination.pages?(given.page, model)
     refute Projection.Pagination.pages?(nil, model)
     json!(projection)
@@ -104,7 +156,10 @@ defmodule AshDataTable.Kit.ProjectionTest do
     refute projection.open?
     assert projection.place == %{"id" => "t-picker-place"}
     refute projection.frame || projection.take || projection.none
-    assert projection.texts == Words.texts(:picker, given)
+
+    assert %{cancel: "Cancel", choose: "Choose", choose_none: "None", title: nil} =
+             projection.texts
+
     json!(projection)
   end
 
@@ -125,7 +180,15 @@ defmodule AshDataTable.Kit.ProjectionTest do
 
     projection = Projection.of(:related, given)
     assert projection.record == %{id: "t-related-parent", path: "/owners", title: "Anchor"}
-    assert projection.texts == Words.texts(:related, %{via: via, title: "Anchor"})
+
+    assert projection.texts == %{
+             relationship: "Parts",
+             heading: "Anchor: Parts",
+             heading_before: "",
+             heading_after: ": Parts",
+             show_all_records: "Show all records"
+           }
+
     assert Projection.of(:related, %{given | title: nil}).record == nil
     json!(projection)
 
@@ -135,7 +198,12 @@ defmodule AshDataTable.Kit.ProjectionTest do
       Projection.of(:full_view, %{id: "t", full_view: "/p", label: "Parts", geometry: geometry})
 
     assert view.link == %{id: "t-full-view", path: "/p"}
-    assert view.texts == Words.texts(:full_view, %{label: "Parts"})
+
+    assert view.texts == %{
+             full_view: "Open in full view",
+             full_view_of: "Open in full view: Parts"
+           }
+
     json!(view)
   end
 
@@ -166,9 +234,8 @@ defmodule AshDataTable.Kit.ProjectionTest do
     assert projection.notice.read_again["id"] == "t-read-again"
     assert projection.clear_filters["id"] == "t-clear-filters"
 
-    words = %{page: given.page, selected: 5, all?: false}
-    assert projection.texts == Words.texts(:selection_line, words)
-    assert projection.messages == Words.messages(:selection_line, words)
+    assert %{selected: "5 selected", select_all: "Select all 6 that match"} = projection.texts
+    assert projection.messages.selected == %{key: :selected, values: %{count: 5}}
 
     # in a table to choose from, never "all that match"
     assert Projection.of(:selection_line, %{given | choose: :multi}).selection.select_all[
@@ -202,22 +269,18 @@ defmodule AshDataTable.Kit.ProjectionTest do
     assert projection.title == %{element: %{"id" => "t-name"}, level: 2, text: "Things"}
     assert projection.acts?
 
+    assert %{
+             columns: "Columns",
+             columns_name: "Columns",
+             columns_with: "Columns ({details})",
+             reset_widths: "Reset widths"
+           } = projection.columns.texts
+
     hideable =
       Enum.reject(model.columns, &(model.label_column && &1.name == model.label_column.name))
 
-    words = %{
-      columns: hideable,
-      label_column: model.label_column,
-      state: given.state,
-      label: "Things",
-      nested?: false
-    }
-
-    assert projection.columns.texts == Words.texts(:columns, words)
     assert length(projection.columns.entries) == length(hideable)
-
-    expected = Words |> apply(:texts, [:argument, argument_words(model)])
-    assert hd(projection.argument_line.arguments).texts == expected
+    assert hd(projection.argument_line.arguments).texts.add_value == "Add value"
 
     assert Projection.of(:heading, %{given | nested?: true}).title == nil
     json!(projection)
@@ -345,11 +408,5 @@ defmodule AshDataTable.Kit.ProjectionTest do
     refute closed.open?
     assert closed.fields == [] and closed.frame == nil
     assert closed.place == %{"id" => "t-panel-place"}
-  end
-
-  defp argument_words(model) do
-    argument = hd(model.arguments)
-    value = Model.Argument.shown(argument, %State{}, %{})
-    %{argument: argument, value: value, errors: []}
   end
 end

@@ -787,33 +787,60 @@ defmodule AshDataTable do
     })
     |> then(&if(texts[:title], do: %{&1 | title: said.(texts.title)}, else: &1))
     |> then(&if(texts[:errors], do: %{&1 | errors: Enum.map(texts.errors, said)}, else: &1))
-    |> fields_in_words(said, message)
+    |> fields()
     |> chosen_in_words()
   end
 
-  defp fields_in_words(%{fields: fields} = request, said, message) do
-    %{
-      request
-      | fields:
-          for field <- fields do
-            %{
-              field
-              | label: said.(field.label),
-                errors: Enum.map(field.errors, said),
-                values:
-                  field.values &&
-                    for(
-                      %{label: label} = choice <- field.values,
-                      do: %{choice | label: said.(label)}
-                    )
-            }
-            |> Map.put(:messages, %{errors: Enum.map(field.errors, message)})
-            |> chosen_in_words()
-          end
-    }
+  # A panel's fields: its projection's (`AshDataTable.Kit.Projection`), the
+  # same a kit draws, without their bundles, a sensitive field without its
+  # value, a file field with the name of its upload among the LiveView's.
+  defp fields(%{kind: :panel, shown: shown, uploads: uploads} = request) do
+    fields =
+      AshDataTable.Kit.Projection.of({:panel, :fields}, %{
+        id: request.table,
+        panel: shown,
+        files: %{},
+        target: nil,
+        presentation: :modal
+      })
+
+    request
+    |> Map.drop([:shown, :uploads])
+    |> Map.put(:fields, Enum.map(fields, &field(&1, uploads)))
   end
 
-  defp fields_in_words(request, _said, _message), do: request
+  defp fields(request), do: request
+
+  defp field(field, uploads) do
+    field
+    |> plain()
+    |> then(&if(field.secret?, do: %{&1 | value: nil}, else: &1))
+    |> then(
+      &if(field.editor == :file,
+        do: Map.put(&1, :upload, uploads[List.last(field.path)]),
+        else: &1
+      )
+    )
+  end
+
+  # Data without the bundles in it (maps of attribute names); a field's
+  # value as its form sends it.
+  defp plain(%{} = map) when not is_struct(map) do
+    for {key, value} <- map,
+        key == :value or not bundle?(value),
+        into: %{},
+        do: {key, if(key == :value, do: value, else: plain(value))}
+  end
+
+  defp plain(values) when is_list(values),
+    do: for(value <- values, not bundle?(value), do: plain(value))
+
+  defp plain(value), do: value
+
+  defp bundle?(%{} = map) when not is_struct(map) and map_size(map) > 0,
+    do: Enum.all?(Map.keys(map), &is_binary/1)
+
+  defp bundle?(_value), do: false
 
   # What the records a picker's field holds are called, in words.
   defp chosen_in_words(%{chosen: chosen} = request) do

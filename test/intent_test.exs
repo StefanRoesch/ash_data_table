@@ -195,7 +195,7 @@ defmodule AshDataTable.IntentTest do
 
     for event <- events do
       assert {:ok, _intent} = parse(event.name, event.example), "#{event.name} does not parse"
-      assert event.by in [:bundle, :kit, :hook]
+      assert event.by in [:bundle, :hook]
       assert event.by == :bundle == is_binary(event[:bundle]), "#{event.name}: its bundle"
     end
 

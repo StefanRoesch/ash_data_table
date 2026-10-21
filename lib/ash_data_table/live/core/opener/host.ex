@@ -306,8 +306,8 @@ defmodule AshDataTable.Live.Core.Opener.Host do
     }
 
     case Event.request(request, held) do
-      %{kind: :panel, fields: fields} = request ->
-        %{request | fields: Enum.map(fields, &upload(&1, entry))}
+      %{kind: :panel} = request ->
+        Map.put(request, :uploads, uploads(entry))
 
       request ->
         request
@@ -330,10 +330,13 @@ defmodule AshDataTable.Live.Core.Opener.Host do
 
   defp row_key(_request, _entry), do: nil
 
-  defp upload(%{editor: :file} = field, entry),
-    do: Map.put(field, :upload, Files.upload_name(entry.id, field))
-
-  defp upload(field, _entry), do: field
+  # The uploads of the open panel's file fields, by the name of each: the
+  # page hands its files to them.
+  defp uploads(entry) do
+    for input <- Panel.file_inputs(entry.panel),
+        into: %{},
+        do: {Atom.to_string(input.name), Files.upload_name(entry.id, input)}
+  end
 
   defp new_ref, do: "r" <> Integer.to_string(System.unique_integer([:positive]))
 end

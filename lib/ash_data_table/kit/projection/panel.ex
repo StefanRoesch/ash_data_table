@@ -116,6 +116,9 @@ defmodule AshDataTable.Kit.Projection.Panel do
       %{
         id: id,
         name: inside.name,
+        # the names it is sent under: its input's, and inside a value made of
+        # fields the names on the way to it (its `element`'s `data-field`)
+        path: inside.path,
         element: Attrs.field(inside.path),
         editor: editor,
         label: input.label,
@@ -123,9 +126,10 @@ defmodule AshDataTable.Kit.Projection.Panel do
         secret?: secret?,
         item: Heading.item(input.cell_type),
         values: choices(input.values, value),
-        # what it holds as its control holds it; nil of a value made of
-        # fields, which its `group`, `groups` or `union` hold field by field
-        value: if(group?, do: nil, else: value),
+        # what it holds as its control holds it; of a value made of fields
+        # as its form sends it (its `group`, `groups` or `union` hold it field
+        # by field)
+        value: value,
         # what the field of a multiple choice holds that is none of its
         # values, which it sends back as it came
         boxless: boxless(input, value),

@@ -14,60 +14,6 @@ defmodule AshDataTable.KitTest do
 
   # The fields of the structs a part is given, as `Kit`'s moduledoc lists
   # them under "Kit contract 6", by struct.
-  defp contract do
-    {:docs_v1, _anno, _language, _format, %{"en" => doc}, _meta, _docs} =
-      Code.fetch_docs(Kit)
-
-    [_before, section] = String.split(doc, "## Kit contract 6", parts: 2)
-    [section | _after] = String.split(section, "\n## ", parts: 2)
-
-    section
-    |> String.split("\n### ")
-    |> tl()
-    |> Map.new(fn part ->
-      [heading | lines] = String.split(part, "\n")
-      [_, module] = Regex.run(~r/^`([\w.]+)`/, heading)
-
-      fields =
-        for line <- lines,
-            [_, names] <- [Regex.run(~r/^  \* ((?:`[\w?]+`(?:, )?)+)(?: -|$)/, line)],
-            [_, name] <- Regex.scan(~r/`([\w?]+)`/, names),
-            do: String.to_atom(name)
-
-      {Module.concat([module]), fields}
-    end)
-  end
-
-  test "kit contract 6 names every field of every struct a part is given, and no other" do
-    contract = contract()
-
-    assert Map.keys(contract) |> Enum.sort() ==
-             Enum.sort([
-               AshDataTable.Present.Panel,
-               AshDataTable.Present.Field,
-               AshDataTable.Present.Picker,
-               AshDataTable.Geometry,
-               AshDataTable.Model,
-               AshDataTable.Model.Column,
-               AshDataTable.Model.Field,
-               AshDataTable.Model.Action,
-               AshDataTable.Model.Input,
-               AshDataTable.Model.Relationship,
-               AshDataTable.Model.Argument,
-               AshDataTable.Model.Pagination,
-               AshDataTable.State,
-               AshDataTable.Query.Page
-             ])
-
-    for {module, documented} <- contract do
-      fields = module |> struct() |> Map.from_struct() |> Map.keys()
-
-      assert Enum.sort(Enum.uniq(documented)) == Enum.sort(fields),
-             "#{inspect(module)}: documented but gone #{inspect(documented -- fields)}, " <>
-               "there but not documented #{inspect(fields -- documented)}"
-    end
-  end
-
   test "a kit has every part of the default kit, and replaces those it defines" do
     kit =
       compile("""
@@ -401,8 +347,9 @@ defmodule AshDataTable.KitTest do
 
   test "the grid is given what a masked or forbidden cell says, by column, and alike for all" do
     model = AshDataTable.Model.build(AshDataTable.Test.Resource)
-    texts = Kit.Words.texts(:grid, %{label: "Things", columns: model.columns})
-    messages = Kit.Words.messages(:grid, %{label: "Things", columns: model.columns})
+    given = %{label: "Things", model: model}
+    texts = AshDataTable.Kit.Projection.of({:grid, :texts}, given)
+    messages = AshDataTable.Kit.Projection.of({:grid, :messages}, given)
 
     for {column, show, hide, message} <-
           Enum.zip([model.columns, texts.show_value, texts.hide_value, messages.show_value]) do

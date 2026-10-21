@@ -51,7 +51,7 @@ defmodule AshDataTable.Kit do
         # draw a part with markup of one's own
         def message(assigns) do
           ~H\"\"\"
-          <p id={"\#{@id}-\#{@kind}"} role={@kind == :error && "alert"} class="my-message">{@text}</p>
+          <p {@element} class="my-message">{@text}</p>
           \"\"\"
         end
 
@@ -99,56 +99,54 @@ defmodule AshDataTable.Kit do
 
   ## What a part is given, and what it must write
 
-  A part is given values: what the table holds of the part, never a
-  record, an `AshPhoenix.Form`, a changeset or the actor, and never a
-  value of a sensitive field (`AshDataTable.Present`). Besides, every part
-  is given `kit`, the kit it is drawn with, through which it draws the
-  parts inside it:
+  A part is given its projection (`AshDataTable.Kit.Projection`, ADR
+  0004): what it draws, finished, as plain data, an assign per key of it:
+  its values, its texts in the person's language beside the messages they
+  are made of, the bundles of its elements and the facts derived from
+  them, and the projections of the parts it draws inside it. Never a
+  record, an `AshPhoenix.Form`, a changeset, the actor or a value of a
+  sensitive field, nor a struct of the table's (`Model`, `State`,
+  `Present`, …): a kit draws what its projection holds, and a fact a part
+  needs that is not in it is added as a key (a contract change). Beside
+  its projection every part is given `kit`, the kit it is drawn with,
+  through which it draws the parts inside it, and `id`, the table's id (of
+  `cell` and `actions_cell` the element's); a part drawn per row its
+  item of the stream (`row` of `row`, `detail` and `actions_cell`, `cell`
+  of `cell`: `AshDataTable.Item`), `grid` the stream itself (`rows`),
+  `panel` and its `field`s LiveView's uploads of the panel's file fields
+  (`uploads`, by the name a file field's projection gives), `root` its
+  slots, and `count` and `columns` their look where they stand (`class`).
+  `AshDataTable.KitCase` checks that a part is given every key of its
+  projection and nothing else.
 
-      <AshDataTable.Kit.part part={:row} kit={@kit} … />
+      <AshDataTable.Kit.part part={:header_cell} kit={@kit} {cell} />
 
   The table's behaviour in the browser (its hooks) finds the elements of
   the table by their *markers*, never by their tags: an ARIA role where the
   element has one (`table`, `rowgroup`, `row`, `cell`, `rowheader`,
   `columnheader`, `dialog`, `region`), else a `data-*` attribute, and by the ids that
   begin with the table's id. So a part may draw any elements, as long as
-  they carry the markers. Most of them come in *bundles*, the functions of
-  `AshDataTable.Attrs`: maps of attributes a part spreads on its element
-  (`<div {AshDataTable.Attrs.grid(…)}>`), made of the values it is given.
-  Where a part is drawn once per row, cell or column, the attributes that
-  are the same on every one are written by the part itself (they would be
-  sent again with every row), and the bundle holds what varies; the list
-  below names them. What a cell holds and a column's editor are drawn with
-  `cell/1` and `editor/1`, which call the column's component before the
-  kit. `AshDataTable.KitCase` checks a kit for all of it, and
-  `AshDataTable.Kit.Default`'s parts (`lib/ash_data_table/parts/`) show how
-  each is drawn.
+  they carry the markers. They come in *bundles* (maps of attributes, of
+  `AshDataTable.Attrs`), which the projection holds: a part spreads each
+  on its element (`<div {@grid}>`). Where a part is drawn once per row,
+  cell or column, the attributes that are the same on every one are
+  written by the part itself (they would be sent again with every row),
+  and the bundle holds what varies; the list below names them. What a cell
+  holds and a column's editor are drawn with `cell/1` and `editor/1`,
+  which call the column's component before the kit. `AshDataTable.KitCase`
+  checks a kit for all of it, and `AshDataTable.Kit.Default`'s parts
+  (`lib/ash_data_table/parts/`) show how each is drawn.
 
-  Each part is given `kit` and the assigns named below; a part draws the
-  parts named in it through the kit. Values are what the table makes of
-  its rows (the items of its stream, `AshDataTable.Item`), its panel and
-  picker (`Present.Panel`, …) and its model (`Model.Column`,
-  `Model.Action`, …), never a record: their fields are listed in "Kit
-  contract 6" below. `myself` and `target`
-  are the `phx-target` of the part's events (nil for an attached table);
-  `id` is the table's id, or the element's where it says so.
-
-  Where the table names an element a part draws (focus goes to it, a
-  nested table is moved into it or named by it), the part makes its id
-  with `AshDataTable.Ids`, as the table does: a row's cells
-  (`Ids.cell/2`, `Ids.expander/1`, `Ids.actions_cell/1`, of the row's
-  `dom_id`), a line's (`Ids.line_cell/2`, `Ids.line_button/2`,
-  `Ids.nested_row/2`, `Ids.nested_cell/2`, `Ids.nested_table/2`, of
-  `Ids.row/2`), a field's (`Ids.field/2`, `Ids.clear/1`, `Ids.choose/1`,
-  `Ids.unpick/2`), an argument's (`Ids.argument/2`,
-  `Ids.argument_value/2`), and the grid's that the hooks find by id: the
-  header (`Ids.head/1`, `Ids.head_row/1`, `Ids.header_cell/2`), the filter
-  row and its form (`Ids.filter_row/1`, `Ids.filters/1`), a row's selection
-  box (`Ids.selector/1`), a column's sort button (`Ids.sort/2`), an
-  editor's template (`Ids.editor/2`), a failed cell's message
-  (`Ids.error/1`), the skip link and where it jumps to (`Ids.skip/1`,
-  `Ids.skip_target/1`) and the question (`Ids.dialog/1`). The other ids
-  below are the table's id and a suffix.
+  Where the table names an element a part draws per row (focus goes to it,
+  a nested table is moved into it or named by it), the part makes its id
+  with `AshDataTable.Ids` of the row's `dom_id`, as the table does: the
+  row (`Ids.record/1`), its cells (`Ids.cell/2`, `Ids.selector/1`,
+  `Ids.expander/1`, `Ids.actions_cell/1`, an action's `Ids.action/2`,
+  "Open"'s `Ids.open/1`), a failed cell's message (`Ids.error/1`), a
+  line's (`Ids.line/2`, `Ids.line_cell/2`, `Ids.line_button/2`,
+  `Ids.line_heading/2`, `Ids.nested_row/2`, `Ids.nested_cell/2`,
+  `Ids.nested_table/2`, of `Ids.row/2`) and the header's group
+  (`Ids.head/1`). Every other id is in the projection.
 
   ## Tab stops
 
@@ -180,379 +178,142 @@ defmodule AshDataTable.Kit do
   Title", named after the header's `aria-label`).
 
   A part of one's own is called with `apply/3` (`part/1`): the defaults of
-  its `attr`s are not applied. It is given every assign named below, and
-  nothing else.
+  its `attr`s are not applied. It is given every key of its projection, as
+  `AshDataTable.Kit.Projection` lists them, and the assigns named above.
 
-  Drawn once per table:
+  What each part draws, and the markers it writes itself; the bundles it
+  spreads are in its projection. Drawn once per table:
 
-    * `root` - the table's root element (`Attrs.root/2`, with the kit's
+    * `root` - the table's root element (its `element`, with the kit's
       `class(:root, …)`), of the table on the page, of a nested table and
       of a picker's table: `inner_block` (the table) and `opened` (what
       opens: the question, the action panel and the picker, where they are
       drawn in the page), and between the two the element the skip link
-      jumps to (`Attrs.skip_target/1`, after the pagination); `id`,
-      `nested?` (whether the table is shown inside another: nested in a
-      row, or a picker's), `page`, `look` (the table's look, see "The look
-      of a table": the same for every table it shows). In
+      jumps to (`skip_target`, after the pagination). In
       `AshDataTable.table/1` it is inside a plain element of the tag's own
       (`display: contents`): a live component's root must be static.
-    * `heading` - the heading line (`ID-header`): the table's name, the
-      `columns` part, the `argument_line` part, and its create
-      (`ID-create`) and table actions (`data-table-action`): `id`,
-      `heading`, `label`, `model` (its `label_column`, the `Model.Column`
-      a record is called by, nil for none: the one column `columns` cannot
-      hide), `offered` (the table actions), `page`, `related`, `state`
-      (for its `columns`), `arguments` (as `argument_line`'s), `nested?`,
-      `myself`. A nested
+    * `heading` - the heading line: the table's name, the `columns` part,
+      the `argument_line` part, its create and table actions. A nested
       table's is drawn in a portal of its own onto its line
       (`Ids.line_heading/2`, which the `line` part draws), where the line
       gives the name; its controls are Tab stops there, after the line's
       button.
-    * `related` - above a table limited to the records of one record
-      (`ID-related`, `ID-related-clear`): `id`, `via` (the relationship),
-      `title`, `parent` (`path` of its page, or nil), `clear` (the path of
-      every record), `create`, `actions`, `target`.
-    * `argument_line` - the form of the read action's arguments
-      (`ID-arguments`, `data-arguments`, `AshDataTable.Attrs.arguments/2`),
-      drawn by `heading`: `id`, `arguments`, `model`, `nested?`,
-      `myself`; it draws an `argument` per argument.
-      `arguments` holds, per argument of `model.arguments` and in its
-      order, what its input is drawn with, as plain data (it goes to JSON
-      as it is), the assigns of its `argument` but `argument` itself:
-      `id` (`Ids.argument/2`), `named` (what it is called in the ids of
-      the page), `name` (what its control is sent under), `value` (what
-      it holds: text, or of an array the list of its values), `errors`
-      (what Ash said of a value it refused: messages), `limits` and
-      `counted` (as `editor`'s; `counted` of a text and of an array of
-      texts), `texts` and `messages`.
-    * `argument` - one argument's input (`data-argument`): `id`,
-      `argument`, `name`, `named`, `value`, `errors`, `limits`, `counted`,
-      `target`, `table` (the table's id).
-    * `selection_line` - what is selected (`ID-selection`, `data-selection`;
-      `ID-selected`, the live region with `texts.selected`;
-      `ID-selection-controls`, `hidden` while nothing is selected;
-      `ID-select-all`, `hidden` but where `whole_page?` and the filters
-      match more than the page; `ID-clear-selection`, a `data-bulk` button
-      per action, of more than three the first two and the others in the
-      popover `ID-bulk-more` that `ID-bulk-more-button` opens), the notice
-      of changes and "Clear filters"; `Kit.Default` gives it no room while
-      none of them is there: `id`, `bulk`, `choose`, `model`, `notice?`, `page`,
-      `row_count`, `running` (the `Model.Action` running on the selection
-      now, nil for none; never who started it), `selecting`, `selected`
-      (how many rows are selected), `all?` (every record that matches),
-      `whole_page?` (every row of the page is selected), `state`,
-      `nested?`, `myself`.
-    * `columns` - "Columns", drawn by `heading` (`ID-columns-button` with
-      `data-text`, `data-text-with`, and `data-text-hidden`,
-      `data-text-filtered`, `data-text-sorted`, each a JSON list of the
-      texts for 1 to the number of columns, and inside it the hook's
-      `ID-columns-text`, what it is called, and `ID-columns-count`, how many
-      columns are hidden or nothing; `ID-columns`, `data-columns-list`, a
-      box per column with `data-head`, `data-say-hidden`, `data-say-shown`,
-      `data-filtered`, `data-sorted`, and its width field
-      (`Attrs.width_field/3`, `data-width`); before them an entry of the
-      label column, which cannot be hidden: its name and its width field,
-      no box; "Reset widths" (`Attrs.reset_widths/1`); `data-keeps-one`):
-      `id`, `columns` (the columns that can be hidden), `label_column` (the
-      `Model.Column` of the label column, nil for none), `keeps_one?`,
-      `state`, `nested?`, `class`.
-    * `status` - the live region `ID-status` and a run's result
-      (`ID-result`): `id`, `announcement`, `announcements`, `result`.
-    * `grid` - the grid's hook's element (`ID-grid`, `data-ash-data-table`,
-      `data-lead`, `data-select`, `data-choose`, `data-chosen-rows`), its
-      sender (`data-sender`) before it, the skip link "Skip table NAME"
-      before the header row (`Attrs.skip/1`, seen only while it has the
-      focus, its text `texts.skip_table`), the `role=table` element `ID-table`
-      (`data-first-row`) with `ID-head` and its two rows, the filter row's
-      form `ID-filters` (the filter row and its form only where the
-      `geometry`'s `header_rows` is 2: else `ID-head` has one row), a
-      `role=rowgroup` element per item of the stream
-      `rows` (with the item's `attrs`), the `footer`, a
-      `<template>` per editable column (`Attrs.editor_template/3`:
-      `ID-editor-FIELD`, `data-editor`, `data-commit`, and `data-confirm`
-      where the table asks, `asks?`) and the failure template `ID-failure`.
-      `rows` is the table's stream as `@streams[name]` gives it: the kit
-      hands it on as it is (to `:for`, to a client component as a prop),
-      and draws an item (`AshDataTable.Item`) per row group, spreading its
-      `attrs`. The sender (`Attrs.sender/1`) is drawn as markup of the
-      LiveView's, outside any element whose content a client framework
-      owns (a React island): LiveView mounts its hook, the grid's events
-      are pushed through it, and LiveView locks it, never the grid. Given:
-      `id`, `model` (its `label_column` and `editing?` among it), `rows`,
-      `page`, `state`, `filters`, `pages?`, `label`, `labelledby`,
-      `geometry` (where the columns and rows stand), `selecting`, `choose`,
-      `open`, `asks?`, `expandable?`, `busy?`, `running` (as
-      `selection_line`'s), `row_count`, `full_view`, `summary`, `summing?`, `time_zone`, `nested?`, `myself`, and
-      `editors`: by column name, of each editable column whose cell has an
-      editor in it (the kit's `editor`, or its component's), what the
-      `editor` part is given of its control (`limits`, `counted`,
-      `clearable?`), for a kit that draws the editors itself. It draws a
-      `header_cell` and a `filter_cell` per column, a `row` or a `detail`
-      per item, and an `editor` per template.
-    * `confirm` - the question `ID-dialog` (`Attrs.confirm/3`,
-      `data-presentation`): a `<dialog>` when it is modal, an element with
-      `role=region` when it is inline (hidden until the hook asks), with
-      `ID-dialog-question` and the buttons `value="cancel"` (the safe
-      answer, which has the focus) and `value="confirm"`: `id`, `model`,
-      `bulk`, `presentation`, `place`. Inline, the table draws it once
-      more inside a panel or picker that is modal (`place`: `:panel` or
-      `:picker`, nil for the table's own; `Attrs.confirm/3`, its ids ending
-      in `Attrs.asked_in/1`, the question `ID-dialog-question-in-panel`),
-      moved into that one's place; a question asked from that panel or
-      picker (or from what is drawn inside one) is shown there.
-    * `panel` - the action panel (`Attrs.panel/5`, `data-presentation`,
-      `data-question`, `data-ask`): a `<dialog>` when it is modal, an
-      element with `role=region` when it is inline; its form
-      `ID-panel-form`, a `field` per field, `data-cancel` and the submit
-      `ID-panel-submit`, and after the form its place
-      (`Ids.panel_place/1`), an empty element that what opens inside it is
-      moved into (the picker a field opened, where the panel is modal and
-      the picker inline; the question's copy, where the panel is modal and
-      the question inline): `id`, `panel` (`Present.Panel`, nil while the
-      panel is closed), `fields` (per field, in its order, the assigns of
-      its `field` part but `kit` and `target`, as `field` lists them;
-      empty while closed), `presentation`, `target`. The part is drawn
-      always: see "The places a nested table is moved into".
-    * `picker` - the picker (`Attrs.picker/5`, `data-presentation`,
-      `data-several`), as the panel, with `data-cancel`, `data-none`,
-      `data-take` (`Attrs.take/3`) and its place (`Ids.picker_place/1`),
-      which its table is moved into, with the question's copy where the
-      picker is modal and the question inline: `id`, `picker`
-      (`Present.Picker`, nil while it is closed), `presentation`, `target`,
-      `takes?` (a row of its table is selected: "Choose" can be used).
-      Drawn always, as the panel.
-    * `message` - `kind` (`:error`, `:loading`, `:fill`, `:empty`), `text`,
-      `id`, `nested?`; the element `ID-KIND`.
-    * `pagination` - `ID-pagination` with `data-table`, the buttons
-      `ID-previous`, `ID-next`, `ID-page-N`, the form `ID-page-size-form`:
-      `id`, `page`, `model`, `state`, `row_count`, `label`, `nested?`,
-      `target`.
+    * `related` - above a table limited to the records of one record: its
+      heading, the record as a link where it has a `path`, create and the
+      table actions, "Show all records".
+    * `argument_line` - the form of the read action's arguments, drawn by
+      `heading`; an `argument` per argument (`data-argument`).
+    * `selection_line` - what is selected, the notice of changes and
+      "Clear filters"; `Kit.Default` gives it no room while none of them is
+      there (`shown?`).
+    * `columns` - "Columns", drawn by `heading`: the button, the hook's
+      `text` and `count` in it (`phx-update="ignore"`), the list with the
+      label column's entry and a box (`checked`) and a width field
+      (`type="number"`, `min` `least`, `max` `most`) per column, "Reset
+      widths", and the hook's live region `status` (`role="status"`,
+      `phx-update="ignore"`).
+    * `status` - the live region and a run's result.
+    * `grid` - the grid's sender before it (`sender`, drawn outside any
+      element whose content a client framework owns: LiveView mounts its
+      hook, the grid's events are pushed through it, and LiveView locks
+      it, never the grid), the skip link (`skip`, seen only while it has
+      the focus), the grid's hook's element (`grid`), the `role=table`
+      element (`table`) with the header group (`Ids.head/1`, its rows
+      `head` and `filters`), a `role=rowgroup` element per item of the
+      stream `rows` (with the item's `attrs`), the `footer`, a
+      `<template>` per editable column (`editors`) and the failure
+      template (`failure`), the filter row's form (`filter_form`) and the
+      scrollbar. It hands the stream on as it is (to `:for`, to a client
+      component as a prop), and draws a `row` or a `detail` per item, a
+      `header_cell` and a `filter_cell` per column, and an `editor` per
+      template.
+    * `confirm` - the question (`dialog`): a `<dialog>` when it is modal,
+      an element with `role=region` when it is inline (hidden until the
+      hook asks), inside its `holder`, with the question's element
+      (`question`) and the buttons `value="cancel"` (the safe answer, which
+      has the focus) and `value="confirm"`. Inline, the table draws it once
+      more inside a panel or picker that is modal, moved into that one's
+      place.
+    * `panel` - the action panel (`frame`): a `<dialog>` when it is modal,
+      an element with `role=region` when it is inline; its `form`, a
+      `field` per field, Cancel and the submit, and after the form its
+      `place`, an empty element that what opens inside it is moved into.
+      Drawn always: nothing while it is closed (`open?`).
+    * `picker` - the picker (`frame`), as the panel, with Cancel, "None"
+      and "Choose", and its `place`, which its table is moved into.
+    * `message` - what is said in place of the rows (`element`), of its
+      `kind`.
+    * `pagination` - the range, Previous, the page numbers and Next, and
+      "Rows per page" (a form of one menu, `size`).
 
   Drawn per column, row or cell, with the constant attributes the part
   writes itself:
 
-    * `header_cell` - `id`, `column`, `colindex`, `attrs`
-      (`Attrs.column_header/3`: `aria-sort`, `data-sort`, `data-label`, …),
-      `button` (the sort button's bundle, `Attrs.sort/3`, false where the
-      column does not sort), `sort`: writes `role="columnheader"`,
-      `aria-colindex`, `aria-label` (the column's label: the header's name,
-      and what the hook names the button that shows a cell's whole text
-      after), and no `tabindex`; where it sorts, a `<button>` with
-      `button` holds the label (the header's Tab stop); draws the
-      `resizer`, and after the label a lock where its `texts` give
-      `read_only` (its accessible name).
+    * `header_cell` - `role="columnheader"`, `scope="col"` and its
+      `element` (id, place, name, `aria-sort`, …); where it sorts, a
+      `<button>` (`button`) holds the label (the header's Tab stop); after
+      the label a lock where its `texts` give `read_only`; the `resizer`.
     * `resizer` - a column's handle, for the pointer alone (`data-resize`,
-      `aria-hidden`, no Tab stop): `id`, `column`.
-    * `filter_cell` - `id`, `column`, `colindex`, `filter`, `form`, `table`,
-      `applied?`, `rejected?`, `target`: `role="cell"`, `aria-colindex`,
-      `data-filter` where the column filters; draws the column's `filter`.
-    * `filter` - one column's filter (for several values a button with
-      `Attrs.filter_values/4`, which opens the side panel, and the values
-      that apply as hidden inputs `filter[FIELD][in][]` of the filter
-      row's form): `id`, `column`, `filter`, `form`,
-      `table`, `applied?`, `rejected?`, `target`.
-    * `row` - a record's row: `id`, `dom_id`, `row` (its item,
-      `AshDataTable.Item`), `columns`, `label` (the name of the column a
-      record is called by, or nil), `geometry`, `selecting`, `expandable?`,
-      `actions`, `asks?`, `open`, `time_zone`:
-      `role="row"`, `aria-rowindex`; its cells `role="cell"` (the `label`
-      column's `role="rowheader"`, which names the row), `aria-colindex`,
-      the box's `data-selector` (`Ids.selector/1`), the expander's
-      `data-expander` (`Ids.expander/1`, a button with `aria-expanded`),
-      and per column (`Ids.cell/2`) the bundle `Attrs.cell/2`
-      (`tabindex="0"` on an editable cell, `aria-describedby` and
-      `data-failed` on a failed one, `data-value`, `data-saved`,
-      `data-lines`, …); what a
-      cell holds is `cell/1`'s; the `actions_cell`.
-    * `actions_cell` - `data-actions`, a button per action with
-      `data-action` (and `data-question`, `data-destructive`): `id`, `row`
-      (the item), `colindex`, `actions`, `asks?`, `open`.
-    * `cell` - what a cell holds, of the item's cell: `state` (`:value`,
-      `:empty`, `:masked`, `:forbidden`), `text` (in the state `:value`, the
-      finished text), `value` (where the item has one), `column`, `failure`
-      (after a save failed: `typed`, `text` and `message`; the kit draws
-      `failure` with the id `Ids.error/1` of the cell's), `id`,
-      `time_zone`. A masked cell is given no value: it draws `data-mask`,
-      `data-masked`, `data-secret` and the button `data-reveal`
-      (`data-show`, `data-hide`, `data-show-label`, `data-hide-label`).
-    * `detail` - the lines under an expanded row (`data-detail`,
-      `data-row`, in the item's `attrs`): `id`, `row` (the detail's item,
-      whose `lines` are in the model's order), `model`, `colspan`,
-      `myself`; a `line` each.
-    * `line` - a relationship's line (`data-line`, its cell
-      `Ids.line_cell/2` and its button `Ids.line_button/2`, which names the
-      nested grid) and, while it is open, the row `Ids.nested_row/2` whose
-      cell `Ids.nested_cell/2` a nested table is moved into (`data-nested`,
-      `data-line-cell`, `data-expander-cell`), and while it is open the
-      empty element `Ids.line_heading/2` on the line, which the nested
-      table's `heading` is moved into: `id` (the row's DOM id),
-      `relationship`, `open?`, `count` (how many records the open nested
-      table has, once it has read and where it is known; else nil),
-      `colspan`, `table` (the nested table's id), `myself`. See "The places
-      a nested table is moved into" below.
-    * `footer` - `ID-foot`, with the row of the summaries (`ID-summaries`,
-      `data-summaries`, a `summary_cell` per column), and in a nested table
-      its pages (`data-pager`) and the `full_view`: `id`, `model`, `page`,
-      `state`, `geometry`, `selecting`, `expandable?`, `pages?`,
-      `row_count`, `label`, `full_view`, `summary`,
-      `summing?`, `time_zone`, `nested?`, `myself`.
-    * `summary_cell` - `id`, `column`, `colindex`, `summary` (`{:ok,
-      value}`, `:unavailable` or nil), `summing?`, `time_zone`:
-      `role="cell"`, `aria-colindex`.
-    * `full_view` - the link to a nested table's full view (`data-view`,
-      `ID-full-view`): `id`, `full_view` (its path), `label`, `model`,
-      `geometry` (the link's cell spans its `colcount`).
+      `aria-hidden`, no Tab stop).
+    * `filter_cell` - `role="cell"` and its `element`; the column's
+      `filter` where it filters.
+    * `filter` - one column's filter: its controls by what its operator
+      takes (each a bundle: `form` names the filter row's form), for
+      several values a button that opens the side panel and the values
+      that apply as hidden inputs; its clear button.
+    * `row` - a record's row: `role="row"`, `aria-rowindex` (the item's
+      `rowindex`); the box's cell (`data-selector`, `role="cell"`,
+      `aria-colindex="1"`), the expander's (`data-expander`, a button with
+      `aria-expanded`), a cell per column (`role="cell"`, the column whose
+      `header?` `role="rowheader"`, `aria-colindex` its `colindex`, and the
+      column's `attrs` merged with the item cell's `attrs`); what a cell
+      holds is `cell/1`'s; the `actions_cell`.
+    * `actions_cell` - `role="cell"`, `data-actions`, `data-failed` and
+      `aria-describedby` (`Ids.error/1`) while the item's action failed,
+      "Open" (`data-open`) and a button per action (`data-action`, its
+      `attrs`).
+    * `cell` - what a cell holds, of the item's cell: its text, a yes or
+      no, nothing, the mask of a sensitive value (`data-mask`,
+      `data-masked`, `data-secret` and the button `data-reveal` with
+      `data-show`, `data-hide`, `data-show-label`, `data-hide-label`), "Not
+      available" (`data-unseen`); after a save failed what was typed (its
+      `typed`) and the `failure` (`Ids.error/1` of the cell's id).
+    * `detail` - the lines under an expanded row: a `line` per
+      relationship.
+    * `line` - a relationship's line (`role="row"`, its cell with the
+      relationship's `cell` bundle, `colspan`, its button, which names the
+      nested grid) and, while it is open, the row whose cell a nested
+      table is moved into (`data-nested`, `data-line-cell`,
+      `data-expander-cell`), and the element on the line its `heading` is
+      moved into. See "The places a nested table is moved into" below.
+    * `footer` - `element`, with the row of the summaries (a
+      `summary_cell` per column), and in a nested table its pages
+      (`pager`) and the `full_view`.
+    * `summary_cell` - `role="cell"` and its `element`; what the summary
+      is and its value.
+    * `full_view` - the link to a nested table's full view, in its row and
+      a cell that spans the grid.
     * `editor` - the editor of a column in its template, for a single
       value (an array, a map cell and a union are edited in the panel, a
       reference in the picker): one control, `data-control` where there
-      are more: `id`, `column`, and what its control says, as plain data
-      (it goes to JSON as it is): `limits`, the `min`, `max` and `step`
-      a number's control is given (each text, or nil: what the type's
-      constraints say that HTML means alike; `step` `"1"` of an integer,
-      `"any"` of a float and a decimal); `counted`, of a text whose type
-      says the most it can be long, how its counter counts (`max`, `unit`
-      `:graphemes`, `:codepoints` or `:bytes`, `trim?`, `casing` `:lower`,
-      `:upper` or nil; as Ash counts it), else nil; `clearable?`, whether
-      a sensitive cell can be emptied ("Clear" beside its input).
-    * `count` - the counter of a text (`data-count`, `data-max`): `id`,
-      `counted`, `value`, `class`; how long the text is, `count/2`.
-    * `list` - the field of an array in the panel, value by value
-      (`data-list`, `data-value-label`, `data-remove-label`, `data-item`,
-      `data-add`, `data-remove`): `id`, `rest` (attributes for its
-      element), `label`, `item`, `limits`, `counted`, `values`, `name`.
-    * `field` - a field of the panel (`data-field`; its buttons
-      `Attrs.add_group/4`, `Attrs.remove_group/4` (`data-remove-group`),
-      `Attrs.unpick/4`, `Attrs.clear_field/3`, which send their events
-      with `phx-click`; `data-invalid`): `id`, `input` (an
-      `AshDataTable.Model.Input`, or inside a value made of fields an
-      `AshDataTable.Model.Field`), `name` (what its control is sent under),
-      `value` (what it holds, as its control holds it), `errors`, `places`
-      (the places of the values of an array the errors are about),
-      `chosen`, `clear` (as `Present.Field`'s), `upload` (of a file field
-      LiveView's `Phoenix.LiveView.UploadConfig`, else nil), `path` (the
-      names it is sent under, its `data-field` joined with dots), `table`
-      (the id its events name), `limits` and `counted` (what its control
-      says, as `editor`'s; `counted` of a text and of an array of texts,
-      nil of a sensitive one), `target`; and of a value made of fields what
-      is in it, each field given as this part is: `hidden` (the entries it
-      sends beside its fields, each a bundle the part spreads on an
-      `<input type="hidden">`: of a list of values made of fields the entry
-      that sends the list at all, of a union the one that says which kind
-      its value was given for; `[]` of any other field), `members` (of a
-      value made of fields while it holds one: `name`, `hidden` (the entry
-      that says it is there and the keys it sends back as they came,
-      bundles as the field's), and `fields`; nil for no value), `add_id` and
-      `remove_id` (of a value made of fields, and `add_id` of a list of
-      them: the ids of the buttons that add a value and take it away, which
-      `Attrs.add_group/4` and `Attrs.remove_group/4` put into their
-      bundles), `items` (of a list of them: per value `key`, `id`,
-      `remove_id`, `path` and `members`), `kind`, `kind_id`, `kind_name`,
-      `kind_path` and `single` (of a union: the kind chosen, `""` for none,
-      the id of the choice of the kind, what it is sent under and its
-      `data-field` path, and the kind's value where it holds one value, a
-      field; else `members`). Nil, `[]` and nil where the field is none of
-      these. The names, the ids and the hidden entries are the table's to
-      make (the wire format of a value made of fields): a kit draws them as
-      it is given them.
-    * `control` - a field's control: `id`, `input`, `name`, `value`,
-      `secret?`, `invalid?`, `described`, `limits`.
+      are more.
+    * `count` - the counter of a text (`element`: `data-count`,
+      `data-max`, …): `length`/`max`.
+    * `list` - the field of an array in the panel, value by value (its
+      `element`; `data-item`, `data-add`, `data-remove` written by the
+      part).
+    * `field` - a field of the panel (`element`: `data-field`; its buttons'
+      bundles, which send their events with `phx-click`), and what is in
+      a value made of fields, each field again: the names, the ids and the
+      hidden entries are the table's to make (the wire format of a value
+      made of fields), a kit draws them as it is given them.
+    * `control` - a field's control.
     * `failure` - the message of a failed cell or row, drawn in the cell
-      after what it shows (the row grows to it): `id`, `message`.
-
-  ## Texts and values
-
-  Wherever a part shows a text of the table's or a value, it is given the
-  text and what the text is made of, so that a kit shows the text as it
-  is, or translates and formats for itself (a React or Vue kit, an API
-  client):
-
-    * `texts` - by name, the finished strings in the person's language
-      (the locale of the LiveView's process);
-    * `messages` - the same names, each the message it was made of:
-      `%{key: key, values: values}`, the key and its values as
-      `AshDataTable.Messages` lists them (an action's own message is the key
-      `:ash`). A name may hold a list, and nil where the part shows nothing
-      there;
-    * `text` and `message` alone in a part of one text (`message`,
-      `failure`);
-    * for a value: `value` (raw), its `text` and `locale`.
-
-  They are made by `AshDataTable.Kit.Words` of the part's other assigns,
-  and passed as attributes by whoever draws the part: the table, or a
-  kit's own part that draws a part of the table through `part/1` (see
-  `AshDataTable.Kit.Words`). LiveView sends a text again only when what it
-  is made of changed.
-
-  What each part is given of them (beside the assigns above):
-
-    * `related` - `relationship`, `heading` (nil without a title),
-      `heading_before` and `heading_after` (its words before and after the
-      record, which a part draws as a link; nil without a title),
-      `show_all_records`;
-    * `line` - `count` (how many records its open nested table has, nil
-      where that is not known), the `text` and `message` of the line in the
-      detail's item (`AshDataTable.Item`), which its `detail` hands on;
-    * `full_view` - `full_view`, `full_view_of`;
-    * `argument` - `add_value`, `errors`, and per value of a list
-      `value_position`, `remove_value`;
-    * `filter` - `filter`, `filter_operator`, `any`, `operators` (one per
-      `column.operators`), `range_from`, `range_to`, `filter_from`,
-      `filter_to`, `clear_filter`, `invalid_filter`, `chosen` (what a
-      filter of several values says is chosen);
-    * `selection_line` - `select_all`, `clear_selection`, `more_actions`, `clear_filters`,
-      `changed_records`, `read_again`, `selected_rows` (for
-      `Attrs.selection/2`), `selected` (what is selected, in its plural
-      form; nil for nothing);
-    * `columns` - `columns` (what the button shows), `columns_name` (what
-      it and its list are called: of a nested table with the table's name,
-      "Columns of Comments"), `columns_with` (that name, with `{details}`
-      where the hook puts the parts it takes), `columns_hidden`, `columns_filtered`,
-      `columns_sorted` (each a list: the text for 1, 2, … up to the number
-      of `columns`), `column_hidden`, `column_shown`, `width_of` (the name
-      of its width field) and `flags` (one per column; a flag nil for
-      none), `label_width` (the name of the label column's width field,
-      nil for none), `reset_widths`;
-    * `status` - `announcement`, `summary` and `failures` of a run's result;
-    * `grid` - `skip_table` (the skip link, with the table's name),
-      `select_page`, `select_row`, `related_records`, `actions`,
-      `show_whole`, `show_less`, `show_whole_of`, `show_less_of` (for
-      `Attrs.grid/6`; the last two with `{column}` where the hook puts the
-      column's label); and what the cells of its rows say alike on every
-      row, for a kit that draws the rows itself from the items (an item
-      holds only what varies): `hidden_value`, `show`, `hide`,
-      `show_value` and `hide_value` (lists, one per column of the model,
-      nil where the column is not sensitive) of a masked cell,
-      `not_available` of a forbidden one, and `yes` and `no`, what a failed
-      boolean cell shows of what was typed;
-    * `row` - `select_row`, `related_records`;
-    * `cell` - `locale`; masked: `hidden_value`, `show`, `hide`,
-      `show_value`, `hide_value`; forbidden, and of a union:
-      `not_available`; after a save failed (but of a sensitive column):
-      `typed`, what was typed as the cell would show it;
-    * `summary_cell` - `value`, `text`, `locale`; `kind`, `not_available`;
-    * `header_cell` - `read_only`: the name of the lock after the heading
-      of a column no row may be edited in, where the table offers editing
-      at all (nil for none: no lock);
-    * `editor` - `clear`, `clear_value`;
-    * `list` - `add_value`, `value_label`, `remove_label` (with `{n}`), and
-      per value `value_position`, `remove_value`;
-    * `panel` - `title`, `submit`, `question`, `errors`, `cancel`;
-    * `field` - `locale`; `required`, `choose`, `add_value`, `kind`,
-      `remove_group`, `will_be_cleared`, `keep`, `clear`, `keep_value`,
-      `clear_value`, `errors`, per record it holds `chosen` (what the
-      record is called) and `remove_chosen`, and of a list of groups per
-      value `value_position`, `remove_value` and `item_errors` (what is said
-      of that value as a whole);
-    * `picker` - `title`, `question`, `error`, `cancel`, `choose_none`,
-      `choose`;
-    * `confirm` - `cancel`, `confirm`;
-    * `message`, `failure` - `text`, `message`;
-    * `pagination` - `label`, `range`, `previous`, `next`,
-      `rows_per_page`, and `pages` (the page numbers offered) with a
-      `go_to_page` each.
+      after what it shows (the row grows to it).
 
   The names of the model's columns, values, actions, relationships and
-  arguments, and the table's label, are words in the model already.
+  arguments, and the table's label, are words in the model already, and
+  come so in the projections.
 
   ## The places a nested table is moved into
 
@@ -573,236 +334,24 @@ defmodule AshDataTable.Kit do
   draws both closed, with their places in them, ahead of time; a kit drawn
   in HEEx draws nothing while closed, and the place as it opens.
 
-  ## Kit contract 6: the values a part is given
+  ## Kit contract 6: what a part is given
 
   The items of the stream (`rows` of `grid`, `row` of `row`, `detail` and
-  `actions_cell`) are `AshDataTable.Item`'s maps, documented there. The
-  structs below are what the other parts are given (`panel`, `picker`,
-  `model`, `column`, `state`, `page`, …). Their fields, as listed here, and
-  the item's keys are the kit contract of version 6: a field is not
-  renamed, taken away or given another meaning without the contract's
-  number going up. The modules themselves, and their functions, are the
-  table's own and undocumented: a kit reads the fields, and calls none of
-  them. A message a part is given is a map, `%{key: key, values: values}`
+  `actions_cell`, `cell` of `cell`) are `AshDataTable.Item`'s maps,
+  documented there. Every other thing a part is given is its projection,
+  whose keys `AshDataTable.Kit.Projection` lists part by part. Those keys,
+  and the item's, are the kit contract of version 6: a key is not renamed,
+  taken away or given another meaning without the contract's number going
+  up. A message a part is given is a map, `%{key: key, values: values}`
   (`AshDataTable.Messages`).
-
-  Besides these, a part is given plain values: `bulk` and `offered`
-  (`AshDataTable.Model.Action`s), `selecting` (`:single`,
-  `:multi` or nil), `summary` (by column `{:ok, value}` or
-  `:unavailable`), `result` (a run's `summary` and `failures`, messages),
-  `announcement`/`announcements` (messages), `related` (`via` and `key` of
-  the record a table is limited to), `full_view` (a path) and `running`
-  (an `AshDataTable.Model.Action`, or nil).
-
-  ### `AshDataTable.Geometry`
-
-  Where the columns and rows stand in the grid (`geometry`), as the table
-  counts them (`aria-colindex`, `aria-rowindex`, `aria-colcount`); the
-  module's moduledoc says how each is placed:
-
-    * `lead` - the columns before the data columns (the box at 1, the
-      expander at `lead`; the grid's `data-lead`)
-    * `trail` - 1 where the rows have an actions cell, at `colcount`; else 0
-    * `columns` - the data columns; the one at `index` (from 0) stands at
-      `lead + index + 1`
-    * `colcount` - every column: what a cell that spans the grid spans
-    * `header_rows` - 1, or 2 with the filter row
-    * `summary?` - whether the grid has the footer row of summaries (a
-      column of the person's has a summary)
-
-  ### `AshDataTable.Present.Panel`
-
-    * `title`, `submit`, `question` - messages (`question` nil for none)
-    * `ask` - `"changed"` where the question is asked only when something
-      changed (the panel of a cell: a list, a map cell, a union), else nil;
-      what `Attrs.panel/5` writes as `data-ask`
-    * `destructive?` - whether its action destroys the record
-    * `errors` - what the action said of none of the fields, or nil
-    * `method` - its form's HTTP method
-    * `fields` - an `AshDataTable.Present.Field` per input
-    * `inside` - what the fields of a value made of fields are drawn with:
-      `errors` by place, `touched`, `submitted?` and `time_zone`
-
-  ### `AshDataTable.Present.Field`
-
-    * `name`, `path`, `form_name` - the input's name, the names it is sent
-      under, and its control's name
-    * `input` - the `AshDataTable.Model.Input`
-    * `value` - what its control holds, as text; for a sensitive field
-      only what was typed into it in this panel
-    * `errors`, `places` - the messages shown at it, and the places of the
-      values of an array they are about
-    * `chosen` - of a field given by choosing records: by key,
-      `%{label: {column, value, time_zone} | nil, row: …}`; else nil
-    * `clear` - of a sensitive field that can be emptied: `:offered` or
-      `:asked`; else nil
-
-  ### `AshDataTable.Present.Picker`
-
-    * `name` - the column or field it chooses for
-    * `title`, `question`, `error` - messages, or nil
-    * `several?`, `allow_none?` - whether several records are chosen, and
-      whether "None" is offered
-    * `current`, `chosen` - the key or keys held now, and the rows selected
-      as it opens (`{key, names}`)
-    * `destination`, `choose_action`, `destination_attribute`, `label` -
-      the resource chosen from, its read action, the attribute that is
-      the value, what a record is called
-
-  ### `AshDataTable.Model`
-
-  The table as it is drawn for this person (`model`):
-
-    * `resource`, `table` - the resource and the table's name
-    * `name` - what the table is called
-    * `primary_key` - the names of the primary key's fields
-    * `columns` - `AshDataTable.Model.Column`s, in their order
-    * `arguments` - the argument line, `AshDataTable.Model.Argument`s
-    * `relationships` - the lines a row offers, `AshDataTable.Model.Relationship`s
-    * `actions`, `table_actions`, `create` - the row actions, the table
-      actions, and the create action or nil (`AshDataTable.Model.Action`s)
-    * `pagination` - an `AshDataTable.Model.Pagination`
-    * `read_action`, `read_arguments` - what the table reads through
-    * `via` - of a nested table, the relationship it is nested by, or nil
-    * `max_depth` - how deep its rows expand
-    * `on_forbidden` - `:not_found` or `:message`, what a refused read is
-    * `live?` - whether it follows live updates
-    * `sticky_label?` - a presentation hint: the label column stays in view
-    * `time_zone` - the page's zone
-    * `editing?` - whether a column of it can be edited
-    * `label_column` - the `AshDataTable.Model.Column` a record is called
-      by, nil for none: it cannot be hidden, and stays in view where
-      `sticky_label?`
-
-  ### `AshDataTable.Model.Column`
-
-    * `name`, `field`, `kind` - what the column is told apart by, the
-      resource's field it shows, and what that field is (`:attribute`,
-      `:calculation`, `:aggregate`, `:reference`, …)
-    * `label` - its header
-    * `type`, `cell_type`, `values` - the Ash type with its constraints,
-      what it is shown as (`:text`, `:number`, …, `{:array, item}`, `:map`,
-      `:union`, `:other`), and of an enum each value with its label
-    * `fields`, `members` - of a value made of fields its
-      `AshDataTable.Model.Field`s, of a union its kinds; else nil
-    * `sortable?`, `operators`, `takes` - whether it sorts, its filter's
-      operators (the default first), and by operator what it takes
-      (`:none`, `:one`, `:many` or `:range`)
-    * `editable?`, `editor`, `update_action`, `required?` - whether its
-      cells can be edited at all, what with (`:text`, `:number`,
-      `:boolean`, `:date`, `:datetime`, `:enum`, `:choices`, `:list`,
-      `:group`, `:groups`, `:union`, `:component`, `:reference`; nil where
-      they cannot), through which action, and whether a cell may be left
-      empty
-    * `confirm` - the question asked before a save, or nil
-    * `component` - a presentation hint: `module`, `cell?`, `editor?`,
-      `commit`, `column` (`AshDataTable.Component.Column`), or nil
-    * `max_lines` - a presentation hint: how many lines a cell shows
-    * `reference` - of a reference column: `relationship`, `destination`,
-      `label_field`, `source_attribute`, `destination_attribute`,
-      `allow_nil?`, `choose_action`, …; else nil
-    * `summary` - the kind of its footer summary, or nil
-    * `sensitive?`, `partly_hidden?` - its cells are masked; the person
-      sees the field on some records only
-    * `fixed`, `arguments` - what a calculation column is computed with
-
-  ### `AshDataTable.Model.Field`
-
-  A field of a value made of fields, or a kind of a union:
-
-    * `name`, `label`, `type`, `cell_type`, `values` - as a column's
-    * `fields`, `members` - of a value made of fields, of a union; else nil
-    * `tag` - of a union's kind, what tells it apart (`{key, value}`), or nil
-    * `input?`, `editor`, `required?`, `default` - whether a person gives
-      it, its control, whether it may be empty, what a new value starts with
-    * `key?` - a key of the value that is sent back as it came
-    * `sensitive?`
-
-  ### `AshDataTable.Model.Action`
-
-    * `name`, `type`, `label` - its name, `:update`, `:destroy`,
-      `:create` or `:action`, and what its button says
-    * `confirm` - the question asked before it runs, or nil
-    * `inputs` - what the person gives it, `AshDataTable.Model.Input`s
-    * `panel?` - whether it opens the action panel first
-    * `bulk?` - whether it is offered on the selected rows too
-    * `record_argument`, `page_arguments`, `link` - what the table gives it
-      itself (no inputs)
-    * `returns` - of a generic action that returns an enum, its cell type
-      and values; else nil
-
-  ### `AshDataTable.Model.Input`
-
-    * `name`, `kind`, `label` - its name, `:attribute` or `:argument`,
-      and what its field is called
-    * `type`, `cell_type`, `values` - as a column's
-    * `editor` - its control (a column's editors, `:file`, `:plain`,
-      `:reference`, `:references`)
-    * `fields`, `members` - of a value made of fields, of a union
-    * `upload` - of a file: `accept`, `max_file_size`
-    * `component` - of an attribute whose column has a component editor
-    * `reference` - of a key chosen in the picker: as a column's, with
-      `several?` and `related?`
-    * `required?`, `default`, `sensitive?`, `partly_hidden?`
-
-  ### `AshDataTable.Model.Relationship`
-
-    * `name`, `label`, `kind`, `cardinality` - its name, what its line
-      says, what it is on the resource, `:one` or `:many`
-    * `source`, `source_table`, `source_read_action` - the table it is a
-      line of
-    * `destination`, `table`, `read_action` - the nested table
-    * `sort` - its own sort
-    * `pageable?`, `sortable?`, `filterable?` - what the nested table offers
-    * `link` - what a record created under the row is given, or nil
-
-  ### `AshDataTable.Model.Argument`
-
-  An argument of the argument line:
-
-    * `name`, `column`, `label`, `column_label` - its name, the
-      calculation column it is asked for (or nil), what its input is
-      called, and that column's label
-    * `type`, `cell_type`, `values`, `editor`, `required?`
-    * `default`, `default_fun` - what it is while nothing is chosen
-    * `time_zone`
-
-  ### `AshDataTable.Model.Pagination`
-
-    * `strategy` - `:offset`, `:keyset` or `:none`
-    * `page_size`, `page_sizes` - the size it opens with, and the sizes on
-      offer
-    * `countable?` - whether a total is known
-
-  ### `AshDataTable.State`
-
-  What the person has chosen (`state`, and a page's `previous` and `next`):
-
-    * `sort` - `{column, :asc | :desc}` or nil
-    * `filters` - by column, `{operator, value}`
-    * `arguments` - by an argument's key, what was typed
-    * `page`, `after`, `before` - the page number (offset), the cursors
-      (keyset)
-    * `per` - the page size chosen, or nil for the one it opens with
-
-  ### `AshDataTable.Query.Page`
-
-  The page shown (`page`), nil before the first read:
-
-    * `total`, `pages` - the number of records and of pages, or nil
-    * `offset` - the number of records before it, or nil
-    * `previous`, `next` - the `AshDataTable.State` of the pages around
-      it, nil where there is none
-    * `records`, `parent` - always nil: a part is given no record
-
 
   ## Presentation hints
 
   What a column says of how it is drawn is for the parts alone: its
   `component` (drawn before the kit's `cell/1` and `editor/1`), `max_lines`
-  (the cell's `data-lines`) and the table's `sticky_label?` (a header's
-  `data-label`). The table reads, sorts, filters and writes the same
-  without them.
+  (the cell's `data-lines`, in its `attrs`) and the table's `sticky_label?`
+  (a header's `data-label`). The table reads, sorts, filters and writes
+  the same without them.
 
   ## Contract versions
 
@@ -876,7 +425,23 @@ defmodule AshDataTable.Kit do
   new `Attrs.head_row/2` and `Attrs.filter_row/2` (the header rows) do, and
   `Attrs.colcount/3` and `Attrs.filter_row?/1` are gone (its `colcount`,
   its `header_rows`). Stage 9d: `AshDataTable.Present.Panel` has `ask`
-  (`"changed"` or nil, the panel's `data-ask`) in place of `kind`.
+  (`"changed"` or nil, the panel's `data-ask`) in place of `kind`. Stage
+  9f (ADR 0004): every part is given its projection
+  (`AshDataTable.Kit.Projection`), an assign per key, and beside it only
+  `kit`, `id`, a row's item or a cell's, the stream, the panel's uploads,
+  the root's slots and a `class`; no part is given `model`, `state`,
+  `page`, `geometry`, `panel`, `picker`, `fields`, `arguments`, `editors`,
+  `filters`, `texts` beside a projection's own, or a struct of the
+  table's; `AshDataTable.Kit.Words`, `Attrs.actions/2` and
+  `Attrs.detail?/1` are gone (in the projections: the texts, a line's
+  bundle; an action cell's `data-failed` is drawn from the item); the
+  bundles a kit wrote by hand are `Attrs.clear_filter/3`,
+  `Attrs.clear_filters/2`, `Attrs.read_again/2`, `Attrs.page/3`,
+  `Attrs.page_size/2`, `Attrs.argument_add/3`, `Attrs.argument_remove/4`,
+  `Attrs.panel_form/3` and `Attrs.pick_input/3`; the ids a part wrote by
+  hand per row are `Ids.record/1`, `Ids.action/2`, `Ids.open/1` and
+  `Ids.line/2`; `cell/1` is given a column's projection and `editor/1`
+  an editor's.
   """
 
   use Phoenix.Component
@@ -1051,16 +616,10 @@ defmodule AshDataTable.Kit do
 
   @doc """
   Draws the part `part` of `kit` with the other assigns, `kit` among them:
-  how a part draws the parts inside it. Its texts are among the assigns,
-  made by `AshDataTable.Kit.Words` of the part's other assigns:
+  how a part draws the parts inside it, given the inner part's projection
+  (`AshDataTable.Kit.Projection`), which is in its own:
 
-      <AshDataTable.Kit.part
-        part={:failure}
-        kit={@kit}
-        id={AshDataTable.Ids.error(@id)}
-        message={AshDataTable.Kit.Words.message(:failure, %{message: @message})}
-        text={AshDataTable.Kit.Words.text(:failure, %{message: @message})}
-      />
+      <AshDataTable.Kit.part :for={cell <- @head.cells} part={:header_cell} kit={@kit} {cell} />
   """
   def part(assigns) do
     {part, assigns} = Map.pop!(assigns, :part)
@@ -1292,7 +851,9 @@ defmodule AshDataTable.Kit do
         "in place of Attrs.table/8, and Attrs.grid/6, Attrs.spanning/3 and Attrs.summaries/3 " <>
         "the geometry; Attrs.colcount/3 and Attrs.filter_row?/1 are gone (colcount, header_rows); " <>
         "and AshDataTable.Present.Panel has ask (\"changed\" or nil, the panel's data-ask) in " <>
-        "place of kind"
+        "place of kind; and every part is given its projection (AshDataTable.Kit.Projection), " <>
+        "an assign per key, in place of model, state, page, geometry, panel, picker, fields, " <>
+        "arguments, editors, filters and the texts of AshDataTable.Kit.Words, which is gone"
 
   defp changed(_contract), do: "."
 

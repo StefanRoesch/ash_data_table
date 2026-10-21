@@ -91,12 +91,12 @@ defmodule DemoWeb.E2E.ControlledLive do
           {field.label}
           <input
             type="text"
-            id={"request-#{field.name}"}
-            name={"request[#{field.name}]"}
+            id={"request-#{hd(field.path)}"}
+            name={"request[#{hd(field.path)}]"}
             value={field.value}
             class="input"
           />
-          <span :for={error <- field.errors} class="request-error">{error}</span>
+          <span :for={error <- field.texts.errors} class="request-error">{error}</span>
         </label>
         <button type="submit" id="request-run" class="btn">Rename it</button>
         <button

@@ -67,13 +67,20 @@ And by kind:
   `value`, the value the cell is to be given (nil for a sensitive column).
 - **`:panel`**: `action` (nil for the panel of a filter), `column` (of a
   cell's or a filter's panel), `title`, `errors` (what is said about none of
-  its fields) and `fields`. Each field has `name`, `label`, `type` (an
-  array's is `%{array: item}`), `editor` (its control), `required?`,
-  `value` (as its form sends it; nil for a sensitive field), `values` (the
-  choices of an enum, each `%{value: value, label: label}`), `errors`, `messages`
-  and `chosen` (the records a field holds that were chosen, each with `key`
-  and `label`). A value made of fields has its `fields`, a union its
-  `kinds`, each described the same way, and a file field its `upload`.
+  its fields) and `fields`. Each field is what a kit draws the field from,
+  its projection (`AshDataTable.Kit.Projection`, a field of `panel`), without
+  its bundles (the attributes of its elements, which a kit spreads): its
+  `path` (the names it is sent under, `["title"]`, inside a value made of
+  fields the names on the way to it), `label`, `editor` (its control),
+  `required?`, `value` (as its form sends it, a value made of fields too;
+  nil for a sensitive field), `values` (the choices of an enum, each
+  `%{value:, label:, chosen?:}`), `invalid?`, `texts` and `messages` (what
+  is said at it, `errors` among them), and by what it is: `reference` and
+  `references` (the records it holds, each its `key` and what it is called,
+  `text`), `group`, `groups` and `union` (what a value made of fields holds,
+  each field described the same way; a union's `kinds`), `list`, `control`,
+  `clear`, `count`. A file field has `upload`, the name of its upload among
+  the LiveView's.
 - **`:picker`**: `column` (what it chooses for), `resource` (what is chosen
   from), `several?`, `allow_none?`, `current` (the key or keys held now),
   `chosen`, `title` and `errors` (why a key chose nothing). Its `question`
@@ -101,12 +108,12 @@ def render(assigns) do
     {field.label}
     <input
       type="text"
-      id={"request-#{field.name}"}
-      name={"request[#{field.name}]"}
+      id={"request-#{hd(field.path)}"}
+      name={"request[#{hd(field.path)}]"}
       value={field.value}
       class="input"
     />
-    <span :for={error <- field.errors} class="request-error">{error}</span>
+    <span :for={error <- field.texts.errors} class="request-error">{error}</span>
   </label>
 ```
 

@@ -129,10 +129,10 @@ defmodule DemoWeb.Tables.ControlledTest do
              request(view)
 
     assert [
-             %{name: :title, label: "Title", value: "", required?: false},
-             %{name: :code, value: nil},
-             %{name: :note},
-             %{name: :pin, value: nil}
+             %{path: ["title"], label: "Title", value: "", required?: false},
+             %{path: ["code"], value: nil},
+             %{path: ["note"]},
+             %{path: ["pin"], value: nil}
            ] = fields
   end
 
@@ -146,7 +146,9 @@ defmodule DemoWeb.Tables.ControlledTest do
     answer(view, &AshDataTable.validate_request(&1, :cards, ref, %{"title" => "Renamed"}))
     answer(view, &AshDataTable.submit_request(&1, :cards, ref, %{"title" => "Renamed"}))
 
-    assert %{ref: ^ref, fields: [_, %{name: :reason, errors: [_ | _]}]} = request(view)
+    assert %{ref: ^ref, fields: [_, %{path: ["reason"], texts: %{errors: [_ | _]}}]} =
+             request(view)
+
     assert Ash.get!(Card, card.id).title == "First"
 
     answer(
@@ -220,8 +222,8 @@ defmodule DemoWeb.Tables.ControlledTest do
 
       assert %{kind: :panel, action: :update, column: :size, fields: [field]} = request(view)
 
-      assert %{name: :size, editor: :group, fields: [%{name: :width}, %{name: :height}]} =
-               field
+      # what the panel shows of it: no value yet, so no fields
+      assert %{path: ["size"], editor: :group, group: %{members: nil}} = field
 
       params = %{"title" => "Renamed", "reason" => "typo"}
       answer(view, &AshDataTable.submit_request(&1, :cards, first, params))

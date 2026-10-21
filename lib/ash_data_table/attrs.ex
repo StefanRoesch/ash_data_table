@@ -6,9 +6,8 @@ defmodule AshDataTable.Attrs do
   # example and knows no other event.
   #
   # `by`: `:bundle`, sent by an element that spreads a bundle of this
-  # module (named in `bundle`); `:kit`, sent by markup a part draws with
-  # the name itself (`event/2`), or by a kit in the browser with
-  # `pushEventTo` through its transport; `:hook`, sent by the table's hooks
+  # module (named in `bundle`), which a part's projection holds
+  # (`AshDataTable.Kit.Projection`); `:hook`, sent by the table's hooks
   # alone, which a kit never sends.
   @events [
     %{
@@ -305,7 +304,6 @@ defmodule AshDataTable.Attrs do
 
   @by %{
     bundle: "a bundle",
-    kit: "a kit may send it",
     hook: "the hooks"
   }
 
@@ -357,13 +355,10 @@ defmodule AshDataTable.Attrs do
   row is the key in its DOM id; a column, action, relationship or input is
   named as text: each is a claim the table checks.
 
-  A kit sends an event through a bundle wherever one exists (the element
-  spreads it: `phx-click`, a form's `phx-change` and `phx-submit`). An
-  event that no bundle sends, marked "a kit may send it", a part sends
-  itself: in HEEx with `phx-click={AshDataTable.Attrs.event(@id, "page")}`
-  and its values, in the browser with the transport's `push(name, payload)`
-  (`assets/js/mount.js`), which names it with the table. The events of
-  the hooks are the hooks' alone: a kit never sends them.
+  A kit sends every event through a bundle, which its part's projection
+  holds (the element spreads it: `phx-click`, a form's `phx-change` and
+  `phx-submit`). The events of the hooks are the hooks' alone: a kit never
+  sends them.
 
   | Event | Sent by | Payload | Answer |
   | --- | --- | --- | --- |
@@ -935,7 +930,7 @@ defmodule AshDataTable.Attrs do
 
   @doc """
   The events a table takes from the browser, as "Events" above lists them:
-  `name`, `by` (`:bundle`, `:kit` or `:hook`), `bundle` (the function whose
+  `name`, `by` (`:bundle` or `:hook`), `bundle` (the function whose
   bundle sends it, for `:bundle`), `payload`, `reply` and an `example`
   payload.
   """

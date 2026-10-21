@@ -110,7 +110,7 @@ defmodule DemoWeb.Tables.ControlledNestedTest do
     assert %{ref: ref, kind: :panel, table: ^nested} = requested()
     refute render(view) =~ ~s(id="#{nested}-panel")
 
-    assert [%{ref: ^ref, action: :retitle, path: ["kit", ^nested], fields: [%{name: :title}]}] =
+    assert [%{ref: ^ref, action: :retitle, path: ["kit", ^nested], fields: [%{path: ["title"]}]}] =
              requests(view)
 
     answer(view, &AshDataTable.submit_request(&1, :table, ref, %{"title" => "Washer"}))

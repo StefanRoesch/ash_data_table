@@ -321,7 +321,7 @@ defmodule DemoWeb.ReactKit do
   # as it is. One rule for every part: the projection is what the part is
   # given, the islands read the same shapes.
   defp props(%{} = map) when not is_struct(map) and map_size(map) > 0 do
-    if Enum.all?(Map.keys(map), &is_binary/1),
+    if bundle?(map),
       do: map |> Map.drop(["phx-hook", "phx-update", "phx-mounted"]) |> Attrs.props(),
       else: Map.new(map, fn {key, value} -> {key, props(value)} end)
   end
@@ -344,6 +344,15 @@ defmodule DemoWeb.ReactKit do
   end
 
   defp props(value), do: value
+
+  # a bundle: attribute names, each an attribute's value
+  defp bundle?(map),
+    do:
+      Enum.all?(map, fn {key, value} ->
+        is_binary(key) and
+          (is_binary(value) or is_number(value) or is_boolean(value) or is_nil(value) or
+             is_atom(value) or is_struct(value, Phoenix.LiveView.JS))
+      end)
 
   defp number(%Decimal{} = number), do: Decimal.to_float(number)
   defp number(number) when is_number(number), do: number

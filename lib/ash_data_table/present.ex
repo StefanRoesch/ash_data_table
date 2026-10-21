@@ -10,7 +10,7 @@ defmodule AshDataTable.Present do
   # given a record, an `AshPhoenix.Form` or a changeset.
   #
   # Values, not texts: the words are made beside the drawing, in the
-  # LiveView's process (`AshDataTable.Kit.Words`, and for the rows of the
+  # LiveView's process (`AshDataTable.Kit.Projection`, and for the rows of the
   # stream `AshDataTable.Item`, which turns a `Present.Row` into the item a
   # part is given, each cell with its text: ADR 0002). The messages the core
   # holds (a title, an error, a failed edit's message) are message terms,

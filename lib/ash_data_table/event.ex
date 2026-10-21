@@ -188,9 +188,8 @@ defmodule AshDataTable.Event do
   # row's primary key (`key`) and the `question`. Of a question, the action
   # and, of a cell's, its column and the value it is to be given (nil for a
   # sensitive column); of a panel, the action, a map cell's column, its
-  # title, what is said of none of its fields, and its fields, each with
-  # its name, label, type, whether it is required, what it holds (nil for a
-  # sensitive one), the values of a choice and what is said at it; of a
+  # title, what is said of none of its fields, and what it shows
+  # (`shown`, which `AshDataTable.requests/1` makes its fields of); of a
   # picker, the column or field it chooses for, what it chooses from, and
   # what is held now.
   #
@@ -223,19 +222,9 @@ defmodule AshDataTable.Event do
       question: shown.question,
       title: shown.title,
       errors: List.wrap(shown.errors),
-      fields:
-        for %{input: input} = field <- shown.fields do
-          input
-          |> described()
-          |> Map.merge(%{
-            value: if(input.sensitive?, do: nil, else: field.value),
-            errors: field.errors,
-            chosen:
-              for {key, %{label: label}} <- field.chosen || %{} do
-                %{key: key, label: label}
-              end
-          })
-        end
+      # what the panel shows, which `AshDataTable.requests/1` makes the
+      # request's fields of (the panel's projection, without its bundles)
+      shown: shown
     })
   end
 
@@ -268,39 +257,6 @@ defmodule AshDataTable.Event do
   defp located(held, ref, kind),
     do: %{ref: ref, kind: kind, table: held.table, path: held.path, key: held.key}
 
-  # What a field is, as the page draws it: its name, label, type, the
-  # control it has (`editor`), whether it is required, the choices of an
-  # enum (each `%{value:, label:}`); of a value made of fields its `fields`, of a union its `kinds`,
-  # each described the same way.
-  defp described(input) do
-    own = %{
-      name: input.name,
-      label: input.label,
-      type: plain_type(input.cell_type),
-      editor: input.editor,
-      required?: Map.get(input, :required?, false),
-      values:
-        input.values && for({value, label} <- input.values, do: %{value: value, label: label})
-    }
-
-    case input.editor do
-      editor when editor in [:group, :groups] ->
-        Map.put(own, :fields, for(%{input?: true} = field <- input.fields, do: described(field)))
-
-      :union ->
-        Map.put(own, :kinds, Enum.map(input.members, &described/1))
-
-      _plain ->
-        own
-    end
-  end
-
-  # A cell type as plain data: an array's is `%{array: item}`.
-  defp plain_type({:array, item}), do: %{array: plain_type(item)}
-  defp plain_type(type), do: type
-
-  # What a field of the panel holds that the picker is open for: the keys,
-  # as the field writes them.
   defp held(panel, name), do: AshDataTable.Panel.keys(panel, name)
 
   # What the records a field of the panel holds are called, as far as the

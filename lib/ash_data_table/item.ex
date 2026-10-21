@@ -120,10 +120,10 @@ defmodule AshDataTable.Item do
 
   The texts that are the same on every row (a masked cell's "Show", "Not
   available", a row's "Select row") are not in it, so a row carries only
-  what varies: a part is given them once (`AshDataTable.Kit.Words`, the
-  `texts` of `row` and `cell`; for a kit that draws the rows from the items
-  itself, the `grid` part's `texts`, by column where they name it:
-  `show_value`, `hide_value`, `not_available`, …).
+  what varies: a part is given them once, in its projection
+  (`AshDataTable.Kit.Projection`: the `texts` of `row` and of each column a
+  `cell` is drawn with; the `grid` part's `texts` too, by column where they
+  name it: `show_value`, `hide_value`, `not_available`, …).
   """
 
   alias AshDataTable.Format
