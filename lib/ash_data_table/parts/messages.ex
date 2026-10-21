@@ -7,15 +7,7 @@ defmodule AshDataTable.Parts.Messages do
   use Phoenix.Component
 
   alias AshDataTable.Attrs
-  alias AshDataTable.Ids
   alias Phoenix.LiveView.JS
-
-  # Whether anything of the table asks a question before it runs: a column,
-  # a row action, a table action, and every action on the selected rows.
-  defp asks?(model, bulk),
-    do:
-      bulk != [] or Enum.any?(model.columns, & &1.confirm) or
-        Enum.any?(model.actions ++ model.table_actions, & &1.confirm)
 
   attr :id, :any, required: true
   attr :myself, :any, required: true
@@ -46,60 +38,63 @@ defmodule AshDataTable.Parts.Messages do
     """
   end
 
-  attr :announcement, :any, required: true
-  attr :announcements, :any, required: true
+  # its projection (`AshDataTable.Kit.Projection`, `status`)
   attr :id, :any, required: true
-  attr :result, :any, required: true
+  attr :region, :map, required: true
+  attr :again?, :boolean, required: true
+  attr :result, :map, required: true
+  attr :texts, :map, required: true
+  attr :messages, :map, required: true
   attr :kit, :atom, required: true
 
   def status(assigns) do
     ~H"""
     <%!-- Read out after each filter change, and when a save fails. A live region
     is only read when its content changes, so every other announcement ends in a
-    no-break space. --%>
-    <p {Attrs.status(@id)} class={@kit.class(:status, %{})} phx-no-format>{@texts.announcement}{if rem(@announcements, 2) == 1, do: "\u00A0"}</p>
+    no-break space (`again?`). --%>
+    <p {@region} class={@kit.class(:status, %{})} phx-no-format>{@texts.announcement}{if @again?, do: "\u00A0"}</p>
     <%!-- What the last action on the selected rows came to: on how many records
     it ran, on how many it did not, and why not. It is read out through the live
     region above, and stays until the selection changes. In the text colour. --%>
-    <p :if={@result} id={"#{@id}-result"} class="mb-2 text-sm">
+    <p :if={@result} id={@result.id} class="mb-2 text-sm">
       <span data-summary>{@texts.summary}</span>
       <span :for={failure <- @texts.failures} data-failure>{failure}</span>
     </p>
     """
   end
 
-  attr :bulk, :any, required: true
+  # its projection (`AshDataTable.Kit.Projection`, `confirm`)
   attr :id, :any, required: true
-  attr :model, :any, required: true
+  attr :asks?, :boolean, required: true
   # `:modal`, a dialog over the page, or `:inline`, a part of it
   attr :presentation, :atom, required: true
-  # the question's place inside the panel or the picker open over the
-  # page (`:panel`, `:picker`), nil for the table's own
-  attr :place, :atom, required: true
+  attr :holder, :map, required: true
+  attr :dialog, :map, required: true
+  attr :question, :map, required: true
+  attr :texts, :map, required: true
+  attr :messages, :map, required: true
   attr :kit, :atom, required: true
 
   def confirm(assigns) do
-    assigns = assign(assigns, suffix: Attrs.asked_in(assigns.place))
-
     ~H"""
     <%!-- The one dialog of the table: it asks the question of a column with
     `confirm` before the cell is saved, that of a row action, and the one that
     comes before every action on the selected rows. The hook opens it and puts
     the question in, so patches leave it alone. Drawn once more inside a panel
     or picker that is open over the page, where the question is asked in the
-    page (`place`, its ids ending in `-in-panel` or `-in-picker`): what is under
+    page (its ids ending in `-in-panel` or `-in-picker`): what is under
     such a panel is inert. --%>
-    <div :if={asks?(@model, @bulk)} id={"#{@id}-dialogs#{@suffix}"} phx-update="ignore">
+    <div :if={@asks?} {@holder}>
       <%!-- Styled here and not with daisyUI's `modal`: that one fades in, and
         a dialog that is not visible yet when it opens cannot take the focus. Its
         edge is its shadow, which forced colours take away: there it has a border. --%>
       <.dynamic_tag
         tag_name={if @presentation == :modal, do: "dialog", else: "section"}
-        {Attrs.confirm(@id, @presentation, @place)}
+        {@dialog}
         class={@kit.class(:confirm, %{presentation: @presentation})}
       >
         <form method="dialog">
-          <p id={"#{Ids.dialog(@id)}-question#{@suffix}"}></p>
+          <p {@question}></p>
           <div class="mt-6 flex justify-end gap-2">
             <button value="cancel" class="btn">{@texts.cancel}</button>
             <button value="confirm" class="btn btn-primary data-destructive:btn-error">
@@ -117,35 +112,21 @@ defmodule AshDataTable.Parts.Messages do
   # the read action requires that is empty (`:fill`: no read is run, and it
   # is neither an error nor "No records"; it is read out through the live
   # region), and "No records" (`:empty`). In the text colour: the error
-  # colour is too faint for small text.
+  # colour is too faint for small text. Its projection
+  # (`AshDataTable.Kit.Projection`, `message`).
   attr :id, :string, required: true
   attr :kind, :atom, required: true
+  attr :element, :map, required: true
+  attr :nested?, :boolean, required: true
   attr :text, :string, required: true
   attr :message, :any, required: true
-  attr :nested?, :boolean, required: true
   attr :kit, :atom, required: true
 
   def message(assigns) do
     ~H"""
-    <p
-      id={"#{@id}-#{@kind}"}
-      role={@kind == :error && "alert"}
-      class={@kit.class(:message, %{kind: @kind, nested?: @nested?})}
-    >
+    <p {@element} class={@kit.class(:message, %{kind: @kind, nested?: @nested?})}>
       {@text}
     </p>
     """
-  end
-
-  # The messages the table shows now, each with its kind.
-  def messages(error, fill, loading?, row_count) do
-    [
-      error && {:error, error},
-      loading? && {:loading, {:text, :loading, []}},
-      fill && {:fill, fill},
-      (is_nil(error) and is_nil(fill) and row_count == 0 and not loading?) &&
-        {:empty, {:text, :no_records, []}}
-    ]
-    |> Enum.filter(& &1)
   end
 end

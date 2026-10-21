@@ -444,30 +444,16 @@ defmodule DemoWeb.DivKit do
             part={:pagination}
             kit={@kit}
             id={@id}
-            nested?={true}
-            page={@page}
-            model={@model}
-            state={@state}
-            row_count={@row_count}
-            label={@label}
-            target={@myself}
-            pages={Words.value(:pagination, %{page: @page, state: @state})}
-            texts={
-              Words.texts(:pagination, %{
-                page: @page,
-                row_count: @row_count,
-                state: @state,
-                label: @label
-              })
-            }
-            messages={
-              Words.messages(:pagination, %{
-                page: @page,
-                row_count: @row_count,
-                state: @state,
-                label: @label
-              })
-            }
+            {AshDataTable.Kit.Projection.of(:pagination, %{
+              id: @id,
+              nested?: true,
+              page: @page,
+              model: @model,
+              state: @state,
+              row_count: @row_count,
+              label: @label,
+              target: @myself
+            })}
           />
         </div>
       </div>

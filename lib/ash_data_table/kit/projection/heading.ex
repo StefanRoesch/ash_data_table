@@ -14,6 +14,10 @@ defmodule AshDataTable.Kit.Projection.Heading do
   alias AshDataTable.Model.Limits
 
   @doc false
+  def keys,
+    do: [:shown?, :nested?, :element, :name, :columns, :argument_line, :acts?, :create, :actions]
+
+  @doc false
   # `heading` is what the page asks of the table's name (a level, true, or
   # false), `lines` what the argument line was sent, `refused` what Ash
   # refused of it.

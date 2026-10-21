@@ -177,7 +177,11 @@ defmodule DemoWeb.ReactKit do
       id={"#{@id}-status-island"}
       name="AshStatus"
       class="contents"
-      status={Props.status(@id, @announcements, @texts)}
+      region={Props.of(@region)}
+      again?={@again?}
+      result={@result}
+      texts={@texts}
+      messages={@messages}
     />
     """
   end
@@ -189,7 +193,14 @@ defmodule DemoWeb.ReactKit do
       id={"#{@id}-related-island"}
       name="AshRelated"
       class="contents"
-      related={Props.related(@id, @title, @parent, @clear, @create, @actions, @target, @texts)}
+      element={Props.of(@element)}
+      heading={Props.of(@heading)}
+      record={@record}
+      create={Props.of(@create)}
+      actions={Props.of(@actions)}
+      clear={@clear}
+      texts={@texts}
+      messages={@messages}
     />
     """
   end
@@ -201,7 +212,11 @@ defmodule DemoWeb.ReactKit do
       id={"#{@id}-#{@kind}-island"}
       name="AshMessage"
       class="contents"
-      message={Props.message(@id, @kind, @text, @nested?)}
+      kind={@kind}
+      element={Props.of(@element)}
+      nested?={@nested?}
+      text={@text}
+      message={@message}
     />
     """
   end
@@ -212,7 +227,15 @@ defmodule DemoWeb.ReactKit do
       id={"#{@id}-pagination-island"}
       name="AshPagination"
       class="contents"
-      pagination={Props.pagination(@id, @nested?, @page, @model, @state, @target, @texts, @pages)}
+      nested?={@nested?}
+      element={Props.of(@element)}
+      range={Props.of(@range)}
+      previous={Props.of(@previous)}
+      next={Props.of(@next)}
+      pages={Props.of(@pages)}
+      sizes={Props.of(@sizes)}
+      texts={@texts}
+      messages={@messages}
     />
     """
   end
@@ -223,10 +246,16 @@ defmodule DemoWeb.ReactKit do
   def confirm(assigns) do
     ~H"""
     <LiveReact.react
-      id={"#{@id}-dialogs#{Attrs.asked_in(@place)}"}
+      id={@holder["id"]}
       name="AshConfirm"
       class="contents"
-      confirm={Props.confirm(@id, @model, @bulk, @presentation, @place, @texts)}
+      asks?={@asks?}
+      presentation={@presentation}
+      holder={Props.of(@holder)}
+      dialog={Props.of(@dialog)}
+      question={Props.of(@question)}
+      texts={@texts}
+      messages={@messages}
     />
     """
   end
@@ -262,7 +291,17 @@ defmodule DemoWeb.ReactKit do
       id={"#{@id}-picker-island"}
       name="AshPicker"
       class="contents"
-      picker={Props.picker(@id, @picker, @target, @presentation, @takes?, @texts)}
+      open?={@open?}
+      presentation={@presentation}
+      place={Props.of(@place)}
+      frame={Props.of(@frame)}
+      title={Props.of(@title)}
+      error={Props.of(@error)}
+      cancel={Props.of(@cancel)}
+      none={Props.of(@none)}
+      take={Props.of(@take)}
+      texts={@texts}
+      messages={@messages}
     />
     """
   end

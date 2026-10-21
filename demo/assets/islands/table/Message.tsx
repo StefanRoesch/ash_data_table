@@ -2,41 +2,42 @@
 // part `message`; the HEEx kit's is `Parts.Messages.message`): the error
 // of a read (`role=alert`), a nested table whose first read is on its way,
 // an argument the read action requires that is empty, and "No records".
-// One island per message. In the text colour: the error colour is too
-// faint for small text.
+// One island per message, given its projection (`AshDataTable.Kit.Projection`),
+// each key a prop. In the text colour: the error colour is too faint for
+// small text.
 import * as React from "react"
 
+import {attrs, type Bundle, type Message as Said} from "./props"
 import {Strict} from "./mounting"
 import {usePart} from "./parts"
 import {cn} from "../lib/utils"
 
 export type MessageProps = {
-  id: string
   kind: "error" | "loading" | "fill" | "empty"
-  alert: boolean
+  element: Bundle
+  "nested?": boolean
   text: string
-  nested: boolean
+  message: Said
 }
 
-export function AshMessage({message}: {message: MessageProps}) {
+export function AshMessage(props: MessageProps) {
   const MessagePart = usePart("Message")
   return (
     <Strict>
-      <MessagePart message={message} />
+      <MessagePart message={props} />
     </Strict>
   )
 }
 
 // The part `Message`.
 export function Message({message}: {message: MessageProps}) {
-  const {kind, nested} = message
+  const {kind} = message
   return (
     <p
-      id={message.id}
-      role={message.alert ? "alert" : undefined}
+      {...attrs(message.element)}
       className={cn(
         "text-center text-sm",
-        kind === "loading" || nested ? "py-4" : "py-8",
+        kind === "loading" || message["nested?"] ? "py-4" : "py-8",
         kind === "error" ? "font-medium" : "opacity-70",
       )}
     >

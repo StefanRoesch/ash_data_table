@@ -2,7 +2,8 @@ defmodule AshDataTable.Kit.Projection.Pagination do
   @moduledoc false
   # The projection of the `pagination` part (`AshDataTable.Kit.Projection`),
   # under a table on the page and in a nested table's footer: the range,
-  # Previous, the page numbers offered, Next and "Rows per page".
+  # Previous, the page numbers offered, Next and "Rows per page". Each key
+  # of its own inputs (`key/2`).
 
   alias AshDataTable.Attrs
   alias AshDataTable.Kit.Projection.Said
@@ -13,75 +14,79 @@ defmodule AshDataTable.Kit.Projection.Pagination do
   def pages?(page, model), do: not is_nil(page) and model.pagination.strategy != :none
 
   @doc false
-  def of(%{id: id, nested?: nested?, page: page, model: model, state: state} = given) do
-    target = given.target
-    numbers = numbers(page, state)
+  def keys,
+    do: [:nested?, :element, :range, :previous, :next, :pages, :sizes, :texts, :messages]
 
-    words =
-      Said.words(
-        label: Said.t(:pagination, table: given.label),
-        range: range(page, given.row_count, state),
-        previous: Said.t(:previous),
-        next: Said.t(:next),
-        rows_per_page: Said.t(:rows_per_page),
-        go_to_page: Enum.map(numbers, &Said.t(:go_to_page, page: &1))
-      )
+  @doc false
+  def key(:nested?, %{nested?: nested?}), do: nested?
 
+  def key(:element, %{id: id, label: label, nested?: nested?}),
+    do: Attrs.pagination(id, Said.say(label(label)), nested?)
+
+  def key(:range, %{id: id}), do: %{"id" => "#{id}-range"}
+
+  def key(to, %{id: id, page: page, target: target}) when to in [:previous, :next] do
+    Map.merge(
+      %{"id" => "#{id}-#{to}", "disabled" => is_nil(Map.fetch!(page, to))},
+      Attrs.page(id, Atom.to_string(to), target)
+    )
+  end
+
+  # the page numbers, where the pages are counted (offset pagination)
+  def key(:pages, %{id: id, page: page, state: state, model: model, target: target}) do
+    if model.pagination.strategy == :offset do
+      for number <- numbers(page, state) do
+        current? = number == state.page
+
+        %{
+          number: number,
+          current?: current?,
+          button:
+            Map.merge(
+              %{
+                "id" => "#{id}-page-#{number}",
+                "aria-label" => Said.say(go_to(number)),
+                "aria-current" => current? && "page"
+              },
+              Attrs.page(id, number, target)
+            )
+        }
+      end
+    else
+      []
+    end
+  end
+
+  # "Rows per page", where the table offers page sizes; else nil
+  def key(:sizes, %{id: id, model: model, state: state, target: target}) do
     sizes = model.pagination.page_sizes
     chosen = Model.Pagination.size(model.pagination, state.per)
 
-    Map.merge(
+    if sizes != [] do
       %{
-        nested?: nested?,
-        element: Attrs.pagination(id, words.texts.label, nested?),
-        range: %{"id" => "#{id}-range"},
-        previous:
-          Map.merge(
-            %{"id" => "#{id}-previous", "disabled" => is_nil(page.previous)},
-            Attrs.page(id, "previous", target)
-          ),
-        next:
-          Map.merge(
-            %{"id" => "#{id}-next", "disabled" => is_nil(page.next)},
-            Attrs.page(id, "next", target)
-          ),
-        # the page numbers, where the pages are counted (offset pagination)
-        pages:
-          if model.pagination.strategy == :offset do
-            for {number, label} <- Enum.zip(numbers, words.texts.go_to_page) do
-              current? = number == state.page
+        form: Attrs.page_size(id, target),
+        label: %{"for" => "#{id}-page-size"},
+        select: %{"id" => "#{id}-page-size", "name" => "size"},
+        options: for(size <- sizes, do: %{size: size, chosen?: size == chosen})
+      }
+    end
+  end
 
-              %{
-                number: number,
-                current?: current?,
-                button:
-                  Map.merge(
-                    %{
-                      "id" => "#{id}-page-#{number}",
-                      "aria-label" => label,
-                      "aria-current" => current? && "page"
-                    },
-                    Attrs.page(id, number, target)
-                  )
-              }
-            end
-          else
-            []
-          end,
-        # "Rows per page", where the table offers page sizes; else nil
-        sizes:
-          if sizes != [] do
-            %{
-              form: Attrs.page_size(id, target),
-              label: %{"for" => "#{id}-page-size"},
-              select: %{"id" => "#{id}-page-size", "name" => "size"},
-              options: for(size <- sizes, do: %{size: size, chosen?: size == chosen})
-            }
-          end
-      },
-      words
+  def key(words, given) when words in [:texts, :messages], do: Map.fetch!(words(given), words)
+
+  defp words(%{page: page, row_count: row_count, state: state, label: label}) do
+    Said.words(
+      label: label(label),
+      range: range(page, row_count, state),
+      previous: Said.t(:previous),
+      next: Said.t(:next),
+      rows_per_page: Said.t(:rows_per_page),
+      go_to_page: Enum.map(numbers(page, state), &go_to/1)
     )
   end
+
+  defp label(label), do: Said.t(:pagination, table: label)
+  defp go_to(number), do: Said.t(:go_to_page, page: number)
 
   # The page numbers offered: the first, the last and those around the
   # current one, of the pages there are; and the current one, also when the

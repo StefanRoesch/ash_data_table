@@ -8,6 +8,10 @@ defmodule AshDataTable.Kit.Projection.Message do
   alias AshDataTable.Kit.Projection.Said
 
   @doc false
+  # the keys of each message's projection
+  def keys, do: [:kind, :element, :nested?, :text, :message]
+
+  @doc false
   def of(%{id: id, error: error, fill: fill, loading?: loading?, row_count: row_count} = given) do
     for {kind, message} <- shown(error, fill, loading?, row_count) do
       Map.merge(

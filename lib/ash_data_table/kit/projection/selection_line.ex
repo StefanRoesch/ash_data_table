@@ -8,6 +8,9 @@ defmodule AshDataTable.Kit.Projection.SelectionLine do
   alias AshDataTable.Kit.Projection.Said
 
   @doc false
+  def keys, do: [:shown?, :nested?, :selection, :notice, :clear_filters, :texts, :messages]
+
+  @doc false
   def of(%{id: id, page: page, selected: count, all?: all?, state: state} = given) do
     any? = all? or count > 0
     filtered? = state.filters != %{}

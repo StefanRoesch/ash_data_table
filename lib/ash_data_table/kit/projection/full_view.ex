@@ -7,6 +7,9 @@ defmodule AshDataTable.Kit.Projection.FullView do
   alias AshDataTable.Kit.Projection.Said
 
   @doc false
+  def keys, do: [:row, :cell, :link, :texts, :messages]
+
+  @doc false
   # `full_view` is the link's path; `geometry` where the columns stand (the
   # link's cell spans them all).
   def of(%{id: id, full_view: full_view, label: label, geometry: geometry}) do

@@ -9,6 +9,10 @@ defmodule AshDataTable.Kit.Projection.Related do
   alias AshDataTable.Text
 
   @doc false
+  def keys,
+    do: [:element, :heading, :record, :create, :actions, :clear, :texts, :messages]
+
+  @doc false
   # `parent` is where the router mounts the record's own table (`path`), or
   # nil; `clear` the path of every record. Create and the table actions are
   # offered beside rows only (`page`).

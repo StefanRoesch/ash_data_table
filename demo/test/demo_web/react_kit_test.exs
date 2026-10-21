@@ -31,8 +31,8 @@ defmodule DemoWeb.ReactKitTest do
       {"AshGrid",
        ~w(texts skip scrollbar grid table head filters columns row footer editors failure)},
     "selection" => {"AshSelectionLine", ~w(line)},
-    "status" => {"AshStatus", ~w(status)},
-    "pagination" => {"AshPagination", ~w(pagination)}
+    "status" => {"AshStatus", :status},
+    "pagination" => {"AshPagination", :pagination}
   }
 
   setup %{conn: conn} do
@@ -138,13 +138,10 @@ defmodule DemoWeb.ReactKitTest do
       send.("filter", %{"filter" => %{"title" => %{"o" => "contains", "v" => "no such task"}}})
 
     assert %{
-             "message" => %{
-               "id" => "task-empty",
-               "kind" => "empty",
-               "alert" => false,
-               "text" => "No records"
-             }
-           } = island!(html, "task-empty-island", "AshMessage", ~w(message))
+             "element" => %{"id" => "task-empty"},
+             "kind" => "empty",
+             "text" => "No records"
+           } = island!(html, "task-empty-island", "AshMessage", :message)
   end
 
   test "a table limited to the records of one record says so in an island", %{
@@ -156,20 +153,16 @@ defmodule DemoWeb.ReactKitTest do
     {:ok, _view, html} = live(conn, "/react/tasks?task[of][project][tasks]=#{project.id}")
 
     assert %{
-             "related" => %{
-               "id" => "task-related",
-               "heading" => %{
-                 "id" => "task-related-heading",
-                 "record" => %{
-                   "id" => "task-related-parent",
-                   "title" => title,
-                   "path" => "/projects"
-                 }
-               },
-               "create" => %{"attrs" => %{"id" => "task-create"}},
-               "clear" => %{"id" => "task-related-clear", "path" => "/react/tasks"}
-             }
-           } = island!(html, "task-related-island", "AshRelated", ~w(related))
+             "element" => %{"id" => "task-related"},
+             "heading" => %{"id" => "task-related-heading"},
+             "record" => %{
+               "id" => "task-related-parent",
+               "title" => title,
+               "path" => "/projects"
+             },
+             "create" => %{"button" => %{"id" => "task-create"}},
+             "clear" => %{"id" => "task-related-clear", "path" => "/react/tasks"}
+           } = island!(html, "task-related-island", "AshRelated", :related)
 
     assert title == project.name
   end
@@ -182,14 +175,16 @@ defmodule DemoWeb.ReactKitTest do
     task = hd(world.tasks)
 
     # drawn closed, with their places, before anything opens
-    assert %{"question" => "task-dialog-question", "dialog" => %{"id" => "task-dialog"}} =
-             island!(html, "task-dialogs", "AshConfirm", ~w(confirm))["confirm"]
+    assert %{
+             "question" => %{"id" => "task-dialog-question"},
+             "dialog" => %{"id" => "task-dialog"}
+           } = island!(html, "task-dialogs", "AshConfirm", :confirm)
 
     assert %{"open" => false, "place" => "task-panel-place", "fields" => [], "frame" => nil} =
              island!(html, "task-panel-island", "AshPanel", ~w(panel))["panel"]
 
-    assert %{"open" => false, "place" => "task-picker-place", "frame" => nil} =
-             island!(html, "task-picker-island", "AshPicker", ~w(picker))["picker"]
+    assert %{"open?" => false, "place" => %{"id" => "task-picker-place"}, "frame" => nil} =
+             island!(html, "task-picker-island", "AshPicker", :picker)
 
     send = fn event, payload ->
       AshDataTable.Test.send_event(view, "task", event, payload, from: :sender)
@@ -224,10 +219,10 @@ defmodule DemoWeb.ReactKitTest do
     html = send.("pick", %{"row" => task.id, "column" => "assignee"})
 
     assert %{
-             "open" => true,
+             "open?" => true,
              "frame" => %{"id" => "task-picker", "data-table" => "task"},
-             "take" => %{"attrs" => %{"id" => "task-picker-choose", "data-take" => ""}}
-           } = island!(html, "task-picker-island", "AshPicker", ~w(picker))["picker"]
+             "take" => %{"id" => "task-picker-choose", "data-take" => ""}
+           } = island!(html, "task-picker-island", "AshPicker", :picker)
   end
 
   # The islands `suffixes` of the table `id` in the page, each a JSON
@@ -238,6 +233,10 @@ defmodule DemoWeb.ReactKitTest do
       {suffix, island!(html, "#{id}-#{suffix}-island", name, props)}
     end)
   end
+
+  # a part given its projection: a prop per key of it
+  defp island!(html, id, name, part) when is_atom(part),
+    do: island!(html, id, name, Enum.map(AshDataTable.Kit.Projection.keys(part), &to_string/1))
 
   defp island!(html, id, name, props) do
     react = React.get_react(html, id: id)

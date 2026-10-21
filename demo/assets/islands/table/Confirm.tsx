@@ -6,9 +6,12 @@
 // (`dialog.js`): it opens it, writes the question into it, says on Confirm
 // whether the answer deletes (`data-destructive`) and shows and hides the
 // region: all of it the hook's, which React draws once and leaves alone.
+// It draws the part's projection (`AshDataTable.Kit.Projection`), each key
+// a prop of the island; the island's own element is the projection's
+// `holder`.
 import * as React from "react"
 
-import {attrs, type Bundle} from "./props"
+import {attrs, type Bundle, type Message} from "./props"
 import {Strict} from "./mounting"
 import {usePart} from "./parts"
 import {button} from "./look"
@@ -16,27 +19,28 @@ import {cn} from "../lib/utils"
 
 export type ConfirmProps = {
   confirm: {
-    asks: boolean
+    "asks?": boolean
     presentation: "modal" | "inline"
+    holder: Bundle
     dialog: Bundle
-    question: string
-    cancel: string
-    confirm: string
+    question: Bundle
+    texts: {cancel: string; confirm: string}
+    messages: Record<string, Message>
   }
 }
 
-export function AshConfirm(props: ConfirmProps) {
+export function AshConfirm(props: ConfirmProps["confirm"]) {
   const ConfirmPart = usePart("Confirm")
   return (
     <Strict>
-      <ConfirmPart {...props} />
+      <ConfirmPart confirm={props} />
     </Strict>
   )
 }
 
 // The part `Confirm`.
 export function Confirm({confirm}: ConfirmProps) {
-  if (!confirm.asks) return null
+  if (!confirm["asks?"]) return null
   const Tag = confirm.presentation === "modal" ? "dialog" : "section"
   return (
     <Tag
@@ -47,13 +51,13 @@ export function Confirm({confirm}: ConfirmProps) {
       )}
     >
       <form method="dialog">
-        <p id={confirm.question} className="text-sm"></p>
+        <p {...attrs(confirm.question)} className="text-sm"></p>
         <div className="mt-6 flex justify-end gap-2">
           <button value="cancel" className={button("outline", "sm")}>
-            {confirm.cancel}
+            {confirm.texts.cancel}
           </button>
           <button value="confirm" className={button("default", "sm", "data-[destructive]:border data-[destructive]:border-destructive data-[destructive]:bg-transparent data-[destructive]:text-destructive")}>
-            {confirm.confirm}
+            {confirm.texts.confirm}
           </button>
         </div>
       </form>

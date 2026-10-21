@@ -12,31 +12,31 @@ import * as React from "react"
 import {mountPicker} from "ash_data_table"
 import {useLiveReact} from "live_react"
 
-import {attrs, type Bundle} from "./props"
+import {attrs, type Bundle, type Message} from "./props"
 import {Strict, useMountedWhile, type Live} from "./mounting"
 import {usePart} from "./parts"
 import {button} from "./look"
-
 export type PickerProps = {
   picker: {
-    id: string
-    open: boolean
+    "open?": boolean
     presentation: "modal" | "inline"
-    place: string
+    place: Bundle
     frame: Bundle | null
-    title: string | null
-    error: false | null | {id: string; text: string}
-    cancel: {attrs: Bundle; text: string}
-    none: false | null | {attrs: Bundle; text: string}
-    take: false | null | {attrs: Bundle; text: string}
+    title: Bundle
+    error: Bundle | null
+    cancel: Bundle
+    none: Bundle | null
+    take: Bundle | null
+    texts: {title: string | null; question: string | null; error: string | null; cancel: string; choose_none: string; choose: string}
+    messages: Record<string, Message | null>
   }
 }
 
-export function AshPicker(props: PickerProps) {
+export function AshPicker(props: PickerProps["picker"]) {
   const PickerPart = usePart("Picker")
   return (
     <Strict>
-      <PickerPart {...props} />
+      <PickerPart picker={props} />
     </Strict>
   )
 }
@@ -50,9 +50,10 @@ export const closeDialog = (el: HTMLElement) => {
 export function Picker({picker}: PickerProps) {
   const live = useLiveReact() as unknown as Live
   const ref = React.useRef<HTMLElement>(null)
-  useMountedWhile(ref, picker.open, mountPicker, live, closeDialog)
+  const open = picker["open?"]
+  useMountedWhile(ref, open, mountPicker, live, closeDialog)
   const Tag = picker.presentation === "modal" ? "dialog" : "section"
-  const open = picker.open
+  const {texts} = picker
 
   return (
     <Tag
@@ -61,32 +62,32 @@ export function Picker({picker}: PickerProps) {
       className={picker.presentation === "modal" ? "ash-react-dialog ash-react-side ash-react-wide" : "ash-react-inline ash-react-wide"}
     >
       {open && (
-        <h2 id={`${picker.id}-picker-title`} className="mb-4 text-lg font-semibold">
-          {picker.title}
+        <h2 {...attrs(picker.title)} className="mb-4 text-lg font-semibold">
+          {texts.title}
         </h2>
       )}
       {/* the row that was chosen names no record this person may read */}
       {open && picker.error && (
-        <p id={picker.error.id} role="alert" className="mb-4 text-sm font-medium">
-          {picker.error.text}
+        <p {...attrs(picker.error)} className="mb-4 text-sm font-medium">
+          {texts.error}
         </p>
       )}
-      <div id={picker.place} className="contents"></div>
+      <div {...attrs(picker.place)} className="contents"></div>
       {open && (
         <div className="mt-6 flex justify-end gap-2">
-          <button type="button" {...attrs(picker.cancel.attrs)} className={button("outline", "sm")}>
-            {picker.cancel.text}
+          <button type="button" {...attrs(picker.cancel)} className={button("outline", "sm")}>
+            {texts.cancel}
           </button>
           {picker.none && (
-            <button type="button" {...attrs(picker.none.attrs)} className={button("outline", "sm")}>
-              {picker.none.text}
+            <button type="button" {...attrs(picker.none)} className={button("outline", "sm")}>
+              {texts.choose_none}
             </button>
           )}
           {/* not to be used while no row is selected, and says so without
           being `disabled` (`aria-disabled`) */}
           {picker.take && (
-            <button type="button" {...attrs(picker.take.attrs)} className={button("default", "sm", "aria-disabled:opacity-50")}>
-              {picker.take.text}
+            <button type="button" {...attrs(picker.take)} className={button("default", "sm", "aria-disabled:opacity-50")}>
+              {texts.choose}
             </button>
           )}
         </div>

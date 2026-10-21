@@ -12,6 +12,7 @@ defmodule AshDataTable.Live.Drawing do
 
   alias AshDataTable.Ids
   alias AshDataTable.Kit
+  alias AshDataTable.Kit.Projection
   alias AshDataTable.Kit.Words
   alias AshDataTable.Live.Core.Files
   alias AshDataTable.Live.Core.Opener
@@ -242,22 +243,23 @@ defmodule AshDataTable.Live.Drawing do
         part={:related}
         kit={@options.kit}
         id={@entry.id}
-        via={@entry.related.via}
-        title={@entry.related_title}
-        parent={
-          Routes.table(
-            @router,
-            @entry.related.via.source,
-            @entry.related.via.source_table,
-            @entry.authorize_given
-          )
-        }
-        clear={Url.path(@options.url, @entry.id, %{})}
-        create={@entry.page && @entry.model.create}
-        actions={if @entry.page, do: @entry.offered, else: []}
-        target={@myself}
-        texts={Words.texts(:related, %{via: @entry.related.via, title: @entry.related_title})}
-        messages={Words.messages(:related, %{via: @entry.related.via, title: @entry.related_title})}
+        {Projection.of(:related, %{
+          id: @entry.id,
+          via: @entry.related.via,
+          title: @entry.related_title,
+          parent:
+            Routes.table(
+              @router,
+              @entry.related.via.source,
+              @entry.related.via.source_table,
+              @entry.authorize_given
+            ),
+          clear: Url.path(@options.url, @entry.id, %{}),
+          page: @entry.page,
+          create: @entry.model.create,
+          offered: @entry.offered,
+          target: @myself
+        })}
       />
       <Kit.part
         part={:selection_line}
@@ -295,13 +297,21 @@ defmodule AshDataTable.Live.Drawing do
       <Kit.part
         part={:status}
         kit={@options.kit}
-        announcement={@entry.announcement}
-        announcements={@entry.announcements}
         id={@entry.id}
-        result={@entry.result}
-        texts={Words.texts(:status, %{announcement: @entry.announcement, result: @entry.result})}
+        region={Projection.of({:status, :region}, %{id: @entry.id})}
+        again?={Projection.of({:status, :again?}, %{announcements: @entry.announcements})}
+        result={Projection.of({:status, :result}, %{id: @entry.id, result: @entry.result})}
+        texts={
+          Projection.of({:status, :texts}, %{
+            announcement: @entry.announcement,
+            result: @entry.result
+          })
+        }
         messages={
-          Words.messages(:status, %{announcement: @entry.announcement, result: @entry.result})
+          Projection.of({:status, :messages}, %{
+            announcement: @entry.announcement,
+            result: @entry.result
+          })
         }
       />
       <Kit.part
@@ -322,7 +332,7 @@ defmodule AshDataTable.Live.Drawing do
         myself={@myself}
         nested?={@entry.nested?}
         page={@entry.page}
-        pages?={Parts.Pagination.pages?(@entry.page, @entry.model)}
+        pages?={Projection.Pagination.pages?(@entry.page, @entry.model)}
         row_count={@entry.row_count}
         rows={@rows}
         running={@entry.running && @entry.running.action}
@@ -339,59 +349,45 @@ defmodule AshDataTable.Live.Drawing do
       element, drawn anew, not the one before it changed --%>
       <Kit.part
         :for={
-          {kind, message} <-
-            Parts.Messages.messages(@entry.error, @entry.fill, @entry.loading?, @entry.row_count)
+          message <-
+            Projection.of(:message, %{
+              id: @entry.id,
+              error: @entry.error,
+              fill: @entry.fill,
+              loading?: @entry.loading?,
+              row_count: @entry.row_count,
+              nested?: @entry.nested?
+            })
         }
-        :key={kind}
+        :key={message.kind}
         part={:message}
         kit={@options.kit}
         id={@entry.id}
-        kind={kind}
-        message={Words.message(:message, %{message: message})}
-        text={Words.text(:message, %{message: message})}
-        nested?={@entry.nested?}
+        kind={message.kind}
+        element={message.element}
+        nested?={message.nested?}
+        text={message.text}
+        message={message.message}
       />
-      <Kit.part
-        :if={not @entry.nested? and Parts.Pagination.pages?(@entry.page, @entry.model)}
-        part={:pagination}
+      <.pagination
+        :if={not @entry.nested? and Projection.Pagination.pages?(@entry.page, @entry.model)}
         kit={@options.kit}
         id={@entry.id}
-        nested?={false}
         page={@entry.page}
         model={@entry.model}
         state={@entry.state}
         row_count={@entry.row_count}
         label={@entry.label}
         target={@myself}
-        pages={Words.value(:pagination, %{page: @entry.page, state: @entry.state})}
-        texts={
-          Words.texts(:pagination, %{
-            page: @entry.page,
-            row_count: @entry.row_count,
-            state: @entry.state,
-            label: @entry.label
-          })
-        }
-        messages={
-          Words.messages(:pagination, %{
-            page: @entry.page,
-            row_count: @entry.row_count,
-            state: @entry.state,
-            label: @entry.label
-          })
-        }
       />
       <:opened>
-        <Kit.part
-          part={:confirm}
+        <.confirm
           kit={@options.kit}
-          bulk={@entry.bulk}
           id={@entry.id}
           model={@entry.model}
+          bulk={@entry.bulk}
           presentation={presentation(@options, :confirm)}
           place={nil}
-          texts={Words.texts(:confirm)}
-          messages={Words.messages(:confirm)}
         />
         <%!-- The panel and the picker are drawn always, nil while closed:
         a kit that draws in the browser draws them, and the places inside
@@ -562,12 +558,30 @@ defmodule AshDataTable.Live.Drawing do
       part={:picker}
       kit={@kit}
       id={@id}
-      picker={open_picker(@held, @drawn?)}
-      target={@myself}
-      presentation={@presentation}
-      takes?={@takes?}
-      texts={Words.texts(:picker, %{picker: open_picker(@held, @drawn?)})}
-      messages={Words.messages(:picker, %{picker: open_picker(@held, @drawn?)})}
+      open?={Projection.of({:picker, :open?}, %{picker: open_picker(@held, @drawn?)})}
+      presentation={Projection.of({:picker, :presentation}, %{presentation: @presentation})}
+      place={Projection.of({:picker, :place}, %{id: @id})}
+      frame={
+        Projection.of({:picker, :frame}, %{
+          id: @id,
+          picker: open_picker(@held, @drawn?),
+          presentation: @presentation,
+          target: @myself
+        })
+      }
+      title={Projection.of({:picker, :title}, %{id: @id})}
+      error={Projection.of({:picker, :error}, %{id: @id, picker: open_picker(@held, @drawn?)})}
+      cancel={Projection.of({:picker, :cancel}, %{id: @id})}
+      none={Projection.of({:picker, :none}, %{id: @id, picker: open_picker(@held, @drawn?)})}
+      take={
+        Projection.of({:picker, :take}, %{
+          id: @id,
+          picker: open_picker(@held, @drawn?),
+          takes?: @takes?
+        })
+      }
+      texts={Projection.of({:picker, :texts}, %{picker: open_picker(@held, @drawn?)})}
+      messages={Projection.of({:picker, :messages}, %{picker: open_picker(@held, @drawn?)})}
     />
     """
   end
@@ -583,16 +597,101 @@ defmodule AshDataTable.Live.Drawing do
 
   defp asked_in(assigns) do
     ~H"""
-    <Kit.part
-      part={:confirm}
+    <.confirm
       kit={@options.kit}
-      bulk={@entry.bulk}
       id={@entry.id}
       model={@entry.model}
+      bulk={@entry.bulk}
       presentation={:inline}
       place={@place}
-      texts={Words.texts(:confirm)}
-      messages={Words.messages(:confirm)}
+    />
+    """
+  end
+
+  # The question (the kit's `confirm/1`), each key of its projection made
+  # of what it depends on.
+  attr :kit, :atom, required: true
+  attr :id, :string, required: true
+  attr :model, :any, required: true
+  attr :bulk, :list, required: true
+  attr :presentation, :atom, required: true
+  attr :place, :atom, required: true
+
+  defp confirm(assigns) do
+    ~H"""
+    <Kit.part
+      part={:confirm}
+      kit={@kit}
+      id={@id}
+      asks?={Projection.of({:confirm, :asks?}, %{model: @model, bulk: @bulk})}
+      presentation={Projection.of({:confirm, :presentation}, %{presentation: @presentation})}
+      holder={Projection.of({:confirm, :holder}, %{id: @id, place: @place})}
+      dialog={
+        Projection.of({:confirm, :dialog}, %{id: @id, presentation: @presentation, place: @place})
+      }
+      question={Projection.of({:confirm, :question}, %{id: @id, place: @place})}
+      texts={Projection.of({:confirm, :texts}, %{})}
+      messages={Projection.of({:confirm, :messages}, %{})}
+    />
+    """
+  end
+
+  # The pages of the table on the page (the kit's `pagination/1`; a nested
+  # table's are in its grid's footer), each key of its projection made of
+  # what it depends on.
+  attr :kit, :atom, required: true
+  attr :id, :string, required: true
+  attr :page, :any, required: true
+  attr :model, :any, required: true
+  attr :state, :any, required: true
+  attr :row_count, :any, required: true
+  attr :label, :any, required: true
+  attr :target, :any, required: true
+
+  defp pagination(assigns) do
+    ~H"""
+    <Kit.part
+      part={:pagination}
+      kit={@kit}
+      id={@id}
+      nested?={false}
+      element={Projection.of({:pagination, :element}, %{id: @id, label: @label, nested?: false})}
+      range={Projection.of({:pagination, :range}, %{id: @id})}
+      previous={Projection.of({:pagination, :previous}, %{id: @id, page: @page, target: @target})}
+      next={Projection.of({:pagination, :next}, %{id: @id, page: @page, target: @target})}
+      pages={
+        Projection.of({:pagination, :pages}, %{
+          id: @id,
+          page: @page,
+          state: @state,
+          model: @model,
+          target: @target
+        })
+      }
+      sizes={
+        Projection.of({:pagination, :sizes}, %{
+          id: @id,
+          model: @model,
+          state: @state,
+          target: @target
+        })
+      }
+      texts={
+        Projection.of({:pagination, :texts}, %{
+          page: @page,
+          row_count: @row_count,
+          state: @state,
+          label: @label
+        })
+      }
+      messages={
+        Projection.of({:pagination, :messages}, %{
+          page: @page,
+          row_count: @row_count,
+          state: @state,
+          label: @label
+        })
+      }
     />
     """
   end

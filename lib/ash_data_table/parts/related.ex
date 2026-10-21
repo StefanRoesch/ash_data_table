@@ -145,30 +145,31 @@ defmodule AshDataTable.Parts.Related do
   # the record once it has been read for this person: as a link to the page
   # of the record's own table where the router mounts one. The text is one
   # message, so that a translation can put its parts in another order: the
-  # part is given its words before and after the record.
+  # part is given its words before and after the record. Its projection
+  # (`AshDataTable.Kit.Projection`, `related`).
   attr :id, :string, required: true
-  attr :via, :map, required: true
-  attr :title, :string, default: nil
-  attr :parent, :map, default: nil
-  attr :clear, :string, required: true
-  attr :create, :map, default: nil
-  attr :actions, :list, default: []
-  attr :target, :any, default: nil
+  attr :element, :map, required: true
+  attr :heading, :map, required: true
+  attr :record, :map, required: true
+  attr :create, :map, required: true
+  attr :actions, :list, required: true
+  attr :clear, :map, required: true
+  attr :texts, :map, required: true
+  attr :messages, :map, required: true
   attr :kit, :atom, required: true
 
   def related(assigns) do
     ~H"""
-    <div id={"#{@id}-related"} class={@kit.class(:related, %{})}>
-      <h2 id={"#{@id}-related-heading"} class="font-semibold" phx-no-format><%= if @texts.heading_before do %>{@texts.heading_before}<.link
-            :if={@parent}
-            id={"#{@id}-related-parent"}
-            navigate={@parent.path}
+    <div {@element} class={@kit.class(:related, %{})}>
+      <h2 {@heading} class="font-semibold" phx-no-format><%= if @record do %>{@texts.heading_before}<.link
+            :if={@record.path}
+            id={@record.id}
+            navigate={@record.path}
             class="link"
-          >{@title}</.link><span :if={!@parent} id={"#{@id}-related-parent"}>{@title}</span>{@texts.heading_after}<% else %>{@texts.relationship}<% end %></h2>
+          >{@record.title}</.link><span :if={!@record.path} id={@record.id}>{@record.title}</span>{@texts.heading_after}<% else %>{@texts.relationship}<% end %></h2>
       <div class="flex items-center gap-2">
-        <Parts.Heading.create :if={@create} id={@id} action={@create} target={@target} />
-        <Parts.Heading.table_actions id={@id} actions={@actions} target={@target} />
-        <.link id={"#{@id}-related-clear"} patch={@clear} class="btn btn-sm">
+        <Parts.Heading.acts create={@create} actions={@actions} />
+        <.link id={@clear.id} patch={@clear.path} class="btn btn-sm">
           {@texts.show_all_records}
         </.link>
       </div>

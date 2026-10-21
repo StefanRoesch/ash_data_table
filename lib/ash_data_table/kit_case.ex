@@ -186,6 +186,50 @@ defmodule AshDataTable.KitCase do
   # What a part is given of its texts and values (`AshDataTable.Kit`, "Texts
   # and values"): raises, and fails the state, where the part lacks one.
   def given!(part, assigns) do
+    if part in AshDataTable.Kit.Projection.parts(),
+      do: projected!(part, assigns),
+      else: worded!(part, assigns)
+  end
+
+  # A part given its projection (`AshDataTable.Kit.Projection`): every key
+  # of it, and wherever it shows words, its texts beside the messages they
+  # are made of.
+  defp projected!(part, assigns) do
+    missing =
+      for key <- AshDataTable.Kit.Projection.keys(part), not is_map_key(assigns, key), do: key
+
+    if missing != [] do
+      raise ArgumentError, "the part #{inspect(part)} is given no #{inspect(missing)}"
+    end
+
+    words!(part, Map.take(assigns, AshDataTable.Kit.Projection.keys(part)))
+    :ok
+  end
+
+  defp words!(part, %{texts: texts, messages: messages} = projection) do
+    if Map.keys(texts) != Map.keys(messages) do
+      raise ArgumentError,
+            "the part #{inspect(part)} is given `texts` and `messages` of other names"
+    end
+
+    for {name, message} <- messages, do: shape!(part, name, message, Map.get(texts, name))
+    words!(part, Map.drop(projection, [:texts, :messages]))
+  end
+
+  defp words!(part, %{text: text, message: message} = projection) do
+    shape!(part, :message, message, text)
+    words!(part, Map.drop(projection, [:text, :message]))
+  end
+
+  defp words!(part, projection) when is_map(projection) and not is_struct(projection),
+    do: Enum.each(projection, fn {_key, value} -> words!(part, value) end)
+
+  defp words!(part, values) when is_list(values), do: Enum.each(values, &words!(part, &1))
+  defp words!(_part, _value), do: :ok
+
+  # A part still given its texts beside its other assigns
+  # (`AshDataTable.Kit.Words`).
+  defp worded!(part, assigns) do
     missing =
       for name <- AshDataTable.Kit.Words.names(part), not is_map_key(assigns, name), do: name
 
@@ -572,20 +616,23 @@ defmodule AshDataTable.KitCase do
     nested = Ids.nested_table(Ids.row("kit", key), :parts)
 
     related =
-      Phoenix.LiveViewTest.render_component(&AshDataTable.Kit.part/1, %{
-        part: :related,
-        kit: kit,
-        id: @table,
-        via: parts,
-        title: "Anchor",
-        parent: %{path: "/kit", id: @table},
-        clear: "/kit",
-        create: nil,
-        actions: [],
-        target: nil,
-        texts: AshDataTable.Kit.Words.texts(:related, %{via: parts, title: "Anchor"}),
-        messages: AshDataTable.Kit.Words.messages(:related, %{via: parts, title: "Anchor"})
-      })
+      Phoenix.LiveViewTest.render_component(
+        &AshDataTable.Kit.part/1,
+        Map.merge(
+          %{part: :related, kit: kit, id: @table},
+          AshDataTable.Kit.Projection.of(:related, %{
+            id: @table,
+            via: parts,
+            title: "Anchor",
+            parent: %{path: "/kit"},
+            clear: "/kit",
+            page: nil,
+            create: nil,
+            offered: [],
+            target: nil
+          })
+        )
+      )
 
     # a row of the grid: parsed inside one
     part_model = AshDataTable.Model.build(Resource.Part, [])

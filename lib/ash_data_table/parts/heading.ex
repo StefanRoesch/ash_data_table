@@ -24,6 +24,23 @@ defmodule AshDataTable.Parts.Heading do
     """
   end
 
+  # Create and the buttons of the table actions, of their projections
+  # (`AshDataTable.Kit.Projection`: `create`, nil for none, and `actions`,
+  # each a label and the button's bundle).
+  attr :create, :map, required: true
+  attr :actions, :list, required: true
+
+  def acts(assigns) do
+    ~H"""
+    <button :if={@create} type="button" {@create.button} class="btn btn-sm">
+      {@create.label}
+    </button>
+    <button :for={action <- @actions} type="button" {action.button} class="btn btn-sm">
+      {action.label}
+    </button>
+    """
+  end
+
   # The buttons of a table's table actions, beside its create button and
   # looking as it does. Each sends its action to the table; what happens
   # then is the table's to say.

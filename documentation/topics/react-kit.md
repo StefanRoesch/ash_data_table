@@ -76,20 +76,25 @@ LiveView:
   time_zone: socket.assigns.time_zone
 ```
 
-The kit is a kit of contract 6. Each part it draws is an island, given the
-part's assigns picked as plain data (`DemoWeb.ReactKit.Props`):
+The kit is a kit of contract 6. Each part it draws is an island, given
+the part's projection (`AshDataTable.Kit.Projection`), each key a prop of
+its own, its bundles as props (`DemoWeb.ReactKit.Props.of/1`):
 
 <!-- source: demo/lib/demo_web/react_kit.ex -->
 ```elixir
 use AshDataTable.Kit, contract: 6
 # ...
-def picker(assigns) do
+def status(assigns) do
   ~H"""
   <LiveReact.react
-    id={"#{@id}-picker-island"}
-    name="AshPicker"
+    id={"#{@id}-status-island"}
+    name="AshStatus"
     class="contents"
-    picker={Props.picker(@id, @picker, @target, @presentation, @takes?, @texts)}
+    region={Props.of(@region)}
+    again?={@again?}
+    result={@result}
+    texts={@texts}
+    messages={@messages}
   />
   """
 end

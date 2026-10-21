@@ -342,20 +342,17 @@ defmodule DemoWeb.ReactKit.Props do
             cell: bundle(Attrs.spanning("#{id}-pager", geometry, %{"data-pager" => true})),
             row: bundle(Attrs.row("#{id}-foot-row")),
             pagination:
-              pagination(
-                id,
-                true,
-                page,
-                model,
-                state,
-                myself,
-                Words.texts(:pagination, %{
+              of(
+                AshDataTable.Kit.Projection.of(:pagination, %{
+                  id: id,
+                  nested?: true,
                   page: page,
-                  row_count: row_count,
+                  model: model,
                   state: state,
-                  label: label
-                }),
-                Words.value(:pagination, %{page: page, state: state})
+                  row_count: row_count,
+                  label: label,
+                  target: myself
+                })
               )
           },
       full_view:
@@ -628,128 +625,7 @@ defmodule DemoWeb.ReactKit.Props do
     }
   end
 
-  @doc "The live region and a run's result (the part `status`)."
-  def status(id, announcements, texts) do
-    %{
-      region: bundle(Attrs.status(id)),
-      announcement: texts.announcement,
-      # a live region is read out when what it holds changes: every other
-      # announcement ends in a no-break space
-      again: rem(announcements, 2) == 1,
-      result:
-        texts.summary && %{id: "#{id}-result", summary: texts.summary, failures: texts.failures}
-    }
-  end
-
-  @doc """
-  What a table limited to the records of one record says above its grid
-  (the part `related`): its heading, the relationship as the parent's
-  table calls it, or its words before and after the record, which is a
-  link to the page of the record's own table where the router mounts one;
-  create and the table actions (`Attrs.create/2`, `Attrs.table_action/3`),
-  and "Show all records", a patch to every record.
-  """
-  def related(id, title, parent, clear, create, actions, target, texts) do
-    %{
-      id: "#{id}-related",
-      heading: %{
-        id: "#{id}-related-heading",
-        relationship: texts.relationship,
-        record:
-          texts.heading_before &&
-            %{
-              id: "#{id}-related-parent",
-              before: texts.heading_before,
-              title: title,
-              after: texts.heading_after,
-              path: parent && parent.path
-            }
-      },
-      create: create && %{label: create.label, attrs: bundle(Attrs.create(id, target))},
-      actions:
-        for action <- actions do
-          %{
-            name: action.name,
-            label: action.label,
-            attrs: bundle(Attrs.table_action(id, action, target))
-          }
-        end,
-      clear: %{id: "#{id}-related-clear", path: clear, text: texts.show_all_records}
-    }
-  end
-
-  @doc """
-  What is said in place of the rows (the part `message`): its element
-  `ID-KIND`, an alert where it is the error of a read, and its text.
-  """
-  def message(id, kind, text, nested?),
-    do: %{id: "#{id}-#{kind}", kind: kind, alert: kind == :error, text: text, nested: nested?}
-
-  @doc """
-  The pagination (the part `pagination`, and a nested table's in its
-  footer): its element (`Attrs.pagination/3`), the range, Previous, the
-  page numbers, Next and "Rows per page", with the events they send.
-  """
-  def pagination(id, nested?, page, model, state, target, texts, pages) do
-    target = target && to_string(target)
-    sizes = model.pagination.page_sizes
-
-    %{
-      id: id,
-      nested: nested?,
-      element: bundle(Attrs.pagination(id, texts.label, nested?)),
-      range: texts.range,
-      event: Attrs.event(id, "page"),
-      target: target,
-      previous: %{text: texts.previous, disabled: is_nil(page.previous)},
-      next: %{text: texts.next, disabled: is_nil(page.next)},
-      pages:
-        if model.pagination.strategy == :offset do
-          for(
-            {number, label} <- Enum.zip(pages, texts.go_to_page),
-            do: %{number: number, label: label, current: number == state.page}
-          )
-        else
-          []
-        end,
-      sizes:
-        sizes != [] &&
-          %{
-            event: Attrs.event(id, "page_size"),
-            sizes: sizes,
-            # the size a page holds: the one chosen where it is offered, else the
-            # one the table opens with
-            chosen: if(state.per in sizes, do: state.per, else: model.pagination.page_size),
-            label: texts.rows_per_page
-          }
-    }
-  end
-
   # ---- what opens -----------------------------------------------------------
-
-  @doc """
-  The question (the part `confirm`): whether the table asks at all, the
-  dialog's bundle (`Attrs.confirm/3`: a `<dialog>` over the page, a region
-  in it, hidden until the hook asks), the id of where the hook writes the
-  question, and the answers' words.
-  """
-  def confirm(id, model, bulk, presentation, place, texts) do
-    %{
-      asks: asks?(model, bulk),
-      presentation: presentation,
-      dialog: bundle(Attrs.confirm(id, presentation, place)),
-      question: "#{Ids.dialog(id)}-question#{Attrs.asked_in(place)}",
-      cancel: texts.cancel,
-      confirm: texts.confirm
-    }
-  end
-
-  # Whether anything of the table asks a question before it runs: a column,
-  # a row action, a table action, and every action on the selected rows.
-  defp asks?(model, bulk),
-    do:
-      bulk != [] or Enum.any?(model.columns, & &1.confirm) or
-        Enum.any?(model.actions ++ model.table_actions, & &1.confirm)
 
   @doc """
   The action panel (the part `panel`), drawn closed too: whether it is
@@ -904,33 +780,22 @@ defmodule DemoWeb.ReactKit.Props do
     }
   end
 
+  # ---- the bundles ----------------------------------------------------------
+
   @doc """
-  The picker (the part `picker`), drawn closed too: whether it is open, how,
-  its place (`Ids.picker_place/1`, which its table is moved into), and
-  while it is open its element's bundle (`Attrs.picker/5`), its words, what
-  it says when a choice was not taken, and its buttons (`Attrs.cancel/1`,
-  `Attrs.none/1`, `Attrs.take/3`).
+  A key of a part's projection (`AshDataTable.Kit.Projection`) as an
+  island's prop: every bundle in it (a map of attribute names, string keys)
+  as props, without what LiveView reads of an element it draws itself;
+  the rest as it is.
   """
-  def picker(id, picker, target, presentation, takes?, texts) do
-    %{
-      id: id,
-      open: picker != nil,
-      presentation: presentation,
-      place: Ids.picker_place(id),
-      frame:
-        picker &&
-          bundle(Attrs.picker(id, texts.question, picker.several?, target, presentation)),
-      title: texts.title,
-      error: picker && picker.error && %{id: Ids.error("#{id}-picker"), text: texts.error},
-      cancel: %{attrs: bundle(Attrs.cancel("#{id}-picker-cancel")), text: texts.cancel},
-      none:
-        picker && picker.allow_none? && %{attrs: bundle(Attrs.none(id)), text: texts.choose_none},
-      take:
-        picker && %{attrs: bundle(Attrs.take(id, picker.several?, takes?)), text: texts.choose}
-    }
+  def of(%{} = map) when not is_struct(map) and map_size(map) > 0 do
+    if Enum.all?(Map.keys(map), &is_binary/1),
+      do: bundle(map),
+      else: Map.new(map, fn {key, value} -> {key, of(value)} end)
   end
 
-  # ---- the bundles ----------------------------------------------------------
+  def of(values) when is_list(values), do: Enum.map(values, &of/1)
+  def of(value), do: value
 
   # A bundle as an island's props: without what LiveView reads of an
   # element it draws itself (`phx-hook`, `phx-update`, `phx-mounted`).

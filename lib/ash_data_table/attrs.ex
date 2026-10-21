@@ -949,9 +949,14 @@ defmodule AshDataTable.Attrs do
   @spec props(map) :: %{String.t() => String.t()}
   def props(bundle) do
     for {name, value} <- bundle, value not in [nil, false], into: %{} do
-      {to_string(name), if(value == true, do: "", else: to_string(value))}
+      {to_string(name), prop(value)}
     end
   end
+
+  defp prop(true), do: ""
+  # a JS command as LiveView writes it into the attribute: its JSON
+  defp prop(%JS{} = js), do: Phoenix.json_library().encode!(js)
+  defp prop(value), do: to_string(value)
 
   @doc """
   The name of the event `name` of the table `id`, as the browser sends it
