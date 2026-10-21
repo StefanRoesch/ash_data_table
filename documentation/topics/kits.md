@@ -301,6 +301,12 @@ the others. It passes each part its projection, which is in its own. The
 <Kit.part :for={cell <- @head.cells} part={:header_cell} kit={@kit} {cell} />
 ```
 
+A spread (`{cell}`) turns LiveView's change tracking off for the part it
+draws: the part is sent again whole each time it is drawn. Where only some
+of an inner part's keys change, pass them one by one (`element={cell.element}`
+…), as `Kit.Default` draws its footer and summary cells: LiveView then sends
+again only what changed.
+
 What a cell holds and a column's editor are drawn with `Kit.cell/1` and
 `Kit.editor/1`, which call the column's component before the kit's `cell` and
 `editor`. A part called through the kit is given every assign by its caller:
