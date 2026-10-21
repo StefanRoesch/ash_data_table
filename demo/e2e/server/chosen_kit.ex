@@ -4,7 +4,9 @@ defmodule DemoWeb.E2E.ChosenKit do
   config/e2e.exs): `AshDataTable.Kit.Default`, or the demo's React kit
   (`DemoWeb.ReactKit`) for a page the browser asked for it, by request (the
   React kit's note, section 7, 3; Q15). The Playwright project `react`
-  sends the header `x-demo-kit: react` with every request; the plug
+  sends the header `x-demo-kit: react` with every request (a test that
+  compares the kits sends `x-demo-kit: div` for the demo's kit of `div`s,
+  `DemoWeb.DivKit`); the plug
   `DemoWeb.E2E.KitChoice` keeps it in the session, and as a LiveView of that session mounts
   (LiveView's documented telemetry `[:phoenix, :live_view, :mount,
   :start]`, in the LiveView's process, before its `on_mount` hooks, as

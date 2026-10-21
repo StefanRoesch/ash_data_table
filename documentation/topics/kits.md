@@ -521,7 +521,9 @@ changed.
   `state`, `page`, `geometry`, `panel`, `picker`, `fields`, `arguments`,
   `editors`, `filters` and the texts of `Kit.Words`, which is gone: a part
   of your own reads its projection's keys, spreads its bundles, and calls
-  no function of `Attrs` but `props/1`.
+  no function of `Attrs` but `props/1`. A cell of a row's item says whether
+  the column's component draws it (`component`): a row of your own asks it,
+  not the column and the cell's state.
 
 ## Not in the first version
 

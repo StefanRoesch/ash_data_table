@@ -16,7 +16,6 @@ defmodule AshDataTable.Typed do
   # A datetime that is an instant (a `DateTime`) is written as the clocks of
   # the page's zone show it (`AshDataTable.Zone`); a naive one as it is.
 
-  alias AshDataTable.Present
   alias AshDataTable.Sensitive
   alias AshDataTable.Zone
 
@@ -57,7 +56,7 @@ defmodule AshDataTable.Typed do
   defp written(_field, %Ash.ForbiddenField{}, _zone), do: ""
   defp written(_field, %Ash.NotLoaded{}, _zone), do: ""
   # what a table keeps in place of a sensitive value: never the value
-  defp written(_field, %Sensitive.Masked{}, _zone), do: Present.mask()
+  defp written(_field, %Sensitive.Masked{}, _zone), do: Sensitive.mask()
   defp written(%{cell_type: :text}, value, _zone), do: to_string(value)
 
   defp written(%{cell_type: :number}, %Decimal{} = value, _zone),

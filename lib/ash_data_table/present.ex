@@ -168,13 +168,6 @@ defmodule AshDataTable.Present do
   end
 
   @doc """
-  What is drawn in place of a sensitive value that is there: the same for
-  every value. A `:masked` cell holds no value; this is what the part draws.
-  """
-  @spec mask() :: String.t()
-  def mask, do: "••••••"
-
-  @doc """
   A row of the page, for the stream. `record` is the record as it was read
   or returned; it is scrubbed here, and nothing of it but its cells' values
   is kept. `attributes`: `id` (the table's), `key`, `rowindex`, `names`,

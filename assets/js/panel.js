@@ -17,6 +17,13 @@
 const UNREADABLE = form =>
   Array.from(form.elements).find(control => control.validity && control.validity.badInput)
 
+// What `form` holds, as the browser would send it
+// (`application/x-www-form-urlencoded`): URLSearchParams takes a FormData,
+// the name and value pairs it iterates as, which TypeScript's DOM types do
+// not name among what it takes; so it is given as those pairs.
+export const formQuery = form =>
+  new URLSearchParams(/** @type {string[][]} */ (/** @type {unknown} */ (new FormData(form)))).toString()
+
 import {ADD, CANCEL, CONTROL, COUNT, DESTRUCTIVE, FIELD, GRID, ITEM, LIST, OF, OPENED, REMOVE, REMOVE_GROUP, SELECTION, VALUE_TEXT} from "./markers.js"
 
 // The field of an array that is given value by value (`LIST`): its rows,
@@ -223,8 +230,7 @@ export default {
   // What the form holds, as it would be sent.
   snapshot() {
     const form = this.el.querySelector("form")
-    // @ts-expect-error: a FormData is what URLSearchParams takes; TypeScript's DOM types say otherwise
-    return form ? new URLSearchParams(new FormData(form)).toString() : ""
+    return form ? formQuery(form) : ""
   },
 
   // Into the element of that id: to the first field in it, else to

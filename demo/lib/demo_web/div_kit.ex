@@ -28,7 +28,13 @@ defmodule DemoWeb.DivKit do
       {@texts.skip_table}
     </a>
     <div {@grid} class={@kit.class(:grid, %{nested?: @nested?})}>
-      <div {@table} class="table w-full border-collapse text-sm" data-kit="div">
+      <%!-- the whole width on the page, a nested table only as wide as its
+      content, as in the other kits --%>
+      <div
+        {@table}
+        class={["table border-collapse text-sm", if(@nested?, do: "w-auto", else: "w-full")]}
+        data-kit="div"
+      >
         <div id={Ids.head(@id)} role="rowgroup" class="table-header-group font-semibold">
           <div {@head.row} class="table-row">
             <div :if={@head.select} {@head.select.element} class="table-cell w-0 px-2 py-1">

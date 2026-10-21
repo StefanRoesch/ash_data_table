@@ -8,7 +8,7 @@ defmodule DemoWeb.E2E.KitChoice do
   """
   @behaviour Plug
 
-  @kits %{"react" => DemoWeb.ReactKit}
+  @kits %{"react" => DemoWeb.ReactKit, "div" => DemoWeb.DivKit}
 
   @doc false
   def child_spec(_opts), do: %{id: __MODULE__, start: {__MODULE__, :start_link, []}}

@@ -7,20 +7,12 @@ defmodule DemoWeb.E2E.IdsLive do
   `assets/js/ids.js` must make the same ids. Compiled and routed in the e2e
   environment only.
 
-  And the same of the grid's geometry (`geometry`): what
-  `AshDataTable.Geometry` counts for a sample of geometries and pages,
-  each as `assets/js/geometry.js` is given it (`colindex` a column's index
-  and `lead`, `rowindex` the page's first row and a record's place), and
-  for `lead` and `firstRow` an element of the grid with the attributes the
-  bundles write (`data-lead` of `Attrs.grid/6`, the `role=table` with
-  `data-first-row` of `Attrs.table/6`), which the test reads them from.
+  The grid's geometry (`assets/js/geometry.js`) is compared with what real
+  tables' markup says, not here: the functions of `AshDataTable.Geometry`
+  are the table's own.
   """
   use DemoWeb, :live_view
 
-  alias AshDataTable.Attrs
-  # Its functions are the table's own (`@doc false`): this page calls them
-  # on purpose, to compare the server's counts with the browser's.
-  alias AshDataTable.Geometry
   alias AshDataTable.Ids
 
   @samples [
@@ -64,14 +56,6 @@ defmodule DemoWeb.E2E.IdsLive do
     {:argument_value, ["tasks-arg-tags", "add"]}
   ]
 
-  # a grid without and with columns before its data columns, a filter row
-  # and a page under offset pagination, and a keyset page (no offset)
-  @geometries [
-    %Geometry{lead: 0, trail: 0, columns: 3, colcount: 3, header_rows: 1},
-    %Geometry{lead: 2, trail: 1, columns: 3, colcount: 6, header_rows: 2, summary?: true}
-  ]
-  @pages [%{offset: 0, total: 9}, %{offset: 20, total: 42}, %{offset: nil, total: nil}]
-
   @impl true
   def mount(_params, _session, socket) do
     ids =
@@ -87,69 +71,13 @@ defmodule DemoWeb.E2E.IdsLive do
           name != :module_info,
           do: name
 
-    grids = grids()
-
     {:ok,
      assign(socket,
        page_title: "Ids",
        ids: Jason.encode!(ids),
-       functions: Jason.encode!(Enum.uniq(functions)),
-       grids: grids,
-       geometry: Jason.encode!(geometry(grids))
+       functions: Jason.encode!(Enum.uniq(functions))
      )}
   end
-
-  # a grid's element per geometry and page, with what the hooks read of it
-  defp grids do
-    for {geometry, g} <- Enum.with_index(@geometries),
-        {page, p} <- Enum.with_index(@pages) do
-      grid = Attrs.grid("g#{g}-#{p}", nil, geometry, nil, nil, texts())
-      table = Attrs.table("g#{g}-#{p}", "Sample", nil, geometry, page, false)
-
-      %{
-        id: grid["id"],
-        geometry: geometry,
-        page: page,
-        grid: Map.take(grid, ["id", "data-lead"]),
-        table: Map.take(table, ["id", "role", "data-first-row"])
-      }
-    end
-  end
-
-  defp geometry(grids) do
-    columns =
-      for geometry <- @geometries, index <- [0, 2] do
-        %{
-          function: :colindex,
-          args: [index, geometry.lead],
-          value: Geometry.colindex(geometry, index)
-        }
-      end
-
-    rows =
-      for geometry <- @geometries, page <- @pages, n <- [0, 4] do
-        %{
-          function: :rowindex,
-          args: [Geometry.first_row(geometry, page), n],
-          value: Geometry.rowindex(geometry, page, n)
-        }
-      end
-
-    elements =
-      for grid <- grids, function <- [:lead, :first_row] do
-        value =
-          if function == :lead,
-            do: grid.geometry.lead,
-            else: Geometry.first_row(grid.geometry, grid.page)
-
-        %{function: function, grid: grid.id, value: value}
-      end
-
-    columns ++ rows ++ elements
-  end
-
-  defp texts,
-    do: %{show_whole: "", show_less: "", show_whole_of: "", show_less_of: ""}
 
   @impl true
   def render(assigns) do
@@ -162,12 +90,6 @@ defmodule DemoWeb.E2E.IdsLive do
       <script id="functions" type="application/json">
         <%= Phoenix.HTML.raw(@functions) %>
       </script>
-      <script id="geometry" type="application/json">
-        <%= Phoenix.HTML.raw(@geometry) %>
-      </script>
-      <div :for={grid <- @grids} {grid.grid}>
-        <div {grid.table}></div>
-      </div>
     </Layouts.app>
     """
   end

@@ -1161,15 +1161,20 @@ defmodule DemoWeb.TablePage do
   @doc """
   Everything the LiveView of `view` sends while `fun` runs, as text: the
   diffs of the page and the answers to its events, as they go to the
-  browser. For what must never be in them.
+  browser, up to the last of the reads, summaries and runs `fun` started
+  (`Phoenix.LiveViewTest.render_async/1`). For what must never be in them,
+  by text: a secret to look for is a text no escaping changes (letters,
+  digits, `-`, `.`), found nowhere else on the page, and the test asserts
+  that the wire holds what `fun` did, so that an empty one is no pass.
   """
   def wire(view, fun) do
     :erlang.trace(view.pid, true, [:send])
 
     try do
       fun.()
-      # everything the view was asked to do is done once it answers this
-      _ = Phoenix.LiveViewTest.render(view)
+      # what the view was asked to do is done once it answers this, the
+      # async work it started too
+      _ = Phoenix.LiveViewTest.render_async(view)
     after
       :erlang.trace(view.pid, false, [:send])
     end

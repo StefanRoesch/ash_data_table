@@ -441,7 +441,8 @@ defmodule AshDataTable.Kit do
   `Attrs.panel_form/3` and `Attrs.pick_input/3`; the ids a part wrote by
   hand per row are `Ids.record/1`, `Ids.action/2`, `Ids.open/1` and
   `Ids.line/2`; `cell/1` is given a column's projection and `editor/1`
-  an editor's.
+  an editor's; a cell of an item (`AshDataTable.Item`) says whether the
+  column's component draws it (`component`).
   """
 
   use Phoenix.Component
@@ -642,9 +643,10 @@ defmodule AshDataTable.Kit do
 
   @doc """
   What a cell of a record holds, for a kit's own `row/1`: the column's
-  component draws a value that is there and that the person may see,
-  anything else is drawn by the kit's `cell/1`, which is never given a
-  value the person may not see, nor the value of a sensitive cell.
+  component draws it where the item's cell says so (its `component`: a
+  value that is there, that the person may see, whose save did not
+  fail), anything else is drawn by the kit's `cell/1`, which is never
+  given a value the person may not see, nor the value of a sensitive cell.
 
       <AshDataTable.Kit.cell kit={@kit} id={cell_id} column={column} cell={@row.cells[column.name]} />
 
@@ -660,14 +662,14 @@ defmodule AshDataTable.Kit do
   def cell(assigns) do
     ~H"""
     <AshDataTable.Parts.Common.dynamic_component
-      :if={component?(@column, @cell)}
+      :if={@cell.component}
       module={@column.component.module}
       function={:cell}
       value={@cell.value}
       text={@cell.text}
       column={@column.component.column}
     /><.part
-      :if={!component?(@column, @cell)}
+      :if={!@cell.component}
       part={:cell}
       kit={@kit}
       id={@id}
@@ -711,12 +713,6 @@ defmodule AshDataTable.Kit do
     />
     """
   end
-
-  # Whether the column's component draws a cell: a value that is there and
-  # that the person may see. `column` is a column's projection.
-  @doc false
-  def component?(%{component: %{module: _module}}, %{state: :value, failure: nil}), do: true
-  def component?(_column, _cell), do: false
 
   @doc """
   Whether `module` is a kit: it says it implements this behaviour, its
@@ -853,7 +849,8 @@ defmodule AshDataTable.Kit do
         "and AshDataTable.Present.Panel has ask (\"changed\" or nil, the panel's data-ask) in " <>
         "place of kind; and every part is given its projection (AshDataTable.Kit.Projection), " <>
         "an assign per key, in place of model, state, page, geometry, panel, picker, fields, " <>
-        "arguments, editors, filters and the texts of AshDataTable.Kit.Words, which is gone"
+        "arguments, editors, filters and the texts of AshDataTable.Kit.Words, which is gone; " <>
+        "an item's cell says whether the column's component draws it (component)"
 
   defp changed(_contract), do: "."
 

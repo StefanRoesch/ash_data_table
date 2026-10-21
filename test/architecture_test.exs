@@ -24,6 +24,12 @@ defmodule AshDataTable.ArchitectureTest do
     * no cycle holds files of two parts, and no cycle has a compile edge
       but those Spark requires (an extension and its entities, verifiers and
       transformers; an info module and its extension) (5.4, V10);
+    * the data layer (2a) is in no cycle: its files call each other one
+      way (the finishing items of 2026-10-21 broke the six files' cycle of
+      `GroupValue`, `Model`, `Model.Argument`, `Present`, `Typed` and
+      `Zone`: `Zone` holds the time rule on one plain value and
+      `GroupValue` walks a held value with it; the mask is `Sensitive`'s,
+      so that `Typed` names no `Present`);
     * the bundles (`attrs.ex`) are in no cycle: the parts spread them, and
       they call no part; where a column or a row stands they ask
       `AshDataTable.Geometry` (stage 9c, which ended the cycle of `Attrs`
@@ -210,6 +216,11 @@ defmodule AshDataTable.ArchitectureTest do
     bundles =
       for cycle <- cycles(graph), (@lib <> "/attrs.ex") in cycle, do: Enum.join(cycle, ", ")
 
+    data =
+      for cycle <- cycles(graph),
+          Enum.all?(cycle, &(part(&1) == "2a")),
+          do: Enum.join(cycle, ", ")
+
     openers = Enum.map(~w(opener opener/table opener/host), &"#{@lib}/live/core/#{&1}.ex")
     among = Enum.map(~w(panel cells bulk), &"#{@lib}/live/core/#{&1}.ex") ++ openers
 
@@ -256,6 +267,7 @@ defmodule AshDataTable.ArchitectureTest do
       {"verifiers or transformers reading what is not pure (5.3, rule 1)", Enum.sort(impure)},
       {"cycles across parts or with a compile edge Spark does not need (5.4)", cycles},
       {"the bundles in a cycle (9c)", bundles},
+      {"a cycle inside the data layer (2a)", data},
       {"the panel's adapter, Cells, Bulk and the opener in a cycle (9d, 9e)", panel},
       {"Act, Edit or Present calling the panel (9d)", to_panel},
       {"the opener calling a topic of the live core (9d, 9e)", from_opener},

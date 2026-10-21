@@ -110,19 +110,26 @@ function attach(
   }
 }
 
-// The island's hook functions as live_react gives them now, for an effect
-// that mounts a hook later than the render that was given them; kept up to
-// date after each commit, never during a render.
-function useLive(live: Live): React.RefObject<Live> {
-  const functions = React.useRef(live)
+// What a part gave the hook it mounts as the part was last drawn (the
+// island's hook functions as live_react gives them now, the hook's
+// options, what closes it), for an effect that mounts or destroys the hook
+// later than the render that gave them: an object that stays the same, so
+// that the effect runs only as the element comes, opens and closes, not
+// with every new function or object a render makes. Kept up to date after
+// each commit, never during a render.
+function useGiven<T>(given: T): React.RefObject<T> {
+  const held = React.useRef(given)
   React.useLayoutEffect(() => {
-    functions.current = live
+    held.current = given
   })
-  return functions
+  return held
 }
 
 // The table's hook `mount` (`mountGrid`, `mountPagination`) on the element
-// of `ref`, with a transport of the island's hook functions.
+// of `ref`, with a transport of the island's hook functions: once, as
+// LiveView mounts a hook once on its element. What the hook is given it
+// reads from its element and the transport, so a new `options` (a new
+// object on every render) mounts nothing again.
 export function useMounted(
   ref: React.RefObject<HTMLElement | null>,
   mount: Mount,
@@ -130,16 +137,14 @@ export function useMounted(
   options?: object,
 ): React.RefObject<Mounted | null> {
   const mounted = React.useRef<Mounted | null>(null)
-  const functions = useLive(live)
+  const given = useGiven({mount, live, options})
 
   React.useLayoutEffect(() => {
     const el = ref.current
-    if (el) return attach(el, mount, functions.current, mounted, options)
-    // once, as LiveView mounts a hook once on its element: `options` is a
-    // new object on every render, and what the hook is given it reads from
-    // its element and the transport
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    if (!el) return
+    const {mount, live, options} = given.current
+    return attach(el, mount, live, mounted, options)
+  }, [ref, given])
 
   return mounted
 }
@@ -149,7 +154,9 @@ export function useMounted(
 // the commit that gave it what it opens with, and destroyed as it closes,
 // as LiveView mounts a hook on the element a HEEx kit draws as it opens and
 // destroys it as the element goes. `close` runs after the hook is gone:
-// what the browser keeps open (a modal `<dialog>`) is closed.
+// what the browser keeps open (a modal `<dialog>`) is closed. As it opens
+// and closes only: the hook stays mounted while the element is open, also
+// where the part writes `close` inline, a new function on every render.
 export function useMountedWhile(
   ref: React.RefObject<HTMLElement | null>,
   open: boolean,
@@ -158,20 +165,18 @@ export function useMountedWhile(
   close: (el: HTMLElement) => void,
 ): React.RefObject<Mounted | null> {
   const mounted = React.useRef<Mounted | null>(null)
-  const functions = useLive(live)
+  const given = useGiven({mount, live, close})
 
   React.useLayoutEffect(() => {
     const el = ref.current
     if (!el || !open) return
-    const detach = attach(el, mount, functions.current, mounted)
+    const {mount, live, close} = given.current
+    const detach = attach(el, mount, live, mounted)
     return () => {
       detach()
       close(el)
     }
-    // as it opens and closes only: `close` is a new function where the part
-    // writes it inline, and the hook stays mounted while the element is open
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
+  }, [ref, open, given])
 
   return mounted
 }

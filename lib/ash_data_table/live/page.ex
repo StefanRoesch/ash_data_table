@@ -204,7 +204,10 @@ defmodule AshDataTable.Live.Page do
       the ones above;
     * the assign it names as `time_zone_assign` (`time_zone` by default),
       when the socket has it, so that the layout can say which zone the
-      datetimes are in.
+      datetimes are in;
+    * `current_path`: the page's path with the query of its URL as it is
+      now (`/tasks?task[sort]=-title`), which changes with every sort,
+      filter and page, so that a link of the layout can keep them.
 
   So a host whose domain says `actor_assign :current_account` has a layout
   that is given `current_account`. A single table can be given another
@@ -263,7 +266,7 @@ defmodule AshDataTable.Live.Page do
 
   @impl true
   def mount(_params, _session, socket),
-    do: {:ok, assign(socket, table: nil, route: nil, layout_assigns: nil)}
+    do: {:ok, assign(socket, table: nil, route: nil, layout_assigns: nil, current_path: nil)}
 
   # The table is attached in the first `handle_params/3`: `mount/3` has no
   # URL, and the route is found by it. The hook of the URL that
@@ -276,6 +279,7 @@ defmodule AshDataTable.Live.Page do
   # that answer.
   @impl true
   def handle_params(_params, url, socket) do
+    socket = assign(socket, current_path: current_path(url))
     route = route_table!(socket, url)
 
     if route == socket.assigns.route do
@@ -326,6 +330,16 @@ defmodule AshDataTable.Live.Page do
       {:cont, asking(socket)}
     end)
     |> attach_hook(:ash_data_table_page, :after_render, &asked/1)
+  end
+
+  # The path and query of the page's URL, for the layout: given anew with
+  # every patch, which `handle_params/3` is called for (the table's hook of
+  # the URL halts none, as this page has the callback).
+  defp current_path(url) do
+    case URI.parse(url) do
+      %URI{path: path, query: nil} -> path
+      %URI{path: path, query: query} -> path <> "?" <> query
+    end
   end
 
   defp asking(socket) do
@@ -396,7 +410,12 @@ defmodule AshDataTable.Live.Page do
   @impl true
   def render(assigns) do
     ~H"""
-    <.in_layout layout={layout(@route)} flash={@flash} given={@layout_assigns}>
+    <.in_layout
+      layout={layout(@route)}
+      flash={@flash}
+      current_path={@current_path}
+      given={@layout_assigns}
+    >
       <div id={"#{@route.id}-page"}>
         <%!-- the page's heading is the first line of the table: its name, and
         its create button at the other end --%>

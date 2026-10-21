@@ -35,11 +35,17 @@ defmodule DemoWeb.Layouts do
 
   slot :inner_block, required: true
 
+  slot :same_table,
+    doc: "a link to the same table drawn by the other kit, above the page (`tasks/1`)"
+
   def app(assigns) do
     ~H"""
     <div id="app-layout" class="px-4 py-8 sm:px-6 lg:px-8">
       <%!-- the whole width of the window: tables have many columns --%>
       <div class="space-y-6">
+        <p :if={@same_table != []} id="same-table" class="text-sm">
+          {render_slot(@same_table)}
+        </p>
         <%!-- A table states no zone in its cells: the page says it once,
         where it is not UTC (in UTC the page looks as it did before). --%>
         <p
@@ -55,6 +61,50 @@ defmodule DemoWeb.Layouts do
 
     <.flash_group flash={@flash} />
     """
+  end
+
+  @doc """
+  The layout of /tasks (`ash_data_table "/tasks", Task, layout: …`): the app
+  layout with a link to the same table drawn by the React kit
+  (`DemoWeb.ReactTasksLive`), which links back. The link keeps the query of
+  the page's URL (`current_path`, which the router's page gives its
+  layout): both tables have the id "task", so the sort, filters and page
+  carry over.
+  """
+  attr :flash, :map, required: true, doc: "the map of flash messages"
+  attr :time_zone, :string, default: nil, doc: "as `app/1` takes it"
+
+  attr :current_path, :string,
+    default: nil,
+    doc: "the page's path and query, as the router's page gives it"
+
+  slot :inner_block, required: true
+
+  def tasks(assigns) do
+    ~H"""
+    <.app flash={@flash} time_zone={@time_zone}>
+      <:same_table>
+        <.link navigate={same_query(~p"/react/tasks", @current_path)} class="link">
+          {gettext("The same table in React")}
+        </.link>
+      </:same_table>
+      {render_slot(@inner_block)}
+    </.app>
+    """
+  end
+
+  @doc """
+  `path` with the query of `current` (a path with its query, or a URL; nil
+  for none): a link to the same table drawn by the other kit, /tasks and
+  /react/tasks, whose tables both have the id "task", so that the sort,
+  filters and page carry over.
+  """
+  @spec same_query(String.t(), String.t() | nil) :: String.t()
+  def same_query(path, current) do
+    case current && URI.parse(current).query do
+      nil -> path
+      query -> path <> "?" <> query
+    end
   end
 
   @doc """
@@ -111,8 +161,9 @@ defmodule DemoWeb.Layouts do
 
   @doc """
   The language switcher: a form that posts the chosen locale to
-  `DemoWeb.LocaleController`, which stores it in the session. Only the tables
-  and the sprint planner are translated.
+  `DemoWeb.LocaleController`, which stores it in the session. Only the tables,
+  the sprint planner and the links between /tasks and /react/tasks are
+  translated.
   """
   attr :return_to, :string, default: nil
 

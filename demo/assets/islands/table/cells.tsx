@@ -13,6 +13,8 @@ export type ItemCell = {
   state: "value" | "empty" | "masked" | "forbidden"
   text: string | null
   value: Json
+  // whether the column's component draws this cell
+  component: boolean
   editable: boolean
   failure: null | {typed: string; text: string; message: Message}
   attrs: Record<string, string | true>
@@ -125,9 +127,10 @@ export function Cell({id, column, cell, components}: CellProps) {
   const Failure = usePart("Failure")
   const {failure} = cell
   if (!failure) {
-    const Component = column.component && cell.state === "value" ? components[column.component.module] : null
+    // the item's cell says whether the column's component draws it
+    const Component = cell.component && column.component ? components[column.component.module] : null
     if (Component) return <Component value={cell.value} text={cell.text} column={column} />
-    if (column.component && cell.state === "value" && process.env.NODE_ENV !== "production") {
+    if (cell.component && column.component && process.env.NODE_ENV !== "production") {
       console.warn(`ash_data_table: the React kit has no component for ${column.component.module}; the cell shows its text`)
     }
     return <>{shown(column, cell)}</>

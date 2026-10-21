@@ -66,7 +66,8 @@ defmodule DemoWeb.Router do
       # their selection.
       live "/tasks/planner", PlannerLive
 
-      ash_data_table "/tasks", Demo.Tracker.Task
+      # In a layout that links to the same table drawn by the React kit.
+      ash_data_table "/tasks", Demo.Tracker.Task, layout: {DemoWeb.Layouts, :tasks}
       ash_data_table "/projects", Demo.Tracker.Project
       ash_data_table "/comments", Demo.Tracker.Comment
       ash_data_table "/labels", Demo.Tracker.Label

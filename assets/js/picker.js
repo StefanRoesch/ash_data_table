@@ -13,7 +13,7 @@
 import {error as errorId} from "./ids.js"
 import {ANYCELL, DATACELL} from "./grid/shared.js"
 import {ARGUMENTS, CANCEL, GRID, NONE, TAKE} from "./markers.js"
-import {begin, opened} from "./panel.js"
+import {begin, formQuery, opened} from "./panel.js"
 
 export default {
   mounted() {
@@ -67,8 +67,7 @@ export default {
     // What the argument line of the picker's table holds: the
     // record is read through the same action, given the same.
     const line = this.el.querySelector(`form${ARGUMENTS}`)
-    // @ts-expect-error: a FormData is what URLSearchParams takes; TypeScript's DOM types say otherwise
-    const held = line ? new URLSearchParams(new FormData(line)).toString() : null
+    const held = line ? formQuery(line) : null
     this.transport.push("picked", {none, confirmed: !!confirmed, arguments: held}).then(reply => {
       this.busy = false
       // the column's question is the host's to ask (controlled mode): the
