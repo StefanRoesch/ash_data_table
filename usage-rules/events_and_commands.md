@@ -28,6 +28,10 @@ def handle_info({:ash_data_table, "task", {:row_opened, %{key: %{id: id}}}}, soc
   again as the person.
 - A record in the details has every `sensitive?` value masked
   (`%AshDataTable.Sensitive.Masked{}`).
+- A file a generic action returned is in `:action_ran`'s `result` by its
+  name and type (`%{filename: …, content_type: …}`), never its content; an
+  action on the selection (`selection_argument`) adds `selected`, the keys
+  it was given, read again as the person, and `all?`.
 
 ## Page values
 
@@ -74,3 +78,8 @@ def handle_event("export", _params, socket) do
   {:noreply, socket |> export(records) |> AshDataTable.clear_selection(:tasks)}
 end
 ```
+
+An export the person starts from the selection needs no page code: a
+generic action with `selection_argument` that `returns Ash.Type.File` is a
+button of the line above the grid, and the browser saves its file
+([Table actions](https://github.com/StefanRoesch/ash_data_table/blob/main/documentation/topics/table-actions.md#an-action-on-the-selection)).

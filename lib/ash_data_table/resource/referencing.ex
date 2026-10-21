@@ -322,7 +322,8 @@ defmodule AshDataTable.Resource.Referencing do
           {:reference_not_found, atom, atom, :attribute | nil}
           | {:reference_not_public, atom, atom}
           | {:reference_twice, atom, atom}
-          | {:reference_record_argument, atom, atom}
+          | {:reference_given, atom, atom,
+             :record_argument | :selection_argument | :sort_argument}
           | {:reference_sensitive, atom, atom}
           | {:reference_managed, atom, atom, atom}
           | {:reference_no_table, atom, atom, module}
@@ -343,19 +344,19 @@ defmodule AshDataTable.Resource.Referencing do
   attribute is, or be a list of such values: then any number is chosen.
 
   The argument has to be one a person gives at all: an argument of the
-  action, `public?`, and not the one the table gives itself
-  (`record_argument`). A sensitive one is not chosen: a picker shows what
+  action, `public?`, and not one the table gives itself (`given`: by
+  option, `record_argument`, `selection_argument`, `sort_argument`). A sensitive one is not chosen: a picker shows what
   is chosen. And one that a `manage_relationship` change hands to a
   relationship needs no declaration and takes none: the relationship says
   which resource it is, and how the argument is read.
   """
-  @spec declared(Ash.Resource.t() | Spark.Dsl.t(), struct, struct, atom | nil) ::
+  @spec declared(Ash.Resource.t() | Spark.Dsl.t(), struct, struct, [{atom, atom}]) ::
           {:ok, managing} | {:error, undeclarable}
-  def declared(resource, action, %{name: name, destination: destination}, record_argument \\ nil) do
+  def declared(resource, action, %{name: name, destination: destination}, given \\ []) do
     at = action.name
 
     with {:ok, argument} <- referring_argument(resource, action, name),
-         :ok <- not_given_by_table(at, name, record_argument),
+         :ok <- not_given_by_table(at, name, given),
          :ok <- not_managed(resource, action, name),
          :ok <- shown(at, argument),
          :ok <- declared_table(at, name, destination),
@@ -380,16 +381,16 @@ defmodule AshDataTable.Resource.Referencing do
   (`declared/4`), or that names an argument another one names already.
   `:ok` when there is none.
   """
-  @spec undeclarable(Ash.Resource.t() | Spark.Dsl.t(), struct, [struct], atom | nil) ::
+  @spec undeclarable(Ash.Resource.t() | Spark.Dsl.t(), struct, [struct], [{atom, atom}]) ::
           :ok | {:error, undeclarable}
-  def undeclarable(resource, action, references, record_argument \\ nil) do
+  def undeclarable(resource, action, references, given \\ []) do
     names = Enum.map(references, & &1.name)
 
     Enum.find_value(references, :ok, fn reference ->
       if reference.name in (names -- Enum.uniq(names)) do
         {:error, {:reference_twice, action.name, reference.name}}
       else
-        with {:ok, _managing} <- declared(resource, action, reference, record_argument),
+        with {:ok, _managing} <- declared(resource, action, reference, given),
              do: nil
       end
     end)
@@ -409,10 +410,12 @@ defmodule AshDataTable.Resource.Referencing do
     end
   end
 
-  defp not_given_by_table(action, name, name),
-    do: {:error, {:reference_record_argument, action, name}}
-
-  defp not_given_by_table(_action, _name, _record_argument), do: :ok
+  defp not_given_by_table(action, name, given) do
+    case List.keyfind(given, name, 1) do
+      nil -> :ok
+      {option, ^name} -> {:error, {:reference_given, action, name, option}}
+    end
+  end
 
   defp not_managed(resource, action, name) do
     case AshDataTable.Resource.Managing.handed_to(resource, action, name) do
@@ -594,10 +597,11 @@ defmodule AshDataTable.Resource.Referencing do
     do:
       "The action `#{action}` has more than one `reference :#{name}`. An argument refers to one resource."
 
-  def undeclarable_message({:reference_record_argument, action, name}),
+  def undeclarable_message({:reference_given, action, name, option}),
     do:
-      "The action `#{action}` says `reference :#{name}`, and `#{name}` is its `record_argument`: " <>
-        "the table gives it the key of the row, and nobody chooses it. Leave the `reference` out."
+      "The action `#{action}` says `reference :#{name}`, and `#{name}` is its `#{option}`: " <>
+        "the table gives it #{given_what(option)}, and nobody " <>
+        "chooses it. Leave the `reference` out."
 
   def undeclarable_message({:reference_sensitive, action, name}),
     do:
@@ -733,6 +737,15 @@ defmodule AshDataTable.Resource.Referencing do
       AshDataTable.Resource.Reading.private_action() <>
       " Make `#{action}` public, give the relationship a public `read_action`, or do not show `#{name}` as a column."
   end
+
+  @doc """
+  What the table gives an argument that an option of an `action` names
+  (`AshDataTable.Resource.Acting.given/1`), in words.
+  """
+  @spec given_what(:record_argument | :selection_argument | :sort_argument) :: String.t()
+  def given_what(:record_argument), do: "the key of the row"
+  def given_what(:selection_argument), do: "the keys of the selected rows"
+  def given_what(:sort_argument), do: "the table's sort"
 
   defp kind(:calculation), do: "a calculation"
   defp kind(:aggregate), do: "an aggregate"

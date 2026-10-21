@@ -146,7 +146,7 @@ test.describe("selecting with the pointer", () => {
     await pushed.expectSelected(tasks)
     await expect(tasks.selectedCount).toHaveText("1 selected")
     await expect(tasks.clearSelection).toBeVisible()
-    await expect(tasks.bulkButtons).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
+    await expect(tasks.bulkButtons).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels", "Export CSV"])
     // focus is on the box
     await expect(tasks.box(SECOND)).toBeFocused()
 

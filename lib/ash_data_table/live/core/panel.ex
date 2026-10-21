@@ -392,7 +392,7 @@ defmodule AshDataTable.Live.Core.Panel do
     action =
       Operation.table_action(Core.operation(table, nil), Atom.to_string(action.name)) || action
 
-    table |> done(action, done.value) |> Core.notify(done.event)
+    table |> done(action, done) |> Core.notify(done.event)
   end
 
   defp closed(table, {:created, created}) do
@@ -515,8 +515,8 @@ defmodule AshDataTable.Live.Core.Panel do
 
   # A generic action returns no row: the table says what it returned and
   # reads again, as any record may be another by now.
-  defp ran({:ok, %Operation.Outcome{value: value} = outcome}, table, _key, action),
-    do: {table |> done(action, value) |> Core.notify(outcome.event), %{ok: true}}
+  defp ran({:ok, %Operation.Outcome{} = outcome}, table, _key, action),
+    do: {table |> done(action, outcome) |> Core.notify(outcome.event), %{ok: true}}
 
   defp ran(
          {:error, %Operation.Failure{record: %_{} = record, message: message}},
@@ -547,8 +547,8 @@ defmodule AshDataTable.Live.Core.Panel do
   # selected rows is said: there is no row to say it on.
   defp run_table(table, intent, action) do
     case Operation.run(Core.operation(table, intent)) do
-      {:ok, %Operation.Outcome{value: value} = outcome} ->
-        table |> done(action, value) |> Core.notify(outcome.event)
+      {:ok, %Operation.Outcome{} = outcome} ->
+        table |> done(action, outcome) |> Core.notify(outcome.event)
 
       {error, message_or_failure} when error in [:error, :halted] ->
         text =
@@ -562,18 +562,25 @@ defmodule AshDataTable.Live.Core.Panel do
     end
   end
 
-  # A generic action has run: the table says what it returned, when that
-  # can be said in a word or a line, else that it is done, and reads again.
-  defp done(table, action, value) do
+  @doc """
+  A generic action has run (a row's, the table's, or one on the selection,
+  `AshDataTable.Live.Core.Bulk`): the table says what it returned, when
+  that can be said in a word or a line, else that it is done, and reads
+  again. A file it returned is said by its name and sent to the page to
+  save (`Live.Core.download/2`): the table keeps none of it.
+  """
+  def done(table, action, %Operation.Outcome{value: value, download: download}) do
     text =
-      case Format.said(action, value, table.caller.time_zone) do
-        nil -> {:text, :action_done, action: action.label}
-        said -> {:text, :action_result, action: action.label, result: said}
+      case {download, Format.said(action, value, table.caller.time_zone)} do
+        {%{name: name}, _said} -> {:text, :action_result, action: action.label, result: name}
+        {nil, nil} -> {:text, :action_done, action: action.label}
+        {nil, said} -> {:text, :action_result, action: action.label, result: said}
       end
 
     table
     |> Table.put(result: %{summary: text, failures: []})
     |> Core.say(text)
+    |> Core.download(download)
     |> Reading.reread()
   end
 end

@@ -53,6 +53,9 @@ defmodule Demo.MixProject do
       {:ash_postgres, "~> 2.15 and >= 2.15.0"},
       {:ash_sql, "~> 0.8 and >= 0.8.2"},
       {:ash, "~> 3.36 and >= 3.36.1"},
+      # The export of the tasks' selection as CSV (`Demo.Tracker.Task`,
+      # `csv_exports`): the demo's own, never the library's.
+      {:ash_csv_interchange, "~> 0.1.1"},
       {:picosat_elixir, "~> 0.2"},
       {:phoenix, "~> 1.8.5"},
       {:phoenix_ecto, "~> 4.5"},

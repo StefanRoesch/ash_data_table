@@ -1,7 +1,7 @@
 defmodule AshDataTable.Resource.Verifiers.VerifyActions do
   @moduledoc false
-  # The `action`s of the block, which are its row actions and its table
-  # actions, and its `create_action`.
+  # The `action`s of the block, which are its row actions, its table
+  # actions and its actions on the selection, and its `create_action`.
   use Spark.Dsl.Verifier
 
   alias AshDataTable.Resource.Acting
@@ -132,8 +132,8 @@ defmodule AshDataTable.Resource.Verifiers.VerifyActions do
 
   # A public update or destroy action, or a public generic action, with a
   # field in the action panel for everything it does not run without. The
-  # argument that takes a row's primary key is given by the table, and
-  # needs none.
+  # arguments the table gives (a row's primary key, the selected keys, the
+  # sort) need none.
   defp usable(dsl, declaration) do
     with {:ok, kind, action} <- Acting.offered(dsl, declaration),
          {:ok, _action} <- bulk(dsl, kind, action, declaration),
@@ -141,7 +141,7 @@ defmodule AshDataTable.Resource.Verifiers.VerifyActions do
            Acting.unusable(
              dsl,
              action,
-             declaration.record_argument,
+             Acting.given_names(declaration),
              declaration.references,
              Acting.page_names(declaration)
            ) do

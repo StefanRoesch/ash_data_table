@@ -137,7 +137,8 @@ defmodule AshDataTable.Live.Core.Told do
     # after them, the header rows and the footer row
     |> Table.put(geometry: Geometry.of(model, selecting, expandable?, table.entry.open_label))
     # the actions offered for the selected rows are this person's row
-    # actions that run on several records
+    # actions that run on several records, and their actions on the
+    # selection
     |> Table.put(selecting: selecting)
     |> Table.put(bulk: if(selecting == :multi, do: Model.bulk_actions(model), else: []))
     # before the read: what changes from here on is heard
@@ -270,6 +271,7 @@ defmodule AshDataTable.Live.Core.Told do
         relationships: relationships,
         actions: Enum.map(model.actions, action),
         table_actions: Enum.map(model.table_actions, action),
+        selection_actions: Enum.map(model.selection_actions, action),
         create: create
     }
   end

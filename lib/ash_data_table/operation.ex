@@ -24,7 +24,9 @@ defmodule AshDataTable.Operation do
   # What came of it is an outcome (`Operation.Outcome`) or a failure
   # (`Operation.Failure`), its messages as terms. A record in an outcome is
   # never drawn as it is: the live layer puts it into the stream through
-  # `AshDataTable.Present`. `reveal/1` is the one way to a sensitive value:
+  # `AshDataTable.Present`. A file a generic action returned is read here,
+  # where the action ran (`AshDataTable.Download`), and is the outcome's
+  # `download`, which the live layer sends to the page and keeps nowhere. `reveal/1` is the one way to a sensitive value:
   # one cell, read again as the person.
   #
   # It runs in the LiveView's process, but for a run on a selection, which
@@ -34,6 +36,7 @@ defmodule AshDataTable.Operation do
 
   alias AshDataTable.Act
   alias AshDataTable.Bulk
+  alias AshDataTable.Download
   alias AshDataTable.Edit
   alias AshDataTable.Errors
   alias AshDataTable.Event
@@ -111,10 +114,12 @@ defmodule AshDataTable.Operation do
     @moduledoc false
     # A write that was done: the `record` as the action returned it, with
     # what the columns show loaded (nil for a generic action); `value` what
-    # a generic action returned; `gone?` for a record that was destroyed,
-    # or that is not the person's to read any more. `event` is what the
-    # page is told of it (`AshDataTable.Event`), when it asks.
-    defstruct record: nil, value: nil, gone?: false, event: nil
+    # a generic action returned, but a file: that is read, and is the
+    # `download` (`AshDataTable.Download`), for the person's browser to
+    # save; `gone?` for a record that was destroyed, or that is not the
+    # person's to read any more. `event` is what the page is told of it
+    # (`AshDataTable.Event`), when it asks.
+    defstruct record: nil, value: nil, download: nil, gone?: false, event: nil
 
     @type t :: %__MODULE__{}
   end
@@ -267,7 +272,7 @@ defmodule AshDataTable.Operation do
         Panel.values(action.inputs, %{}, input.model.time_zone),
         opts(input)
       )
-      |> ran()
+      |> ran(action)
       |> event(&Event.ran(input.model, action, row.pk, Act.from_page(action, opts(input)), &1))
     else
       halted -> halted(halted)
@@ -284,7 +289,7 @@ defmodule AshDataTable.Operation do
         Panel.values(action.inputs, %{}, input.model.time_zone),
         opts(input)
       )
-      |> ran()
+      |> ran(action)
       |> event(&Event.ran(input.model, action, nil, Act.from_page(action, opts(input)), &1))
     else
       halted -> halted(halted)
@@ -302,7 +307,7 @@ defmodule AshDataTable.Operation do
   the veto, what `with_files` makes of the rest of the write is what it
   returns.
   """
-  @spec submit(Input.t()) :: result | {:start, (-> Bulk.outcome()), map} | term
+  @spec submit(Input.t()) :: result | {:start, (-> Bulk.outcome() | once()), map} | term
   def submit(%Input{intent: {:submit_cell, key, name, %{inputs: [field]} = held}} = input) do
     with %{} = column <-
            Enum.find(
@@ -337,7 +342,7 @@ defmodule AshDataTable.Operation do
       input.with_files.(fn files ->
         input.model
         |> on_record(action, row.pk, held, files, chooser(input, held))
-        |> ran()
+        |> ran(action)
         |> event(&Event.ran(input.model, action, row.pk, given(input, action, held, files), &1))
       end)
     else
@@ -359,7 +364,7 @@ defmodule AshDataTable.Operation do
           unchosen ->
             {:unchosen, unchosen}
         end
-        |> ran()
+        |> ran(action)
         |> event(&Event.ran(input.model, action, nil, given(input, action, held, files), &1))
       end)
     else
@@ -516,7 +521,8 @@ defmodule AshDataTable.Operation do
   answered its question: handed back to be started beside the LiveView,
   as a run takes as long as its records are many.
   """
-  @spec bulk(Input.t()) :: {:start, (-> Bulk.outcome()), map} | {:halted, term} | :refused
+  @spec bulk(Input.t()) ::
+          {:start, (-> Bulk.outcome() | once()), map} | {:halted, term} | :refused
   def bulk(%Input{intent: {:bulk_run, name}} = input) do
     with {:ok, %Model.Action{panel?: false} = action, selection} <- bulk_action(input, name),
          :cont <- asked(input, :bulk, action, selection: selected(selection)) do
@@ -526,9 +532,18 @@ defmodule AshDataTable.Operation do
     end
   end
 
+  @typedoc """
+  What came of an action on the selection (`selection_argument`), which
+  runs once on all of it: what a generic action's run comes to, with the
+  `event` the page is told of it.
+  """
+  @type once :: Outcome.t() | Failure.t()
+
   # The rows are not looked up among those of the page, as a selection
   # outlives its page: they are claims, and the run reads each as the
-  # person before anything is done to it (`AshDataTable.Bulk`).
+  # person before anything is done to it (`AshDataTable.Bulk`). An action
+  # on the selection is run once, given the keys of all of them, and of
+  # the table's sort (`Bulk.once/5`); a row action is run on each.
   defp start(input, action, selection, given, files) do
     parent = input.parent || %{key: nil, authorize?: true, arguments: %{}}
 
@@ -543,12 +558,35 @@ defmodule AshDataTable.Operation do
     model = input.model
     told = Map.merge(given, Act.from_page(action, opts))
 
-    run = fn ->
-      outcome = Bulk.run(model, action, selection, given, opts)
-      Map.put(outcome, :event, Event.bulk(model, action, selection, told, outcome))
-    end
+    run =
+      if is_nil(action.selection_argument) do
+        fn ->
+          outcome = Bulk.run(model, action, selection, given, opts)
+          Map.put(outcome, :event, Event.bulk(model, action, selection, told, outcome))
+        end
+      else
+        fn -> once(model, action, selection, given, opts, told) end
+      end
 
     {:start, run, files}
+  end
+
+  # What an action on the selection comes to, in the run's task: a file it
+  # returned is read there (`ran/2`).
+  defp once(model, action, selection, given, opts, told) do
+    case Bulk.once(model, action, selection, given, opts) do
+      {:done, value, keys} ->
+        case ran({:done, value}, action) do
+          {:ok, outcome} ->
+            %{outcome | event: Event.selection_ran(model, action, selection, told, keys, outcome)}
+
+          {:error, failure} ->
+            failure
+        end
+
+      {:error, message} ->
+        %Failure{message: message}
+    end
   end
 
   @doc """
@@ -647,7 +685,18 @@ defmodule AshDataTable.Operation do
 
   defp edited({:error, nil, message}), do: failed(nil, message)
 
-  # What became of an action, run straight away or from its panel.
+  # What became of an action, run straight away or from its panel. A file
+  # a generic action returned is read now, where it ran.
+  defp ran({:done, value}, %Model.Action{file?: true} = action) do
+    case Download.of(action, value) do
+      {:ok, download} -> {:ok, %Outcome{download: download}}
+      :none -> {:ok, %Outcome{}}
+      {:error, message} -> failed(nil, message)
+    end
+  end
+
+  defp ran(result, _action), do: ran(result)
+
   defp ran({:ok, record}), do: {:ok, %Outcome{record: record}}
   defp ran({:done, value}), do: {:ok, %Outcome{value: value}}
   defp ran(removed) when removed in [:destroyed, :gone], do: {:ok, %Outcome{gone?: true}}

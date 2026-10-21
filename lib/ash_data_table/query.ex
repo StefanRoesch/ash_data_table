@@ -853,6 +853,25 @@ defmodule AshDataTable.Query do
 
   defp known_sort(nil, _model), do: nil
 
+  @doc """
+  The sort a person chose in `state`, as text in the syntax of
+  `Ash.Query.sort_input/2` (`"title"`, `"-due_on"`): what an action on the
+  selection is given as its `sort_argument`. Nil where they chose none, and
+  for a sort by a column that gives its calculation arguments, which that
+  syntax cannot say. Only a column of the table that sorts, as a read is
+  sorted (`known_sort/2`).
+  """
+  @spec sort_text(Model.t(), State.t() | nil) :: String.t() | nil
+  def sort_text(%Model{} = model, %State{sort: sort}) do
+    case known_sort(sort, model) do
+      {%{field: field, arguments: arguments}, :desc} when arguments == %{} -> "-#{field}"
+      {%{field: field, arguments: arguments}, :asc} when arguments == %{} -> "#{field}"
+      _none_or_with_arguments -> nil
+    end
+  end
+
+  def sort_text(%Model{}, nil), do: nil
+
   defp sort(query, {%{field: field, arguments: arguments}, direction}, _via)
        when arguments == %{},
        do: Ash.Query.sort_input(query, [{field, direction}])

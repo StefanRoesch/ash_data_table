@@ -36,6 +36,23 @@ AshDataTable.Test.send_event(view, "task", "left", %{"row" => row})
 `AshDataTable.Test.listening/2` counts the tables listening to a resource
 for a tenant.
 
+## A file an action returns
+
+The table pushes it to the page, its content in Base64: assert the push,
+once an action on the selection has run beside the LiveView (`render_async/2`):
+
+<!-- sketch -->
+```elixir
+AshDataTable.Test.send_event(view, "task", "bulk", %{"action" => "export_csv"})
+render_async(view)
+
+assert_push_event(view, "ash_data_table:download", %{name: "tasks.csv", data: data})
+assert Base.decode64!(data) =~ "Write the docs"
+```
+
+That the browser saves it is the library's own JavaScript: a browser test
+waits for the download (Playwright's `page.waitForEvent("download")`).
+
 ## Nested tables and pickers
 
 They are moved into place by LiveView portals, which `element/2` and

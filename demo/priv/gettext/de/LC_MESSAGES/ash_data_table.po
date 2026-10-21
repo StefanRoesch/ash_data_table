@@ -223,6 +223,9 @@ msgstr "%{action}: %{done} erledigt, %{failed} nicht erledigt."
 msgid "Nothing was run: the selection changed after the question was asked."
 msgstr "Nichts wurde ausgeführt: Die Auswahl hat sich geändert, nachdem die Frage gestellt wurde."
 
+msgid "None of the selected records is available any more."
+msgstr "Keiner der ausgewählten Datensätze ist mehr verfügbar."
+
 msgid "%{message} (%{count})"
 msgstr "%{message} (%{count})"
 

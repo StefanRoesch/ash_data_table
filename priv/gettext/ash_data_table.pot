@@ -596,3 +596,7 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Show less of %{column}"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "None of the selected records is available any more."
+msgstr ""

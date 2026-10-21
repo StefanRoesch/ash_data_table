@@ -25,7 +25,8 @@ defmodule AshDataTable.Live.Core do
   # `command/2`), then the step `:tidy`, each step's table put and its
   # effects applied (`effects/2`) in their order:
   #
-  #   * `{:push, event, payload}`: an event to the hooks (`push_event/3`);
+  #   * `{:push, event, payload}`: an event to the hooks (`push_event/3`),
+  #     and a file for the browser to save (`download/2`);
   #   * `{:tell, top, message}`: an event to the host, sent to the
   #     LiveView's own process (`AshDataTable.Live.Core.Notify`);
   #   * `{:patch, url}`, `{:redirect, url}`: the URL of a table whose state
@@ -70,6 +71,7 @@ defmodule AshDataTable.Live.Core do
     ]
 
   alias AshDataTable.Caller
+  alias AshDataTable.Download
   alias AshDataTable.Intent
   alias AshDataTable.Live.Core.Bulk
   alias AshDataTable.Live.Core.Cells
@@ -542,6 +544,23 @@ defmodule AshDataTable.Live.Core do
   """
   def notify(%Table{} = table, event, always? \\ false),
     do: effect(table, Notify.told(table, event, always?))
+
+  @doc """
+  Sends the page a file a generic action returned, for the person's
+  browser to save (`AshDataTable.Download`, nil for none): the effect
+  `{:push, "ash_data_table:download", …}`, which the library's own window
+  listener hears (`assets/js/download.js`), whatever draws the table. It
+  goes with the step's effects and stays nowhere: not in the table, not in
+  an assign.
+  """
+  def download(%Table{} = table, nil), do: table
+
+  def download(%Table{} = table, %Download{} = download),
+    do:
+      effect(
+        table,
+        {:push, "ash_data_table:download", Download.pushed(download, table.entry.id)}
+      )
 
   # Who is reading and saving, with what the page gives every call to Ash
   # for the table (`values/1`).

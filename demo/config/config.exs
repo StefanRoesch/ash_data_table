@@ -65,6 +65,12 @@ config :demo,
 
 config :demo, Demo.Repo, types: Demo.PostgrexTypes
 
+# The CSV exports of the resources (`csv_exports`, ash_csv_interchange): the
+# app that owns them, and the domains they are found in. `/tasks` exports
+# the selected tasks with one (`Demo.Tracker.Task`, `:export_csv`).
+config :ash_csv_interchange, otp_app: :demo
+config :demo, AshCsvInterchange, domains: [Demo.Tracker]
+
 # The layout the tables mounted by `ash_data_table` in the router are rendered in.
 # The tables' own texts are translated by the demo's Gettext backend (the
 # domain `ash_data_table`, in `priv/gettext/*/LC_MESSAGES/ash_data_table.po`), and the

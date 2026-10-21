@@ -79,6 +79,10 @@ _Avoid_: Checked rows, multi-select, marked rows
 A row action run on every record of a selection at once, with its inputs given once for all of them.
 _Avoid_: Batch action, mass update, multi-row action
 
+**Action on the selection**:
+A generic action of the resource, declared for a table with `selection_argument`, that runs once on a selection as a whole, given the keys of its records: an export, a report.
+_Avoid_: Bulk action (that runs once per record), batch export, selection command
+
 **Action panel**:
 The panel in which a person supplies the inputs of a row action, of a table action, or of a create, before running it.
 _Avoid_: Modal, drawer, form dialog

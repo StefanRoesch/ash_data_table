@@ -205,6 +205,10 @@ defmodule AshDataTable.Messages do
          "Nothing was run: the selection changed after the question was asked."
        )},
     bulk_failure: {[:message, :count], dgettext_noop("ash_data_table", "%{message} (%{count})")},
+    # an action on the selection that runs once on all of it: none of the
+    # selected records is there for the person any more, and nothing ran
+    selection_gone:
+      {[], dgettext_noop("ash_data_table", "None of the selected records is available any more.")},
     # the picker, in which a person chooses a related record: its button that
     # takes the selected row, on the field of the action panel the button that
     # opens it, and its button that chooses no record

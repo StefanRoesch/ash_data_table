@@ -2,9 +2,12 @@
 
 A person can select rows and run one of the table's row actions on all of
 them at once. A "bulk action" is a row action run on the selected rows:
-the same action of the resource, not a second kind to declare. The actions
-and the action panel are in [Row actions and create](row-actions-and-create.md);
-who may do what in [Authorization](authorization.md).
+the same action of the resource, not a second kind to declare. A generic
+action can also run once on the whole selection, given its keys: an
+[action on the selection](#an-action-on-the-selection), such as an export.
+The actions and the action panel are in
+[Row actions and create](row-actions-and-create.md); who may do what in
+[Authorization](authorization.md).
 
 ## The smallest example
 
@@ -167,6 +170,7 @@ Every row action of the table that this person can ever run, except:
 | --- | --- |
 | A public update or destroy action declared with `action` | Offered. |
 | A generic action declared with `record_argument` | Offered; runs once per selected record, given its key. See [Table actions](table-actions.md#a-generic-action-in-a-row). |
+| A generic action declared with `selection_argument` | Offered, on the line only; runs once, given the keys of every selected record. See [An action on the selection](#an-action-on-the-selection). |
 | A generic action without it: a table action | Never: it runs on no record. `bulk? true` on it is reported. |
 | The same, declared with `bulk? false` | Not offered; stays a row action. |
 | One that accepts an attribute of the primary key, or an attribute that is an identity by itself | Not offered; stays a row action. |
@@ -216,10 +220,51 @@ same on many records. The demo has no such action; the library's tests do
 the resource is compiled. See
 [Mistakes at compile time](mistakes-at-compile-time.md#row-actions-and-the-create-action).
 
+## An action on the selection
+
+A generic action declared with `selection_argument` runs once on the whole
+selection: an export, a report, a message about the selected records. The
+demo's tasks export the selected ones as CSV:
+
+<!-- source: demo/lib/demo/tracker/task.ex -->
+```elixir
+action :export_csv do
+  label "Export CSV"
+  selection_argument :ids
+  sort_argument :sort
+end
+```
+
+| | A bulk action | An action on the selection |
+| --- | --- | --- |
+| Runs | Once per selected record | Once, given the keys of all of them as one argument (`selection_argument`) |
+| What is read first, as the person | Each record, before it is run on | The selected rows, by their keys; "all that match" when it runs, keys only, through the table's read action with the filters |
+| Asks first | Always, with the number of records | Only with a `confirm` of its own, as a table action does |
+| Its inputs | In the panel, once, given to every record | In the panel, once |
+| Afterwards | "Archive: 2 done, 1 not done." | What it returned, as after a table action: "Export CSV: tasks.csv" |
+| The rows that stay selected | Those it did not run on | All of them |
+| The page is told | `:bulk_ran` | `:action_ran`, with `selected` and `all?` |
+
+- A key that names nothing the person may read is left out. With none
+  left, nothing runs: "Export CSV failed: None of the selected records is
+  available any more."
+- `sort_argument` gives the action the table's sort as text
+  (`Ash.Query.sort_input/2`'s syntax), so that what it makes of the keys
+  can keep the table's order. The keys themselves come in no order.
+- It runs beside the page's process, as a bulk action does, and goes on to
+  its end when the page is left.
+- A file it returns (`returns Ash.Type.File`) is saved in the person's
+  browser. See [Table actions](table-actions.md#a-file-the-action-returns).
+
+**Try it:** `/tasks` as Ada Admin. Select rows, "More", "Export CSV": the
+browser saves `tasks.csv`. The same with the header box and "Select all …
+that match", and after a sort: the file follows the table.
+
 ## The question
 
 Every bulk action asks first, with or without a `confirm`: one click must
-not change a page of records. The question opens over the page or in it,
+not change a page of records. An action on the selection asks only with a
+`confirm` of its own. The question opens over the page or in it,
 as the table's [presentation](layout-and-embedding.md) says. A table asks
 one question at a time; a new one gives the open one up, as Cancel.
 
@@ -515,7 +560,9 @@ of their own.
   keep it.
 - **Space selects on the box only**; on an editable cell it acts as Enter.
 - **`confirm false` does not skip the question**: a bulk action always
-  asks.
+  asks. An action on the selection asks only with a `confirm`.
+- **An export that runs once per row**: that is a generic action with
+  `record_argument`. `selection_argument` runs it once on all of them.
 - **Rows are not highlighted**: a selected row has a ticked box.
 
 ## Not in the first version
@@ -523,6 +570,7 @@ of their own.
 No selection across the tables of a page, no selection that survives a
 reload, no inversion of a selection, no progress while a run is on its way
 and no way to stop one, no undo, no bulk edit of cells, no bulk create, no
-per-row inputs, and no export of the selected rows. The later slices are
-listed in the
+per-row inputs, and no export of the selected rows of its own: an export
+is the resource's, an [action on the selection](#an-action-on-the-selection)
+that returns a file. The later slices are listed in the
 [specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

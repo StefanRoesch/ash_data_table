@@ -8,7 +8,9 @@ defmodule Demo.Tracker.Task do
     domain: Demo.Tracker,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshDataTable.Resource],
+    # The export of a selection as CSV is ash_csv_interchange's
+    # (`csv_exports` below), which the table runs through `:export_csv`.
+    extensions: [AshDataTable.Resource, AshCsvInterchange],
     # A second table of the tasks, declared in a file of its own:
     # `task/board_table.ex`.
     fragments: [Demo.Tracker.Task.BoardTable],
@@ -249,8 +251,43 @@ defmodule Demo.Tracker.Task do
     # any number of them is selected.
     action :set_labels
 
+    # An action on the selection: a generic action that runs once, given
+    # the keys of every selected task (`selection_argument`) and the
+    # table's sort (`sort_argument`). It returns a file, which the
+    # person's browser saves: `tasks.csv`. Its button is in the line above
+    # the grid, after the row actions that run on each selected task.
+    action :export_csv do
+      label "Export CSV"
+      selection_argument :ids
+      sort_argument :sort
+    end
+
     # The "New task" button, on the line of the table's name.
     create_action :create
+  end
+
+  # The tasks of a selection as CSV, through `:selected`, in the table's
+  # order. No `external_ref` and no `estimate_hours`: a field policy hides
+  # them from some people, and a column of the export is written for every
+  # task alike.
+  csv_exports do
+    csv_export :tasks do
+      label "Tasks"
+      read_action :selected
+
+      columns [
+        {"id", :id},
+        {"title", :title},
+        {"status", :status},
+        {"priority", :priority},
+        {"progress", :progress},
+        {"billable", :billable?},
+        {"due_on", :due_on},
+        {"completed_at", :completed_at},
+        {"tags", :tags, format: {Enum, :join, [";"]}},
+        {"inserted_at", :inserted_at}
+      ]
+    end
   end
 
   actions do
@@ -292,6 +329,28 @@ defmodule Demo.Tracker.Task do
     # No pagination at all: a table on this action loads everything.
     read :unpaginated do
       prepare build(sort: [title: :asc, id: :asc])
+    end
+
+    # The tasks with these keys, in the order of a table of the tasks: the
+    # sort a person chose there (`sort`, as `Ash.Query.sort_input/2` takes
+    # it; nil for none), then `:read`'s own. What `:export_csv` exports
+    # (`csv_exports`), which streams it: keyset pagination.
+    read :selected do
+      argument :ids, {:array, :uuid}, allow_nil?: false
+      argument :sort, :string
+
+      filter expr(id in ^arg(:ids))
+
+      pagination keyset?: true, required?: false
+
+      prepare fn query, _context ->
+        case Ash.Query.get_argument(query, :sort) do
+          nil -> query
+          sort -> Ash.Query.sort_input(query, sort)
+        end
+      end
+
+      prepare build(sort: [inserted_at: :desc, id: :desc])
     end
 
     # A table with its own page size and default sort gets its own read action.
@@ -399,6 +458,16 @@ defmodule Demo.Tracker.Task do
     destroy :destroy do
       primary? true
     end
+
+    # The selected tasks as a CSV file, in the table's order: the table
+    # gives it their keys and its sort, and the browser saves the file it
+    # returns (`Demo.Tracker.Task.ExportCsv`, through ash_csv_interchange).
+    action :export_csv, Ash.Type.File do
+      argument :ids, {:array, :uuid}, allow_nil?: false
+      argument :sort, :string
+
+      run Demo.Tracker.Task.ExportCsv
+    end
   end
 
   policies do
@@ -415,6 +484,15 @@ defmodule Demo.Tracker.Task do
       description "Depends on the actor only: admins and members."
       authorize_if actor_attribute_equals(:role, :admin)
       authorize_if actor_attribute_equals(:role, :member)
+    end
+
+    policy action(:export_csv) do
+      description """
+      Whoever can read tasks: the export reads them as the actor, under the
+      read policy and the field policies.
+      """
+
+      authorize_if always()
     end
 
     policy action_type([:update, :destroy]) do

@@ -392,10 +392,11 @@ reported.
 
 ## Row actions and the create action
 
-Path: `table -> action -> NAME` for an `action` (row or table action),
-`table -> create_action` for the create action, `table` for the last two.
-`INPUT` is an attribute the action accepts or one of its arguments; `ARG` is
-the argument `record_argument` names.
+Path: `table -> action -> NAME` for an `action` (row or table action, or an
+action on the selection), `table -> create_action` for the create action,
+`table` for the last two. `INPUT` is an attribute the action accepts or one
+of its arguments; `ARG` is the argument `record_argument`,
+`selection_argument` or `sort_argument` names.
 
 | Message starts with | Cause | Fix |
 | --- | --- | --- |
@@ -418,6 +419,19 @@ the argument `record_argument` names.
 | The action \`NAME\` says \`page_argument :ARG\`, and has no argument named \`ARG\`. … | No such argument; an accepted attribute does not count. A page argument is an argument of the action that the page fills. | Correct the name, or add the argument. |
 | The action \`NAME\` says \`page_argument :ARG\`, and its argument \`ARG\` is not public. … | `public? false`. A page gives a private argument through `private_arguments`, without a declaration; `page_argument` is for a public one the panel is not to ask for. | Remove the `page_argument`; give the value in `private_arguments`. |
 | The action \`NAME\` says \`page_argument :ARG\`, and \`ARG\` is its \`record_argument\`, … | The argument that gets the row's key cannot be both. | Remove the `page_argument`. |
+| The action \`NAME\` says \`page_argument :ARG\`, and \`ARG\` is its \`selection_argument\` (or \`sort_argument\`), … | The argument that gets the selected keys, or the sort, cannot be both. | Remove the `page_argument`. |
+| The action \`NAME\` says \`selection_argument :ARG\`, and is an update action, … | `selection_argument` on an update or destroy action (the message says which), which runs on each selected record already. It is for a generic action. | Remove `selection_argument`. |
+| The action \`NAME\` says both \`record_argument\` and \`selection_argument\`. … | A generic action runs on a row's record or once on all the selected rows, not both. | Keep one of them. |
+| The action \`NAME\` says \`selection_argument :ARG\`, and has no argument named \`ARG\`. | No such argument. | Correct the name, or add the argument. |
+| The action \`NAME\` says \`selection_argument :ARG\`, and its argument \`ARG\` is not public. … | `public? false`. | Make the argument public. |
+| The action \`NAME\` says \`selection_argument :ARG\`, and that argument is of the type TYPE. It is given the primary keys of the selected rows as a list, … | The argument is no list of what the key is stored as: one key (`:uuid`), or a list of another type. | Give it the type `{:array, KEY_TYPE}`. |
+| The action \`NAME\` says \`selection_argument :ARG\`, and the primary key of the resource is \`A\`, \`B\`: several attributes. … | One argument takes the selected keys only for a one-attribute key. No primary key: the same message without one. | Leave the action out. |
+| The action \`NAME\` says \`selection_argument\` and \`bulk?\`. … | An action on the selection runs once on all the selected rows; `bulk?` has nothing to switch. | Remove `bulk?`. |
+| The action \`NAME\` says \`sort_argument :ARG\` without \`selection_argument\`. … | The sort is given to an action on the selection only. | Add `selection_argument`, or remove `sort_argument`. |
+| The action \`NAME\` says \`sort_argument :ARG\`, and \`ARG\` is its \`selection_argument\`, … | One argument cannot take both. | Name another argument. |
+| The action \`NAME\` says \`sort_argument :ARG\`, and has no argument named \`ARG\`. / … is not public. … | No such argument, or a private one. | Correct the name, add the argument, or make it public. |
+| The action \`NAME\` says \`sort_argument :ARG\`, and its argument \`ARG\` says \`allow_nil? false\`. … | It is given nil where the person chose no sort. | Leave `allow_nil?` out. |
+| The action \`NAME\` says \`sort_argument :ARG\`, and that argument is of the type TYPE. … | The sort is given as text, as `Ash.Query.sort_input/2` takes it. | Give it the type `:string`. |
 | The action \`NAME\` says \`page_argument :ARG\` more than once. | Named twice. | Remove one. |
 | \`NAME\` is an update action, not a create action. | `create_action` names an update, destroy, read or generic action (the message says which). | Name a create action. |
 | The create action \`NAME\` cannot be run from a table: its input \`INPUT\` is required, … | As for a row action. An attribute whose default is computed does not count as required in a create. | Name a create action that does not require the input. |
@@ -434,7 +448,7 @@ action's, `table -> action -> NAME`.
 | The action \`NAME\` says \`reference :REF\`, and \`REF\` is an attribute the action accepts, not one of its arguments. … | A `reference` for an accepted attribute. | Remove it. A public belongs-to's foreign key is chosen in the picker without one. |
 | The action \`NAME\` says \`reference :REF\`, and its argument \`REF\` is not public. … | `public? false`. | Make it public, or remove the `reference`. |
 | The action \`NAME\` has more than one \`reference :REF\`. … | Named twice. | Declare it once. |
-| The action \`NAME\` says \`reference :REF\`, and \`REF\` is its \`record_argument\` … | The table gives that argument the row's key. | Remove the `reference`. |
+| The action \`NAME\` says \`reference :REF\`, and \`REF\` is its \`record_argument\` (\`selection_argument\`, \`sort_argument\`) … | The table gives that argument the row's key (the selected keys, the sort). | Remove the `reference`. |
 | The action \`NAME\` says \`reference :REF\`, and its argument \`REF\` is declared \`sensitive?: true\`. … | A picker shows what is chosen. | Remove the `reference`. |
 | The action \`NAME\` says \`reference :REF\`, and a \`manage_relationship\` change of the action hands \`REF\` to the relationship \`RELATIONSHIP\`. … | The relationship already says which resource it refers to. | Remove the `reference`: the picker works without it. |
 | The action \`NAME\` says \`reference :REF, DESTINATION\`, and DESTINATION has no table … | `DESTINATION` is no resource, or does not list `AshDataTable.Resource`. | Give it a table, or name another resource. |
@@ -746,6 +760,7 @@ tag or attached table, then fails like any LiveView that raises.
 | Editable columns beside calculation, aggregate or reference columns, without a primary read action | Refuses. |
 | An `action` naming no public update, destroy or generic action, or declared twice | Refuses: "its action \`NAME\` cannot be used." |
 | A `record_argument` that cannot take a row's key, or one on an update or destroy action | Refuses. |
+| A `selection_argument` or a `sort_argument` the compiler reports | Refuses. |
 | `bulk? true` on a table action | Renders. It is a table action, not offered for the selected rows. |
 | A `create_action` naming no public create action | Refuses: "its \`create_action\` cannot be used." |
 | Row actions or a create action beside calculation, aggregate or reference columns, without a primary read action | Refuses. |

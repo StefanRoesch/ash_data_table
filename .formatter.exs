@@ -38,6 +38,8 @@ spark_locals_without_parens = [
   relationship: 1,
   relationship: 2,
   scope_assign: 1,
+  selection_argument: 1,
+  sort_argument: 1,
   sortable?: 1,
   sticky_label?: 1,
   summary: 1,

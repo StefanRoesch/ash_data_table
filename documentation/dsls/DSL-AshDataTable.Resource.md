@@ -471,6 +471,39 @@ argument has to be `public?` and stored as the primary key is, which has
 to be one attribute. Such an action is offered for the selected rows as
 every row action is, and runs once per record.
 
+`selection_argument` names the argument of a generic action that takes a
+list of primary keys, and makes the action an action on the selection:
+its button is in the line above the grid while rows are selected, and it
+runs once, given the keys of every selected record the person may read.
+"All that match" is read then, through the table's read action, with the
+person's filters, as the person: the table holds keys only.
+`sort_argument` names a `:string` argument that is given the table's sort
+as `Ash.Query.sort_input/2` takes it (`"-due_on"`), nil for none:
+
+    actions do
+      action :export_csv, Ash.Type.File do
+        argument :ids, {:array, :uuid}, allow_nil?: false
+        argument :sort, :string
+        run MyApp.Tracker.ExportCsv
+      end
+    end
+
+    table do
+      action :export_csv do
+        selection_argument :ids
+        sort_argument :sort
+      end
+    end
+
+Such an action asks first only where it says `confirm`, as a table
+action does, and what it returned is said above the grid.
+
+A generic action that `returns` `Ash.Type.File`, wherever it runs (a row,
+the table, the selection), has the file it returns saved in the person's
+browser: the table opens it with `Ash.Type.File.open/2`, reads it whole,
+and sends it to the page, named by `Ash.Type.File.filename/1` (else after
+the action) and typed by `Ash.Type.File.content_type/1`.
+
 An argument that holds the key of a record of another resource is a key
 like any other value to Ash: nothing says which resource it belongs to,
 and its field is a plain text field. `reference` in the `action` says it:
@@ -486,7 +519,8 @@ The argument is then chosen in the picker, from the table of that
 resource: one record for a key, any number for a list of keys. The chosen
 records are read again, as the person, before the action runs. It is for
 every `action` of the block, a row action among them, and not for the
-`record_argument`, which the table gives. An argument that a
+`record_argument`, the `selection_argument` and the `sort_argument`,
+which the table gives. An argument that a
 `manage_relationship` change hands to a relationship is chosen without
 it, and a `reference` for one is reported.
 
@@ -860,7 +894,7 @@ action name
 ```
 
 
-An action a person runs from the table: a row action, or a table action.
+An action a person runs from the table: a row action, a table action, or an action on the selection.
 
 An update or destroy action of the resource is a row action: a person runs it on the record of a row, from a button in the last column of the table. A generic action is a table action: a person runs it on the table as a whole, from a button on the line of the table's name. The buttons of each kind stand in the declared order.
 
@@ -869,6 +903,10 @@ An action without inputs, or with optional arguments only, runs when its button 
 A row action is also offered for the rows a person has selected, to run on all of them at once, unless it says `bulk? false`.
 
 A generic action that takes the primary key of a record as an argument is a row action when `record_argument` names that argument: the table gives it the key of the row.
+
+A generic action that takes a list of primary keys as an argument is an action on the selection when `selection_argument` names that argument: it runs once, and the table gives it the keys of every selected record. `sort_argument` names an argument that is given the table's sort besides.
+
+A generic action that returns `Ash.Type.File` has the file it returns saved in the person's browser.
 
 An argument that holds the key of a record of another resource is chosen in the picker when a `reference` says which resource that is.
 
@@ -919,6 +957,14 @@ end
 ```
 
 ```
+action :export_csv do
+  selection_argument :ids
+  sort_argument :sort
+end
+
+```
+
+```
 action :hand_over do
   reference :to_id, MyApp.Accounts.User
 end
@@ -938,15 +984,17 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`name`](#table-action-name){: #table-action-name .spark-required} | `atom` |  | The action a person runs: a public update or destroy action of the resource, which runs on the record of a row, or a public generic action, which runs on the table as a whole. |
+| [`name`](#table-action-name){: #table-action-name .spark-required} | `atom` |  | The action a person runs: a public update or destroy action of the resource, which runs on the record of a row, or a public generic action, which runs on the table as a whole (with `record_argument` on a row, with `selection_argument` once on the selected rows). |
 ### Options
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`label`](#table-action-label){: #table-action-label } | `String.t` |  | What the action's button says. Defaults to the humanised action name. |
 | [`confirm`](#table-action-confirm){: #table-action-confirm } | `false \| String.t` |  | A question asked before the action runs. `false` says that the action runs without one on purpose, which silences the warning the compiler gives about a destroy action without `confirm`. |
-| [`bulk?`](#table-action-bulk?){: #table-action-bulk? } | `boolean` |  | Whether the action is also offered for the rows a person has selected, to run on all of them at once. Defaults to `true` for every action that can: one that accepts no attribute of which two records cannot hold the same value. `false` leaves it an action of one row; it can only switch off. A generic action without `record_argument` runs on no row, and has nothing to switch off. |
+| [`bulk?`](#table-action-bulk?){: #table-action-bulk? } | `boolean` |  | Whether the action is also offered for the rows a person has selected, to run on all of them at once. Defaults to `true` for every action that can: one that accepts no attribute of which two records cannot hold the same value. `false` leaves it an action of one row; it can only switch off. A generic action without `record_argument` runs on no row, and has nothing to switch off; one with `selection_argument` runs on the selection only. |
 | [`record_argument`](#table-action-record_argument){: #table-action-record_argument } | `atom` |  | For a generic action: the argument that is given the primary key of a row. The action is then a row action: its button stands in every row, the argument is filled in by the table and not asked for, and the action's other arguments are asked for in the action panel. The argument has to be public and of the type of the resource's primary key, which has to be one attribute. |
+| [`selection_argument`](#table-action-selection_argument){: #table-action-selection_argument } | `atom` |  | For a generic action: the argument that is given the primary keys of the selected rows, all of them at once. The action is then an action on the selection: its button stands in the line above the grid while rows are selected, and it runs once, given every selected key that the person may read ("all that match" read then, through the table's read action and with its filters). The argument is filled in by the table and not asked for. It has to be public and a list of the type of the resource's primary key, which has to be one attribute. |
+| [`sort_argument`](#table-action-sort_argument){: #table-action-sort_argument } | `atom` |  | With `selection_argument`: the argument that is given the table's sort as the person has chosen it, in the syntax of `Ash.Query.sort_input/2` (`"title"`, `"-due_on"`), or nil where they have chosen none, or sort by a column of a calculation with arguments, which that syntax cannot say. A read the action runs over the keys can then keep the table's order. It has to be a public argument of the type `:string`. |
 
 
 ### table.action.reference
@@ -1430,7 +1478,7 @@ action name
 ```
 
 
-An action a person runs from the table: a row action, or a table action.
+An action a person runs from the table: a row action, a table action, or an action on the selection.
 
 An update or destroy action of the resource is a row action: a person runs it on the record of a row, from a button in the last column of the table. A generic action is a table action: a person runs it on the table as a whole, from a button on the line of the table's name. The buttons of each kind stand in the declared order.
 
@@ -1439,6 +1487,10 @@ An action without inputs, or with optional arguments only, runs when its button 
 A row action is also offered for the rows a person has selected, to run on all of them at once, unless it says `bulk? false`.
 
 A generic action that takes the primary key of a record as an argument is a row action when `record_argument` names that argument: the table gives it the key of the row.
+
+A generic action that takes a list of primary keys as an argument is an action on the selection when `selection_argument` names that argument: it runs once, and the table gives it the keys of every selected record. `sort_argument` names an argument that is given the table's sort besides.
+
+A generic action that returns `Ash.Type.File` has the file it returns saved in the person's browser.
 
 An argument that holds the key of a record of another resource is chosen in the picker when a `reference` says which resource that is.
 
@@ -1489,6 +1541,14 @@ end
 ```
 
 ```
+action :export_csv do
+  selection_argument :ids
+  sort_argument :sort
+end
+
+```
+
+```
 action :hand_over do
   reference :to_id, MyApp.Accounts.User
 end
@@ -1508,15 +1568,17 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`name`](#tables-table-action-name){: #tables-table-action-name .spark-required} | `atom` |  | The action a person runs: a public update or destroy action of the resource, which runs on the record of a row, or a public generic action, which runs on the table as a whole. |
+| [`name`](#tables-table-action-name){: #tables-table-action-name .spark-required} | `atom` |  | The action a person runs: a public update or destroy action of the resource, which runs on the record of a row, or a public generic action, which runs on the table as a whole (with `record_argument` on a row, with `selection_argument` once on the selected rows). |
 ### Options
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`label`](#tables-table-action-label){: #tables-table-action-label } | `String.t` |  | What the action's button says. Defaults to the humanised action name. |
 | [`confirm`](#tables-table-action-confirm){: #tables-table-action-confirm } | `false \| String.t` |  | A question asked before the action runs. `false` says that the action runs without one on purpose, which silences the warning the compiler gives about a destroy action without `confirm`. |
-| [`bulk?`](#tables-table-action-bulk?){: #tables-table-action-bulk? } | `boolean` |  | Whether the action is also offered for the rows a person has selected, to run on all of them at once. Defaults to `true` for every action that can: one that accepts no attribute of which two records cannot hold the same value. `false` leaves it an action of one row; it can only switch off. A generic action without `record_argument` runs on no row, and has nothing to switch off. |
+| [`bulk?`](#tables-table-action-bulk?){: #tables-table-action-bulk? } | `boolean` |  | Whether the action is also offered for the rows a person has selected, to run on all of them at once. Defaults to `true` for every action that can: one that accepts no attribute of which two records cannot hold the same value. `false` leaves it an action of one row; it can only switch off. A generic action without `record_argument` runs on no row, and has nothing to switch off; one with `selection_argument` runs on the selection only. |
 | [`record_argument`](#tables-table-action-record_argument){: #tables-table-action-record_argument } | `atom` |  | For a generic action: the argument that is given the primary key of a row. The action is then a row action: its button stands in every row, the argument is filled in by the table and not asked for, and the action's other arguments are asked for in the action panel. The argument has to be public and of the type of the resource's primary key, which has to be one attribute. |
+| [`selection_argument`](#tables-table-action-selection_argument){: #tables-table-action-selection_argument } | `atom` |  | For a generic action: the argument that is given the primary keys of the selected rows, all of them at once. The action is then an action on the selection: its button stands in the line above the grid while rows are selected, and it runs once, given every selected key that the person may read ("all that match" read then, through the table's read action and with its filters). The argument is filled in by the table and not asked for. It has to be public and a list of the type of the resource's primary key, which has to be one attribute. |
+| [`sort_argument`](#tables-table-action-sort_argument){: #tables-table-action-sort_argument } | `atom` |  | With `selection_argument`: the argument that is given the table's sort as the person has chosen it, in the syntax of `Ash.Query.sort_input/2` (`"title"`, `"-due_on"`), or nil where they have chosen none, or sort by a column of a calculation with arguments, which that syntax cannot say. A read the action runs over the keys can then keep the table's order. It has to be a public argument of the type `:string`. |
 
 
 ### tables.table.action.reference

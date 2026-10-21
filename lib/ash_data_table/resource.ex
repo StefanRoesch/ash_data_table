@@ -468,6 +468,39 @@ defmodule AshDataTable.Resource do
   to be one attribute. Such an action is offered for the selected rows as
   every row action is, and runs once per record.
 
+  `selection_argument` names the argument of a generic action that takes a
+  list of primary keys, and makes the action an action on the selection:
+  its button is in the line above the grid while rows are selected, and it
+  runs once, given the keys of every selected record the person may read.
+  "All that match" is read then, through the table's read action, with the
+  person's filters, as the person: the table holds keys only.
+  `sort_argument` names a `:string` argument that is given the table's sort
+  as `Ash.Query.sort_input/2` takes it (`"-due_on"`), nil for none:
+
+      actions do
+        action :export_csv, Ash.Type.File do
+          argument :ids, {:array, :uuid}, allow_nil?: false
+          argument :sort, :string
+          run MyApp.Tracker.ExportCsv
+        end
+      end
+
+      table do
+        action :export_csv do
+          selection_argument :ids
+          sort_argument :sort
+        end
+      end
+
+  Such an action asks first only where it says `confirm`, as a table
+  action does, and what it returned is said above the grid.
+
+  A generic action that `returns` `Ash.Type.File`, wherever it runs (a row,
+  the table, the selection), has the file it returns saved in the person's
+  browser: the table opens it with `Ash.Type.File.open/2`, reads it whole,
+  and sends it to the page, named by `Ash.Type.File.filename/1` (else after
+  the action) and typed by `Ash.Type.File.content_type/1`.
+
   An argument that holds the key of a record of another resource is a key
   like any other value to Ash: nothing says which resource it belongs to,
   and its field is a plain text field. `reference` in the `action` says it:
@@ -483,7 +516,8 @@ defmodule AshDataTable.Resource do
   resource: one record for a key, any number for a list of keys. The chosen
   records are read again, as the person, before the action runs. It is for
   every `action` of the block, a row action among them, and not for the
-  `record_argument`, which the table gives. An argument that a
+  `record_argument`, the `selection_argument` and the `sort_argument`,
+  which the table gives. An argument that a
   `manage_relationship` change hands to a relationship is chosen without
   it, and a `reference` for one is reported.
 
@@ -762,7 +796,7 @@ defmodule AshDataTable.Resource do
   @action %Spark.Dsl.Entity{
     name: :action,
     describe: """
-    An action a person runs from the table: a row action, or a table action.
+    An action a person runs from the table: a row action, a table action, or an action on the selection.
 
     An update or destroy action of the resource is a row action: a person runs it on the record of a row, from a button in the last column of the table. A generic action is a table action: a person runs it on the table as a whole, from a button on the line of the table's name. The buttons of each kind stand in the declared order.
 
@@ -771,6 +805,10 @@ defmodule AshDataTable.Resource do
     A row action is also offered for the rows a person has selected, to run on all of them at once, unless it says `bulk? false`.
 
     A generic action that takes the primary key of a record as an argument is a row action when `record_argument` names that argument: the table gives it the key of the row.
+
+    A generic action that takes a list of primary keys as an argument is an action on the selection when `selection_argument` names that argument: it runs once, and the table gives it the keys of every selected record. `sort_argument` names an argument that is given the table's sort besides.
+
+    A generic action that returns `Ash.Type.File` has the file it returns saved in the person's browser.
 
     An argument that holds the key of a record of another resource is chosen in the picker when a `reference` says which resource that is.
 
@@ -798,6 +836,12 @@ defmodule AshDataTable.Resource do
       """
       action :copy do
         record_argument :label_id
+      end
+      """,
+      """
+      action :export_csv do
+        selection_argument :ids
+        sort_argument :sort
       end
       """,
       """

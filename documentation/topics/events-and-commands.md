@@ -38,7 +38,7 @@ is safe.
 | `:row_saved` | A cell was saved, emptied, given a chosen record, or saved from the side panel. |
 | `:row_created` | A create ran. |
 | `:row_destroyed` | A destroy action ran on a row. |
-| `:action_ran` | An update or generic action ran on a row, or a table action ran. |
+| `:action_ran` | An update or generic action ran on a row, a table action ran, or an action on the selection ran once on all of it. |
 | `:bulk_ran` | An action on the selected rows is done. |
 | `:selection_changed` | What is selected changed. |
 | `:row_opened` | "Open" was used on a row (see below). |
@@ -54,6 +54,7 @@ sends no events.
 - A record in the details is the one the action returned to the person, with
   every `sensitive?` value replaced by `%AshDataTable.Sensitive.Masked{}`.
 - `arguments` leave out sensitive ones; a file is given by its name and type.
+  So is a file a generic action returned, as its `result`.
 - A key is a primary key as a map, `%{id: "…"}`.
 - The keys of `:selection_changed` are what the browser named: claims, not
   records read again. Use `selected_records/2` (below) for the records.

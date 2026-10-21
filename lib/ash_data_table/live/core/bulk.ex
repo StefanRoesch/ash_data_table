@@ -1,7 +1,11 @@
 defmodule AshDataTable.Live.Core.Bulk do
   @moduledoc false
   # Actions on the selected rows: the question, the panel, and
-  # the run beside the process, with its outcome.
+  # the run beside the process, with its outcome. A row action runs on each
+  # selected record (`AshDataTable.Bulk.run/5`); an action on the selection
+  # (`selection_argument`) runs once on all of them (`Bulk.once/5`), and
+  # what came of it is said as a table action's is, a file it returned sent
+  # to the page to save.
 
   require Logger
 
@@ -15,6 +19,29 @@ defmodule AshDataTable.Live.Core.Bulk do
   alias AshDataTable.Operation
   alias AshDataTable.Table
   alias AshDataTable.Text
+
+  # An action on the selection ran once: said as a table action's outcome
+  # is, with a file it returned for the page to save
+  # (`AshDataTable.Live.Core.Panel.done/3`). The rows stay selected: the
+  # action ran on the selection as a whole, and changed nothing of it that
+  # the table knows.
+  defp ran({:ok, %Operation.Outcome{} = outcome}, table) do
+    %{selection: %{running: %{action: action}}} = table.entry
+
+    table
+    |> Table.put(running: nil)
+    |> Core.Panel.done(action, outcome)
+  end
+
+  defp ran({:ok, %Operation.Failure{message: message}}, table) do
+    %{selection: %{running: %{action: action}}} = table.entry
+    text = {:text, :action_not_done, action: action.label, message: message}
+
+    table
+    |> Table.put(running: nil, result: %{summary: text, failures: []})
+    |> Core.say(text)
+    |> Reading.reread()
+  end
 
   defp ran({:ok, outcome}, table) do
     %{model: model, selection: %{running: %{action: action}}} = table.entry
@@ -92,8 +119,8 @@ defmodule AshDataTable.Live.Core.Bulk do
     # the host is told what was done, whoever asks now
     table =
       case result do
-        {:ok, %{event: event}} -> Core.notify(table, event)
-        _exit -> table
+        {:ok, %{event: event}} when not is_nil(event) -> Core.notify(table, event)
+        _failed_or_exit -> table
       end
 
     if Caller.who(caller) == by,
@@ -117,20 +144,30 @@ defmodule AshDataTable.Live.Core.Bulk do
   # The rows are not looked up among those of the page, as a selection
   # outlives its page: they are claims, and the run reads each as the
   # person before anything is done to it (`AshDataTable.Bulk`).
+  #
+  # An action on the selection asks first only where it has a question of
+  # its own, as a table action does: without one, and without a panel, it
+  # runs at once on what is selected now.
   def step({:bulk, name} = intent, table) do
     case Operation.bulk_action(Core.operation(table, intent), name) do
       {:ok, action, selection} ->
         question = question(action, selected(selection, table.entry))
         token = Selection.token(table.entry.selection)
 
-        if action.panel? do
-          {open_bulk(table, action, selection, question), %{panel: true}}
-        else
-          # the hook asks it, or the host does (controlled mode)
-          case Opener.ask(table, {:bulk_run, name, token}, question, %{action: name}) do
-            {:run, table} -> {table, %{ask: Text.say(question), selection: token}}
-            {:held, _reply, table} -> {table, %{ok: true}}
-          end
+        cond do
+          action.panel? ->
+            {open_bulk(table, action, selection, question), %{panel: true}}
+
+          is_nil(question) ->
+            {table, _reply} = step({:bulk_run, name, token}, table)
+            {table, %{ok: true}}
+
+          true ->
+            # the hook asks it, or the host does (controlled mode)
+            case Opener.ask(table, {:bulk_run, name, token}, question, %{action: name}) do
+              {:run, table} -> {table, %{ask: Text.say(question), selection: token}}
+              {:held, _reply, table} -> {table, %{ok: true}}
+            end
         end
 
       :error ->
@@ -185,8 +222,13 @@ defmodule AshDataTable.Live.Core.Bulk do
   defp selected({:rows, rows}, _assigns), do: length(Enum.uniq(rows))
 
   # What is asked before an action runs on the selected rows: always
-  # something, with the number of records. An action with a question of
-  # its own asks that, and the number follows it.
+  # something for a row action, with the number of records. An action with
+  # a question of its own asks that, and the number follows it. An action
+  # on the selection asks only that (nil for none).
+  defp question(%Model.Action{confirm: nil, selection_argument: given}, _count)
+       when not is_nil(given),
+       do: nil
+
   defp question(%Model.Action{confirm: nil, label: label}, nil),
     do: {:text, :bulk_question_all, action: label}
 

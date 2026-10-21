@@ -208,6 +208,25 @@ defmodule AshDataTable.Act do
   def given(%Action{}, _key), do: %{}
 
   @doc """
+  What the table itself gives an action on the selection
+  (`selection_argument`) that runs once on the records with the primary
+  keys `keys`: their values, as the argument its declaration names, and
+  `sort` (the table's sort as `Ash.Query.sort_input/2` takes it, or nil)
+  as its `sort_argument`, where it names one.
+  """
+  @spec selected(Action.t(), [map], String.t() | nil) :: map
+  def selected(%Action{type: :action, selection_argument: name} = action, keys, sort)
+      when not is_nil(name) do
+    values = for key <- keys, map_size(key) == 1, [value] = Map.values(key), do: value
+    given = %{Atom.to_string(name) => values}
+
+    case action.sort_argument do
+      nil -> given
+      sort_argument -> Map.put(given, Atom.to_string(sort_argument), sort)
+    end
+  end
+
+  @doc """
   Runs a generic action straight away, with `params` as its arguments: what
   the table gives itself, and what its inputs give where nothing was typed
   (`AshDataTable.Panel.values/3` of `%{}`); and what the page gives it.
