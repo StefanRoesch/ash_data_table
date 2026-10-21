@@ -167,11 +167,17 @@ defmodule AshDataTable.Kit.Default do
   def class(:picker, %{presentation: :inline}),
     do: "mt-4 w-full rounded-box border border-base-content/40 bg-base-100 p-6 text-base-content"
 
+  # The pages of a table: the range at the left, the controls at the right
+  # end. A nested table's are in the last row of its grid, at its cell's
+  # inset, and stay at the left edge of its scroll area as wide as what is
+  # seen of it (`--ash-data-table-view`), no wider than the table: the
+  # controls at the right end of what is seen, as under a table on the page.
   def class(:pagination, %{nested?: false}),
     do: "mt-4 flex flex-wrap items-center justify-between gap-4"
 
   def class(:pagination, %{nested?: true}),
-    do: "sticky left-4 flex w-fit flex-wrap items-center justify-start gap-4"
+    do:
+      "sticky left-4 flex w-[min(100%,calc(var(--ash-data-table-view,100%)-2rem))] flex-wrap items-center justify-between gap-4"
 
   # in the text colour: the error colour is too faint for small text
   def class(:message, %{kind: :error, nested?: nested?}),

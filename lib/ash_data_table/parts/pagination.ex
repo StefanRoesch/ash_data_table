@@ -10,8 +10,9 @@ defmodule AshDataTable.Parts.Pagination do
   # controls to go to another. Under a table of its own it is a navigation
   # landmark after the grid, whose controls are ordinary tab stops. In a
   # nested table it is a group in the last row of the grid, its controls Tab
-  # stops as well. There the controls follow the range
-  # at the left: the right end of a nested table may be out of sight.
+  # stops as well. Both stand alike: the range at the left, the controls at
+  # the right end; a nested table's right end is that of what is seen of it
+  # (`Kit.Default.class(:pagination, …)`).
   #
   # The hook keeps focus on the control that was used, or sends it on when
   # that control is gone (see `.Pagination` below).
@@ -47,8 +48,8 @@ defmodule AshDataTable.Parts.Pagination do
 
   defp pages(assigns) do
     ~H"""
-    <%!-- `me-auto`: under a table of its own the range is at one end and the
-    controls together at the other. --%>
+    <%!-- `me-auto`: the range is at one end and the controls together at
+    the other. --%>
     <p {@range} class="me-auto text-sm">{@texts.range}</p>
     <div class="join">
       <button type="button" {@previous} class="join-item btn btn-sm">
