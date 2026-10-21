@@ -14,6 +14,7 @@ defmodule AshDataTable.ManagingTest do
   alias AshDataTable.Act
   alias AshDataTable.Edit
   alias AshDataTable.Model
+  alias AshDataTable.Panel
   alias AshDataTable.Pick
   alias AshDataTable.Resource.Managing
   alias AshDataTable.Resource.Referencing
@@ -317,13 +318,13 @@ defmodule AshDataTable.ManagingTest do
     end
   end
 
-  describe "Act.unchosen/4: the keys of an argument that a person could not have chosen" do
+  describe "Panel.unchosen/4: the keys of an argument that a person could not have chosen" do
     setup do
       %{bug: tag("Bug"), urgent: tag("Urgent"), old: tag("Old", %{retired?: true})}
     end
 
     defp unchosen(action, params, record, opts \\ @admin) do
-      for input <- Act.unchosen(row_action(action).inputs, params, record, opts), do: input.name
+      for input <- Panel.unchosen(row_action(action).inputs, params, record, opts), do: input.name
     end
 
     test "are none where every key names a record they may read through the picker's read action",
@@ -427,13 +428,13 @@ defmodule AshDataTable.ManagingTest do
     test "is the keys as they were sent, without the field's own entry" do
       input = input(row_action(:set_tags), :tags)
 
-      assert Act.values([input], %{"tags" => ["", "a", "b"]}) == %{"tags" => ["a", "b"]}
-      assert Act.values([input], %{"tags" => [""]}) == %{"tags" => []}
+      assert Panel.values([input], %{"tags" => ["", "a", "b"]}) == %{"tags" => ["a", "b"]}
+      assert Panel.values([input], %{"tags" => [""]}) == %{"tags" => []}
       # nothing that is no text
-      assert Act.values([input], %{"tags" => ["", %{"id" => "a"}, "b"]}) == %{"tags" => ["b"]}
-      assert Act.values([input], %{"tags" => "a"}) == %{"tags" => []}
+      assert Panel.values([input], %{"tags" => ["", %{"id" => "a"}, "b"]}) == %{"tags" => ["b"]}
+      assert Panel.values([input], %{"tags" => "a"}) == %{"tags" => []}
       # a field that was not sent gives the action nothing
-      assert Act.values([input], %{}) == %{}
+      assert Panel.values([input], %{}) == %{}
     end
   end
 
@@ -550,11 +551,11 @@ defmodule AshDataTable.ManagingTest do
                )
 
       # under the argument, though Ash names the relationship
-      assert Act.errors(form, model, drop.inputs) ==
+      assert Panel.errors(form, model, drop.inputs) ==
                %{drop: [{:text, :record_gone, []}]}
 
       # and nowhere for a panel that has no such field
-      assert Act.errors(form, model, []) == %{}
+      assert Panel.errors(form, model, []) == %{}
       assert names(ticket, :tags) == ["Bug"]
     end
 
@@ -568,7 +569,7 @@ defmodule AshDataTable.ManagingTest do
         {:error, %AshPhoenix.Form{} = form} =
           Act.submit_row(model, stumble, key(ticket), %{"over" => over}, "panel", @admin)
 
-        Act.errors(form, model, stumble.inputs)
+        Panel.errors(form, model, stumble.inputs)
       end
 
       assert errors.("tag") == %{tags: [{:text, :record_gone, []}]}

@@ -3,23 +3,20 @@ defmodule AshDataTable.Live.Core.Picker do
   # The picker: open, choose, cancel, and the fields of the
   # action panel given by choosing related records.
 
-  alias AshDataTable.Act
   alias AshDataTable.Ids
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Cells
-  alias AshDataTable.Live.Core.Panel
   alias AshDataTable.Live.Core.Reading
   alias AshDataTable.Live.Core.Requests
   alias AshDataTable.Live.Core.Selection
   alias AshDataTable.Model
   alias AshDataTable.Operation
+  alias AshDataTable.Panel
   alias AshDataTable.Pick
-  alias AshDataTable.Present
   alias AshDataTable.Query
   alias AshDataTable.Record
   alias AshDataTable.State
   alias AshDataTable.Text
-  alias AshDataTable.Typed
 
   require AshDataTable.Live.Current, as: Current
 
@@ -29,12 +26,13 @@ defmodule AshDataTable.Live.Core.Picker do
   # without it, and the action is told as it is of anything typed. The
   # answer says where focus goes: to what stands where the record stood.
   def on({:panel_unpick, name, key}, socket) when is_map(Current.entry(socket, :panel)) do
-    panel = Core.table(socket).entry.panel
+    %{id: id, model: model, panel: panel} = Core.table(socket).entry
 
-    with %{editor: :references} = input <- reference_input(panel, name),
-         at when is_integer(at) <- Enum.find_index(panel.refs[name], &(&1 == key)) do
-      keys = List.delete_at(panel.refs[name], at)
-      field = Ids.field(Core.table(socket).entry.id, [name])
+    with %{editor: :references} = input <- Panel.reference(panel, name),
+         held = Panel.keys(panel, name),
+         at when is_integer(at) <- Enum.find_index(held, &(&1 == key)) do
+      keys = List.delete_at(held, at)
+      field = Ids.field(id, [name])
 
       focus =
         cond do
@@ -45,8 +43,8 @@ defmodule AshDataTable.Live.Core.Picker do
 
       {:noreply,
        socket
-       |> Core.put(panel: Panel.errors(hold(panel, input, keys), Core.table(socket).entry.model))
-       |> Panel.focus(focus)}
+       |> Core.Panel.put(Panel.hold(panel, model, input, keys))
+       |> Core.Panel.focus(focus)}
     else
       _ -> {:noreply, socket}
     end
@@ -105,14 +103,14 @@ defmodule AshDataTable.Live.Core.Picker do
   def on({:pick_input, name}, socket) when is_map(Current.entry(socket, :panel)) do
     panel = Core.table(socket).entry.panel
 
-    case reference_input(panel, name) do
+    case Panel.reference(panel, name) do
       nil ->
         {:noreply, socket}
 
       # several records: the picker opens with the rows selected of the
       # records the field holds now, on whatever page they are
       %{editor: :references} = input ->
-        known = Map.get(panel.chosen, input.name, %{})
+        known = Panel.known(panel, input.name)
 
         picker = %{
           for: {:input, input.name},
@@ -121,7 +119,8 @@ defmodule AshDataTable.Live.Core.Picker do
           title: picker_title(input.label, input.reference),
           several?: true,
           current: nil,
-          chosen: for(key <- panel.refs[name], %{row: {_, _} = row} <- [known[key]], do: row),
+          chosen:
+            for(key <- Panel.keys(panel, name), %{row: {_, _} = row} <- [known[key]], do: row),
           allow_none?: false,
           question: nil,
           error: nil
@@ -136,7 +135,7 @@ defmodule AshDataTable.Live.Core.Picker do
           reference: input.reference,
           title: picker_title(input.label, input.reference),
           several?: false,
-          current: Reading.blank_as_nil(held_key(panel, input)),
+          current: Reading.blank_as_nil(Panel.held(panel, input)),
           chosen: [],
           allow_none?: not input.required?,
           question: nil,
@@ -190,6 +189,14 @@ defmodule AshDataTable.Live.Core.Picker do
   # Sent by the picker's hook for Cancel and Escape.
   def on(:picker_cancel, socket),
     do: {:noreply, Core.put(socket, picker: nil)}
+
+  # The host's choice for the picker it draws (`picked/2`).
+  def on({:chosen, keys}, socket), do: picked(socket, keys)
+
+  # The host's Confirm of a reference cell's question (controlled mode):
+  # the choice saves, as it would have from the hook.
+  def on({:confirmed, {:refer, key, name, named, arguments}}, socket),
+    do: refer(socket, key, name, named, arguments, true)
 
   @doc """
   The host's choice for the picker it draws (controlled mode,
@@ -265,7 +272,7 @@ defmodule AshDataTable.Live.Core.Picker do
         refer(socket, key, name, named, arguments, picked.confirmed?, by)
 
       {:input, name} ->
-        case panel && reference_input(panel, Atom.to_string(name)) do
+        case panel && Panel.reference(panel, Atom.to_string(name)) do
           %{editor: :references} = input ->
             choose_inputs(socket, panel, input, picked.rows, arguments)
 
@@ -301,6 +308,7 @@ defmodule AshDataTable.Live.Core.Picker do
           Requests.controlled?(socket, :confirm) ->
             socket
             |> Core.put(picker: nil)
+            |> Core.Panel.yielded()
             |> Requests.ask_cell(
               {:refer, key, name, named, arguments},
               column,
@@ -353,22 +361,11 @@ defmodule AshDataTable.Live.Core.Picker do
       :error ->
         {:reply, %{ok: false}, unavailable(socket)}
 
-      {text, known} ->
-        panel = %{
-          panel
-          | chosen: Map.put(panel.chosen, input.name, %{text => known}),
-            # the key is looked up once more when the action runs: through
-            # the picker's read action as it was given when it was chosen
-            picked_with: Map.put(panel.picked_with, input.name, {text, arguments})
-        }
-
-        keys = if text == "", do: [], else: [text]
-
-        {:reply, %{ok: true},
-         Core.put(socket,
-           picker: nil,
-           panel: Panel.errors(hold(panel, input, keys), Core.table(socket).entry.model)
-         )}
+      # the key is looked up once more when the action runs: through the
+      # picker's read action as it was given when it was chosen
+      chosen ->
+        panel = Panel.choose(panel, Core.table(socket).entry.model, input, chosen, arguments)
+        {:reply, %{ok: true}, socket |> Core.put(picker: nil) |> Core.Panel.put(panel)}
     end
   end
 
@@ -384,19 +381,19 @@ defmodule AshDataTable.Live.Core.Picker do
   # that record; any other is read, as the person, and one that names
   # nothing they may read chooses nothing at all.
   defp choose_inputs(socket, panel, input, rows, arguments) when is_list(rows) do
-    name = Atom.to_string(input.name)
-    known = Map.get(panel.chosen, input.name, %{})
+    held = Panel.keys(panel, input.name)
+    known = Panel.known(panel, input.name)
     selected = MapSet.new(rows, &named/1)
 
     kept =
-      Enum.filter(panel.refs[name], fn key ->
+      Enum.filter(held, fn key ->
         case known[key] do
           %{row: {_row_key, _names} = row} -> MapSet.member?(selected, named(row))
           _not_shown -> true
         end
       end)
 
-    held = for key <- panel.refs[name], %{row: {_, _} = row} <- [known[key]], do: named(row)
+    held = for key <- held, %{row: {_, _} = row} <- [known[key]], do: named(row)
     opts = [arguments: arguments] ++ chooser(socket)
 
     added =
@@ -417,27 +414,9 @@ defmodule AshDataTable.Live.Core.Picker do
 
       added ->
         added = Enum.reject(added, fn {text, _known} -> text in kept end)
-        with_arguments = Map.new(added, fn {text, _known} -> {text, arguments} end)
-
-        picked_with =
-          Map.update(panel.picked_with, input.name, with_arguments, fn
-            %{} = before -> Map.merge(before, with_arguments)
-            _other -> with_arguments
-          end)
-
-        panel = %{
-          panel
-          | chosen: Map.put(panel.chosen, input.name, Map.merge(known, Map.new(added))),
-            picked_with: picked_with
-        }
-
-        keys = kept ++ Enum.map(added, &elem(&1, 0))
-
-        {:reply, %{ok: true},
-         Core.put(socket,
-           picker: nil,
-           panel: Panel.errors(hold(panel, input, keys), Core.table(socket).entry.model)
-         )}
+        model = Core.table(socket).entry.model
+        panel = Panel.choose(panel, model, input, kept, added, arguments)
+        {:reply, %{ok: true}, socket |> Core.put(picker: nil) |> Core.Panel.put(panel)}
     end
   end
 
@@ -472,50 +451,9 @@ defmodule AshDataTable.Live.Core.Picker do
           _key -> {row_key, Reading.names(model, record, row_key)}
         end
 
-      {:ok, {key_text(input, value, zone), %{label: called(reference, record, zone), row: row}}}
+      {:ok,
+       {Panel.key_text(input, value, zone), %{label: called(reference, record, zone), row: row}}}
     end
-  end
-
-  # A key as a field of the panel writes it: an attribute's as the editor
-  # of its type does, an argument's as a key is written.
-  def key_text(%{kind: :attribute} = input, value, zone), do: Typed.of(input, value, zone)
-
-  def key_text(_argument, value, _zone), do: to_string(Pick.written(value))
-
-  # Puts keys into a field of the panel that is given by choosing: as if
-  # its form had sent them. The field is one the person has been in.
-  defp hold(panel, input, keys) do
-    name = Atom.to_string(input.name)
-
-    sent =
-      case input.editor do
-        :references -> ["" | keys]
-        :reference -> List.first(keys, "")
-      end
-
-    typed = Map.put(panel.typed, name, sent)
-    picked = MapSet.put(panel.picked, name)
-
-    %{
-      panel
-      | form: Act.validate(panel.form, panel.inputs, typed, Panel.given(panel), panel.time_zone),
-        typed: typed,
-        refs:
-          if(is_map_key(panel.refs, name), do: Map.put(panel.refs, name, keys), else: panel.refs),
-        picked: picked,
-        used: MapSet.union(panel.used, picked)
-    }
-  end
-
-  # The key a field of the panel holds that is given by choosing one record:
-  # as it is written, "" for none. An argument's is the panel's to keep;
-  # an attribute's is the form's.
-  defp held_key(panel, %{kind: :argument} = input),
-    do: List.first(panel.refs[Atom.to_string(input.name)] || [], "")
-
-  defp held_key(panel, input) do
-    default? = panel.kind == :create
-    Present.field_value(input, AshPhoenix.Form.value(panel.form, input.name), default?, panel)
   end
 
   # The row the browser named is none of a record this person may read
@@ -526,15 +464,6 @@ defmodule AshDataTable.Live.Core.Picker do
     message = {:text, :record_gone, []}
 
     socket |> Core.put(picker: %{picker | error: message}) |> Core.say(message)
-  end
-
-  # The input of a panel that is given by choosing a related record, by its
-  # name as text.
-  defp reference_input(panel, name) do
-    Enum.find(
-      panel.inputs,
-      &(&1.editor in [:reference, :references] and Atom.to_string(&1.name) == name)
-    )
   end
 
   # What the picker is headed by: the column, or the field, and what one

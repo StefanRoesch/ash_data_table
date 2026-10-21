@@ -146,8 +146,8 @@ defmodule AshDataTable.Live.Core.Updates do
   # below it (by `path`, in the registry).
   defp working(%{entry: %{id: id, open: open, panel: panel, picker: picker}, entries: entries}) do
     of_panel =
-      case panel do
-        %{key: key} when is_binary(key) -> [key]
+      case panel && AshDataTable.Panel.row(panel) do
+        key when is_binary(key) -> [key]
         _no_row -> []
       end
 

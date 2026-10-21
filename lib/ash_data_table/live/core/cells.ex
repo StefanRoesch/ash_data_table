@@ -3,11 +3,9 @@ defmodule AshDataTable.Live.Core.Cells do
   # Cells: save, clear, reveal, the choice for a reference
   # cell, discard, dismiss, and the panel of a map cell.
 
-  alias AshDataTable.Edit
   alias AshDataTable.Format
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Notify
-  alias AshDataTable.Live.Core.Panel
   alias AshDataTable.Live.Core.Picker
   alias AshDataTable.Live.Core.Reading
   alias AshDataTable.Live.Core.Requests
@@ -25,7 +23,10 @@ defmodule AshDataTable.Live.Core.Cells do
   def on({:save, _key, _name, typed} = intent, socket) do
     case asked(socket, intent) do
       {column, row} ->
-        held(Requests.ask_cell(socket, intent, column, row.pk, typed))
+        socket
+        |> Core.Panel.yielded()
+        |> Requests.ask_cell(intent, column, row.pk, typed)
+        |> held()
 
       nil ->
         write(intent, socket)
@@ -41,7 +42,7 @@ defmodule AshDataTable.Live.Core.Cells do
   def on({:clear, _key, _name} = intent, socket) do
     case asked(socket, intent) do
       {column, row} ->
-        held(Requests.ask_cell(socket, intent, column, row.pk, ""))
+        socket |> Core.Panel.yielded() |> Requests.ask_cell(intent, column, row.pk, "") |> held()
 
       nil ->
         write(intent, socket)
@@ -76,49 +77,24 @@ defmodule AshDataTable.Live.Core.Cells do
   # Sent by the hook when a person opens the editor of a cell that is
   # edited in the side panel (an array, a map cell, a union): the row by the
   # key in its DOM id, and the column. The side panel opens with the
-  # column's field, as a form of the column's update action; nothing is
-  # saved. The record is read first, as the person.
+  # column's field, as a form of the column's update action
+  # (`AshDataTable.Core.Panel.open/4`); nothing is saved. The record is read
+  # first, as the person.
   def on({:edit, key, name}, socket) do
-    %{id: id, model: model, rows: rows} = Core.table(socket).entry
+    %{model: model, rows: rows} = Core.table(socket).entry
 
     with %{editable?: true} = column <- Operation.column(model, name),
          true <- Model.in_panel?(column),
          %{} = row <- rows[key] do
-      case Edit.open(model, column, row.pk, "#{id}-panel", Core.reader(socket)) do
-        {:ok, record, form} ->
-          title =
-            case Reading.title_of(model, record) do
-              nil -> column.label
-              name -> {:text, :action_on, action: column.label, record: name}
-            end
-
-          panel =
-            Panel.panel(socket, &Map.get(record, &1.name), %{
-              kind: :cell,
-              # the column's update action, as the panel knows an action
-              action: %Model.Action{
-                name: column.update_action,
-                type: :update,
-                label: column.label,
-                confirm: column.confirm
-              },
-              key: key,
-              column: column.name,
-              form: form,
-              inputs: [Model.input(model, column)],
-              title: title,
-              submit: {:text, :save, []}
-            })
-
-          {:reply, %{ok: true}, Core.put(socket, panel: panel)}
+      case Core.Panel.open(socket, :cell, %{key: key, pk: row.pk, column: column}) do
+        {:ok, socket} ->
+          {:reply, %{ok: true}, socket}
 
         # not theirs to see on this record, and so not theirs to change
-        :hidden ->
+        :refused ->
           {:reply, %{ok: false}, socket}
 
-        :error ->
-          message = {:text, :record_gone, []}
-
+        {:error, message} ->
           {:reply, %{ok: false, error: Text.say(message)},
            Core.say(socket, {:text, :not_saved, column: column.label, message: message})}
       end
@@ -144,6 +120,10 @@ defmodule AshDataTable.Live.Core.Cells do
   # Sent by the hook when a person presses Escape on a button of a row's
   # actions cell that shows the message of an action that failed: the
   # message is given up.
+  # The host's Confirm of a column's question (controlled mode): the save
+  # or "Clear" runs, as it would have from the hook.
+  def on({:confirmed, intent}, socket), do: write(intent, socket)
+
   def on({:dismiss, key}, socket) do
     case Core.table(socket).entry.failed[key] do
       %{action: message} when not is_nil(message) ->
@@ -237,7 +217,7 @@ defmodule AshDataTable.Live.Core.Cells do
       # nothing to show the row from, so it stays as it is, and the hook
       # marks the cell with the message. A veto says no in the same way.
       {_error_or_halted, message_or_failure} ->
-        message = message(message_or_failure)
+        message = Operation.message(message_or_failure)
 
         {:reply, %{ok: false, error: Text.say(message)},
          Core.say(socket, {:text, :not_saved, column: column.label, message: message})}
@@ -279,7 +259,7 @@ defmodule AshDataTable.Live.Core.Cells do
          |> Core.say({:text, :not_saved, column: column.label, message: message})}
 
       {_error_or_halted, message_or_failure} ->
-        message = message(message_or_failure)
+        message = Operation.message(message_or_failure)
 
         {:reply, %{ok: false, error: Text.say(message)},
          socket
@@ -287,11 +267,6 @@ defmodule AshDataTable.Live.Core.Cells do
          |> Core.say({:text, :not_saved, column: column.label, message: message})}
     end
   end
-
-  # The message of a failure, or of a veto.
-  def message(%Operation.Failure{message: message}), do: message
-
-  def message(message), do: message
 
   # What a reference cell shows of a record that was chosen for it: its
   # label, as far as this person may see it. Nothing for no record.

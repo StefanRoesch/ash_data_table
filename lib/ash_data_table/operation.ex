@@ -36,6 +36,7 @@ defmodule AshDataTable.Operation do
   alias AshDataTable.Errors
   alias AshDataTable.Event
   alias AshDataTable.Model
+  alias AshDataTable.Panel
   alias AshDataTable.Query
   alias AshDataTable.Record
   alias AshDataTable.Request
@@ -47,7 +48,9 @@ defmodule AshDataTable.Operation do
     #   * `intent` what was asked (`AshDataTable.Intent`), names still text.
     #     A reference cell's choice is `{:refer, row, column, named,
     #     confirmed?, arguments}`: the live layer makes it of `picked` and
-    #     the picker it opened, whose column is its own to name;
+    #     the picker it opened, whose column is its own to name; what the
+    #     open panel's button runs is what `AshDataTable.Panel.submission/2`
+    #     says (`submit/1`);
     #   * `model` the person's model, `state` the page's (a run on "all that
     #     match" reads under its filters), `parent` for a nested table the
     #     row it belongs to (`key`, `authorize?`, `arguments` of the table
@@ -57,9 +60,6 @@ defmodule AshDataTable.Operation do
     #     is told besides (`authorize_given`);
     #   * `rows` the rows of the page by the key in their DOM id, each with
     #     its primary key: what a row event names is looked up there;
-    #   * `panel` the open action panel as the live layer keeps it (its
-    #     form, inputs, what the table gives its action, the fields asked to
-    #     be emptied, the records chosen), nil for none;
     #   * `selection` what is selected (`:all`, or `{:rows, rows}`, the rows
     #     as the hook names them: claims), for an action on a selection;
     #   * `read?` whether the table has read: a table that could not read
@@ -84,7 +84,6 @@ defmodule AshDataTable.Operation do
       opts: [],
       picking: [],
       rows: %{},
-      panel: nil,
       selection: nil,
       read?: false,
       offered: %{table: [], bulk: []},
@@ -278,17 +277,16 @@ defmodule AshDataTable.Operation do
   end
 
   @doc """
-  Runs the action of the open panel with what its form sent: the save of a
-  map cell, a row action, a table action, a create, and an action on a
-  selection, which is handed back to be started (`{:start, run, files}`).
+  Runs the action of the open panel with what its form sent: what
+  `AshDataTable.Panel.submission/2` says it is, with what the panel holds of
+  it (`held`: `params`, `form`, `inputs`, `time_zone`, `cleared`,
+  `picked_with`). The save of a map cell (`:submit_cell`), a row action
+  (`:submit_row`), a table action (`:submit_table`), a create
+  (`:submit_create`), and an action on a selection (`:submit_bulk`), which
+  is handed back to be started (`{:start, run, files}`).
   """
   @spec submit(Input.t()) :: result | {:start, (-> Bulk.outcome()), map}
-  def submit(%Input{intent: {:panel_submit, params}, panel: %{} = panel} = input),
-    do: submit(panel.kind, panel, params, input)
-
-  def submit(%Input{}), do: :refused
-
-  defp submit(:cell, %{key: key, column: name, inputs: [field]} = panel, params, input) do
+  def submit(%Input{intent: {:submit_cell, key, name, %{inputs: [field]} = held}} = input) do
     with %{} = column <-
            Enum.find(
              input.model.columns,
@@ -297,7 +295,7 @@ defmodule AshDataTable.Operation do
          %{} = row <- input.rows[key],
          :cont <- asked(input, :panel_cell, column, row) do
       input.with_files.(fn _files ->
-        case Edit.put(input.model, column, field, row.pk, params, panel.form.id, opts(input)) do
+        case Edit.put(input.model, column, field, row.pk, held.params, held.form.id, opts(input)) do
           {:ok, record} ->
             event(
               {:ok, %Outcome{record: record}},
@@ -316,34 +314,30 @@ defmodule AshDataTable.Operation do
     end
   end
 
-  defp submit(:row, %{key: key, action: action} = panel, params, input) do
+  def submit(%Input{intent: {:submit_row, key, action, held}} = input) do
     with %{} = row <- input.rows[key],
          :cont <- asked(input, :row, action, key: row.pk) do
       input.with_files.(fn files ->
-        opts = [files: files, cleared: MapSet.to_list(panel.cleared)] ++ chooser(input)
+        opts = [files: files, cleared: held.cleared] ++ chooser(input, held)
 
         input.model
-        |> Act.submit_row(action, row.pk, params, panel.form.id, opts)
+        |> Act.submit_row(action, row.pk, held.params, held.form.id, opts)
         |> ran()
-        |> event(
-          &Event.ran(input.model, action, row.pk, given(input, action, panel, params, files), &1)
-        )
+        |> event(&Event.ran(input.model, action, row.pk, given(input, action, held, files), &1))
       end)
     else
       halted -> halted(halted)
     end
   end
 
-  defp submit(:table, %{action: action} = panel, params, input) do
+  def submit(%Input{intent: {:submit_table, action, held}} = input) do
     with %Model.Action{} = action <- table_action(input, Atom.to_string(action.name)),
          :cont <- asked(input, :table, action) do
       input.with_files.(fn files ->
         input.model
-        |> Act.submit_generic(action, params, files, panel.form.id, chooser(input))
+        |> Act.submit_generic(action, held.params, files, held.form.id, chooser(input, held))
         |> ran()
-        |> event(
-          &Event.ran(input.model, action, nil, given(input, action, panel, params, files), &1)
-        )
+        |> event(&Event.ran(input.model, action, nil, given(input, action, held, files), &1))
       end)
     else
       halted -> halted(halted)
@@ -353,7 +347,7 @@ defmodule AshDataTable.Operation do
   # In a nested table the new record is joined to the row the table belongs
   # to: by that row's own value, read again now, as the person. Nothing the
   # form sends can say otherwise.
-  defp submit(:create, %{action: action} = panel, params, input) do
+  def submit(%Input{intent: {:submit_create, action, held}} = input) do
     case asked(input, :create, action) do
       :cont ->
         input.with_files.(fn files ->
@@ -362,20 +356,14 @@ defmodule AshDataTable.Operation do
               input.model
               |> Act.submit_create(
                 action,
-                params,
+                held.params,
                 Map.merge(files, given),
-                panel.form.id,
-                chooser(input)
+                held.form.id,
+                chooser(input, held)
               )
               |> created(given)
               |> event(
-                &Event.ran(
-                  input.model,
-                  action,
-                  nil,
-                  given(input, action, panel, params, files),
-                  &1
-                )
+                &Event.ran(input.model, action, nil, given(input, action, held, files), &1)
               )
 
             :error ->
@@ -391,13 +379,14 @@ defmodule AshDataTable.Operation do
   # What the action makes of a value as such is known without a record, and
   # is said at its field with the panel left open. Everything else an
   # action says depends on the record, and is said when it has run.
-  defp submit(:bulk, %{action: action, selection: selection} = panel, params, input) do
+  def submit(%Input{intent: {:submit_bulk, action, selection, held}} = input) do
     case asked(input, :bulk, action, selection: selected(selection)) do
       :cont ->
         input.with_files.(fn files ->
-          form = Act.validate(panel.form, panel.inputs, params, files, panel.time_zone)
-          errors = Act.errors(form, input.model, panel.inputs)
-          chosen = Act.unchosen(panel.inputs, params, nil, chooser(input))
+          given = Panel.values(held.inputs, held.params, files, held.time_zone)
+          form = Act.validate(held.form, given)
+          errors = Panel.errors(form, input.model, held.inputs)
+          chosen = Panel.unchosen(held.inputs, held.params, nil, chooser(input, held))
 
           cond do
             # at a field of the panel, or at a field of a value inside one
@@ -408,7 +397,6 @@ defmodule AshDataTable.Operation do
               {:error, %Failure{form: form, unchosen: chosen}}
 
             true ->
-              given = Map.merge(Act.values(panel.inputs, params, panel.time_zone), files)
               start(input, action, selection, given, files)
           end
         end)
@@ -417,6 +405,8 @@ defmodule AshDataTable.Operation do
         halted(halted)
     end
   end
+
+  def submit(%Input{}), do: :refused
 
   @doc """
   Runs an action without a panel on a selection, once the person has
@@ -494,8 +484,8 @@ defmodule AshDataTable.Operation do
 
   # Who reads what a picker reads, for the keys a panel holds: with what the
   # picker's read action was given when each was chosen.
-  defp chooser(%Input{panel: panel} = input),
-    do: [picked_with: panel.picked_with] ++ input.picking ++ opts(input)
+  defp chooser(%Input{} = input, held),
+    do: [picked_with: held.picked_with] ++ input.picking ++ opts(input)
 
   # Who asks, with what the page gives every call to Ash.
   defp opts(%Input{} = input), do: Keyword.put(input.opts, :page_values, input.page_values)
@@ -541,9 +531,9 @@ defmodule AshDataTable.Operation do
 
   # What an action of a panel was given: what its form sent for the inputs,
   # its files, and what the page gives it.
-  defp given(input, action, panel, params, files) do
-    panel.inputs
-    |> Act.values(params, panel.time_zone)
+  defp given(input, action, held, files) do
+    held.inputs
+    |> Panel.values(held.params, held.time_zone)
     |> Map.merge(files)
     |> Map.merge(Act.from_page(action, opts(input)))
   end
@@ -572,6 +562,11 @@ defmodule AshDataTable.Operation do
 
   defp failed(record, message, more \\ []),
     do: {:error, struct!(%Failure{record: record, message: message}, more)}
+
+  @doc "The message of a failure, or of a veto (`{:halted, message}`)."
+  @spec message(Failure.t() | Errors.message()) :: Errors.message()
+  def message(%Failure{message: message}), do: message
+  def message(message), do: message
 
   defp halted({:halt, message}), do: {:halted, message}
   defp halted(_refused), do: :refused

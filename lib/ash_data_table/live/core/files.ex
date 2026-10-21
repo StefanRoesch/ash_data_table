@@ -7,7 +7,7 @@ defmodule AshDataTable.Live.Core.Files do
   import Phoenix.Component, only: [upload_errors: 1, upload_errors: 2]
 
   alias AshDataTable.Live.Core
-  alias AshDataTable.Live.Core.Panel
+  alias AshDataTable.Panel
 
   # ## Files
   #
@@ -27,40 +27,39 @@ defmodule AshDataTable.Live.Core.Files do
   # is sent, so a panel that stays open, with what the action said, asks
   # for the file again. What a panel leaves behind that went without its
   # button having been used is given up when the next panel opens
-  # (`opened/2`).
-
-  def file_inputs(%{inputs: inputs}), do: Enum.filter(inputs, &(&1.editor == :file))
+  # (`allowed/2`).
+  #
+  # What the action of a panel said of its files, and the entries it was
+  # given, are the panel's (`AshDataTable.Panel`); the adapter of the panel
+  # (`AshDataTable.Live.Core.Panel`) puts it into the entry.
 
   # A panel is opened: with an upload for each of its fields that takes a
   # file, and without a file that an earlier panel left behind. A panel that
   # goes without its button having been used (Cancel, a new read of the
   # table) leaves the file a person chose with its upload, where nothing is
   # sent of it and nothing shows it; it is given up here, before the next
-  # panel is shown.
-  def opened(socket, panel) do
+  # panel is shown, but for those the open panel's action was given.
+  def allowed(socket, panel) do
     socket = drop_files(socket)
 
-    socket =
-      Enum.reduce(file_inputs(panel), socket, fn input, socket ->
-        name = upload_name(Core.table(socket).entry.id, input)
+    Enum.reduce(Panel.file_inputs(panel), socket, fn input, socket ->
+      name = upload_name(Core.table(socket).entry.id, input)
 
-        # allowed once, and again after a table of the same id closed and
-        # gave it up (`AshDataTable.Live.Registry.close/2`); this table's
-        # either way, also when the table before it could not give it up
-        socket =
-          if match?(%{^name => %{allowed?: true}}, socket.assigns[:uploads] || %{}),
-            do: socket,
-            else:
-              allow_upload(socket, name,
-                accept: input.upload.accept,
-                max_entries: 1,
-                max_file_size: input.upload.max_file_size
-              )
+      # allowed once, and again after a table of the same id closed and
+      # gave it up (`AshDataTable.Live.Registry.close/2`); this table's
+      # either way, also when the table before it could not give it up
+      socket =
+        if match?(%{^name => %{allowed?: true}}, socket.assigns[:uploads] || %{}),
+          do: socket,
+          else:
+            allow_upload(socket, name,
+              accept: input.upload.accept,
+              max_entries: 1,
+              max_file_size: input.upload.max_file_size
+            )
 
-        Core.put(socket, uploads: Enum.uniq([name | Core.table(socket).entry.uploads]))
-      end)
-
-    Core.put(socket, panel: panel)
+      Core.put(socket, uploads: Enum.uniq([name | Core.table(socket).entry.uploads]))
+    end)
   end
 
   # Gives up the files of the panel's uploads: those a person chose and no
@@ -68,7 +67,8 @@ defmodule AshDataTable.Live.Core.Files do
   # Only this table's: the tables of a page share one socket, and a file
   # chosen in another table's open panel is that panel's.
   defp drop_files(socket) do
-    %{spent: spent, uploads: names} = Core.table(socket).entry
+    %{panel: panel, uploads: names} = Core.table(socket).entry
+    spent = Panel.spent(panel)
     uploads = socket.assigns[:uploads] || %{}
 
     Enum.reduce(names, socket, fn name, socket ->
@@ -80,12 +80,12 @@ defmodule AshDataTable.Live.Core.Files do
     end)
   end
 
-  # Runs a panel's action with the files of its uploads (`submit/3`).
-  # Nothing runs while LiveView does not take a file, or has not received
-  # one: that is said, and the panel stays.
-  def filed(socket, panel, params) do
-    inputs = file_inputs(panel)
-    refused = refused_files(socket, panel)
+  # Whether a panel's action can run with the files of its uploads: `:ok`;
+  # not while LiveView does not take a file (`{:refused, refused}`, what it
+  # says of each), or has not received one (`:waiting`).
+  def filed(socket, panel) do
+    inputs = Panel.file_inputs(panel)
+    refused = refused(socket, panel)
 
     # LiveView's client sends the files before the form; a form that
     # comes without them was not sent by it
@@ -98,15 +98,9 @@ defmodule AshDataTable.Live.Core.Files do
       end)
 
     cond do
-      inputs != [] and refused != [] ->
-        {:noreply,
-         socket |> Core.put(panel: %{panel | refused_files: refused}) |> say_files(refused)}
-
-      waiting? ->
-        {:noreply, Core.say(socket, {:text, :upload_failed, []})}
-
-      true ->
-        Panel.submit(socket, panel, params)
+      inputs != [] and refused != [] -> {:refused, refused}
+      waiting? -> :waiting
+      true -> :ok
     end
   end
 
@@ -117,8 +111,8 @@ defmodule AshDataTable.Live.Core.Files do
   # event, which is as long as LiveView keeps the file: it runs with a copy,
   # which is this process's until the run is done (`Plug.Upload`).
   def attach(socket, panel, run) do
-    attach(socket, file_inputs(panel), %{}, fn files ->
-      run.(if panel.kind == :bulk, do: copies(files), else: files)
+    attach(socket, Panel.file_inputs(panel), %{}, fn files ->
+      run.(if Panel.outlasts?(panel), do: copies(files), else: files)
     end)
   end
 
@@ -144,20 +138,18 @@ defmodule AshDataTable.Live.Core.Files do
     end
   end
 
-  # The files an action has been given are LiveView's to take away: every
-  # file of the panel's uploads, once the write got past its checks and
-  # its veto (`attach/3` ran).
-  def spend(socket, _panel, result) when result == :refused or elem(result, 0) == :halted,
-    do: socket
+  # The files an action has been given are LiveView's to take away: the
+  # entries of every file of the panel's uploads, once the write got past
+  # its checks and its veto (`attach/3` ran), which the panel keeps
+  # (`AshDataTable.Panel.spend/2`).
+  def given(_socket, _panel, result) when result == :refused or elem(result, 0) == :halted,
+    do: []
 
-  def spend(socket, panel, _result) do
-    given =
-      for input <- file_inputs(panel),
-          %{done?: true, ref: ref} <-
-            [entry(upload_of(socket.assigns[:uploads], Core.table(socket).entry.id, input))],
-          do: ref
-
-    Core.put(socket, spent: MapSet.union(Core.table(socket).entry.spent, MapSet.new(given)))
+  def given(socket, panel, _result) do
+    for input <- Panel.file_inputs(panel),
+        %{done?: true, ref: ref} <-
+          [entry(upload_of(socket.assigns[:uploads], Core.table(socket).entry.id, input))],
+        do: ref
   end
 
   # Copies of the files for a run that outlasts the event: temporary files
@@ -170,15 +162,23 @@ defmodule AshDataTable.Live.Core.Files do
     end
   end
 
+  # The copies a run on the selection holds (`running.files`), once it is
+  # done or its table closes.
   def drop_copies(socket) do
-    Enum.each(Core.table(socket).entry.running_files, &File.rm/1)
-    Core.put(socket, running_files: [])
+    case Core.table(socket).entry.running do
+      %{files: files} = running ->
+        Enum.each(files, &File.rm/1)
+        Core.put(socket, running: %{running | files: []})
+
+      nil ->
+        socket
+    end
   end
 
   # What LiveView says of the files of a panel that it does not take: by
   # field, what is shown at the field.
-  defp refused_files(socket, panel) do
-    for input <- file_inputs(panel),
+  def refused(socket, panel) do
+    for input <- Panel.file_inputs(panel),
         texts =
           upload_errors_of(
             upload_of(socket.assigns[:uploads], Core.table(socket).entry.id, input)
@@ -187,23 +187,10 @@ defmodule AshDataTable.Live.Core.Files do
         do: {input.label, texts}
   end
 
-  # Read out when it changes: a file is refused as it is chosen, without
-  # the panel's button having been used.
-  def say_refused_files(socket) do
-    %{panel: panel} = Core.table(socket).entry
+  # What LiveView does not take of the files, read out.
+  def say_files(socket, []), do: socket
 
-    case refused_files(socket, panel) do
-      refused when refused == panel.refused_files ->
-        socket
-
-      refused ->
-        socket |> Core.put(panel: %{panel | refused_files: refused}) |> say_files(refused)
-    end
-  end
-
-  defp say_files(socket, []), do: socket
-
-  defp say_files(socket, refused) do
+  def say_files(socket, refused) do
     said =
       for {label, texts} <- refused,
           do: {:text, :error_on_field, field: label, message: {:join, " ", texts}}
@@ -272,24 +259,10 @@ defmodule AshDataTable.Live.Core.Files do
     if rounded == trunc(rounded), do: trunc(rounded), else: rounded
   end
 
-  # What the action said of the file of a field: what it said when it last
-  # ran, of the file it was given then or of having been given none, until
-  # another file is chosen. A file that was chosen and not yet given has
-  # had nothing said of it.
-  defp file_errors(panel, input, upload) do
-    case {Map.get(panel.file_errors, input.name), entry_ref(upload)} do
-      # the file the action was given, for as long as LiveView lists it
-      {{given, texts}, given} -> texts
-      # no file since
-      {{_given, texts}, nil} -> texts
-      _another_file_or_never_run -> []
-    end
-  end
-
   # What the panel is given of its file fields, by name: the upload of
   # each, and what is said of its file at the field (`said_of/4`).
   def panel_files(%{panel: panel, id: id}, uploads) do
-    for input <- file_inputs(panel), into: %{} do
+    for input <- Panel.file_inputs(panel), into: %{} do
       {input.name,
        %{upload: upload_of(uploads, id, input), errors: said_of(panel, input, id, uploads)}}
     end
@@ -303,8 +276,8 @@ defmodule AshDataTable.Live.Core.Files do
   # is shown at its field; for the rest, what the action said.
   def said_of(panel, %{editor: :file} = input, id, uploads) do
     upload = upload_of(uploads, id, input)
-    upload_errors_of(upload) ++ file_errors(panel, input, upload)
+    upload_errors_of(upload) ++ Panel.file_errors(panel, input, entry_ref(upload))
   end
 
-  def said_of(panel, input, _id, _uploads), do: Map.get(panel.errors, input && input.name, [])
+  def said_of(panel, input, _id, _uploads), do: Panel.errors_at(panel, input)
 end

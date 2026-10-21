@@ -144,19 +144,15 @@ defmodule AshDataTable.Live.Entry do
     offered: [],
     expandable?: false,
     geometry: nil,
-    # The action panel, while it is open: the one action a person is giving
-    # the inputs of, with its form. At most one per table; a new read
-    # closes it.
+    # The action panel, while it is open (`AshDataTable.Panel`): the one
+    # action a person is giving the inputs of, with its form, and the
+    # entries of its uploads an action has been given. At most one per
+    # table; a new read closes it. Put and taken out by its adapter only
+    # (`AshDataTable.Live.Core.Panel`).
     panel: nil,
     # In controlled mode (`AshDataTable.Live.Core.Requests`): the question
     # or the panel the host draws, with its `ref`; nil for none.
     request: nil,
-    # The files of the panel's uploads that an action has been given, by
-    # the entry LiveView knows each by: those are LiveView's to drop.
-    # And the copies of the files that an action on the selected rows is
-    # running with, which are taken away when it is done.
-    spent: MapSet.new(),
-    running_files: [],
     # The picker, while it is open: the cell, or the field of the panel,
     # that a person is choosing a related record for. At most one per
     # table; a new read closes it. And what makes a table the one in a
@@ -182,8 +178,10 @@ defmodule AshDataTable.Live.Entry do
     selected_under: nil,
     bulk: [],
     # The action that is running on the selected rows, while it does, with
-    # who started it (`%{action: action, by: AshDataTable.Caller.who/1}`),
-    # and what the last one came to, until the person selects something else.
+    # who started it and the copies of the files it runs with, taken away
+    # when it is done (`%{action: action, by: AshDataTable.Caller.who/1,
+    # files: paths}`), and what the last one came to, until the person
+    # selects something else.
     running: nil,
     result: nil,
     # Live updates (see "Live updates" at the top of `AshDataTable.Attrs`). `live`

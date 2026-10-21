@@ -12,6 +12,7 @@ defmodule AshDataTable.UnionsTest do
   alias AshDataTable.GroupValue
   alias AshDataTable.Model
   alias AshDataTable.Model.Field
+  alias AshDataTable.Panel
   alias AshDataTable.Resource.Embedding
   alias AshDataTable.Test.Unions
   alias AshDataTable.Test.Unions.{Card, Holder, Odd, Once, Place, Transfer}
@@ -238,7 +239,7 @@ defmodule AshDataTable.UnionsTest do
     end
 
     test "is always given: no kind is no value", %{value: value} do
-      assert Act.values([value], %{}) == %{"value" => nil}
+      assert Panel.values([value], %{}) == %{"value" => nil}
     end
 
     test "what was sent is what the cell holds when nothing was changed", %{value: value} do
@@ -246,12 +247,12 @@ defmodule AshDataTable.UnionsTest do
       sent = GroupValue.held(value, held, "Etc/UTC")
       none = GroupValue.held(value, nil, "Etc/UTC")
 
-      assert Act.unchanged?(value, sent, held)
-      refute Act.unchanged?(value, %{sent | "_union_value" => "13"}, held)
-      refute Act.unchanged?(value, %{sent | "_union_type" => "text"}, held)
-      assert Act.unchanged?(value, none, nil)
+      assert Panel.unchanged?(value, sent, held)
+      refute Panel.unchanged?(value, %{sent | "_union_value" => "13"}, held)
+      refute Panel.unchanged?(value, %{sent | "_union_type" => "text"}, held)
+      assert Panel.unchanged?(value, none, nil)
       # a kind that holds nothing is no value
-      assert Act.unchanged?(value, none, %Ash.Union{type: :amount, value: nil})
+      assert Panel.unchanged?(value, none, %Ash.Union{type: :amount, value: nil})
     end
   end
 
@@ -332,12 +333,12 @@ defmodule AshDataTable.UnionsTest do
       assert {:error, %AshPhoenix.Form{} = form} = put(:value, key, chosen("amount", "-1"))
       input = Model.input(model(), column(:value))
 
-      assert Act.errors(form, model(), [input]) == %{
+      assert Panel.errors(form, model(), [input]) == %{
                value: [{:ash, "must be greater than or equal to %{min}", [min: 0]}]
              }
 
       assert {:error, form} = put(:value, key, chosen("amount", "abc"))
-      assert Act.errors(form, model(), [input]) == %{value: [{:ash, "is invalid", []}]}
+      assert Panel.errors(form, model(), [input]) == %{value: [{:ash, "is invalid", []}]}
     end
 
     test "what it says of a field of the kind's value is under the way to that field", %{key: key} do
@@ -346,14 +347,14 @@ defmodule AshDataTable.UnionsTest do
       sent = chosen("place", %{"_present" => "", "street" => "", "city" => "Kiel"})
       assert {:error, form} = put(:value, key, sent)
 
-      assert Act.errors(form, model(), [input]) == %{
+      assert Panel.errors(form, model(), [input]) == %{
                [:value, :street] => [{:ash, "is required", []}]
              }
 
       sent = chosen("place", %{"_present" => "", "street" => "Quay 1", "city" => "K"})
       assert {:error, form} = put(:value, key, sent)
 
-      assert Act.errors(form, model(), [input]) ==
+      assert Panel.errors(form, model(), [input]) ==
                %{
                  [:value, :city] => [
                    {:ash, "length must be greater than or equal to %{min}", [min: 2]}
@@ -381,7 +382,7 @@ defmodule AshDataTable.UnionsTest do
 
       assert {:error, form} = put(:holder, key, %{sent | "either" => chosen("number", "-5")})
 
-      assert Act.errors(form, model(), [holder]) ==
+      assert Panel.errors(form, model(), [holder]) ==
                %{
                  [:holder, :either] => [
                    {:ash, "must be greater than or equal to %{min}", [min: 0]}
@@ -391,7 +392,7 @@ defmodule AshDataTable.UnionsTest do
       place = chosen("place", %{"_present" => "", "street" => "", "city" => "Kiel"})
       assert {:error, form} = put(:holder, key, %{sent | "either" => place})
 
-      assert Act.errors(form, model(), [holder]) == %{
+      assert Panel.errors(form, model(), [holder]) == %{
                [:holder, :either, :street] => [{:ash, "is required", []}]
              }
 
@@ -399,7 +400,7 @@ defmodule AshDataTable.UnionsTest do
       sent = %{"_present" => "", "0" => sent, "1" => %{sent | "either" => place}}
       assert {:error, form} = put(:holders, key, sent)
 
-      assert Act.errors(form, model(), [holders]) ==
+      assert Panel.errors(form, model(), [holders]) ==
                %{[:holders, 1, :either, :street] => [{:ash, "is required", []}]}
     end
   end
@@ -417,7 +418,7 @@ defmodule AshDataTable.UnionsTest do
         |> AshPhoenix.Form.submit(params: %{})
 
       inputs = for name <- [:value, :holder, :holders], do: Model.input(model(), column(name))
-      %{errors: Act.errors(form, model(), inputs), form: form}
+      %{errors: Panel.errors(form, model(), inputs), form: form}
     end
 
     test "about the union: at its field", %{errors: errors} do

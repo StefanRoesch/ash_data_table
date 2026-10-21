@@ -16,6 +16,7 @@ defmodule AshDataTable.Edit do
   alias AshDataTable.Errors
   alias AshDataTable.Model
   alias AshDataTable.Model.Column
+  alias AshDataTable.Panel
   alias AshDataTable.Pick
   alias AshDataTable.Query
   alias AshDataTable.Record
@@ -276,13 +277,13 @@ defmodule AshDataTable.Edit do
             {:error, nil, {:text, :edit_not_allowed, []}}
 
           # A value that is the one the cell already holds calls nothing.
-          Act.unchanged?(input, params[name], value, model.time_zone) ->
+          Panel.unchanged?(input, params[name], value, model.time_zone) ->
             unchanged(model, record, opts)
 
           true ->
             model
             |> form(record, column, id, opts)
-            |> AshPhoenix.Form.submit(params: Act.values([input], params, model.time_zone))
+            |> AshPhoenix.Form.submit(params: Panel.values([input], params, model.time_zone))
             |> case do
               {:ok, saved} ->
                 case Record.load(model, saved, opts) do

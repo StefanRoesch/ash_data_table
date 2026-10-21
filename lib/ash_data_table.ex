@@ -861,7 +861,7 @@ defmodule AshDataTable do
     do:
       answer(socket, name, ref, [:panel], "AshDataTable.validate_request/4", fn socket,
                                                                                 _request ->
-        AshDataTable.Live.Core.Requests.panel(socket, {:panel_validate, params})
+        {{:panel_validate, params}, socket}
       end)
 
   @doc """
@@ -874,7 +874,7 @@ defmodule AshDataTable do
   def submit_request(socket, name, ref, params) when is_map(params),
     do:
       answer(socket, name, ref, [:panel], "AshDataTable.submit_request/4", fn socket, _request ->
-        AshDataTable.Live.Core.Requests.panel(socket, {:panel_submit, params})
+        {{:panel_submit, params}, socket}
       end)
 
   @doc """
@@ -897,7 +897,7 @@ defmodule AshDataTable do
   def pick_request(socket, name, ref, keys),
     do:
       answer(socket, name, ref, [:picker], "AshDataTable.pick_request/4", fn socket, _request ->
-        AshDataTable.Live.Core.Requests.pick(socket, keys)
+        {{:chosen, keys}, socket}
       end)
 
   @doc """
@@ -915,7 +915,7 @@ defmodule AshDataTable do
     do:
       answer(socket, name, ref, [:panel], "AshDataTable.add_group_request/4", fn socket,
                                                                                  _request ->
-        AshDataTable.Live.Core.Requests.group(socket, :panel_add, path)
+        {AshDataTable.Live.Core.Requests.group(:panel_add, path), socket}
       end)
 
   @doc """
@@ -936,7 +936,7 @@ defmodule AshDataTable do
         [:panel],
         "AshDataTable.remove_group_request/4",
         fn socket, _request ->
-          AshDataTable.Live.Core.Requests.group(socket, :panel_remove, path)
+          {AshDataTable.Live.Core.Requests.group(:panel_remove, path), socket}
         end
       )
 
@@ -954,8 +954,10 @@ defmodule AshDataTable do
         &AshDataTable.Live.Core.Requests.cancelled/2
       )
 
+  # The host's answer to request `ref`: `fun` gives the intent it stands
+  # for, which runs as the browser's would (`AshDataTable.Live.Core.answer/4`).
   defp answer(socket, name, ref, kinds, where, fun),
-    do: command(socket, name, where, &AshDataTable.Live.Core.Requests.answer(&1, ref, kinds, fun))
+    do: command(socket, name, where, &AshDataTable.Live.Core.answer(&1, ref, kinds, fun))
 
   @doc """
   What a host may read of an `AshDataTable.Table`, as the assign holds it:

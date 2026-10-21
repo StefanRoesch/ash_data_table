@@ -147,7 +147,7 @@ defmodule AshDataTable.Live.Drawing do
   # what it is given, and LiveView's uploads are not the table's to assign
   # a page that draws a table whose panel takes a file must give them.
   defp files!(entry, nil) do
-    if Files.file_inputs(entry.panel) != [] do
+    if AshDataTable.Panel.file_inputs(entry.panel) != [] do
       raise ArgumentError,
             "the action panel of the table #{inspect(entry.id)} takes a file, and " <>
               "AshDataTable.attached/1 was given no uploads: pass " <>

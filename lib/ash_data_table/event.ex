@@ -211,14 +211,15 @@ defmodule AshDataTable.Event do
     })
   end
 
-  def request(%{kind: :panel, ref: ref}, %{panel: %{} = panel} = held) do
+  def request(%{kind: :panel, ref: ref}, %{panel: %AshDataTable.Panel{} = panel} = held) do
     shown = AshDataTable.Present.panel(panel)
+    action = AshDataTable.Panel.action(panel)
 
     held
     |> located(ref, :panel)
     |> Map.merge(%{
-      action: panel.action && panel.action.name,
-      column: Map.get(panel, :column),
+      action: action && action.name,
+      column: AshDataTable.Panel.column(panel),
       question: shown.question,
       title: shown.title,
       errors: List.wrap(shown.errors),
@@ -300,17 +301,14 @@ defmodule AshDataTable.Event do
 
   # What a field of the panel holds that the picker is open for: the keys,
   # as the field writes them.
-  defp held(%{refs: refs}, name) when is_map_key(refs, name), do: refs[name]
-  defp held(%{refs: refs}, name), do: Map.get(refs, Atom.to_string(name))
-  defp held(_panel, _name), do: nil
+  defp held(panel, name), do: AshDataTable.Panel.keys(panel, name)
 
   # What the records a field of the panel holds are called, as far as the
   # table knows them: by key, the label value and its column, scrubbed.
-  defp chosen(%{chosen: chosen}, name) when is_map(chosen) do
-    for {key, %{label: label}} <- Map.get(chosen, name, %{}), do: %{key: key, label: label}
+  defp chosen(panel, name) do
+    for {key, %{label: label}} <- AshDataTable.Panel.known(panel, name),
+        do: %{key: key, label: label}
   end
-
-  defp chosen(_panel, _name), do: []
 
   @doc false
   @spec opened(map) :: t

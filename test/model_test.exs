@@ -3,6 +3,7 @@ defmodule AshDataTable.ModelTest do
   use ExUnit.Case, async: true
 
   alias AshDataTable.Model
+  alias AshDataTable.Panel
 
   defp column_names(model), do: Enum.map(model.columns, & &1.name)
 
@@ -1072,7 +1073,6 @@ defmodule AshDataTable.ModelTest do
   end
 
   describe "what the field of a map cell sent, against what the record holds" do
-    alias AshDataTable.Act
     alias AshDataTable.GroupValue
     alias AshDataTable.Test.Embedding.{Part, Place}
 
@@ -1081,20 +1081,20 @@ defmodule AshDataTable.ModelTest do
       column = mapped(:place)
       sent = GroupValue.held(column, place, "Etc/UTC")
 
-      assert Act.unchanged?(column, sent, place)
-      refute Act.unchanged?(column, %{sent | "city" => "Kiel"}, place)
-      refute Act.unchanged?(column, nil, place)
-      assert Act.unchanged?(column, nil, nil)
+      assert Panel.unchanged?(column, sent, place)
+      refute Panel.unchanged?(column, %{sent | "city" => "Kiel"}, place)
+      refute Panel.unchanged?(column, nil, place)
+      assert Panel.unchanged?(column, nil, nil)
       # a box that is not ticked is sent as "false", also for a value that is not there yet
-      assert Act.unchanged?(column, Map.put(sent, "open?", "false"), %{place | open?: nil})
+      assert Panel.unchanged?(column, Map.put(sent, "open?", "false"), %{place | open?: nil})
 
       parts = mapped(:parts)
       list = [%Part{id: "a", name: "Crane"}, %Part{id: "b", name: "Winch"}]
       sent = GroupValue.held(parts, list, "Etc/UTC")
-      assert Act.unchanged?(parts, sent, list)
-      refute Act.unchanged?(parts, Map.delete(sent, "1"), list)
-      assert Act.unchanged?(parts, %{"_present" => ""}, [])
-      assert Act.unchanged?(parts, %{"_present" => ""}, nil)
+      assert Panel.unchanged?(parts, sent, list)
+      refute Panel.unchanged?(parts, Map.delete(sent, "1"), list)
+      assert Panel.unchanged?(parts, %{"_present" => ""}, [])
+      assert Panel.unchanged?(parts, %{"_present" => ""}, nil)
     end
   end
 
@@ -1175,7 +1175,7 @@ defmodule AshDataTable.ModelTest do
         for name <- [:place, :contact, :places, :entries, :settings],
             do: Model.input(model, mapped(name))
 
-      %{errors: Act.errors(form, model, inputs), form: form, model: model}
+      %{errors: Panel.errors(form, model, inputs), form: form, model: model}
     end
 
     test "at the field, by the way to it: the input, and the fields on the way", %{errors: errors} do
@@ -2769,14 +2769,14 @@ defmodule AshDataTable.ModelTest do
       assert {:error, %AshPhoenix.Form{} = form} =
                Act.submit_generic(model, refuse, %{"amount" => "3"}, %{}, "panel", @opts)
 
-      assert Act.errors(form, model, refuse.inputs) == %{
+      assert Panel.errors(form, model, refuse.inputs) == %{
                amount: [{:ash, "is more than there is", []}]
              }
 
       assert {:error, %AshPhoenix.Form{} = form} =
                Act.submit_generic(model, refuse, %{"amount" => ""}, %{}, "panel", @opts)
 
-      assert Act.errors(form, model, refuse.inputs) == %{amount: [{:ash, "is required", []}]}
+      assert Panel.errors(form, model, refuse.inputs) == %{amount: [{:ash, "is required", []}]}
     end
 
     test "a failure underneath is logged, and reads as one a person can do nothing about",
@@ -2851,7 +2851,7 @@ defmodule AshDataTable.ModelTest do
       assert {:error, %AshPhoenix.Form{} = form} =
                Act.submit_row(model, rename, %{id: one.id}, %{"title" => "ab"}, "panel", @opts)
 
-      assert Act.errors(form, model, rename.inputs) ==
+      assert Panel.errors(form, model, rename.inputs) ==
                %{title: [{:ash, "length must be greater than or equal to %{min}", [min: 3]}]}
 
       assert Act.submit_row(

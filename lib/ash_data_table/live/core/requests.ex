@@ -42,19 +42,20 @@ defmodule AshDataTable.Live.Core.Requests do
   # is answered, given up, taken over by another, or when its table closes
   # (its row collapsed, or the nested table went with its parent's rows).
   # A picker's table opens nothing (`Model`'s chooser), so holds nothing.
+  #
+  # An answer of the host is the intent it stands for (`confirmed/2`,
+  # `cancelled/2`, `group/2`): `AshDataTable.Live.Core.answer/4` runs it
+  # within the table that holds the request, through the module of its
+  # topic, as it runs a browser's (stage 9d). This module calls no topic.
 
   import Phoenix.LiveView, only: [push_event: 3]
 
   alias AshDataTable.Event
   alias AshDataTable.Ids
   alias AshDataTable.Live.Core
-  alias AshDataTable.Live.Core.Bulk
-  alias AshDataTable.Live.Core.Cells
   alias AshDataTable.Live.Core.Files
   alias AshDataTable.Live.Core.Notify
-  alias AshDataTable.Live.Core.Panel
-  alias AshDataTable.Live.Core.Picker
-  alias AshDataTable.Live.Registry
+  alias AshDataTable.Panel
 
   @doc "Whether the table the callback works on hands requests of `kind` to the host."
   def controlled?(socket, kind) do
@@ -108,17 +109,20 @@ defmodule AshDataTable.Live.Core.Requests do
   end
 
   defp question(socket, request) do
-    # a panel or picker held for the host is the old request, which this
-    # one ends: it closes
+    # a picker held for the host is the old request, which this one ends:
+    # it closes. A panel held closes as the question is asked, by its
+    # adapter (`AshDataTable.Live.Core.Panel.yielded/1`)
     socket =
       case Core.table(socket).entry.request do
-        %{kind: :panel} -> Core.put(socket, panel: nil, picker: nil)
         %{kind: :picker} -> Core.put(socket, picker: nil)
-        _confirm_or_none -> socket
+        _confirm_panel_or_none -> socket
       end
 
     held(socket, Map.merge(request, %{ref: new_ref(), kind: :confirm}))
   end
+
+  @doc "Whether the table the callback works on holds a request of `kind` for the host."
+  def holds?(socket, kind), do: match?(%{kind: ^kind}, Core.table(socket).entry.request)
 
   @doc """
   After every callback (`AshDataTable.Live.Core.tidy/1`): a panel or a
@@ -143,9 +147,7 @@ defmodule AshDataTable.Live.Core.Requests do
   end
 
   # What a panel the host draws is made for; nil for none.
-  defp handed(%{kind: kind, action: action, key: key} = panel),
-    do: {:panel, {kind, action && action.name, key, Map.get(panel, :column)}}
-
+  defp handed(%Panel{} = panel), do: {:panel, Panel.made_for(panel)}
   defp handed(_none), do: nil
 
   # What a picker the host draws is made for; nil for none.
@@ -209,88 +211,68 @@ defmodule AshDataTable.Live.Core.Requests do
   end
 
   @doc """
-  Runs `fun` on the socket for the request `ref`, within the table that
-  holds it, where it is of one of `kinds` (`:any` for every kind); else the
-  socket as it is: a stale or forged `ref` does nothing.
+  The table that holds the request `ref`, by its id, where the request is
+  of one of `kinds` (`:any` for every kind); `:none` for a stale or forged
+  `ref`, which does nothing.
   """
-  def answer(socket, ref, kinds, fun) do
+  def holder(socket, ref, kinds) do
     %{entry: entry, entries: entries} = Core.table(socket)
 
-    with %{id: id, request: %{kind: kind} = request} <-
+    with %{id: id, request: %{kind: kind}} <-
            Enum.find([entry | Map.values(entries)], &match?(%{request: %{ref: ^ref}}, &1)),
          true <- kinds == :any or kind in kinds do
-      Registry.within(socket, id, &fun.(&1, request))
+      {:ok, id}
     else
-      _stale_or_none -> socket
+      _stale_or_none -> :none
     end
   end
 
   @doc """
-  The person's Confirm, given by the host: what the question was held for
-  runs, as it would have from the hook.
+  The person's Confirm, given by the host: the request ends, and the intent
+  of what the question was held for, as the hook's Confirm would have sent
+  it, marked as answered (`{:confirmed, intent}`, which the module of its
+  topic runs without asking again).
   """
-  def confirmed(socket, %{run: run, ref: ref}) do
-    socket = done(socket)
-
-    case run do
-      {:act, key, name} ->
-        reply(Panel.act(socket, key, name, true))
-
-      {:table_run, _name} = intent ->
-        reply(Panel.on(intent, socket))
-
-      {:bulk_run, _name, _token} = intent ->
-        reply(Bulk.on(intent, socket))
-
-      {:save, key, name, _typed} = intent ->
-        {:reply, said, socket} = Cells.write(intent, socket)
-        answered(socket, ref, key, name, said)
-
-      {:clear, key, name} = intent ->
-        {:reply, said, socket} = Cells.write(intent, socket)
-        answered(socket, ref, key, name, said)
-
-      {:refer, key, name, named, arguments} ->
-        {_reply, said, socket} = Picker.refer(socket, key, name, named, arguments, true)
-        answered(socket, ref, key, name, said)
-    end
-  end
-
-  @doc "Gives the request up, as Cancel does: nothing runs, a cell is put back."
-  def cancelled(socket, %{kind: :panel}), do: panel(socket, :panel_cancel)
-
-  def cancelled(socket, %{kind: :picker}), do: socket |> Core.put(picker: nil) |> done()
-
-  def cancelled(socket, _question), do: socket |> let_go() |> done()
-
-  @doc "An event of the panel, given by the host for the panel it draws."
-  def panel(socket, intent), do: reply(Panel.on(intent, socket))
+  def confirmed(socket, %{run: run}), do: {{:confirmed, run}, done(socket)}
 
   @doc """
-  The host's choice for the picker it draws: one key, several, or nil for
-  none. Each key is a claim, read again as the person through the picker's
-  read action, as a row the browser names.
+  Gives the request up, as Cancel does: the intent of Cancel for a panel or
+  a picker; for a question nothing runs, and a cell is put back.
   """
-  def pick(socket, keys), do: reply(Picker.picked(socket, keys))
+  def cancelled(socket, %{kind: :panel}), do: {:panel_cancel, socket}
 
-  defp reply({:noreply, socket}), do: socket
-  defp reply({:reply, _reply, socket}), do: socket
+  def cancelled(socket, %{kind: :picker}), do: {:picker_cancel, socket}
+
+  def cancelled(socket, _question), do: {nil, socket |> let_go() |> done()}
+
+  @doc """
+  What came of the intent a question's answer stood for (`reply`, nil for
+  none): the hook is told of a cell whose save waited for it.
+  """
+  def replied(socket, %{kind: :confirm, run: run, ref: ref}, reply)
+      when elem(run, 0) in [:save, :clear, :refer] do
+    [_kind, key, name | _rest] = Tuple.to_list(run)
+    answered(socket, ref, key, name, reply || %{})
+  end
+
+  def replied(socket, _request, _reply), do: socket
 
   @doc """
   Adds a value to a field made of groups of the panel the host draws, or
-  takes one away (`{:panel_add, path}`, `{:panel_remove, path}`): `path`
-  is the field's name and, inside it, the way to the value, as the panel's
-  own buttons name it. A name is an atom, as the request's fields have it,
-  or a string; a value of a list is the key it is sent under.
+  takes one away: the intent (`{:panel_add, path}`, `{:panel_remove,
+  path}`). `path` is the field's name and, inside it, the way to the value,
+  as the panel's own buttons name it. A name is an atom, as the request's
+  fields have it, or a string; a value of a list is the key it is sent
+  under.
   """
-  def group(socket, change, path) when change in [:panel_add, :panel_remove] do
+  def group(change, path) when change in [:panel_add, :panel_remove] do
     if not (is_list(path) and path != [] and Enum.all?(path, &name?/1)) do
       raise ArgumentError,
             "the path of a group is a list of names, the field's first, got: " <>
               inspect(path, limit: 5)
     end
 
-    panel(socket, {change, Enum.map(path, &to_string/1)})
+    {change, Enum.map(path, &to_string/1)}
   end
 
   defp name?(name) when is_binary(name), do: true
@@ -331,8 +313,12 @@ defmodule AshDataTable.Live.Core.Requests do
   # panel and a cell's picker name the row by the key of its DOM id.
   defp row_key(%{kind: :confirm, key: key}, _entry), do: key
 
-  defp row_key(%{kind: :panel}, %{panel: %{key: key}, rows: rows}) when not is_nil(key),
-    do: get_in(rows, [key, :pk])
+  defp row_key(%{kind: :panel}, %{panel: %Panel{} = panel, rows: rows}) do
+    case Panel.row(panel) do
+      nil -> nil
+      key -> get_in(rows, [key, :pk])
+    end
+  end
 
   defp row_key(%{kind: :picker}, %{picker: %{for: {:cell, key, _name}}, rows: rows}),
     do: get_in(rows, [key, :pk])

@@ -9,6 +9,7 @@ defmodule AshDataTable.FilesTest do
   alias AshDataTable.Act
   alias AshDataTable.Bulk
   alias AshDataTable.Model
+  alias AshDataTable.Panel
   alias AshDataTable.Resource.Acting
   alias AshDataTable.Resource.Uploading
   alias AshDataTable.Test.Files
@@ -107,7 +108,7 @@ defmodule AshDataTable.FilesTest do
     end
 
     test "never from what the form sent: the table gives it", %{key: key} do
-      assert Act.values(action(:attach).inputs, %{"title" => "x", "file" => "/etc/hostname"}) ==
+      assert Panel.values(action(:attach).inputs, %{"title" => "x", "file" => "/etc/hostname"}) ==
                %{"title" => "x"}
 
       # the action runs without one, and says so
@@ -121,7 +122,7 @@ defmodule AshDataTable.FilesTest do
                  authorize?: false
                )
 
-      assert Act.errors(form, model(), action(:attach).inputs)[:file] == [
+      assert Panel.errors(form, model(), action(:attach).inputs)[:file] == [
                {:ash, "is required", []}
              ]
     end

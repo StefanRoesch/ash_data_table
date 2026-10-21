@@ -21,12 +21,10 @@ defmodule AshDataTable.Present do
   # panel, else nothing. The one way to a sensitive value is the reply to
   # `reveal`, which goes past this module to the hook alone.
 
-  alias AshDataTable.GroupValue
   alias AshDataTable.Model
   alias AshDataTable.Resource.Embedding
   alias AshDataTable.Resource.Exposing
   alias AshDataTable.Sensitive
-  alias AshDataTable.Typed
 
   defmodule Row do
     @moduledoc false
@@ -243,53 +241,21 @@ defmodule AshDataTable.Present do
   defp editable?(column, _value, _record), do: column.editable?
 
   @doc """
-  The open action panel. `upload_errors` is what the live layer says of the
-  file fields, by name: the texts shown at each.
+  The open action panel (`AshDataTable.Panel`). `upload_errors` is what the
+  live layer says of the file fields, by name: the texts shown at each.
+  What each field shows is the panel's to say (`AshDataTable.Panel.field/3`).
   """
-  @spec panel(map, map) :: Panel.t()
-  def panel(panel, upload_errors \\ %{})
-
-  # The panel of a filter for several values: one field, a box per value,
-  # ticked as what is chosen; no action, no question, no errors.
-  def panel(%{kind: :filter, inputs: [input]} = panel, _upload_errors) do
-    %Panel{
-      title: panel.title,
-      kind: :filter,
-      question: nil,
-      submit: panel.submit,
-      method: "post",
-      destructive?: false,
-      errors: nil,
-      fields: [
-        %Field{
-          name: input.name,
-          path: [Atom.to_string(input.name)],
-          form_name: "panel[#{input.name}]",
-          input: input,
-          value: panel.values
-        }
-      ],
-      inside: %{
-        errors: %{},
-        touched: MapSet.new(),
-        submitted?: false,
-        time_zone: panel.time_zone
-      }
-    }
-  end
-
-  def panel(panel, upload_errors) do
-    form = panel.form
-
+  @spec panel(AshDataTable.Panel.t(), map) :: Panel.t()
+  def panel(%AshDataTable.Panel{} = panel, upload_errors \\ %{}) do
     %Panel{
       title: panel.title,
       kind: panel.kind,
-      question: Map.get(panel, :question) || panel.action.confirm,
+      question: panel.question,
       submit: panel.submit,
-      method: form.method,
-      destructive?: panel.action.type == :destroy,
+      method: AshDataTable.Panel.method(panel),
+      destructive?: AshDataTable.Panel.destructive?(panel),
       errors: panel.errors[nil],
-      fields: Enum.map(panel.inputs, &field(panel, form, &1, upload_errors)),
+      fields: Enum.map(panel.inputs, &field(panel, &1, upload_errors)),
       inside: %{
         errors: panel.errors,
         touched: panel.touched,
@@ -299,134 +265,21 @@ defmodule AshDataTable.Present do
     }
   end
 
-  defp field(panel, form, input, upload_errors) do
+  defp field(panel, input, upload_errors) do
+    shown = AshDataTable.Panel.field(panel, input, upload_errors)
+
     %Field{
       name: input.name,
       path: [Atom.to_string(input.name)],
-      form_name: form_name(form, input.name),
+      form_name: shown.form_name,
       input: input,
-      value: panel_value(panel, form, input),
-      errors: field_errors(panel, input, upload_errors),
-      places: field_places(panel, input, upload_errors),
+      value: shown.value,
+      errors: shown.errors,
+      places: shown.places,
       chosen: panel.chosen[input.name],
-      clear:
-        cond do
-          input.name in panel.cleared -> :asked
-          input.name in panel.clearable -> :offered
-          true -> nil
-        end
+      clear: shown.clear
     }
   end
-
-  # The name of a field's control, as a form names it: under the form's
-  # name (`panel[title]`).
-  defp form_name(%{name: nil}, name), do: Atom.to_string(name)
-  defp form_name(%{name: form}, name), do: "#{form}[#{name}]"
-
-  # What a field of the panel holds, as its control holds it: a field made
-  # of groups as its form sends it; the field of an argument that is given
-  # by choosing related records their keys, as the panel keeps them (a list
-  # for several, one key or "" for one); a sensitive field what was typed
-  # into it; and any other what the action's form holds for it
-  # (`field_value/4`).
-  defp panel_value(panel, form, input) do
-    name = Atom.to_string(input.name)
-
-    cond do
-      Model.group?(input) ->
-        panel.groups[name]
-
-      is_map_key(panel.refs, name) and input.editor == :references ->
-        panel.refs[name]
-
-      is_map_key(panel.refs, name) ->
-        List.first(panel.refs[name], "")
-
-      # A sensitive field holds what was typed into it, and nothing else:
-      # never what the record has, nor a default. It starts empty.
-      Exposing.sensitive?(input) ->
-        case panel.typed do
-          %{^name => typed} when is_binary(typed) -> typed
-          _nothing_typed -> ""
-        end
-
-      # A datetime that was typed is shown as it was typed, a wall time in
-      # the page's zone: the form holds the instant it was given as.
-      is_map_key(panel.typed, name) and AshDataTable.Zone.zoned?(input.type) ->
-        field_value(
-          input,
-          GroupValue.taken(input, panel.typed[name], panel.time_zone),
-          false,
-          panel
-        )
-
-      true ->
-        field_value(
-          input,
-          AshPhoenix.Form.value(form, input.name),
-          panel.kind == :create or input.kind == :argument,
-          panel
-        )
-    end
-  end
-
-  # The errors of a field that are shown: all of them once the person has
-  # used "Run", and until then those of the fields they have been in.
-  # of a file: what the action said of the file it was given
-  # (`upload_errors`, with what LiveView says of the file before it)
-  defp field_errors(_panel, %{editor: :file} = input, upload_errors),
-    do: Map.get(upload_errors, input.name, [])
-
-  # of a union: once they have been at its choice, or in its value
-  defp field_errors(panel, %{editor: :union} = input, _upload_errors) do
-    if panel.submitted? or GroupValue.touched?(panel.touched, [Atom.to_string(input.name)]),
-      do: Map.get(panel.errors, input.name, []),
-      else: []
-  end
-
-  defp field_errors(panel, input, _upload_errors) do
-    if panel.submitted? or Atom.to_string(input.name) in panel.used,
-      do: Map.get(panel.errors, input.name, []),
-      else: []
-  end
-
-  # The values of an array field that the errors shown at it are about, by
-  # their places.
-  defp field_places(panel, input, upload_errors) do
-    if field_errors(panel, input, upload_errors) == [],
-      do: [],
-      else: panel |> Map.get(:places, %{}) |> Map.get(input.name, [])
-  end
-
-  @doc """
-  What a field holds: what the person typed, once they have; else the
-  value of the record; or, for an input that has no record to take one
-  from (an argument, an attribute of a record that is being created), its
-  default. Written as the editor of its type writes it. An attribute that
-  is empty on a record is empty in the field, whatever its default.
-
-  The field of an array holds a list: the values as they were typed, else
-  those of the record or of the default, each written as the editor of its
-  type writes it. Without any it is empty.
-  """
-  @spec field_value(map, term, boolean, map) :: term
-  def field_value(%{cell_type: {:array, _item}} = input, values, default?, panel) do
-    cond do
-      is_list(values) -> Typed.of(input, values, panel.time_zone)
-      default? and is_list(input.default) -> Typed.of(input, input.default, panel.time_zone)
-      true -> []
-    end
-  end
-
-  def field_value(_input, typed, _default?, _panel) when is_binary(typed), do: typed
-
-  def field_value(%{default: default} = input, nil, true, panel) when not is_nil(default),
-    do: Typed.of(input, default, panel.time_zone)
-
-  def field_value(_input, nil, _default?, _panel), do: ""
-
-  def field_value(input, value, _default?, panel),
-    do: Typed.of(input, value, panel.time_zone)
 
   @doc "The open picker."
   @spec picker(map) :: Picker.t()

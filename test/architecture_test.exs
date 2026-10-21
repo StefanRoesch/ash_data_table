@@ -28,6 +28,14 @@ defmodule AshDataTable.ArchitectureTest do
       they call no part; where a column or a row stands they ask
       `AshDataTable.Geometry` (stage 9c, which ended the cycle of `Attrs`
       and `Parts.Common`);
+    * the adapter of the action panel (`live/core/panel.ex`), the cells,
+      the actions on a selection and controlled mode (`cells.ex`,
+      `bulk.ex`, `requests.ex`) call each other in no circle (stage 9d): a
+      host's answer is the intent it stands for, which `Live.Core` runs
+      through the module of its topic (`Live.Core.answer/4`), and what a
+      panel's run hands on goes the same way (`Live.Core.run/2`). Every
+      topic is called through `Live.Core`, which they all ask for the
+      table; the check is of the edges among the four;
     * no file of 2a names LiveView, `Phoenix.Component`, `Phoenix.HTML`,
       `Phoenix.PubSub`, Gettext or a module of the words, which xref cannot see, also not
       inside a multi-alias (`alias AshDataTable.{Format, Text}`). A router
@@ -188,6 +196,16 @@ defmodule AshDataTable.ArchitectureTest do
     bundles =
       for cycle <- cycles(graph), (@lib <> "/attrs.ex") in cycle, do: Enum.join(cycle, ", ")
 
+    among = Enum.map(~w(panel cells bulk requests), &"#{@lib}/live/core/#{&1}.ex")
+
+    panel =
+      for cycle <-
+            graph
+            |> Map.take(among)
+            |> Map.new(fn {from, sinks} -> {from, Map.take(sinks, among)} end)
+            |> cycles(),
+          do: Enum.join(cycle, ", ")
+
     report([
       {"files no rule places", unplaced},
       {"dependencies the parts do not allow (5.1)", Enum.sort(wrong)},
@@ -195,6 +213,7 @@ defmodule AshDataTable.ArchitectureTest do
       {"verifiers or transformers reading what is not pure (5.3, rule 1)", Enum.sort(impure)},
       {"cycles across parts or with a compile edge Spark does not need (5.4)", cycles},
       {"the bundles in a cycle (9c)", bundles},
+      {"the panel's adapter, Cells, Bulk and Requests in a cycle (9d)", panel},
       {"2a naming LiveView, PubSub, Gettext or the words (5.5)", data_layer_mentions()},
       {"reads from Ash outside Query, Record, Pick and Bulk (S1)", reads()}
     ])

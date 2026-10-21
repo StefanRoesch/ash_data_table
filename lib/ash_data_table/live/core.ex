@@ -99,7 +99,7 @@ defmodule AshDataTable.Live.Core do
 
     result =
       case id && Registry.known?(socket, id) && Intent.parse(plain, params) do
-        {:ok, intent} -> Registry.within(socket, id, &topic(intent).on(intent, &1))
+        {:ok, intent} -> Registry.within(socket, id, &run(intent, &1))
         _another_table_or_malformed -> malformed(plain, socket)
       end
 
@@ -129,7 +129,45 @@ defmodule AshDataTable.Live.Core do
   # answer of an event of another shape (`AshDataTable.Live.Hooks`).
   def unknown(event, socket), do: malformed(event |> addressed() |> elem(1), socket)
 
-  # The module of an intent's topic.
+  # The answers of the host to what a table holds for it (controlled mode,
+  # `AshDataTable.confirm_request/3` and the other commands): the request
+  # `ref`, where the table that holds it holds it as one of `kinds`
+  # (`Requests.holder/3`). `answer` gives the intent it stands for, which
+  # runs within that table through the module of its topic, as a browser's
+  # does (`run/2`), and what came of it is told (`Requests.replied/3`); nil
+  # runs nothing. A stale or forged `ref` does nothing.
+  def answer(socket, ref, kinds, answer) do
+    case Requests.holder(socket, ref, kinds) do
+      {:ok, id} ->
+        Registry.within(socket, id, fn socket ->
+          request = table(socket).entry.request
+
+          case answer.(socket, request) do
+            {nil, socket} ->
+              socket
+
+            {intent, socket} ->
+              case run(intent, socket) do
+                {:noreply, socket} -> Requests.replied(socket, request, nil)
+                {:reply, reply, socket} -> Requests.replied(socket, request, reply)
+              end
+          end
+        end)
+
+      :none ->
+        socket
+    end
+  end
+
+  # Runs an intent within the table the callback works on, through the
+  # module of its topic: what an event asks for once it is parsed, a host's
+  # answer, and what a topic hands on (a run on the selection its panel
+  # started, `{:bulk_start, …}`).
+  def run(intent, socket), do: topic(intent).on(intent, socket)
+
+  # The module of an intent's topic. A host's Confirm (`{:confirmed,
+  # intent}`) is of the intent's.
+  defp topic({:confirmed, intent}), do: topic(intent)
   defp topic(intent) when is_tuple(intent), do: topic(elem(intent, 0))
 
   defp topic(event)
@@ -141,8 +179,10 @@ defmodule AshDataTable.Live.Core do
   defp topic(event) when event in [:expand, :toggle], do: Nesting
   defp topic(event) when event in [:save, :clear, :reveal, :edit, :discard, :dismiss], do: Cells
 
-  defp topic(event) when event in [:pick, :pick_input, :picked, :picker_cancel, :panel_unpick],
-    do: Picker
+  defp topic(event)
+       when event in [:pick, :pick_input, :picked, :picker_cancel, :panel_unpick, :chosen] or
+              event == :refer,
+       do: Picker
 
   defp topic(event) when event in [:act, :open, :table_act, :table_run, :create], do: Panel
 
@@ -151,7 +191,7 @@ defmodule AshDataTable.Live.Core do
               event in [:panel_clear, :panel_cancel],
        do: Panel
 
-  defp topic(event) when event in [:bulk, :bulk_run, :bulk_seen], do: Bulk
+  defp topic(event) when event in [:bulk, :bulk_run, :bulk_seen, :bulk_start], do: Bulk
   defp topic(:select), do: Selection
   defp topic(event) when event in [:left, :read_again], do: Updates
 
@@ -779,7 +819,6 @@ defmodule AshDataTable.Live.Core do
         page_values: values(socket),
         picking: Picker.picking(table),
         rows: entry.rows,
-        panel: entry.panel,
         selection: if(entry.all?, do: :all, else: {:rows, entry.selected}),
         read?: match?(%Query.Page{}, entry.page),
         offered: %{table: entry.offered, bulk: if(entry.running, do: [], else: entry.bulk)}

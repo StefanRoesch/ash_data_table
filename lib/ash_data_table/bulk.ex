@@ -102,7 +102,7 @@ defmodule AshDataTable.Bulk do
 
   @doc """
   Runs the row action `action` of `model` on `selection`, with `input` as
-  the action's input on every record (`AshDataTable.Act.values/2`).
+  the action's input on every record (`AshDataTable.Panel.values/4`).
 
   ## Options
 

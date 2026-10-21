@@ -15,6 +15,7 @@ defmodule AshDataTable.SensitiveTest do
   alias AshDataTable.Edit
   alias AshDataTable.Format
   alias AshDataTable.Model
+  alias AshDataTable.Panel
   alias AshDataTable.Resource.Embedding
   alias AshDataTable.Sensitive
   alias AshDataTable.Sensitive.Masked
@@ -276,14 +277,14 @@ defmodule AshDataTable.SensitiveTest do
     test "left empty gives the action nothing, and typed gives what was typed" do
       inputs = action(:rotate).inputs
 
-      assert Act.values(inputs, %{
+      assert Panel.values(inputs, %{
                "token" => "",
                "passphrase" => "",
                "count" => "",
                "note" => ""
              }) == %{"note" => ""}
 
-      assert Act.values(inputs, %{"token" => "new", "passphrase" => "open", "count" => "3"}) ==
+      assert Panel.values(inputs, %{"token" => "new", "passphrase" => "open", "count" => "3"}) ==
                %{"token" => "new", "passphrase" => "open", "count" => "3"}
     end
 
@@ -297,7 +298,7 @@ defmodule AshDataTable.SensitiveTest do
                passphrase: true
              ]
 
-      assert Act.values(create.inputs, %{"name" => "N", "token" => "", "pin" => ""}) ==
+      assert Panel.values(create.inputs, %{"name" => "N", "token" => "", "pin" => ""}) ==
                %{"name" => "N"}
     end
 
@@ -473,33 +474,34 @@ defmodule AshDataTable.SensitiveTest do
     test "is offered for the sensitive attributes an update action takes empty, where the record holds a value",
          %{record: record} do
       rotate = action(:rotate)
-      assert Act.clearable(rotate, rotate.inputs, record) == [:token]
+      assert Panel.clearable(rotate, rotate.inputs, record) == [:token]
 
       # nothing to empty where the record holds nothing
-      assert Act.clearable(rotate, rotate.inputs, %{record | token: nil}) == []
-      assert Act.clearable(rotate, rotate.inputs, %{record | token: ""}) == []
+      assert Panel.clearable(rotate, rotate.inputs, %{record | token: nil}) == []
+      assert Panel.clearable(rotate, rotate.inputs, %{record | token: ""}) == []
       # nor what is hidden from the person on the record
-      assert Act.clearable(rotate, rotate.inputs, %{record | token: %Ash.ForbiddenField{}}) == []
+      assert Panel.clearable(rotate, rotate.inputs, %{record | token: %Ash.ForbiddenField{}}) ==
+               []
 
       # an attribute the action requires is not emptied through it; one it does not is
       reissue = action(:reissue)
       assert Enum.map(reissue.inputs, &{&1.name, &1.required?}) == [token: true, pin: false]
-      assert Act.clearable(reissue, reissue.inputs, record) == [:pin]
+      assert Panel.clearable(reissue, reissue.inputs, record) == [:pin]
     end
 
     test "is offered by no create action, no destroy action, and for no argument", %{
       record: record
     } do
       create = model().create
-      assert Act.clearable(create, create.inputs, record) == []
-      assert Act.clearable(create, create.inputs, nil) == []
+      assert Panel.clearable(create, create.inputs, record) == []
+      assert Panel.clearable(create, create.inputs, nil) == []
 
       destroy = action(:destroy)
-      assert Act.clearable(destroy, destroy.inputs, record) == []
+      assert Panel.clearable(destroy, destroy.inputs, record) == []
 
       # the sensitive arguments of `rotate` are not among what it offers
       rotate = action(:rotate)
-      refute :passphrase in Act.clearable(rotate, rotate.inputs, record)
+      refute :passphrase in Panel.clearable(rotate, rotate.inputs, record)
     end
 
     test "a message at a sensitive input that names what was typed keeps nothing of it", %{
@@ -510,7 +512,7 @@ defmodule AshDataTable.SensitiveTest do
       assert {:error, form} =
                run(rotate, key, %{"passphrase" => "wrong-SECRET", "note" => "n"}, [])
 
-      errors = Act.errors(form, model(), rotate.inputs)
+      errors = Panel.errors(form, model(), rotate.inputs)
 
       assert errors[:passphrase] == [
                {:ash, "%{value} is not the passphrase", [value: AshDataTable.Present.mask()]}
@@ -576,7 +578,7 @@ defmodule AshDataTable.SensitiveTest do
       assert {:error, form} =
                run(reissue, %{id: pinned.id}, %{"token" => "t2"}, cleared: [:pin])
 
-      assert Act.errors(form, model(), reissue.inputs) == %{
+      assert Panel.errors(form, model(), reissue.inputs) == %{
                pin: [{:ash, "stays on a pinned vault", []}]
              }
 

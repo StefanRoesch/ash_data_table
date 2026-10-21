@@ -13,6 +13,7 @@ defmodule AshDataTable.ReferenceTest do
   alias AshDataTable.Act
   alias AshDataTable.Bulk
   alias AshDataTable.Model
+  alias AshDataTable.Panel
   alias AshDataTable.Test.Referring.{Job, Member}
 
   @admin [actor: %{role: :admin}, authorize_given: nil]
@@ -108,7 +109,7 @@ defmodule AshDataTable.ReferenceTest do
     end
 
     defp unchosen(action, params, opts) do
-      for input <- Act.unchosen(action.inputs, params, nil, opts), do: input.name
+      for input <- Panel.unchosen(action.inputs, params, nil, opts), do: input.name
     end
 
     test "is a claim: one of a record the person may not read is theirs to give nowhere",

@@ -15,9 +15,9 @@ defmodule AshDataTable.ZonesTest do
 
   import Phoenix.LiveViewTest, only: [render_component: 2]
 
-  alias AshDataTable.Act
   alias AshDataTable.Format
   alias AshDataTable.Model
+  alias AshDataTable.Panel
   alias AshDataTable.Query
   alias AshDataTable.State
   alias AshDataTable.Test.Filtering
@@ -286,13 +286,13 @@ defmodule AshDataTable.ZonesTest do
         }
       ]
 
-      assert Act.gaps(inputs, %{"due_at" => "2026-03-29T02:30"}, @berlin) ==
+      assert Panel.gaps(inputs, %{"due_at" => "2026-03-29T02:30"}, @berlin) ==
                %{due_at: [{:text, :no_such_time, zone: "Europe/Berlin"}]}
 
-      assert Act.gaps(inputs, %{"due_at" => "2026-03-29T03:30"}, @berlin) == %{}
-      assert Act.gaps(inputs, %{"due_at" => "2026-03-29T02:30"}, "Etc/UTC") == %{}
+      assert Panel.gaps(inputs, %{"due_at" => "2026-03-29T03:30"}, @berlin) == %{}
+      assert Panel.gaps(inputs, %{"due_at" => "2026-03-29T02:30"}, "Etc/UTC") == %{}
 
-      assert Act.values(inputs, %{"due_at" => "2026-07-15T14:00"}, @berlin) ==
+      assert Panel.values(inputs, %{"due_at" => "2026-07-15T14:00"}, @berlin) ==
                %{"due_at" => "2026-07-15T12:00:00Z"}
     end
   end

@@ -9,8 +9,8 @@ defmodule AshDataTable.PresentTest do
 
   import AshDataTable.Test.Sensitive.Vaults, only: [vault: 0, vault: 1]
 
-  alias AshDataTable.Act
   alias AshDataTable.Model
+  alias AshDataTable.Panel
   alias AshDataTable.Present
   alias AshDataTable.Test.Sensitive, as: Vault
   alias AshDataTable.Test.Sensitive.{Owner, Shown}
@@ -86,32 +86,18 @@ defmodule AshDataTable.PresentTest do
       %{key: %{id: record.id}}
     end
 
+    # The panel of a row action as `Panel.open/4` opens it, with what the
+    # person has done in it since (`more`).
     defp opened(key, name, more) do
-      action = action(name)
-      {:ok, _record, form, inputs} = Act.open(model(), action, key, "v-panel", actor: @admin)
+      {:ok, panel} =
+        Panel.open(:row, %{key: "k1", pk: key, action: action(name)}, model(),
+          id: "v",
+          time_zone: "Etc/UTC",
+          reader: [actor: @admin],
+          named: fn record -> record.name end
+        )
 
-      Map.merge(
-        %{
-          kind: :row,
-          action: action,
-          title: "Rotate: Main",
-          submit: "Run",
-          form: form,
-          inputs: inputs,
-          errors: %{},
-          touched: MapSet.new(),
-          submitted?: false,
-          used: MapSet.new(),
-          typed: %{},
-          chosen: %{},
-          refs: %{},
-          groups: %{},
-          clearable: [],
-          cleared: MapSet.new(),
-          time_zone: "Etc/UTC"
-        },
-        more
-      )
+      struct!(panel, more)
     end
 
     test "holds no sensitive value of the record: a sensitive field is empty", %{key: key} do
@@ -143,7 +129,8 @@ defmodule AshDataTable.PresentTest do
       assert fields.token.value == ""
       assert fields.token.clear == :asked
       assert fields.passphrase.form_name == "panel[passphrase]"
-      assert %Present.Panel{title: "Rotate: Main", kind: :row, method: "put"} = panel
+      assert %Present.Panel{kind: :row, method: "put"} = panel
+      assert {:text, :action_on, [action: _label, record: "Main"]} = panel.title
     end
 
     test "shows the errors of a field once the person has been in it, or has used Run", %{

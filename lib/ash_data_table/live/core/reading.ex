@@ -17,7 +17,6 @@ defmodule AshDataTable.Live.Core.Reading do
   alias AshDataTable.Item
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Notify
-  alias AshDataTable.Live.Core.Panel
   alias AshDataTable.Live.Core.Selection
   alias AshDataTable.Live.Core.Url
   alias AshDataTable.Live.Registry
@@ -267,7 +266,8 @@ defmodule AshDataTable.Live.Core.Reading do
 
       socket
       |> Core.put(page: nil, row_count: 0, rows: %{}, failed: %{}, announce?: false, gone?: false)
-      |> Core.put(error: nil, open: %{}, related_title: nil, panel: nil, picker: nil)
+      |> Core.put(error: nil, open: %{}, related_title: nil, picker: nil)
+      |> Core.Panel.close()
       |> Core.put(fill: text, notice?: false, held: [], leaving: MapSet.new())
       |> stream(Core.table(socket).entry.stream, [], reset: true)
       |> Core.say(text)
@@ -341,7 +341,8 @@ defmodule AshDataTable.Live.Core.Reading do
     |> Core.put(notice?: false, held: [], leaving: MapSet.new())
     # the rows are other rows now: a panel never acts on a record that the
     # table no longer shows, and neither does a picker
-    |> Core.put(panel: nil, picker: nil)
+    |> Core.Panel.close()
+    |> Core.put(picker: nil)
     |> Core.put(
       rows: Map.new(rows, &{&1.key, %{rowindex: &1.rowindex, pk: primary_key(model, &1.record)}}),
       failed: %{},
@@ -409,7 +410,8 @@ defmodule AshDataTable.Live.Core.Reading do
     socket
     |> Core.put(page: nil, row_count: 0, rows: %{}, failed: %{}, announce?: false, gone?: false)
     # nothing is said of a record that was not read for this person
-    |> Core.put(error: text, open: %{}, related_title: nil, panel: nil, picker: nil)
+    |> Core.put(error: text, open: %{}, related_title: nil, picker: nil)
+    |> Core.Panel.close()
     |> Core.put(fill: nil, notice?: false, held: [], leaving: MapSet.new())
     |> stream(Core.table(socket).entry.stream, [], reset: true)
   end
@@ -737,21 +739,10 @@ defmodule AshDataTable.Live.Core.Reading do
           _none -> []
         end
 
-      panel =
-        Panel.panel(socket, fn _input -> nil end, %{
-          kind: :filter,
-          action: nil,
-          key: nil,
-          column: column.name,
-          operator: op,
-          form: nil,
-          inputs: [Model.filter_input(column)],
-          values: chosen,
-          title: {:text, :filter, column: column.label},
-          submit: {:text, :apply, []}
-        })
+      {:ok, socket} =
+        Core.Panel.open(socket, :filter, %{column: column, operator: op, values: chosen})
 
-      {:noreply, Core.put(socket, panel: panel)}
+      {:noreply, socket}
     else
       _none -> {:noreply, socket}
     end
@@ -794,36 +785,30 @@ defmodule AshDataTable.Live.Core.Reading do
   end
 
   @doc """
-  The side panel of a filter for several values was sent: the column is
-  filtered by the values that were ticked, with the panel's operator, and
-  the panel goes. The other filters stay as they are. A value that is none
-  of the column's is no filter (`AshDataTable.State.filter_column/4`).
+  The side panel of a filter for several values was sent, and went
+  (`AshDataTable.Panel.submitted/2`): the column is filtered by the values
+  that were ticked, with the panel's operator. The other filters stay as
+  they are. A value that is none of the column's is no filter
+  (`AshDataTable.State.filter_column/4`).
   """
-  def filtered(socket, typed) do
-    %{panel: panel, state: state, model: model, pending: pending} = Core.table(socket).entry
-    name = Atom.to_string(panel.column)
-
-    values =
-      case typed do
-        %{^name => [_own | values]} -> Enum.filter(values, &is_binary/1)
-        _none -> []
-      end
-
-    entry = %{"o" => Atom.to_string(panel.operator), "in" => values}
+  def filtered(socket, %{column: column, operator: operator, values: values}) do
+    %{state: state, model: model, pending: pending} = Core.table(socket).entry
+    name = Atom.to_string(column)
+    entry = %{"o" => Atom.to_string(operator), "in" => values}
     filtered = State.filter_column(state, model, name, entry)
 
     # the filter row shows the operator still, with no value ticked
     pending = %{
       controls:
         pending.controls
-        |> Map.delete(panel.column)
+        |> Map.delete(column)
         |> Map.merge(State.pending(model, %{name => entry})),
       among: [state.filters, filtered.filters]
     }
 
     {:noreply,
      socket
-     |> Core.put(panel: nil, pending: pending)
+     |> Core.put(pending: pending)
      |> Url.refilter(filtered)}
   end
 

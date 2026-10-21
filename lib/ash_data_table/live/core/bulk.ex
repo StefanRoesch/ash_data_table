@@ -7,12 +7,10 @@ defmodule AshDataTable.Live.Core.Bulk do
 
   import Phoenix.LiveView
 
-  alias AshDataTable.Act
   alias AshDataTable.Caller
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Files
   alias AshDataTable.Live.Core.Notify
-  alias AshDataTable.Live.Core.Panel
   alias AshDataTable.Live.Core.Reading
   alias AshDataTable.Live.Core.Requests
   alias AshDataTable.Live.Core.Selection
@@ -134,7 +132,9 @@ defmodule AshDataTable.Live.Core.Bulk do
           # in controlled mode the host asks it (`Requests.ask/4`)
           Requests.controlled?(socket, :confirm) ->
             {:reply, %{ok: true},
-             Requests.ask(socket, {:bulk_run, name, token}, %{action | confirm: question}, nil)}
+             socket
+             |> Core.Panel.yielded()
+             |> Requests.ask({:bulk_run, name, token}, %{action | confirm: question}, nil)}
 
           true ->
             {:reply, %{ask: Text.say(question), selection: token}, socket}
@@ -181,6 +181,14 @@ defmodule AshDataTable.Live.Core.Bulk do
   # still says what the last run came to: that is said no longer.
   def on(:bulk_seen, socket), do: {:noreply, Core.put(socket, result: nil)}
 
+  # The host's Confirm of the question before a run (controlled mode).
+  def on({:confirmed, {:bulk_run, _name, _token} = intent}, socket), do: on(intent, socket)
+
+  # What came of the panel of an action on the selection: its run, handed
+  # back to be started (`AshDataTable.Live.Core.Panel`).
+  def on({:bulk_start, action, run, files}, socket),
+    do: {:noreply, start_bulk(socket, action, run, files)}
+
   # Whether what is selected is what the token names.
   defp named(socket, token),
     do: if(token == Selection.token(Core.table(socket).entry), do: :named, else: :changed)
@@ -206,49 +214,36 @@ defmodule AshDataTable.Live.Core.Bulk do
   defp question(%Model.Action{confirm: question}, count),
     do: {:text, :bulk_confirm, count: count, question: question}
 
-  # The panel of an action that is to run on the selected rows. Its fields
-  # start empty, but for an argument's default: there is no one record to
-  # take a value from. What they hold is given to the action on every
-  # record. The selection is kept with the panel, as a row's key is with
-  # the panel of a row.
+  # The panel of an action that is to run on the selected rows
+  # (`AshDataTable.Core.Panel.open/4`), which asks its question before it runs.
   defp open_bulk(socket, action, selection, question) do
-    %{id: id, model: model} = Core.table(socket).entry
+    count = selected(selection, Core.table(socket).entry)
 
-    title =
-      case selected(selection, Core.table(socket).entry) do
-        nil -> {:text, :bulk_on_all, action: action.label}
-        count -> {:text, :bulk_on, count: count, action: action.label}
-      end
+    {:ok, socket} =
+      Core.Panel.open(socket, :bulk, %{action: action, selection: selection, count: count},
+        question: question
+      )
 
-    panel =
-      Panel.panel(socket, fn _input -> nil end, %{
-        kind: :bulk,
-        action: action,
-        key: nil,
-        selection: selection,
-        question: question,
-        form: Act.open_bulk(model, action, "#{id}-panel", Core.reader(socket)),
-        inputs: Model.bulk_inputs(action),
-        title: title,
-        submit: {:text, :run, []}
-      })
-
-    Files.opened(socket, panel)
+    socket
   end
 
   # Runs an action on the selected rows, beside the process: a run takes as
   # long as its records are many, and the page stays in use meanwhile. The
   # grid is marked busy until `handle_async/3` has the outcome. `files` are
-  # the copies of the panel's files the run holds, removed when it is done.
-  def start_bulk(socket, action, run, files) do
+  # the copies of the panel's files the run holds (`running.files`), removed
+  # when it is done (`Files.drop_copies/1`). An open panel closes.
+  defp start_bulk(socket, action, run, files) do
     socket
+    |> Core.Panel.close()
     # who started it: what it comes to is said to that person only
     |> Core.put(
-      running: %{action: action, by: Caller.who(Core.table(socket).caller)},
-      result: nil,
-      panel: nil
+      running: %{
+        action: action,
+        by: Caller.who(Core.table(socket).caller),
+        files: for({_name, %{path: path}} <- files, do: path)
+      },
+      result: nil
     )
-    |> Core.put(running_files: for({_name, %{path: path}} <- files, do: path))
     # The run says why a record was not done as message terms: their words
     # are made when the outcome is drawn, in this process, whose locale it is.
     |> start_async(AshDataTable.Live.Registry.async(socket, :bulk), run)
