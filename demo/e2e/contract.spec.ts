@@ -1,6 +1,8 @@
 import path from "node:path"
 import type { Page } from "@playwright/test"
+import { SEED } from "./support/data"
 import { expect, test } from "./support/fixtures"
+import { Table } from "./support/table"
 
 // The public contract of the package's browser side, for a kit that draws
 // in the browser (the React kit's note, C5 and C7):
@@ -9,9 +11,12 @@ import { expect, test } from "./support/fixtures"
 //     by function: /e2e/ids renders a sample of each, with what the server
 //     made of it;
 //   * `assets/js/geometry.js` counts the grid's columns and rows as
-//     `AshDataTable.Geometry` does: /e2e/ids renders a sample of each of
-//     its functions too, and grids' elements with the attributes the
-//     bundles write, which `lead` and `firstRow` read;
+//     `AshDataTable.Geometry` does: of real tables' markup (a top table
+//     under offset pagination on its first page and on another, one under
+//     keyset pagination without columns before its data columns, and a
+//     nested table), what the server wrote (`data-lead`, `data-first-row`,
+//     each data column's `aria-colindex`, each record's `aria-rowindex`)
+//     is what geometry.js counts;
 //   * `mountGrid` and `liveViewTransport` mount the grid's hook by hand on
 //     a grid that has no `phx-hook` (/e2e/markers?mount=1, the demo's hook
 //     `MountedGrid`): an edit and its save work from the keyboard, `onEdit`
@@ -51,43 +56,81 @@ test("ids.js makes every id AshDataTable.Ids makes, and has no function it lacks
 
 type Grid = { dataset: { lead?: string }; querySelector: (selector: string) => { dataset: { firstRow?: string } } | null }
 
+/**
+ * What the server wrote of where a table's columns and rows stand, as its
+ * markup has it: the grid's element as the hooks read it (its `data-lead`,
+ * and its table's `data-first-row`, found as geometry.js finds it); how many
+ * header cells stand before the first data column's; each data column's
+ * `aria-colindex`, in order; and each record's `aria-rowindex`, in order.
+ */
+async function drawn(table: Table, marker: string) {
+  const read = await table.hookRoot.evaluate(
+    (element, [id, marker]) => {
+      const found = element.querySelector(marker) as HTMLElement | null
+      const headers = [...document.getElementById(`${id}-head-row`)!.querySelectorAll(":scope > [role=columnheader]")]
+      const data = headers.filter((header) => header.id.startsWith(`${id}-head-`))
+      const rows = [...document.getElementById(`${id}-table`)!.querySelectorAll(":scope > [role=rowgroup]:not([data-detail]) > [role=row]")]
+      return {
+        lead: (element as HTMLElement).dataset.lead,
+        firstRow: found ? found.dataset.firstRow : undefined,
+        before: headers.indexOf(data[0]),
+        columns: data.map((header) => Number(header.getAttribute("aria-colindex"))),
+        rows: rows.map((row) => Number(row.getAttribute("aria-rowindex"))),
+      }
+    },
+    [table.id, marker],
+  )
+  const grid: Grid = {
+    dataset: { lead: read.lead },
+    querySelector: (selector) => (selector === marker && read.firstRow != null ? { dataset: { firstRow: read.firstRow } } : null),
+  }
+  return { grid, before: read.before, columns: read.columns, rows: read.rows }
+}
+
 test("geometry.js counts the columns and rows as AshDataTable.Geometry does, and has no function it lacks", async ({ page }) => {
   const geometry: Record<string, (...args: unknown[]) => number> = await import(geometryLibrary)
   const { TABLE }: { TABLE: string } = await import(markersLibrary)
-  await page.goto("/e2e/ids")
-
-  const samples: { function: string; args?: unknown[]; grid?: string; value: number }[] = JSON.parse(
-    (await page.locator("#geometry").textContent()) ?? "[]",
-  )
-  expect(samples.length).toBeGreaterThan(0)
-
-  // a grid's element as the hooks read it: its `data-lead`, and its
-  // table's `data-first-row`, found as geometry.js finds it
-  const grid = async (id: string): Promise<Grid> => {
-    const read = await page.evaluate(
-      ([id, table]) => {
-        const element = document.getElementById(id) as HTMLElement
-        const found = element.querySelector(table) as HTMLElement | null
-        return { lead: element.dataset.lead, firstRow: found ? found.dataset.firstRow : null }
-      },
-      [id, TABLE],
-    )
-    return {
-      dataset: { lead: read.lead },
-      querySelector: (selector) => (selector === TABLE && read.firstRow != null ? { dataset: { firstRow: read.firstRow } } : null),
-    }
+  const used = new Set<string>()
+  const count = (name: string, ...args: unknown[]) => {
+    expect(geometry[name], `geometry.js has no ${name}`).toBeDefined()
+    used.add(name)
+    return geometry[name](...args)
   }
 
-  for (const sample of samples) {
-    const counted = geometry[camel(sample.function)]
-    expect(counted, `geometry.js has no ${camel(sample.function)}`).toBeDefined()
-    const args = sample.grid ? [await grid(sample.grid)] : (sample.args ?? [])
-    expect(counted(...args), `${sample.function}(${JSON.stringify(sample.grid ?? sample.args)})`).toBe(sample.value)
+  const compare = async (table: Table, what: string) => {
+    const { grid, before, columns, rows } = await drawn(table, TABLE)
+    expect(columns.length, `${what} has data columns`).toBeGreaterThan(0)
+    expect(rows.length, `${what} has records`).toBeGreaterThan(0)
+
+    const lead = count("lead", grid)
+    expect(lead, `${what}: lead, the header cells before the first data column's`).toBe(before)
+    columns.forEach((colindex, index) => expect(count("colindex", index, lead), `${what}: colindex(${index}, ${lead})`).toBe(colindex))
+
+    const first = count("firstRow", grid)
+    rows.forEach((rowindex, n) => expect(count("rowindex", first, n), `${what}: rowindex(${first}, ${n})`).toBe(rowindex))
+    return { lead, first }
   }
 
-  const sampled = new Set(samples.map((sample) => camel(sample.function)))
+  // /tasks: rows selected and expanded, offset pages; its first page and its second
+  const tasks = new Table(page, "task", "/tasks")
+  await tasks.open()
+  const onFirst = await compare(tasks, "/tasks, page 1")
+  await tasks.reads(() => tasks.next.click())
+  const onSecond = await compare(tasks, "/tasks, page 2")
+  expect(onSecond.first, "the second page's rows go on from the first's").toBeGreaterThan(onFirst.first)
+
+  // /comments: keyset pages, nothing before the data columns
+  const comments = new Table(page, "comment", "/comments")
+  await comments.open()
+  expect((await compare(comments, "/comments")).lead).toBe(0)
+
+  // a nested table: the tasks of a project
+  const projects = new Table(page, "project", "/projects")
+  await projects.open()
+  await compare(await projects.openLine(SEED.project.mobileApp, "tasks"), "the tasks of Mobile App")
+
   const exported = Object.keys(geometry).filter((name) => name !== "default" && typeof geometry[name] === "function")
-  expect(exported.sort()).toEqual([...sampled].sort())
+  expect(exported.sort()).toEqual([...used].sort())
 })
 
 test.describe("the grid's hook mounted by hand", () => {
