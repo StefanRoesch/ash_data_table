@@ -275,12 +275,34 @@ export async function checkout(server: string): Promise<string> {
   return response.text()
 }
 
-/** Rolls the transaction of `sandbox` back (`DELETE /sandbox`). */
-export async function checkin(server: string, sandbox: string): Promise<void> {
-  // What it answers is not looked at: a test whose transaction is gone
-  // already (a task of its LiveView ended while it queried, as the pages
-  // closed) has nothing left to roll back.
-  await fetch(`${server}/sandbox`, { method: "DELETE", headers: { "user-agent": sandbox } })
+/**
+ * Rolls the transaction of `sandbox` back (`DELETE /sandbox`). Throws when
+ * the server does not answer 200: the transaction was gone before the test
+ * ended, so what the test did after that point was not done in it. That
+ * happens when a process holding the test's one connection is killed in
+ * the middle of a query, as a table's task is when its LiveView ends (the
+ * browser left the page while the table read or summed, #66): Postgres
+ * rolls the transaction back, every later query of the test is refused,
+ * and phoenix_ecto's session crashes on the checkin (the request fails, and
+ * the connection is closed). Throwing here fails the test that lost the
+ * transaction, not the next one on the same server.
+ */
+export async function checkin(server: string, sandbox: string, test = "the test"): Promise<void> {
+  const lost = (why: string) =>
+    new Error(
+      `${test} lost its database transaction before it ended: DELETE ${server}/sandbox ${why}. ` +
+        "A process that held its connection was killed in a query (a table's task, as its page " +
+        'closed?); see the server\'s log for "client #PID exited", and #66.',
+    )
+
+  let response: Response
+  try {
+    response = await fetch(`${server}/sandbox`, { method: "DELETE", headers: { "user-agent": sandbox } })
+  } catch (error) {
+    throw lost(`failed (${(error as Error).cause ?? error})`)
+  }
+  await response.text()
+  if (response.status !== 200) throw lost(`answered ${response.status}`)
 }
 
 type TestFixtures = {
@@ -326,10 +348,10 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   },
 
   sandbox: [
-    async ({ server }, use) => {
+    async ({ server }, use, testInfo) => {
       const sandbox = await checkout(server)
       await use(sandbox)
-      await checkin(server, sandbox)
+      await checkin(server, sandbox, `"${testInfo.titlePath.join(" › ")}"`)
     },
     { auto: true },
   ],
