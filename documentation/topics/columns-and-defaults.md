@@ -1,21 +1,14 @@
 # Columns and defaults
 
-After reading this guide you can say which columns a table has before you
-open it, choose your own set and order, give a column another heading, add
-calculations and aggregates, show a related record by its label, and tell how
-a value of each Ash type will look in a cell. You also know what an
-aggregate or a calculation column shows of a field that a field policy
-protects, and what the compiler says about it.
-
-Sorting, filtering and editing are each a guide of their own:
+Which columns a table has, how to declare your own, and how each type is
+shown. Sorting, filtering and editing have their own guides:
 [Reading, sorting and pagination](reading-sorting-and-pagination.md),
 [Filtering](filtering.md) and [Inline editing](inline-editing.md).
 
 ## The smallest table
 
-A resource has a table as soon as it lists the extension, and that table
-has columns without a `column` being declared. `Demo.Tracker.Project`
-declares none
+A resource that lists the extension has a table with columns, without any
+`column` declared. `Demo.Tracker.Project` declares none
 ([`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/project.ex)):
 
 <!-- source: demo/lib/demo/tracker/project.ex -->
@@ -30,35 +23,32 @@ table do
 end
 ```
 
-(A line `# ...` stands for lines of the block that are left out here.)
+(`# ...` marks lines left out: its row actions and create button, see
+[Row actions and create](row-actions-and-create.md).)
 
-No line of its block is about columns. `update_action` makes the table
-editable (see [Inline editing](inline-editing.md)), and `label_field` is
-about other tables (see [Reference cells](#reference-cells)). The lines left
-out declare its row actions and its create button (see
-[Row actions and create](row-actions-and-create.md)). Without the block the
-table would have the same columns, and be read-only.
+None of it is about columns. `update_action` makes the table editable (see
+[Inline editing](inline-editing.md)), and `label_field` is for other tables
+(see [Reference cells](#reference-cells)). Without the block the table would
+have the same columns and be read-only.
 
-**Try it:** `/projects` in the demo, as Ada Admin. The columns are ID, Name,
-Description, Status, Starts on, Budget, Client, Milestones and Inserted at.
+**Try it:** `/projects` in the demo, as Ada Admin: ID, Name, Description,
+Status, Starts on, Budget, Client, Milestones, Inserted at.
 
 ## The default set
 
 With no `column` in the block, the columns are the resource's public
-attributes, in the order `Ash.Resource.Info.public_attributes/1` returns
-them. That is the order in which the resource declares them, followed by the
-public foreign-key attributes of its `belongs_to` relationships.
+attributes in the order of `Ash.Resource.Info.public_attributes/1`: as the
+resource declares them, then the public foreign keys of its `belongs_to`
+relationships. No special cases:
 
-There are no special cases:
-
-- The primary key is a column like any other. `id` is in the default set.
-- A timestamp is a column only if it is public. `Project.inserted_at` is
+- The primary key is a column like any other; `id` is in the default set.
+- A timestamp is a column only if public. `Project.inserted_at` is
   (`create_timestamp :inserted_at, public?: true`); `updated_at` is not.
-- Calculations, aggregates and relationships are not attributes and are not
-  in the default set.
+- Calculations, aggregates and relationships are not attributes and not in
+  the default set.
 
-A `table` block that sets options but declares no `column` keeps the default
-set. All of the demo's tables but two are of this kind:
+A block that sets options but declares no `column` keeps the default set.
+All demo tables but two are of this kind:
 
 | Demo page | Block | Columns |
 | --- | --- | --- |
@@ -68,19 +58,18 @@ set. All of the demo's tables but two are of this kind:
 | `/task_labels` | `update_action :update`, `max_depth 1`, one `action`, `create_action` | Note, Task ID, Label ID |
 | `/specimens` | `update_action :update` | ID, then one column per attribute of the kitchen-sink resource |
 
-On `/comments` and `/task_labels` the foreign keys come last, although a task
-label's two foreign keys are its primary key.
+On `/comments` and `/task_labels` the foreign keys come last, even though a
+task label's two foreign keys are its primary key.
 
-An `action` adds no column to this list. The grid of a table with row
-actions has one more column at its end, "Actions", which holds their
-buttons, as the grid of a table whose rows expand has one more at its start.
-Neither is a column in the sense of this guide: it shows no field, and is
-not declared, sorted or filtered.
+An `action` adds no column here. A table with row actions has one more grid
+column at the end, "Actions", for their buttons, as a table whose rows
+expand has one at the start. Neither is a column in this guide's sense: it
+shows no field and is not declared, sorted or filtered.
 
 ## Declaring columns
 
-Once one `column` is declared, the table has exactly the declared columns in
-the declared order. The table at `/tasks` is declared this way
+Once one `column` is declared, the table has exactly the declared columns,
+in the declared order. `/tasks` is declared this way
 ([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
@@ -97,17 +86,17 @@ column :comment_count do
 end
 ```
 
-`column` takes the name of a field of the resource: a public attribute,
-calculation or aggregate. It also takes the name of a public belongs-to
-relationship, which makes the column a [reference cell](#reference-cells).
-There is no way to say "the default set and one more". A task has an `id`, a `project_id` and other public attributes that
-this table does not show, because the block does not name them.
+`column` takes the name of a public attribute, calculation or aggregate of
+the resource, or of a public belongs-to relationship, which makes a
+[reference cell](#reference-cells). There is no "default set plus one": a
+task's `id`, `project_id` and other public attributes are not shown because
+the block does not name them.
 
-A resource has one table. The block is the same wherever the table is shown.
+A resource has one table; the block is the same wherever it is shown.
 
 ## `label`
 
-The heading of a column is the field's name in words, unless `label` says
+A column's heading is the field's name in words, unless `label` says
 otherwise:
 
 | Field | Default heading |
@@ -118,21 +107,20 @@ otherwise:
 | `id` | ID |
 | `task_id` | Task ID |
 
-Underscores become spaces, the first word is capitalised, and the word `id`
-is written "ID" wherever it stands. `label "Comments"` in the excerpt above
-replaces "Comment count".
+Underscores become spaces, the first word is capitalised, and `id` is
+written "ID" wherever it stands. `label "Comments"` above replaces "Comment
+count".
 
-The label is also the column's name in everything the table says about it:
-the accessible names of its filter ("Filter Comments") and of its editor, and
-the prefix of an error about that field. A host can translate it; see
+The label names the column everywhere the table speaks of it: the
+accessible names of its filter ("Filter Comments") and editor, and the
+prefix of an error about the field. A host can translate it; see
 [Messages and translations](messages-and-translations.md).
 
 ## Calculations and aggregates
 
-A calculation or an aggregate is a column when the block names it, and only
-then. It is loaded with every read and is never editable. The task table has
-two calculations and one aggregate as columns. The resource defines them like
-this:
+A calculation or aggregate is a column only when the block names it. It is
+loaded with every read and never editable. `/tasks` has two calculations and
+one aggregate as columns:
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -146,28 +134,22 @@ calculate :overdue?,
 calculate :headline, :string, Demo.Tracker.Calculations.Headline, public?: true
 ```
 
-Both are shown the same way, by their type. They differ in what the resource
-can do with them: the data layer can sort and filter by an expression, and
-can do neither with a value computed in Elixir. On `/tasks`, the heading of
-"Overdue?" sorts and its filter cell has a choice; "Headline" has neither.
+Both are shown by their type. The data layer can sort and filter by an
+expression, but not by a value computed in Elixir: on `/tasks`, "Overdue?"
+sorts and has a filter choice; "Headline" has neither.
 
-The type of an aggregate follows from its kind and from the field it
-aggregates: `comment_count` is a count, so the column is a number.
+An aggregate's type follows from its kind and the field it aggregates:
+`comment_count` is a count, so the column is a number.
 
-An aggregate reads the related records through read actions of the
-resources on its path: for each relationship its own `read_action`, else
-the primary read action of its destination, and for the last one the
-aggregate's own `read_action` in place of the primary one. Each has to be
-`public?` for the aggregate to be a column, as every action a table runs has
-to be. The same holds for a calculation whose expression holds an
-aggregate, by name or written out. See
-[Authorization](authorization.md#every-action-a-table-runs-is-public).
+The read actions an aggregate reads through (also one held, by name or
+written out, in a calculation's expression) must be `public?`, as must
+every action a table runs; which ones they are is in
+[Authorization](authorization.md#which-actions).
 
 ## Reference cells
 
-A column that names a belongs-to relationship shows the related record's
-label in place of its key. The last three columns of `/tasks` are of this
-kind:
+A column naming a belongs-to relationship shows the related record's label
+instead of its key. The last three columns of `/tasks`:
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -183,36 +165,29 @@ column :reporter do
 end
 ```
 
-The label is the attribute that the destination's `table` block names as
-`label_field`: `Project`'s block above, and `label_field :name` on the
-demo's people. The cell is neither sorted nor filtered by. It is edited by
-choosing another related record from the destination's own table, where the
-column's update action accepts the relationship's foreign key; see
-[Choosing a related record](choosing-a-related-record.md).
-The related record is read through the relationship's own `read_action`,
-else the destination's primary read action, and that action has to be
-`public?`.
-A person who can never read the destination has no such column: on `/tasks`,
-Vera Viewer has "Project" and neither of the other two.
+The label is the attribute the destination's `table` block names as
+`label_field` (`Project`'s above; `label_field :name` on the demo's people).
+The cell is not sorted or filtered by. Where the column's update action
+accepts the foreign key, it is edited by choosing another record from the
+destination's own table; see
+[Choosing a related record](choosing-a-related-record.md). The related
+record is read through the relationship's own `read_action`, else the
+destination's primary read action, which must be `public?`. A person who
+can never read the destination has no such column: on `/tasks`, Vera
+Viewer has "Project" but neither of the other two.
 
-How the label is read, and what the cell shows when the related record or
-its label is not the person's to see, is in
+How the label is read, and what the cell shows when the record or its label
+is not the person's to see:
 [Nested tables](nested-tables.md#the-reference-cell).
 
 ## Aggregates and calculations over protected fields
 
-Ash has a rule about what an aggregate and a calculation are made from, in
-its policies guide under "References to related data & fields":
-
-- **An aggregate** applies the read policy of the related resource: records
-  the person may not read are not aggregated. It does **not** apply the
-  related resource's field policies. A sum of a field that a field policy
-  hides is the sum of the real values.
-- **A calculation** applies no policy at all to what it references: not the
-  read policy of a related resource, and no field policy, of a related
-  resource or of its own.
-
-So the rule for a resource's author is:
+Per Ash's policies guide ("References to related data & fields"), **an
+aggregate** applies the related resource's read policy (unreadable records
+are not aggregated) but **not** its field policies: a sum of a hidden field
+is the sum of the real values. **A calculation** applies no policy to what
+it references: no related read policy, no field policy, related or its own.
+So, for a resource's author:
 
 > An aggregate whose `field`, or whose own `filter`, references a field that
 > a field policy protects on the related resource must itself be protected,
@@ -222,13 +197,13 @@ So the rule for a resource's author is:
 > `Ash.Policy.Authorizer` among its authorizers, and then needs a policy; one
 > that authorizes everything will do if it has no others.
 
-Otherwise everyone who can read a row reads those values. In a table that
-means a column to look at, to sort by and to filter by.
+Otherwise everyone who can read a row reads those values; in a table, as a
+column to look at, sort by and filter by.
 
 The demo's people have such an aggregate, protected
 ([`demo/lib/demo/tracker/user.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/user.ex)).
-It adds up the estimates of a person's tasks, and a task's estimate is seen
-by admins and by the task's own assignee:
+It adds up the estimates of a person's tasks; a task's estimate is seen by
+admins and the task's own assignee:
 
 <!-- source: demo/lib/demo/tracker/user.ex -->
 ```elixir
@@ -252,19 +227,18 @@ end
 ```
 
 **Try it:** `/tasks`, expand a row and open "Assignee". As Ada Admin the
-person's table has the column "Assigned hours". As Max Member it has not.
-Take the first `field_policy` away, and Max reads the sum of estimates he
-may not see one by one.
+person's table has "Assigned hours"; as Max Member it has not. Without the
+first `field_policy`, Max would read the sum of estimates he may not see one
+by one.
 
 ### The warning
 
-The table cannot protect the column, and does not try: it shows what Ash
-returns. It warns when the resource is compiled. For an aggregate **column**
-whose field or filter is protected on the related resource, and for a
-calculation column whose expression references a protected field, on a
-related resource or on its own, when the declaring resource has no field
-policy that names the column, the compiler prints (here for a sketch, not
-for the demo, which compiles without a warning):
+The table shows what Ash returns and cannot protect the column. It warns at
+compile time when an aggregate **column**'s field or filter is protected on
+the related resource, or a calculation column's expression references a
+protected field (related or its own), and the declaring resource has no
+field policy naming the column. For a sketch (the demo compiles without a
+warning):
 
 <!-- sketch -->
 ```text
@@ -276,8 +250,8 @@ either side: `field_policy :* do authorize_if always() end` on the declaring
 resource does not answer the warning, and a related resource whose only
 field policy is that one has no protected field.
 
-When the column is meant to show the value to everyone who reads a row, say
-so on the column, which silences the warning (a sketch):
+If the column is meant to show the value to everyone who reads a row, say so
+on the column to silence the warning (a sketch):
 
 <!-- sketch -->
 ```elixir
@@ -286,26 +260,25 @@ column :payroll do
 end
 ```
 
-What the warning cannot see:
+The warning cannot see:
 
-- **A calculation computed in Elixir.** What its module loads and reads is
-  not in its declaration. The rule holds for it all the same.
-- **An aggregate or a calculation that is not a column.** The rule is Ash's
-  and holds for every interface; the table only looks at its own columns.
-- **`authorize?: false` on an aggregate**, which drops the check of the
-  related records as well.
+- **A calculation computed in Elixir.** What its module loads is not in its
+  declaration; the rule holds for it all the same.
+- **An aggregate or calculation that is not a column.** The rule is Ash's,
+  for every interface; the table only checks its own columns.
+- **`authorize?: false` on an aggregate**, which also drops the check of the
+  related records.
 - **The join resource of a many-to-many.** One investigation saw that its
-  policy does not restrict an aggregate over the relationship. This was not
-  verified independently; do not rely on a join resource's policy for an
+  policy does not restrict an aggregate over the relationship; this was not
+  verified independently. Do not rely on a join resource's policy for an
   aggregate column.
 
 ### What a table does not sort by
 
-- **An aggregate column that a field policy hides from the person on some
-  records is not sorted by.** Ash raises for such a sort. The filter of the
-  column stays: there a hidden value counts as none, and nothing is told of
-  the records it is hidden on.
-- **A reference cell is not sorted by**, as said above.
+- **An aggregate column a field policy hides from the person on some
+  records.** Ash raises for such a sort. Its filter stays: a hidden value
+  counts as none, and nothing is told of the records it is hidden on.
+- **A reference cell**, as above.
 
 ## What cannot be a column
 
@@ -318,14 +291,13 @@ What the warning cannot see:
 | A belongs-to, an aggregate, or a calculation that holds an aggregate, that Ash reads through a private action | | Reported when the resource is compiled: a table runs no private action. |
 | A name the resource does not have | | Reported when the resource is compiled. |
 
-Only what the resource declares `public?` can appear. This is the same rule
-`ash_json_api` and `ash_graphql` follow, and it means that adding the
-extension to a resource cannot expose a field that its other interfaces keep
-back. The same holds for actions: every action a table runs is `public?`,
-the ones it reaches through a column among them. See
+Only what the resource declares `public?` can appear, the rule
+`ash_json_api` and `ash_graphql` follow too: adding the extension cannot
+expose a field the resource's other interfaces keep back. The same holds
+for actions, including those reached through a column; see
 [Authorization](authorization.md#every-action-a-table-runs-is-public).
 
-The calculation the demo has of this kind:
+The demo's calculation with a required argument:
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -344,9 +316,9 @@ end
 ```
 
 A calculation whose arguments are all optional or have defaults can be a
-column as it is. One that needs an argument is a column that gives it: the
-demo shows this one twice, once with seven days fixed and once asking the
-person for the days, under a name of its own.
+column as it is. One that needs an argument must give it. The demo shows
+this one twice: with seven days fixed, and asking the person for the days
+under a name of its own.
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -361,153 +333,133 @@ column :due_within? do
 end
 ```
 
-[Arguments](arguments.md) has the rest, and the exact messages are in
+[Arguments](arguments.md) has the rest; the exact messages are in
 [Mistakes at compile time](mistakes-at-compile-time.md).
 
-A column that the block declares can still be missing for one person: a field
-that a field policy never lets them see has no column in their table. See
+A declared column can still be missing for one person: a field a field
+policy never lets them see has no column in their table. See
 [Authorization](authorization.md).
 
 ## How each type is displayed
 
-The table sorts every Ash type into one of nine cell types. The cell type
-decides how a value is shown, which filter the column gets and which editor.
+Every Ash type falls into one of nine cell types, which decide how a value
+is shown and which filter and editor the column gets.
 
 | Ash type | Cell type | Shown as |
 | --- | --- | --- |
-| `:string`, `:ci_string` | text | The text as it is, on one line. Long text is cut off at the column's maximum width, unless the column says `max_lines`: see [Long text](#long-text). |
-| `:integer`, `:float`, `:decimal` | number | The digits, without grouping. A decimal is written out in full, never in exponent notation. |
-| `:boolean` | boolean | A mark, ✓ or –, with the text "Yes" or "No" for screen readers. |
+| `:string`, `:ci_string` | text | The text as it is, on one line, cut off at the column's maximum width unless the column says `max_lines` ([Long text](#long-text)). |
+| `:integer`, `:float`, `:decimal` | number | The digits, without grouping. A decimal in full, never in exponent notation. |
+| `:boolean` | boolean | ✓ or –, with "Yes" or "No" for screen readers. |
 | `:date` | date | ISO 8601: `2026-10-06`. |
-| `:datetime`, `:utc_datetime`, `:utc_datetime_usec`, `:naive_datetime` | datetime | To the second, without a zone: `2026-10-06T14:23:03`. The UTC types are shown in the page's time zone, UTC unless the page gives one ([Time zones](time-zones.md)). |
-| A module that uses `Ash.Type.Enum`; `:atom` with the constraint `one_of`; `:duration_name` | enum | The label of the value: what the enum's `label/1` returns, else the value in words (`:in_progress` becomes "In progress"). |
-| An embedded resource; `:map`, with the `fields` constraint or without | map | Its fields on one line, as plain text: `Name: Lumen, Key account?: No`. Each field is called by its name in words and shown as a cell of its type shows it. See [Maps and embedded resources](maps-and-embedded-resources.md). |
-| `:union`, with its kinds as `types` | union | The value it holds, as a cell of that kind's type shows it: `12` for a number, `Street: Unionsweg 5, City: Köln` for an embedded resource. Nothing says which kind it is. See [Unions](unions.md). |
-| `{:array, type}` of one of the types above | array | The values as plain text, separated by a comma and a space, each as a cell of its type shows it: `api, mobile` for text, `Reviewed, Tested` for an enum, `Yes, No` for booleans. An array of embedded resources, maps or unions has a semicolon between its values. |
+| `:datetime`, `:utc_datetime`, `:utc_datetime_usec`, `:naive_datetime` | datetime | To the second, without a zone: `2026-10-06T14:23:03`. UTC types in the page's time zone, UTC unless the page gives one ([Time zones](time-zones.md)). |
+| A module that uses `Ash.Type.Enum`; `:atom` with the constraint `one_of`; `:duration_name` | enum | The value's label: the enum's `label/1`, else the value in words (`:in_progress` becomes "In progress"). |
+| An embedded resource; `:map`, with or without the `fields` constraint | map | Its fields on one line as plain text, each by its name in words and shown as its type's cell shows it: `Name: Lumen, Key account?: No`. See [Maps and embedded resources](maps-and-embedded-resources.md). |
+| `:union`, with its kinds as `types` | union | The value it holds, as its kind's cell shows it: `12` for a number, `Street: Unionsweg 5, City: Köln` for an embedded resource. Nothing says which kind. See [Unions](unions.md). |
+| `{:array, type}` of one of the types above | array | The values as plain text, each as its type's cell shows it, separated by a comma and a space (`api, mobile`, `Reviewed, Tested`, `Yes, No`); a semicolon for arrays of embedded resources, maps or unions. |
 | Everything else | other | Read-only text. |
 
-Text, numbers, dates and datetimes are shown in the format the matching
-native HTML input uses, so a cell shows what its editor will hold. Nothing is
-localized in the first version.
+Text, numbers, dates and datetimes use the format of the matching native
+HTML input, so a cell shows what its editor will hold. Nothing is localized
+in the first version.
 
-`nil` is an empty cell for every type, and so is an array without values.
-An array cell is text and nothing else: its values are not set apart from
-each other by anything but the commas.
+`nil`, and an array without values, is an empty cell for every type. An
+array cell is plain text: only the commas set its values apart.
 
-A column can show its values another way: `component` names a module that
-renders the cell. On `/tasks`, "State" and "Priority" are badges, "Progress"
-is a bar with its number, and "Estimate hours" has its unit. The cell type
-stays what the table above says, and with it the filter and the sorting.
-See [Custom components](custom-components.md).
+`component` names a module that renders the cell another way. On `/tasks`,
+"State" and "Priority" are badges, "Progress" a bar with its number,
+"Estimate hours" has its unit. The cell type, and with it filter and
+sorting, stays as above. See [Custom components](custom-components.md).
 
-A NewType counts as the type it is made of. The demo's
+A NewType counts as the type it is made of: the demo's
 `Demo.KitchenSink.Percentage`, a NewType of `:integer`, is a number column.
 
 ### Types shown as read-only text
 
-"Everything else" is: keywords, tuples, structs, UUIDs, times,
-durations, binaries, modules, ranges, terms, an `:atom` without `one_of`,
-and the arrays of all of these and of arrays. A column of such a type has
-no editor and no filter. Whether it can be sorted is still the resource's
-decision: a UUID column sorts.
+"Everything else" is: keywords, tuples, structs, UUIDs, times, durations,
+binaries, modules, ranges, terms, an `:atom` without `one_of`, and arrays of
+these and of arrays. Such a column has no editor and no filter. Sorting is
+still the resource's decision: a UUID column sorts.
 
-An embedded resource and a map are not among them: they are shown field by
-field, and edited in the side panel where their fields are declared. See
-[Maps and embedded resources](maps-and-embedded-resources.md). They have no
-sort and no filter.
+Not among them, each with no sort and no filter:
 
-Nor is a union: it is shown as the value it holds, and edited in the side
-panel, its kind first, where every kind has a control. See
-[Unions](unions.md). It has no sort and no filter either.
+- **Embedded resources and maps**, shown field by field and edited in the
+  side panel where their fields are declared. See
+  [Maps and embedded resources](maps-and-embedded-resources.md).
+- **Unions**, shown as the value they hold and edited in the side panel,
+  kind first, with a control per kind. See [Unions](unions.md).
+- **Arrays of values that have a cell type**, shown as their values and
+  editable in the side panel. See
+  [Inline editing](inline-editing.md#arrays).
 
-A file is no column at all: `Ash.Type.File` is the type of an action's
-argument, and Ash stores none. See [Files](files.md).
+A file is no column at all: `Ash.Type.File` types an action's argument, and
+Ash stores none. See [Files](files.md).
 
-An array of values that do have a cell type is not among them: it is shown
-as its values and can be edited in the side panel, see
-[Inline editing](inline-editing.md#arrays). It has no sort and no filter
-either.
+The text is the plainest form of the value: a string as it is, a number or
+atom written out, a module without its `Elixir.` prefix, a list as its items
+separated by commas, anything else as `inspect/1` prints it.
 
-The text is the plainest form the value has: a string as it is, a number or
-an atom written out, a module without its `Elixir.` prefix, a list as its
-items separated by commas, and anything else as `inspect/1` prints it.
-
-**Try it:** `/specimens` in the demo has one column per built-in Ash type.
-No login is needed for that page.
+**Try it:** `/specimens` in the demo has one column per built-in Ash type,
+no login needed.
 
 ## Column widths
 
-A table lays its columns out by itself: it is as wide as the place it is in,
-and each column gets what its content asks for, up to `20rem`. Nothing in the
-`table` block sets a width.
+A table lays out its columns itself: it fills its place, and each column
+gets what its content asks for, up to `20rem`. Nothing in the `table` block
+sets a width.
 
-The person using the table can change a width:
+A person can change a width:
 
-- **Drag the handle** to make the column narrower or wider. It is built for
-  a mouse, a pen and a finger; only the mouse has been tried.
-- **Double-click the handle** to give the column the width it had before.
-  The handle is at the end of every column's header, seen when the pointer
-  is over it. It is for the pointer only: no Tab stop.
-- **Type the width** in the list that "Columns" opens: each column has a
-  number field, "Width of Title", in pixels, beside its box; the label
-  column has one too, first. Up and Down Arrow, the field's own keys, change
-  it as well. "Reset widths" at the end gives every column its first width
-  again. This is the way from the keyboard, and for a pointer that does not
-  drag. See
+- **Drag the handle** at the end of the column's header, seen when the
+  pointer is over it. Built for mouse, pen and finger; only the mouse has
+  been tried.
+- **Double-click the handle** to restore the column's previous width. The
+  handle is pointer only: no Tab stop.
+- **Type the width** in the list "Columns" opens: each column has a number
+  field in pixels beside its box ("Width of Title"); the label column has
+  one too, first. Up and Down Arrow, the field's own keys, change it as
+  well. "Reset widths" at the end restores every first width. This is the
+  way for the keyboard and for a pointer that does not drag; see
   [Keyboard and accessibility](keyboard-and-accessibility.md#column-widths-and-hiding-columns).
 
-What to know about it:
+- **A column is 48 to 1000 pixels wide.** Text that does not fit is cut off
+  with an ellipsis, in header and cells. Rows stay one line high, except for
+  a cell showing its whole text or a failed save's message, or with
+  `max_lines` (see [Long text](#long-text)).
+- **The first change fixes every column** at its current width. From then
+  on the table is as wide as its columns together, narrower than its place
+  or wider (scrolling sideways). Only the dragged column changes. "The width
+  it had before" counts from that moment.
+- **Not remembered.** Widths live in the browser while the page is open,
+  through sorting, filtering, paging, saving a cell and expanding a row. A
+  reload or leaving the page forgets them; nothing goes to the server or the
+  URL.
+- **Per table**: a nested table, a picker's table, each of several tables on
+  a page. A nested table closed and opened again starts over.
+- **Only the table's own columns.** The columns of the selection boxes, the
+  expanders and the row actions have no handle and no width field.
+- **No option** switches this off or sets a starting width.
 
-- **A column is between 48 and 1000 pixels wide.** Text that does not fit is
-  cut off with an ellipsis, in the header as in the cells. Rows stay one line
-  high, but for a cell that shows its whole text or the message of a failed
-  save. In a column with `max_lines` the text takes more lines instead, up
-  to that many: see [Long text](#long-text).
-- **The first change fixes every column.** Each column keeps the width it has
-  at that moment, and from then on the table is as wide as its columns
-  together: narrower than its place, or wider, in which case it scrolls
-  sideways as before. Only the column that is dragged changes. "The width it
-  had before" is the width from that moment.
-- **Widths are not remembered.** They live in the browser, for as long as the
-  page is open. They stay through sorting, filtering, paging, saving a cell
-  and expanding a row. A reload forgets them, and so does leaving the page.
-  Nothing is sent to the server and nothing is put in the URL.
-- **Each table has its own widths**: a nested table, the table in a picker,
-  and each of several tables on one page. A nested table that is closed and
-  opened again starts over.
-- **Which columns:** the table's own columns. The columns of the boxes that
-  select rows, of the expanders and of the row actions have no handle and
-  no width field.
-- **There is no option** to switch this off or to set a starting width.
-
-**Try it:** drag the edge of "Title" on `/tasks` in the demo, then sort by
-another column.
+**Try it:** drag the edge of "Title" on `/tasks`, then sort by another
+column.
 
 ## Long text
 
-A cell shows one line of its text and cuts off the rest with "…". That keeps
-rows one line high. Two things help with a text that is longer.
+A cell shows one line and cuts off the rest with "…", keeping rows one line
+high. Two things help with longer text.
 
-**The whole text, in the row.** When a cell cuts some of its text off, it
-can show all of it in place: the row grows as high as the text needs.
+**The whole text, in the row.** Every cell that cuts text off, read-only or
+editable, in every table, has a small "Show all" button: a Tab stop named
+after its column ("Show all of Title"). Click, Enter or Space on it, or
+Shift+Enter on an editable cell, shows the whole text in place, the row
+growing as needed; focus stays. The button then says "Show less"; it,
+Shift+Enter again, or Escape on an editable cell cuts the text off again
+(Escape then does nothing else, focus stays). Until then the text stays
+whole when focus and pointer move on. There is no button on a cell that
+shows all its text, a cell being edited (the editor holds the text), or a
+cell whose save failed or is on its way.
 
-- A small button "Show all" is in every cell that cuts its text off,
-  read-only or editable. It is a Tab stop, named after its column ("Show
-  all of Title"). A click on it, Enter or Space on it, or Shift+Enter on an
-  editable cell shows the whole text; focus stays where it is.
-- The button then says "Show less". It, or Shift+Enter again, cuts the
-  text off again; so does Escape on an editable cell. Escape does nothing
-  else then: the focus stays where it is.
-- A cell whose whole text shows keeps showing it when the focus and the
-  pointer move on, until it is cut off again.
-
-This needs no declaration and works in every table and every column. It is
-not offered for a cell that shows all of its text, for a cell that is being
-edited (the editor holds the text), or for a cell whose save failed or is
-on its way.
-
-**More lines in a column.** `max_lines` on a column lets its cells show
-several lines:
+**More lines in a column.** `max_lines` lets a column's cells show several
+lines:
 
 <!-- source: demo/lib/demo/tracker/comment/compact_table.ex -->
 ```elixir
@@ -516,114 +468,98 @@ several lines:
       end
 ```
 
-- **The text wraps** and is cut off with "…" after that many lines. A short
-  text still takes one line. The number is from 1 to 10; 1 is what a column
-  has without the option.
-- **Line breaks of the value are kept.** A text of three paragraphs shows as
-  three paragraphs, as far as the lines go. An empty line counts as a line.
-- **A row is as high as its highest cell.** In a table with such a column,
-  rows have different heights. The other cells of a row stay one line, in
-  the middle of the row. A table without the option keeps rows of one line.
-- **A narrower column gives more lines**, up to the number. When a person
-  drags the column narrower, a text that fitted one line takes two or three.
-- **Which columns:** the ones that are shown as text. That is a string, an
-  array, a map or embedded resource, a union, and a type shown as read-only
-  text. On a number, a date, a datetime, a boolean, an enum, a reference
-  cell, a sensitive column, or a column whose `component` shows the cell,
-  the option has no effect, and the compiler says so: see
+- **The text wraps** and is cut off with "…" after that many lines; a short
+  text still takes one. The number is 1 to 10; 1 is the default.
+- **The value's line breaks are kept**, as far as the lines go; an empty
+  line counts as a line.
+- **A row is as high as its highest cell**, so rows differ in height; the
+  other cells stay one line, centred vertically. A table without the option
+  keeps one-line rows.
+- **A narrower column gives more lines**, up to the number, also when a
+  person drags it narrower.
+- **Which columns:** those shown as text: a string, an array, a map or
+  embedded resource, a union, and a type shown as read-only text. On a
+  number, date, datetime, boolean, enum, reference cell, sensitive column,
+  or a column whose `component` shows the cell, it has no effect and the
+  compiler says so: see
   [Mistakes at compile time](mistakes-at-compile-time.md#columns).
-- **Editing is the same.** The editor of a text opens in the cell and grows
-  with its lines.
-- **Each table says it for itself.** A nested table and the table of a
-  picker do what their own table's block says.
+- **Editing is the same**: a text's editor opens in the cell and grows with
+  its lines.
+- **Each table says it for itself**: a nested table and a picker's table
+  follow their own table's block.
 
-What to know about the whole text:
+About the whole text:
 
-- **It is the cell's own text.** Nothing floats over the page, and the
-  server sends nothing for it.
-- **A sensitive cell has none**, masked or shown. Nor has a cell of a field
+- **It is the cell's own text.** Nothing floats over the page; the server
+  sends nothing for it.
+- **A sensitive cell has none**, masked or shown; nor has a cell of a field
   the person may not see.
-- **A screen reader reads the whole text in the cell** whatever the eye is
-  shown. The button says whether the text shows whole (`aria-expanded`).
-- **A live update of the row** brings the new text, shown whole again if it
-  was.
-- **A column header that is cut off has none.**
+- **A screen reader reads the whole text** whatever the eye is shown. The
+  button tells whether it shows whole (`aria-expanded`).
+- **A live update of the row** brings the new text, still whole if it was.
+- **A cut-off column header has none.**
 
-**Try it:** open `/comments/compact` in the demo, Tab to the "Show all" of
-a comment that starts with "Done on my side" and press Enter. Then open
-`/comments`, where the same comments are one line, and do the same.
+**Try it:** on `/comments/compact`, Tab to the "Show all" of a comment
+starting "Done on my side" and press Enter. Then do the same on `/comments`,
+where the same comments are one line.
 
 ## Hiding columns
 
-A person can take columns out of sight and bring them back. On the heading
-line above the table, after the table's name, is a button "Columns": an eye
-struck through, the word, and while columns are hidden how many in a badge.
-A nested table has its own on the line that opens it. It opens a list of
-the table's columns with a box each. A column whose box is not ticked is
-hidden.
+On the heading line above the table, after its name, a "Columns" button (an
+eye struck through, the word, and while columns are hidden their count in a
+badge) opens a list of the table's columns with a box each. A column whose
+box is not ticked is hidden. A nested table has its own button on the line
+that opens it.
 
-Hiding is for the eye only. **It is not a permission.** A hidden column is
-still read from the database and still in the page; anybody can show it
-again. What a person must not see is kept away by a policy, a field policy
-or `sensitive?`: see [Authorization](authorization.md) and
+**Hiding is not a permission.** A hidden column is still read from the
+database and still in the page, and anybody can show it again. Keep things
+from a person with a policy, a field policy or `sensitive?`: see
+[Authorization](authorization.md) and
 [Sensitive columns](sensitive-columns.md).
 
-What to know about it:
-
-- **Which columns can be hidden:** every column of the table but the label
-  column, the one of the resource's `label_field`. Without it a row could
-  not be told from another, so it has no box. The columns of the boxes that
-  select rows, of the expanders and of the row actions are not in the list.
+- **Every column can be hidden but the label column** (the resource's
+  `label_field`), without which rows could not be told apart; it has no
+  box. The selection boxes, expanders and row actions are not in the list.
 - **A table without a label column** lets every column be hidden, but one
-  always stays: the box of the last column that is shown cannot be used.
-  That is the case when the `table` block names no `label_field`, when the
-  label is not among the declared columns, or when this person may not see
-  it. A table with one column has no "Columns" button.
-- **A hidden column keeps its filter and its sort.** The rows do not change
-  when a column is hidden. Because a filter lives in the header row, it goes
-  out of sight with its column, so the button's name says it: "Columns (2
-  hidden, 1 filtered)", and "1 sorted" likewise. In the list the column reads
-  "Progress (filtered)" for as long as it is hidden. "Clear filters" clears
-  the filter of a hidden column too.
-- **Nothing is remembered.** What is hidden lives in the browser, for as
-  long as the page is open. It stays through sorting, filtering, paging,
-  saving a cell and expanding a row. A reload shows every column again, and
-  so does leaving the page. Nothing is sent to the server and nothing is put
-  in the URL.
-- **Each table has its own list**: a nested table, the table in a picker,
-  and each of several tables on one page. A nested table that is closed and
-  opened again shows every column.
-- **A hidden column keeps its width**, if a person gave it one. When the
-  other columns got their widths while it was hidden, it takes the width it
-  needs when it is shown.
-- **What was open in the column:** an editor that is open in a cell of the
-  column is left as when focus leaves it, so what was typed is saved. A
-  sensitive value that was shown is masked again. A cell whose save failed
-  stays marked; its message is read out when it fails and is shown again
-  when the column is.
-- **The action panel is not affected.** It shows the fields of an action,
-  whether or not their columns are shown. So are selecting rows and the
-  actions on them.
-- **There is no option** to keep a column from being hidden, or to start
-  with a column hidden.
+  always stays: the box of the last shown column cannot be used. That is
+  when the block names no `label_field`, the label is not among the
+  declared columns, or the person may not see it. A table with one column
+  has no "Columns" button.
+- **A hidden column keeps its filter and sort**, so the rows do not change.
+  The filter, which lives in the header row, goes out of sight with it, so
+  the button says it: "Columns (2 hidden, 1 filtered)", likewise "1 sorted".
+  The list reads "Progress (filtered)" while it is hidden. "Clear filters"
+  clears a hidden column's filter too.
+- **Not remembered, and per table**, as widths are (see
+  [Column widths](#column-widths)): a reload, leaving the page, or closing
+  and reopening a nested table shows every column again.
+- **A hidden column keeps a width a person gave it.** If the other columns
+  got their widths while it was hidden, it takes the width it needs when
+  shown.
+- **What was open in the column:** an open editor is left as when focus
+  leaves it, so what was typed is saved. A shown sensitive value is masked
+  again. A cell whose save failed stays marked; its message is read out
+  when it fails and shown again with the column.
+- **The action panel, selecting rows and their actions are not affected.**
+  The panel shows an action's fields whether or not their columns are shown.
+- **No option** keeps a column from being hidden or starts with one hidden.
 
-The list is the browser's own popover: it opens under its button, and in
-a browser without CSS anchor positioning (Firefox today) in the middle of
-the window. It closes with Escape, with a click anywhere else, and when
-focus moves on. The button's text counts in the plural forms of the
-person's language (see
-[Messages and translations](messages-and-translations.md#counts-plural-forms)). The keys are in
+The list is the browser's own popover, opening under its button; without
+CSS anchor positioning (Firefox today) in the middle of the window. It
+closes with Escape, a click elsewhere, or focus moving on. The button's
+count uses the plural forms of the person's language (see
+[Messages and translations](messages-and-translations.md#counts-plural-forms)).
+The keys are in
 [Keyboard and accessibility](keyboard-and-accessibility.md#column-widths-and-hiding-columns).
 
-**Try it:** on `/tasks` in the demo, filter "Progress", then hide it with
-"Columns".
+**Try it:** on `/tasks`, filter "Progress", then hide it with "Columns".
 
 ## Keeping the label column in view
 
-A table that is wider than its place scrolls sideways (see
+A table wider than its place scrolls sideways (see
 [Scrolling sideways](layout-and-embedding.md#scrolling-sideways)), and the
-column that says which record a row is scrolls away with the others. A table
-keeps it in view when its block says `sticky_label? true`:
+column that says which record a row is scrolls away with the rest. With
+`sticky_label? true` in the block it stays in view:
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -639,86 +575,70 @@ keeps it in view when its block says `sticky_label? true`:
     sticky_label? true
 ```
 
-- **What stays** is the label column, the column of the resource's
-  `label_field`: its header, its filter and its cells. With it stay the
-  narrow cells before the columns, where the table has them: the box that
-  selects a row and the expander of a row. Nothing else can be kept, and a
-  person cannot choose.
-- **Where it stays.** At the left edge of the table's own scroll area, after
-  the box and the expander. The label column keeps its place among the
-  columns: when it is not the first column, the columns before it scroll
-  away under it, and it stays once it reaches the left edge.
-- **The option is off unless it is written**, and each table says it for
-  itself: the `table` block for the default table, a
-  [named table](named-tables.md) in its own block. A nested table and the
-  table of a picker are tables of their resource, and do what that table's
-  block says. On `/tasks` the title stays; in the comments under a task
-  nothing does.
-- **It needs a label column.** `sticky_label? true` on a table of a resource
-  without `label_field`, or on a table that declares its columns and leaves
-  the label's out, is reported when the resource is compiled: see
+- **What stays:** the label column (the resource's `label_field`) with
+  header, filter and cells, plus the selection box and expander where the
+  table has them. Nothing else, and a person cannot choose.
+- **Where:** at the left edge of the table's scroll area, after box and
+  expander. Columns before it scroll away under it once it reaches the
+  edge.
+- **Off unless written**, per table: the `table` block for the default
+  table, a [named table](named-tables.md) in its own block. A nested table
+  and a picker's table follow their table's block. On `/tasks` the title
+  stays; in the comments under a task nothing does.
+- **It needs a label column.** `sticky_label? true` on a resource without
+  `label_field`, or on a table whose declared columns leave the label out,
+  is reported at compile time: see
   [Mistakes at compile time](mistakes-at-compile-time.md#sticky_label).
-- **It does not stay where it would take more than half** of what is seen of
-  the table: in a narrow window, or when a person has made the column very
-  wide. Then the table scrolls as one without the option does.
-- **For a person who does not see the label's field** (a field policy), the
-  table has no label column, and nothing stays.
-- **Widths and hidden columns** work as in any table. The label column has its
-  handle and can be made wider or narrower; it cannot be hidden, with or
-  without the option.
-- **The cells that stay have the page's ground**, so that what scrolls under
-  them does not show through: the theme's `--color-base-100`. A table on
-  another ground is told so with `--ash-data-table-ground`: see
+- **It does not stay where it would take more than half** of the visible
+  table (a narrow window, or a column made very wide); then the table
+  scrolls as a whole.
+- **A person who does not see the label's field** (a field policy) has no
+  label column, so nothing stays.
+- **Widths and hiding** work as usual: the label column has its handle and
+  can be resized; it cannot be hidden, with or without the option.
+- **The cells that stay have the page's ground** (the theme's
+  `--color-base-100`) so nothing shows through. A table on another ground
+  says so with `--ash-data-table-ground`: see
   [Scrolling sideways](layout-and-embedding.md#scrolling-sideways). While
-  something is under them, the last of them has a thin edge.
-- **The header row does not stay at the top** when the page scrolls down.
-  There is no option for that yet: see
-  [Not in the first version](#not-in-the-first-version).
+  something is under them, the last has a thin edge.
+- **The header row does not stay at the top** when the page scrolls down;
+  no option for that yet (see
+  [Not in the first version](#not-in-the-first-version)).
 
-**Try it:** `/tasks` in the demo. Hold Shift and turn the mouse wheel over
-the table, or drag the scrollbar at the bottom of the window: "Title" stays.
-On `/labels`, in a narrow window, nothing does.
+**Try it:** on `/tasks`, Shift and the mouse wheel over the table, or drag
+the scrollbar at the bottom of the window: "Title" stays. On `/labels`, in a
+narrow window, nothing does.
 
 ## Edge cases
 
-- **A public foreign key shows the raw key.** `Task ID` on `/comments` is the
-  UUID of the task, because that table shows the public attributes. A column
-  that names the relationship shows the related record's label: "Project" on
-  `/tasks`.
-- **Both can be columns of one table**: the key, as the attribute, and the
-  label, as the relationship. A person who may not read the related record
-  then sees a key beside an empty cell.
-- **A public `sensitive?` attribute is a column, and its cells are masked.**
-  `Project.budget` is sensitive and public: its cells show `••••••` until a
-  person asks for one. Sensitivity is not about who may see the field. What
-  keeps the column from a viewer in the demo is its field policy. See
-  [Sensitive columns](sensitive-columns.md).
-- **A primary key of several attributes** needs nothing special. On
-  `/task_labels` each row is identified by both parts of its key.
-- **An enum whose type has no label for a value** shows the value in words.
-  An enum value that is no longer one of the type's values is shown as text.
-- **Width.** There is no width setting in the `table` block. Rows are one
-  line high, unless a column says `max_lines` or a cell shows its whole
-  text; a cell wider than `20rem` is
-  cut off with an ellipsis, until a person makes the column wider: see
-  [Column widths](#column-widths) and [Long text](#long-text). The
-  editor of a text cell is a field that grows with the lines of its text. In
-  a column whose width a person set, an editor is as wide as the column.
+- **A public foreign key shows the raw key.** `Task ID` on `/comments` is
+  the task's UUID, since that table shows the public attributes. A column
+  naming the relationship shows the label: "Project" on `/tasks`.
+- **Both can be columns of one table**: the key as attribute, the label as
+  relationship. A person who may not read the related record then sees a
+  key beside an empty cell.
+- **A public `sensitive?` attribute is a column with masked cells.**
+  `Project.budget` shows `••••••` until a person asks for a cell.
+  Sensitivity is not about who may see the field; in the demo its field
+  policy keeps it from a viewer. See [Sensitive columns](sensitive-columns.md).
+- **A composite primary key** needs nothing special: on `/task_labels` each
+  row is identified by both parts.
+- **An enum value without a label** in its type shows in words. A value no
+  longer among the type's values is shown as text.
+- **Editors and width.** A text cell's editor grows with its lines; in a
+  column with a person-set width, an editor is as wide as the column. See
+  [Column widths](#column-widths) and [Long text](#long-text).
 
 ## Things people trip over
 
-- **Declaring one column removes all the defaults.** The block is either
-  empty of columns or complete.
-- **A new public attribute appears in every default table.** A table without
-  declared columns follows the resource. Declare the columns of a table whose
-  set should not change by itself.
-- **A calculation or aggregate is missing.** It has to be named, and it has
-  to be `public?`.
-- **The heading is not the attribute's `description`.** It is the name in
+- **Declaring one column removes all defaults.**
+- **A new public attribute appears in every default table.** Declare the
+  columns of a table whose set should not change by itself.
+- **A missing calculation or aggregate** has to be named and `public?`.
+- **The heading is not the attribute's `description`**, but the name in
   words, or `label`.
-- **A time or a UUID cannot be edited or filtered.** Their types are shown
-  as read-only text in the first version. As an input of a row action or of
-  a create they do have a field, a plain one: see
+- **A time or a UUID cannot be edited or filtered** in the first version.
+  As an input of a row action or create they get a plain field: see
   [Row actions and create](row-actions-and-create.md#the-fields-of-the-panel).
 
 ## Not in the first version
@@ -726,11 +646,10 @@ On `/labels`, in a narrow window, nothing does.
 No reference cell for a has-one, no label that is a calculation, no choosing
 another related record in a reference cell, no dedicated cells for maps and
 embedded resources, no locale-aware formatting, no column widths in the
-`table` block, no remembering of the widths a person set or of the columns they hid, no
-option to forbid hiding a column or to start with one hidden, no header row
-that stays at the top of the window while the page scrolls down, no choosing
-which columns stay in view,
-and one table per resource. A column's own look and editor are built: see
-[Custom components](custom-components.md). The
-later slices are listed in the
+`table` block, no remembering of the widths a person set or of the columns
+they hid, no option to forbid hiding a column or to start with one hidden,
+no header row that stays at the top of the window while the page scrolls
+down, no choosing which columns stay in view, and one table per resource. A
+column's own look and editor are built: see
+[Custom components](custom-components.md). Later slices are listed in the
 [specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

@@ -1,18 +1,16 @@
 # Nested tables
 
-A row of a table expands into the tables of its related records. After
-reading this guide you can say which relationships a row offers, what the
-table of each kind of relationship can do, how deep a person can go, how a
-nested table is read and what it shows a person who may not see everything,
-how it is used from the keyboard, and how its records are opened on a page of
-their own. The last part is about the cell that shows a related record in
-place of its key.
+A row of a table expands into the tables of its related records. This guide
+covers which relationships a row offers, what each kind's table can do, how
+deep a person can go, how a nested table is read and what it shows a person
+who may not see everything, its keyboard use, and the full view that opens
+its records on a page of their own. The last part is the reference cell,
+which shows a related record in place of its key.
 
 ## The smallest example
 
-There is nothing to declare. A row offers every public relationship of the
-resource whose destination resource has a table. The demo's projects have
-one
+There is nothing to declare. A row offers every public relationship whose
+destination resource has a table. The demo's projects have one
 ([`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/project.ex)):
 
 <!-- source: demo/lib/demo/tracker/project.ex -->
@@ -23,52 +21,47 @@ has_many :tasks, Demo.Tracker.Task, public?: true
 `Demo.Tracker.Task` lists `AshDataTable.Resource`, so a project's row has an
 expander.
 
-**Try it:** `/projects` in the demo, as Ada Admin. Click the mark at the
-start of the row "Mobile app": one line appears under the row, "Tasks". Click
-the line: the tasks of that project, in the table that `/tasks` shows, with
-its own headings to sort by, its own filter row and its own pages ("1–25 of
-57"). Edit a title in it. Nothing of this changes the projects around it or
-the address of the page.
+**Try it:** `/projects` as Ada Admin. Click the mark at the start of "Mobile
+app": a line "Tasks" appears under the row. Click it: the project's tasks,
+in the table `/tasks` shows, with its own sortable headings, filter row and
+pages ("1–25 of 57"). Edit a title in it. Neither the projects around it
+nor the page's address change.
 
 Three words, as this guide uses them:
 
-- The **expander** is the first cell of a row, after the box that selects
-  the row where rows can be selected. It opens and closes what is under the
-  row.
-- A **relationship line** is one relationship of the row, under the expanded
-  row. It opens and closes the nested table.
-- A **nested table** is the table of the destination resource, as that
-  resource declares it, limited to the records related to the row.
+- The **expander** is a row's first cell (after the selection box, where
+  rows can be selected). It opens and closes what is under the row.
+- A **relationship line** is one relationship of the expanded row, under
+  it. It opens and closes the nested table.
+- A **nested table** is the destination resource's table, as that resource
+  declares it, limited to the records related to the row.
 
-A table whose resource has nothing to offer has no expanders and no column
-for them: `/specimens` in the demo.
+A table whose resource offers nothing has no expanders and no column for
+them: `/specimens` in the demo.
 
 ## Which relationships a row offers
 
-What follows is said per table. A resource with [named tables](named-tables.md)
-has a set of relationships for each, and a `relationship` can say which of
-the destination's tables it nests (`table :compact`); without that it is
-the destination's default table.
+This is per table. A resource with [named tables](named-tables.md) has a
+set of relationships for each, and a `relationship` can name which of the
+destination's tables it nests (`table :compact`); else it is the
+destination's default table.
 
-With no `relationship` in the `table` block, a row offers every relationship
-of the resource that
+With no `relationship` in the `table` block, a row offers every
+relationship that
 
 - is `public?`,
-- leads to a resource that has a table (lists `AshDataTable.Resource`),
-- is not a manual relationship, and
-- is read through `public?` actions only: its own `read_action` when it
-  names one, else the read action of the destination's table; for a
-  many-to-many the read action of the join resource as well (the
-  `read_action` of the join relationship, else the join resource's primary
-  read action); and for a relationship `through` a path of others the
-  primary read action of every resource the path passes.
+- leads to a resource with a table (one that lists `AshDataTable.Resource`),
+- is not manual, and
+- is read through `public?` actions only: its own `read_action`, else the
+  read action of the destination's table; for a many-to-many also the join
+  resource's read action (the join relationship's `read_action`, else the
+  join resource's primary read action); for a relationship `through` a path,
+  the primary read action of every resource on the path.
 
-They appear in the order in which the resource declares them, each under its
-name in words.
+They appear in declaration order, each under its name in words.
 
 Once one `relationship` is declared, the row offers exactly the declared
-ones, in the declared order. This is the rule columns follow: explicit wins.
-The demo's tasks declare theirs
+ones, in declared order: explicit wins, as with columns. The demo's tasks
 ([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
@@ -93,7 +86,7 @@ relationship :reporter do
 end
 ```
 
-`label` replaces the name on the line. A `relationship` takes no other
+`label` replaces the name on the line; `relationship` takes no other
 option.
 
 | Demo page | A row expands into | Declared how |
@@ -104,53 +97,50 @@ option.
 | `/labels` | Tasks | nothing |
 | `/task_labels` | Task, Label | nothing |
 
-A `relationship` that names something that is no public relationship, or
-one whose destination has no table, is reported when the resource is
-compiled. So is one whose nested table would run a private read action: a
-table runs only `public?` actions, however it came by them. With no
-`relationship` in the block, such a relationship is quietly not offered,
-like one whose destination has no table. See
+A declared `relationship` is reported at compile time when it names no
+public relationship, when its destination has no table, or when its nested
+table would run a private read action (a table runs only `public?` actions,
+however it got them). Without a declaration, such a relationship is simply
+not offered. See
 [Mistakes at compile time](mistakes-at-compile-time.md#a-private-action) and
 [Authorization](authorization.md#every-action-a-table-runs-is-public).
 
 ## What each kind of relationship looks like
 
-A nested table is the destination's own table: the columns of its block, its
-editing, its filters, its row actions. What it can do beyond showing its
-rows follows from the relationship, because it is read as Ash loads that
-relationship.
+A nested table is the destination's own table: its columns, editing,
+filters and row actions. What else it can do follows from the relationship,
+because it is read as Ash loads that relationship.
 
-| Relationship | The nested table | In the demo, under a row of `/tasks` |
+| Relationship | The nested table | Under a row of `/tasks` |
 | --- | --- | --- |
-| has-many, many-to-many, through a read action with `pagination` | Pages, a total where the action counts, sort and filters. | Comments: keyset pages of 20, "5 records". |
-| has-many, many-to-many, through a read action without `pagination` | Every related record, with sort and filters. | Labels. |
-| belongs-to, has-one | At most one row. No sort, no filters, no pages. | Project, Assignee, Reported by; First comment and Newest comment. |
-| A relationship with `no_attributes?` | Every related record, with sort and filters, also when the action has `pagination`: Ash cannot page it. | (none) |
-| has-many, many-to-many, through a read action that requires an argument | Every related record, with sort and filters, once the argument is given in the nested table's [argument line](arguments.md#nested-tables-the-full-view-and-the-picker): Ash cannot page related records through such an action. | (none) |
-| A manual relationship | Every related record. No sort, no filters, no pages: whether its module honours a sort or a filter is not something a table can know. Offered only when declared. | (none) |
+| has-many, many-to-many, through: read action with `pagination` | Pages, a total where the action counts, sort and filters. | Comments: keyset pages of 20, "5 records". |
+| has-many, many-to-many, through: read action without `pagination` | Every related record, with sort and filters. | Labels. |
+| belongs-to, has-one | At most one row. No sort, filters or pages. | Project, Assignee, Reported by; First comment, Newest comment. |
+| With `no_attributes?` | Every related record, with sort and filters, even when the action has `pagination`: Ash cannot page it. | (none) |
+| has-many, many-to-many, through: read action that requires an argument | Every related record, with sort and filters, once the argument is given in the nested table's [argument line](arguments.md#nested-tables-the-full-view-and-the-picker): Ash cannot page related records through such an action. | (none) |
+| Manual | Every related record. No sort, filters or pages: a table cannot know whether the module honours them. Offered only when declared. | (none) |
 
-Three rules decide which records and in which order:
+Which records, in which order:
 
-- **The read action is the relationship's own `read_action` when it declares
-  one, else the read action of the destination's table.** A relationship that
-  names an action says which records it means.
-- **The relationship's own `sort` comes first, as long as the person has
-  chosen none.** Ash puts it behind the read action's default sort, where it
-  would never be seen. For a has-one with `from_many?` this decides which
-  record is shown: "First comment" and "Newest comment" in the demo are the
-  same relationship with opposite sorts, and each shows its own.
-- **A person's sort or filter never applies to a single record.** On a
-  has-one that picks one of many it would change which one that is.
+- **The read action** is the relationship's own `read_action`, else that of
+  the destination's table. A relationship that names an action says which
+  records it means.
+- **The relationship's own `sort` comes first** while the person has chosen
+  none. (Ash would put it behind the read action's default sort, where it
+  is never seen.) For a has-one with `from_many?` this picks the record: the
+  demo's "First comment" and "Newest comment" are one relationship with
+  opposite sorts.
+- **A person's sort or filter never applies to a single record**: on a
+  has-one that picks one of many it would change which one.
 
-**Try it:** `/tasks` as Ada Admin: expand a row. Under "Comments", edit a
-body; under "Labels", a colour; under "Project", the name of the one row.
-Each is saved through the `update_action` of its own table, as on `/comments`,
-`/labels` and `/projects`. Under "Assignee" no cell opens: the table of the
-demo's people names no `update_action`, so it is read-only wherever it is
-shown.
+**Try it:** `/tasks` as Ada Admin, expand a row. Edit a body under
+"Comments", a colour under "Labels", the name under "Project": each saves
+through its own table's `update_action`, as on `/comments`, `/labels` and
+`/projects`. Under "Assignee" no cell opens: the people's table names no
+`update_action`, so it is read-only everywhere.
 
-The demo has no `no_attributes?` and no manual relationship. The library's
-own tests have both
+The demo has no `no_attributes?` and no manual relationship; the library's
+tests have both
 ([`test/support/relating.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/test/support/relating.ex)):
 
 <!-- source: test/support/relating.ex -->
@@ -169,49 +159,42 @@ end
 
 ## Row actions and create in a nested table
 
-A nested table has the actions column of the destination's table, and its
-buttons do there what they do on the destination's own page: under a task
-on `/tasks`, a comment has "Destroy", and a label has it for an admin.
+A nested table has the destination table's actions column, and its buttons
+do what they do on the destination's own page: under a task, a comment has
+"Destroy", and a label has it for an admin.
 
-It has that table's boxes too, where the destination's table has a row
-action that runs on several rows. A nested table's selection is its own:
-it has its own line above its own grid, and an action on it runs on the
-records under its row and on no others. See
+It also has that table's selection boxes, where the destination's table has
+a row action that runs on several rows. Its selection is its own, with its
+own line above its grid, and an action on it runs only on the records under
+its row. See
 [Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md#nested-tables).
 
-Creating is narrower, because a record created under a row has to be joined
-to that row, and the table has to be the one that says how. A nested table
-offers create only where
+Create is offered only where the relationship is a has-many joined by
+attributes and the destination table's `create_action` accepts the
+relationship's destination attribute. The table fills that attribute from
+the row above (read again as the person) and leaves it out of the panel.
+The button is at the far end of the relationship line once the nested table
+has read: "New comment" under a task, "New task" under a project.
+Belongs-to, has-one, many-to-many, manual and `no_attributes?`
+relationships offer none.
 
-- the relationship is a has-many joined by attributes, and
-- the `create_action` of the destination's table accepts the relationship's
-  destination attribute.
+**Try it:** `/projects` as Ada Admin: expand "Mobile app", open "Tasks",
+use "New task". The panel has no "Project ID", and the new task is the
+nested table's first row.
 
-The table then fills that attribute in from the row above, which it reads
-again as the person, and leaves it out of the panel. The button is on the
-relationship line, at its far end, once the nested table has read: "New
-comment" on the "Comments" line of a task, "New task" on the "Tasks" line
-of a project. A belongs-to, a has-one, a many-to-many, a manual
-relationship and one with `no_attributes?` offer none.
-
-**Try it:** `/projects` as Ada Admin: expand "Mobile app", open "Tasks" and
-use "New task" on the line. The panel has no field "Project ID", and the new
-task is the first row of the nested table.
-
-[Row actions and create](row-actions-and-create.md#creating-in-a-nested-table)
-has the rule in full, and what the panel shows.
+The full rule and the panel:
+[Row actions and create](row-actions-and-create.md#creating-in-a-nested-table).
 
 ## `max_depth`
 
-A nested table's rows expand again: a task's project, that project's tasks,
-their comments. `max_depth` says how deep a person can go, counted from the
-table on the page. Its nested tables are at depth 1. The default is 3, and
-the tables at that depth have no expanders.
+A nested table's rows expand again: a task's project, its tasks, their
+comments. `max_depth` says how deep a person can go, counted from the table
+on the page, whose nested tables are depth 1. The default is 3; tables at
+that depth have no expanders.
 
-It is the setting of the table **on the page** that counts for everything
-beneath it. A second meaning belongs to `0` alone: the rows of a table with
-`max_depth 0` never expand, wherever that table is shown. The demo's people
-say so
+The setting of the table **on the page** counts for everything beneath it.
+Only `0` also acts elsewhere: a table with `max_depth 0` never expands its
+rows, wherever it is shown. The demo's people
 ([`demo/lib/demo/tracker/user.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/user.ex)):
 
 <!-- source: demo/lib/demo/tracker/user.ex -->
@@ -223,92 +206,85 @@ table do
   max_depth 0
 ```
 
-**Try it:** `/tasks`, expand a row and open "Project"; in the project's one
-row, expand again and open "Tasks"; expand one of those and open "Comments".
-That is depth 3, and the comments have no expander. Task → Comments → Task →
-Comments is a cycle, and ends the same way. `/task_labels` says
-`max_depth 1`: the task under one of its rows has no expander.
+**Try it:** `/tasks`: expand a row, open "Project"; expand the project,
+open "Tasks"; expand a task, open "Comments". That is depth 3, and the
+comments have no expander. The cycle Task → Comments → Task → Comments ends
+the same way. `/task_labels` says `max_depth 1`: the task under one of its
+rows has no expander.
 
 ## How a nested table is read, and why
 
-A table keeps of its rows only their primary keys. So a nested table knows
-its parent by a key, and a key proves nothing: it does not say that the
-person may read the record it names.
+A table keeps only its rows' primary keys, so a nested table knows its
+parent by a key, and a key does not prove the person may read the record.
 
-Every read of a nested table is therefore a read of the **parent record, by
-its primary key, as the person**, with the relationship as a load that
-carries the nested table's query: its sort, its filters and its page. This
-happens when the line is opened and again at every change of the nested
-table's sort, filters or page.
+So every read of a nested table reads the **parent record, by primary key,
+as the person**, with the relationship as a load carrying the nested
+table's sort, filters and page. This happens when the line opens and at
+every change of the nested table's sort, filters or page.
 
-The parent is read through the read action of the table that shows it, with
-the [arguments](arguments.md) that table was given: the read action of the
-table on the page for one of its rows, and for a row of a nested table the
-action that nested table reads through. So a row a table
-shows is a row it can open, and a key reaches no record that the table keeps
-back. The related records are read through the relationship's own
-`read_action` when it names one, else through the read action of the
-destination's table. For a many-to-many Ash reads the join resource on the
-way, through the `read_action` of the join relationship, else the join
-resource's primary read action: its policies say which records are related
-at all.
+- **The parent** is read through the read action of the table showing it,
+  with the [arguments](arguments.md) that table was given: for a row of the
+  table on the page, that table's action; for a row of a nested table, the
+  action that nested table reads through. So any row a table shows can be
+  opened, and a key reaches no record the table keeps back.
+- **The related records** are read through the relationship's own
+  `read_action`, else the destination table's read action. For a
+  many-to-many Ash reads the join resource on the way, through the join
+  relationship's `read_action`, else the join resource's primary read
+  action; its policies decide which records are related at all.
+- If the parent is gone or no longer readable, Ash returns nothing, and the
+  nested table says so.
+- What "related" means is up to Ash's loader for every kind: a
+  relationship's `filter`, a many-to-many's join resource, a manual
+  relationship's module.
+- The destination's policies and field policies apply to nested rows as on
+  their own page.
 
-- If the parent is gone, or is no longer the person's to read, Ash returns
-  nothing, and the nested table says so.
-- What "related" means is Ash's own loader's to say, for every kind of
-  relationship: a relationship's `filter`, a many-to-many's join resource, a
-  manual relationship's module.
-- The destination's policies and field policies apply to the nested rows as
-  on a page of their own.
+Nothing is fetched before a line opens. Expanding a row sends one event and
+reads nothing.
 
-Nothing is fetched before a line is opened. Expanding a row sends one event
-and reads nothing.
-
-**What the columns show besides attributes is read in further steps.** A
-nested table's records are read bare. Its calculations, its aggregates and
-its reference cells are then loaded onto those records, as the person
-(`Ash.load/3`). A table of its own reads its calculations with the page and
-its aggregates in a step after it. The reason is a defect in the SQL layer
-(tracked as #35): a statement that selects an aggregate beside a field that a
-field policy hides on some records is wrapped in a subquery, which a page of
-related records always is, and the statement around it returns the rows in
-no particular order. The steps go when it is fixed.
+**Columns beyond attributes are read in further steps.** A nested table's
+records are read bare; its calculations, aggregates and reference cells
+are then loaded onto them as the person (`Ash.load/3`). (A table of its own
+reads calculations with the page and aggregates in a step after.) The
+reason is an SQL-layer defect (#35): a statement selecting an aggregate
+beside a field a field policy hides on some records is wrapped in a
+subquery, which a page of related records always is, and the outer
+statement returns rows in no particular order. The steps go once it is
+fixed.
 
 ## What a person may not see
 
 | The resource says | Under an expanded row |
 | --- | --- |
-| The person can never read the destination: its read is refused outright for them | The line is not there. |
-| The person may not read some of the related records | Those rows are not there and are not counted. |
-| The person can never see a field of the destination | The nested table has no column for it. |
-| The person sees a field on some records only | The column stays; hidden cells are empty and announced as "Not available". |
-| The person can never run an update action of the destination | Its columns are read-only in the nested table. |
-| The person can never run a row action of the destination | The nested table has no button for it, and no actions column when that is every one. |
-| The person can never run the destination's create action | The line has no create button. |
-| The person can never run a table action of the destination | The line has no button for it. |
-| The parent row is gone, or no longer theirs to read | "This record is no longer available." in place of the nested rows. |
-| The destination's read comes to be refused while the line is open | "You are not allowed to see these records." when the destination's table says `on_forbidden :message`, else "These records are not available." |
+| The person can never read the destination (refused outright) | No line. |
+| The person may not read some related records | Those rows are absent and not counted. |
+| The person can never see a field of the destination | No column for it. |
+| The person sees a field on some records only | The column stays; hidden cells are empty, announced as "Not available". |
+| The person can never run an update action of the destination | Its columns are read-only. |
+| The person can never run a row action of the destination | No button for it; no actions column when that is every one. |
+| The person can never run the destination's create action | No create button on the line. |
+| The person can never run a table action of the destination | No button for it on the line. |
+| The parent row is gone or no longer readable | "This record is no longer available." instead of rows. |
+| The destination's read becomes refused while the line is open | "You are not allowed to see these records." with `on_forbidden :message` on the destination's table, else "These records are not available." |
 
-A nested table never says "No records" for a refusal, and it never makes the
-page around it answer "not found": its line has already told the person that
-there is a table.
+A nested table never shows "No records" for a refusal, and never makes the
+page answer "not found": its line has already shown there is a table.
 
-**Try it:** `/tasks` as Vera Viewer. Under a task there is no "Assignee" and
-no "Reported by": a viewer's read of the people is refused outright. As Max
-Member, the tasks under a project on `/projects` have no "External ref", and
+**Try it:** `/tasks` as Vera Viewer: no "Assignee" or "Reported by" under a
+task, since a viewer's read of people is refused outright. As Max Member,
+the tasks under a project on `/projects` have no "External ref", and
 "Estimate hours" is "Not available" except on his own tasks.
 
-Whether a line is offered is asked of Ash each time the table around it
-reads, without a query (`Ash.can/3` for the destination's read action). A
-line stays for a person who may read some of the destination's records:
-which ones is known when they are read. See
-[Authorization](authorization.md).
+Whether a line is offered is asked of Ash, without a query, each time the
+table around it reads (`Ash.can/3` for the destination's read action). A
+person who may read some of the destination's records keeps the line; which
+ones is known when they are read. See [Authorization](authorization.md).
 
 ## The keyboard
 
-A nested table is a table like any other, further down the page: its
-controls and its editable cells are Tab stops, in the same order as in a
-table on the page. Tab simply goes on into it and out of it again.
+A nested table's controls and editable cells are Tab stops in the same
+order as in a table on the page; Tab goes into it and out of it.
 
 | Key | Where | Effect |
 | --- | --- | --- |
@@ -318,43 +294,42 @@ table on the page. Tab simply goes on into it and out of it again.
 | Tab | After a nested table's last stop | The parent row's next line, then the next row. |
 | Enter | On "Skip table Comments" | Jumps past that nested table only. |
 
-Inside a nested table every key works as in a table on a page. Two levels
-deep, or several nested tables open at once, are the same: each table
-stands under its own line, and Tab goes through them in page order. No key
-enters or leaves a nested table, and Escape does not leave one.
+Inside, every key works as in a table on a page. Deeper levels and several
+open nested tables behave the same: each stands under its own line, and Tab
+goes through them in page order. No key enters or leaves a nested table,
+and Escape does not leave one.
 
-When a line or a row is closed while focus is inside it, focus goes to the
-line's button, or to the row's expander.
+Closing a line or row with focus inside moves focus to the line's button or
+the row's expander.
 
-All keys, and the Tab order with an example two levels deep, are in
+All keys, and the Tab order two levels deep:
 [Keyboard and accessibility](keyboard-and-accessibility.md#through-nested-tables).
 
 ## The full view
 
-A nested table is a table in a cell. Its last row holds a link, "Open in
-full view", to the page of the destination's own table, limited to the same
-records: the comments of this task, on `/comments`, under a heading such as
-"Write the report: Comments". There the table has the page's width, its state in
-the address, and its own nested tables counted from depth 0.
+A nested table's last row holds "Open in full view", a link to the
+destination's own table page limited to the same records: the comments of
+this task, on `/comments`, headed e.g. "Write the report: Comments". There
+the table has the page's width, its state in the address, and its own
+nested tables counted from depth 0.
 
-**Try it:** `/tasks` as Ada Admin: expand a row, open "Comments", and follow
-"Open in full view". Sort the comments and reload: the same comments, the
-same sort. "Show all records" above the table takes the limit away.
+**Try it:** `/tasks` as Ada Admin: expand a row, open "Comments", follow
+"Open in full view". Sort and reload: same comments, same sort. "Show all
+records" above the table removes the limit.
 
 ### When the link is there
 
-The link is there when the host's router mounts the table that is nested
-with an `ash_data_table` line. That is the destination's default table, unless
-the `relationship` names another (`table :compact`): then it is the page of
-that named table, and no other. A nested named table that is mounted
-nowhere has no link, although the destination's default table may be
-mounted. See [Named tables](named-tables.md#the-full-view-of-a-nested-named-table).
+The link is there when the host's router mounts the nested table with an
+`ash_data_table` line: the destination's default table, or, if the
+`relationship` names another (`table :compact`), that named table's page
+and no other. A nested named table mounted nowhere has no link, even if
+the default table is mounted. See
+[Named tables](named-tables.md#the-full-view-of-a-nested-named-table).
 
-For the default table, the library looks through the router's routes
-(`Phoenix.Router.routes/1`) for the first one, in the router's order, whose
-`ash_data_table` names the destination resource without `table:` and whose path
-has no parameter.
-The demo's router mounts five tracker tables
+For the default table, the library takes the first route in the router's
+order (`Phoenix.Router.routes/1`) whose `ash_data_table` names the
+destination resource without `table:` and whose path has no parameter. The
+demo mounts five tracker tables
 ([`demo/lib/demo_web/router.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/router.ex)):
 
 <!-- source: demo/lib/demo_web/router.ex -->
@@ -366,18 +341,18 @@ ash_data_table "/labels", Demo.Tracker.Label
 ash_data_table "/task_labels", Demo.Tracker.TaskLabel
 ```
 
-`Demo.Tracker.User` has a table and no page. So under a task the nested
-tables "Comments", "Labels" and "Project" have the link, and "Assignee" and
-"Reported by" have none. Nothing is rendered in its place.
+`Demo.Tracker.User` has a table and no page, so under a task "Comments",
+"Labels" and "Project" have the link and "Assignee" and "Reported by" have
+nothing in its place.
 
-A table placed in a page of your own with `<AshDataTable.table>` links to the
-destination's mounted page in the same way: the tasks on the demo's
-`/dashboard` do. The link is a live navigation; LiveView turns it into a
-page load by itself where the destination is in another `live_session`.
+A table placed with `<AshDataTable.table>` in a page of your own links the
+same way (the tasks on the demo's `/dashboard`). The link is a live
+navigation; LiveView turns it into a page load where the destination is in
+another `live_session`.
 
 ### The address
 
-The limit is one more parameter of the table, under its id like the others:
+The limit is one more parameter of the table, under its id:
 
 <!-- sketch -->
 ```text
@@ -399,37 +374,34 @@ A primary key of several attributes is written by attribute:
 /tasks?task[of][task_label][task][label_id]=13eeb792-…&task[of][task_label][task][task_id]=00a93d01-…
 ```
 
-Sort, filters and page are written beside it and work as on any page; the
-limit stays in the address through each of them, and is part of a link that
-is shared. "Show all records" drops the limit together with the sort, the
-filters and the page that were chosen under it.
+Sort, filters and page sit beside it and work as on any page; the limit
+stays in the address through them and in shared links. "Show all records"
+drops the limit along with the sort, filters and page chosen under it.
 
 ### What the address cannot do
 
-The parent in the address is looked up, never trusted.
+The parent in the address is looked up, never trusted:
 
-- **The parent's resource is found by its short name among the resources the
-  application knows**: those of the domains in
-  `config :my_app, ash_domains: […]` (the app of the host's endpoint) and
-  those of the table's own domain. The name is compared as text. No module
-  is made from it and nothing is called by it.
-- **Only a relationship that the parent's table offers this person counts**,
-  and only one that leads to the table on the page: public, with a
-  destination that has a table, among the declared ones where the parent's
-  block declares any, from a table whose rows expand at all (not
-  `max_depth 0`), to a destination the person is not refused.
-- **The key's values are cast to the types of the primary key.**
-- **The parent is read as the person on every read**, as for a nested table,
-  and through the read action of the parent's own table: an address says
-  which record, not which table showed it. A key of a record that is not
-  theirs, or that the parent's table would not show, gives them nothing.
-  That includes a row that only a nested table showed, through a
-  relationship whose own `read_action` returns more than the table of its
-  destination: its full view says "This record is no longer available."
+1. **The parent's resource is found by short name** among the resources of
+   the domains in `config :my_app, ash_domains: […]` (the app of the host's
+   endpoint) and of the table's own domain. The name is compared as text;
+   no module is made from it, nothing is called by it.
+2. **Only a relationship the parent's table offers this person counts**,
+   and only one leading to the table on the page: public, with a
+   destination that has a table, among the declared ones where the parent's
+   block declares any, from a table whose rows expand (not `max_depth 0`),
+   to a destination the person is not refused.
+3. **The key's values are cast** to the primary key's types.
+4. **The parent is read as the person on every read**, as for a nested
+   table, through the read action of the parent's own table: an address
+   says which record, not which table showed it. A key of a record not
+   theirs, or that the parent's table would not show, gives nothing. That
+   includes a row only a nested table showed, through a relationship whose
+   own `read_action` returns more than its destination's table: its full
+   view says "This record is no longer available."
 
-A limit that fails the first three is no limit: the page shows the table as
-if nothing had been asked, with no word about it, and the next change the
-person makes writes a clean address.
+A limit that fails the first three is ignored silently: the page shows the
+unlimited table, and the person's next change writes a clean address.
 
 | In the address | The page shows |
 | --- | --- |
@@ -442,26 +414,25 @@ person makes writes a clean address.
 
 ### The heading
 
-Above the grid, the table says what it is limited to: the record, a colon,
-and the relationship as its line is labelled. "Show all records" is beside
-it, and before that the create button, where the nested table would have
-one on its line: a record created there is created under the same parent.
-The buttons of the table's [table actions](table-actions.md) stand between
-the two. The line of the page's own name, above this one, then has neither.
+Above the grid, the table names its limit: the record, a colon, and the
+relationship as its line is labelled. Beside it is "Show all records",
+preceded by the create button where the nested table would have one on its
+line (a record created there goes under the same parent), with the
+buttons of the table's [table actions](table-actions.md) between the two.
+The line of the page's own name, above, then has neither.
 
-The record is called by the first of these that the person sees on it:
+The record is called by the first of these the person sees on it:
 
-1. the attribute that the parent's `table` block names as `label_field` (see
-   [the reference cell](#the-reference-cell) below);
-2. the parent table's attribute columns, in their order.
+1. the attribute the parent's `table` block names as `label_field` (see
+   [the reference cell](#the-reference-cell));
+2. the parent table's attribute columns, in order.
 
-It is taken from the parent as it was read for the person, and from nothing
-else. A value that a field policy hides from them is passed over, and a
-record that was not read for them is not named at all: the heading is then
-the relationship alone. Where the router mounts the parent's own table, the
-record's name is a link to that page.
+It comes only from the parent as read for the person. A value a field
+policy hides is skipped; a record not read for them is not named, and the
+heading is the relationship alone. Where the router mounts the parent's
+table, the record's name links to that page.
 
-The demo's labels declare what they are called by
+The demo's labels are called by their name
 ([`demo/lib/demo/tracker/label.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/label.ex)):
 
 <!-- source: demo/lib/demo/tracker/label.ex -->
@@ -476,93 +447,90 @@ table do
 end
 ```
 
-(A line `# ...` stands for lines of the block that are left out here.)
-
-Without it the tasks of a label would be headed by the label's first
-column, its ID.
+(`# ...` stands for lines left out.) Without it, the tasks of a label would
+be headed by the label's first column, its ID.
 
 ### What is the same as in a nested table, and what is not
 
 The page is read as the nested table is: through the parent, with the
-relationship's own read action and sort, without sort, filters and pages for
-a single record, and in full where Ash cannot page.
+relationship's own read action and sort, no sort, filters or pages for a
+single record, and in full where Ash cannot page.
 
-It differs where a table of its own differs from a table in a cell. Its
-state is in the address. Its first read happens while the page is mounted.
-And a destination whose read is refused outright is the page's refusal: 404,
-or "You are not allowed to see these records." with `on_forbidden :message`.
+It differs as a table of its own differs from one in a cell: its state is
+in the address, its first read happens while the page mounts, and a
+destination whose read is refused outright is the page's refusal: 404, or
+"You are not allowed to see these records." with `on_forbidden :message`.
 
-**Going back.** The browser's back button returns to the page the link was
-on, with that page's own sort, filters and page, which are in its address.
-The rows that were expanded there are closed: what is expanded is in no
-address.
+**Going back.** The browser's back button returns to the linking page with
+its own sort, filters and page from its address. Rows expanded there are
+closed: expansion is in no address.
 
 ## How a nested table looks
 
 The default kit keeps the nesting readable:
 
-- **The open row stays tinted**, in the primary colour, with a bar at its
+- **The open row stays tinted** in the primary colour, with a bar at its
   left edge.
 - **One line down the left of the nested area**, in the primary colour at
-  reduced strength, which starts under the open row's bar, and one inset
-  after it, about an expander wide. Each deeper level has the same: its own
-  line and its one inset, in the same colour.
-- **A title per relationship**: its arrow opens and closes that one nested
-  table, and once the nested table has read it says how many records it has
-  (where that is known: the read action counts, or there is one page).
-  While it is open the title is the nested table's heading line, the same
-  as a table on the page has above its grid: after the name and the count
-  its "Columns", the inputs of its argument line, and at the far end its
-  create button and table actions. One line, which wraps only where it
-  does not fit. Under it, the line of its selection takes room only while
-  rows are selected or a filter is set, as on the page.
-- **About a row of space between two nested tables**, and no card around
-  them; **one stronger rule** where the nested area ends.
-- With `sticky_header`, a nested table is about ten rows high and scrolls by
-  itself, its header staying in view: see
+  reduced strength, starting under the open row's bar, then one inset about
+  an expander wide. Each deeper level adds its own line and inset, in the
+  same colour.
+- **A title per relationship**: its arrow opens and closes that nested
+  table; once read, it says how many records there are (where known: the
+  read action counts, or there is one page). While open, the title is the
+  nested table's heading line, as above a table on the page: after name
+  and count, its "Columns" and argument-line inputs, and at the far end its
+  create button and table actions. One line, wrapping only where it does
+  not fit. Below it, the selection line takes room only while rows are
+  selected or a filter is set, as on the page.
+- **About a row of space between two nested tables**, no card around them,
+  and **one stronger rule** where the nested area ends.
+- With `sticky_header`, a nested table is about ten rows high and scrolls
+  by itself, its header staying in view: see
   [Layout and embedding](layout-and-embedding.md#a-header-that-stays-in-view).
 
 Every tint is mixed from the theme's colours. In forced colours the tints
-go, and the lines and borders carry the structure.
+go, and lines and borders carry the structure.
 
 ## How a nested table is drawn
 
 The table on the page draws every table it shows. A nested table is moved
 into the cell under its relationship line through a portal (`<.portal>`),
-and its heading line onto the relationship line through a second one:
-it is no live component of its own, whichever way the table on the page is
-placed (see [Layout and embedding](layout-and-embedding.md)).
+and its heading line onto the relationship line through a second one. It is
+no live component of its own, however the table on the page is placed (see
+[Layout and embedding](layout-and-embedding.md)).
 
-- **It is drawn with the kit of the table on the page**, and its action
-  panel, picker and question open as that table's do: over the page or in
-  it. See [Kits](kits.md).
-- **Controlled mode reaches it.** Where the page draws the questions, panels
-  or pickers of its table, it draws those of the nested tables too: see
+- **It uses the kit of the table on the page**; its action panel, picker
+  and question open as that table's do, over the page or in it. See
+  [Kits](kits.md).
+- **Controlled mode reaches it.** Where the page draws its table's
+  questions, panels or pickers, it draws the nested tables' too: see
   [Controlled mode](controlled-mode.md).
 - **Its events go to the page of the table on the page**, with `path`, the
-  ids from the table on the page down to the nested table. See
+  ids from that table down to the nested one. See
   [Events and commands](events-and-commands.md).
-- **`Phoenix.LiveViewTest` does not look into a portal.** In a test,
+- **`Phoenix.LiveViewTest` does not look into a portal.** In tests,
   `AshDataTable.Test.page/1` reads the page as the browser shows it,
   `AshDataTable.Test.send_event/5` sends a nested table its event, and
-  `AshDataTable.Test.send_form/5` sends one of its forms. See
+  `AshDataTable.Test.send_form/5` one of its forms. See
   [Testing](testing.md).
 
 ## Performance
 
-Each nested table has its own stream. The server keeps the keys of its
-page, its state and its table model, and no records. LiveView keeps the
-rows a nested table was last sent with in its change tracking until the
-next render; the table itself stores no rows. An event of one nested table
-sends and patches that table only, however many are open.
-It queries when it is opened, sorted, filtered or paged, and when a person
-saves a cell or runs an action in it. While an action panel is open, the
-table it belongs to also keeps the panel's form and, for a row action, the
-record it was opened with.
+- Each nested table has its own stream. The server keeps its page's keys,
+  its state and its table model, no records. LiveView keeps the rows last
+  sent in its change tracking until the next render; the table stores no
+  rows.
+- An event of one nested table sends and patches only that table, however
+  many are open.
+- It queries when opened, sorted, filtered or paged, and when a cell is
+  saved or an action run in it.
+- While an action panel is open, its table also keeps the panel's form and,
+  for a row action, the record it opened with.
 
-Statements for one read, counted on Postgres with the demo's data
+Statements per read, counted on Postgres with the demo's data
 ([`demo/perf/NESTED.md`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/perf/NESTED.md)
-has the run in a browser that the times are from):
+has the browser run the times come from):
 
 | Read | Statements | From click to rows |
 | --- | --- | --- |
@@ -572,12 +540,12 @@ has the run in a browser that the times are from):
 | `/tasks` → Newest comment (has-one of many) | 2 | 35 ms |
 | `/projects` → Tasks (page of 25, counted; a calculation, an aggregate and three reference cells among the columns) | 9 | 77 ms |
 
-The page's LiveView process holds about 20 KiB more for each open nested
-table, in use after a garbage collection: 0.3 MiB with 10 open under one
-page of `/tasks`, 1.1 MiB with 50. The nested tables of one relationship
-share one table model. Opening one more gets a little slower as they add
-up, from about 40 ms for the first to about 90 ms with fifty open.
-Rendering and scrolling with fifty grids in one page were not measured.
+The page's LiveView process holds about 20 KiB more per open nested table
+after a garbage collection: 0.3 MiB with 10 open under one page of
+`/tasks`, 1.1 MiB with 50. Nested tables of one relationship share one
+table model. Opening one more slows as they add up, from about 40 ms for
+the first to about 90 ms with fifty open. Rendering and scrolling with
+fifty grids on a page were not measured.
 
 ## The reference cell
 
@@ -604,8 +572,8 @@ column :reporter do
 end
 ```
 
-The label is declared where the record lives: `label_field` in the `table`
-block of the destination. A person is called by their name
+The label is declared where the record lives: `label_field` in the
+destination's `table` block. A person is called by their name
 ([`demo/lib/demo/tracker/user.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/user.ex)):
 
 <!-- source: demo/lib/demo/tracker/user.ex -->
@@ -615,51 +583,46 @@ block of the destination. A person is called by their name
 label_field :name
 ```
 
-**Try it:** `/tasks` as Ada Admin: the last three columns are "Project",
-"Assignee" and "Reported by", with names in them. `/comments` shows the
-difference: its "Task ID" and "Author ID" are the keys themselves, because
-that table has no `column` and so shows the public attributes.
-
-What a reference cell is, and is not:
+**Try it:** `/tasks` as Ada Admin: the last three columns, "Project",
+"Assignee" and "Reported by", hold names. On `/comments`, "Task ID" and
+"Author ID" are the keys themselves: that table has no `column`, so it
+shows the public attributes.
 
 - **Its column names a public belongs-to relationship** whose destination
-  has a table with a `label_field`. `label_field` names a public attribute.
-  Everything else is reported when the resource is compiled.
-- **The related record is read through a `public?` action.** A relationship
-  that leads to a private one is reported; see below.
-- **It is shown as the label's type is shown**: text as text, an enum by its
+  has a table with a `label_field`, which names a public attribute.
+  Anything else is reported at compile time.
+- **The related record is read through a `public?` action**; a relationship
+  leading to a private one is reported (see below).
+- **It is shown as the label's type is**: text as text, an enum by its
   labels.
-- **It is edited by choosing another related record**, where the column's
-  update action accepts the relationship's foreign key, or takes the
-  related record through an argument: Enter on the cell opens the picker,
-  with the destination's own table to choose from. Where no action does
-  either it is read-only. See
+- **It is edited by choosing another related record** where the column's
+  update action accepts the foreign key or takes the related record through
+  an argument: Enter on the cell opens the picker with the destination's
+  own table. Otherwise it is read-only. See
   [Choosing a related record](choosing-a-related-record.md) and
   [Relationships an action manages](managing-relationships.md#a-reference-cell-that-is-edited-through-an-argument).
 - **It is not sorted by.** Ash accepts a sort through a relationship from
-  outside and applies no policy of the related resource to it (tracked as
-  #31), so the order of the rows would follow names the person may not read.
+  outside and applies no policy of the related resource to it (#31), so the
+  row order would follow names the person may not read.
 - **It is not filtered by** in this version.
 - **It is not in the default set.** A table without `column` shows the
-  public attributes, the foreign key among them when it is public.
+  public attributes, the foreign key among them when public.
 
 ### How it is read
 
-The label is read as Ash loads the relationship: one statement per reference
-column for a whole page, which selects the primary key and the label of the
-related records, as the person. It is never an aggregate or a calculation
-over the relationship. Those would be one statement less, and would apply
-less than the destination's policies: see
+The label is read as Ash loads the relationship: one statement per
+reference column per page, selecting the related records' primary key and
+label, as the person. Never an aggregate or a calculation over the
+relationship: that would save a statement but apply less than the
+destination's policies; see
 [Columns and defaults](columns-and-defaults.md#aggregates-and-calculations-over-protected-fields).
 
-Ash loads a relationship through the relationship's own `read_action` when
-it names one, else through the destination's **primary** read action. The
-read action that the destination's table names does not come into it: that
-one serves the destination's own table and a nested table of it, not a
-load. Whichever of the two it is has to be `public?`. A destination whose
-primary read action is private can still be shown in a reference cell: the
-relationship says which public action reads it. This one is from a
-resource of the demo's tests
+Ash loads a relationship through its own `read_action`, else the
+destination's **primary** read action; the read action the destination's
+table names serves that table and its nested tables, not loads. Whichever
+it is must be `public?`. A destination with a private primary read action
+can still be shown, if the relationship names a public action, as in this
+resource from the demo's tests
 ([`demo/test/support/private_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/private_tables.ex)):
 
 <!-- source: demo/test/support/private_tables.ex -->
@@ -673,111 +636,107 @@ belongs_to :dossier, Demo.Support.Vault.Dossier do
 end
 ```
 
-So the destination decides what a person reads in the cell:
+The destination decides what the cell shows:
 
 | The destination says | The cell |
 | --- | --- |
 | There is no related record | Empty. |
-| The person may not read the related record | Empty. Ash returns nothing for it, as for none, and the cell says nothing more. |
-| The person may read the related record and not its label field | Empty, announced as "Not available": the cell of a hidden field. |
-| The person can never read the destination, or can never see its label field | The column is left out for them. |
+| The person may not read the related record | Empty: Ash returns nothing, as for none. |
+| The person may read the record but not its label field | Empty, announced as "Not available": a hidden field's cell. |
+| The person can never read the destination, or never see its label field | The column is left out for them. |
 
-The first two rows are the same cell on purpose. A person who may not read
-the related record is not told through this cell that there is one. If the
-table also shows the foreign key itself as a column, they can compare the
-two: that is the resource's choice, which a field policy on the key settles.
+The first two are the same cell on purpose: a person who may not read the
+related record is not told through it that one exists. If the table also
+shows the foreign key as a column they can compare the two; that is the
+resource's choice, settled by a field policy on the key.
 
-**Try it:** `/tasks` as Vera Viewer: no "Assignee" and no "Reported by",
-since a viewer may not read people; "Project" is there. As nobody, it is the
-other way round: projects are refused outright when nobody is logged in.
+**Try it:** `/tasks` as Vera Viewer: no "Assignee" or "Reported by" (a
+viewer may not read people), but "Project". As nobody it is the reverse:
+projects are refused outright when nobody is logged in.
 
 The label is read again with the row after one of its cells is saved, and
 in a nested table for each of its rows.
 
 ## Edge cases
 
-- **A nested table has the argument line of the action it reads through**,
-  whichever table's it is, and keeps what a person gave there itself, as its
-  sort and filters: see
+- **The argument line** of a nested table is that of the action it reads
+  through, whichever table's it is, and keeps its own values, like its sort
+  and filters: see
   [Arguments](arguments.md#nested-tables-the-full-view-and-the-picker).
-- **A record that no longer matches the relationship stays in place** until
-  the nested table reads again. Editing a comment or a task under a row
-  saves, and the row is shown from what the action returns, as on a page.
-- **The cells of the parent row do not follow.** After a comment is created,
-  deleted or a task edited below it, the parent's own aggregates are as they
-  were when its page was read: the "Comments" cell of a task still counts
-  the old number.
-- **A new read of a table closes what is open in it.** A change of its sort,
-  filters or page reads again and forgets which rows were expanded. A save in
-  a row, and a row action that changes it, leave what is open under it open.
-  A destroy takes the row away with everything open under it.
-- **Many-to-many edits the destination**, not the join. A label edited under
-  a task changes for every task that carries it. The fields of the join
-  resource are not columns of the destination's table.
-- **A destination that is readable only through the relationship** (a policy
-  with `accessing_from/2`) shows its rows nested, and can neither be edited
-  there nor expanded further: both read the record by its key, outside the
+- **A record that no longer matches the relationship stays** until the
+  nested table reads again. A saved comment or task under a row shows what
+  the action returned, as on a page.
+- **The parent row's cells do not follow.** After a comment is created or
+  deleted or a task edited below it, the parent's aggregates stay as read:
+  a task's "Comments" cell keeps the old count.
+- **A new read of a table closes what is open in it.** A change of its
+  sort, filters or page forgets which rows were expanded. A save in a row,
+  and a row action that changes it, keep what is open under it; a destroy
+  removes the row and everything under it.
+- **A many-to-many edits the destination**, not the join: a label edited
+  under one task changes for every task carrying it. The join resource's
+  fields are not columns of the destination's table.
+- **A destination readable only through the relationship** (a policy with
+  `accessing_from/2`) shows its rows nested but can neither be edited there
+  nor expanded further: both read the record by its key, outside the
   relationship.
-- **Several routes for one resource.** The link goes to the first in the
-  router's order. In the demo the labels are mounted at `/labels` and at
-  `/bare/labels`; the link goes to `/labels`.
+- **Several routes for one resource**: the link goes to the first in router
+  order. The demo mounts labels at `/labels` and `/bare/labels`; the link
+  goes to `/labels`.
 - **Two resources with one short name** that both have such a relationship
-  to the table: the address would not say which is meant, so the nested
-  table has no link, and such a limit is ignored.
-- **A parent resource outside the application's domains and the table's own
-  domain** is not found: no link.
-- **A reference cell to a destination whose read is refused while the page
-  is open**: a row that is saved shows the cell as "Not available". Where the
-  relationship says `allow_forbidden_field? false`, the refusal fails the
-  whole read, and the table shows that as the refusal of its own read.
-- **Hidden columns.** A nested table has its own "Columns" button, on the
-  line that opens it, named for it ("Columns of Comments"), and what is hidden in it is that nested table's
-  alone. Closing the line and opening it again shows every column. Hiding
-  columns of the table around it leaves the nested table as wide as it
-  was: as wide as what is seen of the table around it. See
+  to the table: the address could not say which, so the nested table has no
+  link and such a limit is ignored.
+- **A parent resource outside the application's domains and the table's
+  own domain** is not found: no link.
+- **A reference cell to a destination whose read becomes refused while the
+  page is open**: a saved row shows the cell as "Not available". With
+  `allow_forbidden_field? false` on the relationship, the refusal fails the
+  whole read, shown as the refusal of the table's own read.
+- **Hidden columns.** A nested table has its own "Columns" button on its
+  line, named for it ("Columns of Comments"); what is hidden there is its
+  alone. Closing and reopening the line shows every column again. Hiding
+  columns of the table around it leaves the nested table as wide as the
+  visible part of that table. See
   [Columns and defaults](columns-and-defaults.md#hiding-columns).
-- **Column widths.** A person changes the widths of a nested table's columns
-  as those of any table, and they are that nested table's alone. Closing
-  the line and opening it again brings the columns back as they were laid
-  out at first. See
+- **Column widths** of a nested table are changed as in any table and are
+  its alone; closing and reopening the line restores the first layout. See
   [Columns and defaults](columns-and-defaults.md#column-widths).
 - **A join resource's policy does not restrict an aggregate over a
-  many-to-many.** This was seen in one investigation and not verified
-  independently. If the join resource's policy is what keeps a person from
-  some related records, do not rely on it for an aggregate column.
+  many-to-many.** Seen in one investigation, not verified independently. If
+  the join resource's policy is what hides some related records, do not
+  rely on it for an aggregate column.
 
 ## Things people trip over
 
-- **A relationship is missing under the row.** It is not `public?`, its
-  destination does not list `AshDataTable.Resource`, it is manual and not
-  declared, it is read through a private action (its own, or that of its
-  join resource) and not declared, or the block declares others. For one person only: they can never read the
-  destination.
-- **Declaring one `relationship` removes the defaults**, as declaring one
-  `column` does.
-- **`max_depth` on the nested resource has no effect.** The table on the
+- **A relationship is missing under the row:** it is not `public?`; its
+  destination does not list `AshDataTable.Resource`; it is manual, or read
+  through a private action (its own or its join resource's), and not
+  declared; or the block declares others. For one person only: they can
+  never read the destination.
+- **Declaring one `relationship` removes the defaults**, as one `column`
+  does.
+- **`max_depth` on the nested resource has no effect:** the table on the
   page decides, except for `0`.
-- **Expecting the nested table's state in the address.** It is not. Open the
-  full view for a link that can be shared.
-- **No link on a nested table.** The destination is not mounted with
+- **The nested table's state is not in the address.** Open the full view
+  for a shareable link.
+- **No full-view link:** the destination is not mounted with
   `ash_data_table`.
-- **A heading with a UUID in it.** The parent's table has no `label_field`,
-  and its first column is the key.
+- **A UUID in the heading:** the parent's table has no `label_field`, and
+  its first column is the key.
 - **`column :author` reports that the destination declares no
-  `label_field`.** The label is declared on the destination's table, not on
+  `label_field`:** the label is declared on the destination's table, not
   the column.
 - **A sort by an aggregate that the page offers and the nested table does
-  not.** The nested table reads through another action, which pages by
-  keyset, or a field policy hides the aggregate from the person on some
-  records. See
+  not:** the nested table reads through another action, which pages by
+  keyset, or a field policy hides the aggregate on some records. See
   [Reading, sorting and pagination](reading-sorting-and-pagination.md#sorting).
 
 ## Not in the first version
 
 No counts on the relationship lines, no creating under a many-to-many, a
-has-one or a belongs-to (an existing record is linked by an action of the
-row: see [Relationships an action manages](managing-relationships.md)), no
-sorting or filtering by a reference cell, no label that is a calculation, no
-link from a reference cell to its record, and nothing of a nested table in
-the address but its full view. The later slices are listed in the
+has-one or a belongs-to (an existing record is linked by a row action: see
+[Relationships an action manages](managing-relationships.md)), no sorting
+or filtering by a reference cell, no label that is a calculation, no link
+from a reference cell to its record, and nothing of a nested table in the
+address but its full view. Later slices are in the
 [specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

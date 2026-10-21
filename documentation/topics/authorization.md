@@ -2,16 +2,13 @@
 
 The table has no authorization rules of its own. It passes the actor and the
 tenant into ordinary Ash calls, asks Ash what the person may see and do, and
-shows the answer. After reading this guide you know where the table finds
-the actor, what each kind of policy looks like to a person, and why some
-refusals show before a person acts and others only when they save or run an
-action.
+shows the answer.
 
 ## The smallest example
 
-There is nothing to declare in the `table` block. The page of a router line
-reads who is asking from the socket assigns that your `on_mount` hook sets. In the demo
-the hook is `DemoWeb.Actor`
+Nothing goes in the `table` block. The page of a router line reads who is
+asking from the socket assigns your `on_mount` hook sets; in the demo that is
+`DemoWeb.Actor`
 ([`demo/lib/demo_web/actor.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/actor.ex)):
 
 <!-- source: demo/lib/demo_web/actor.ex -->
@@ -32,11 +29,11 @@ def on_mount(:default, _params, session, socket) do
 end
 ```
 
-The tables are mounted inside the `live_session` that runs this hook, and
-that is all the wiring there is.
+Mount the tables inside the `live_session` that runs this hook; that is all
+the wiring.
 
-**Try it:** `/tasks` in the demo. The "Acting as" switcher in the page
-header changes who you are, and the same page changes with it:
+**Try it:** `/tasks` in the demo, switching person with "Acting as" in the
+page header:
 
 | Actor | Rows | Columns | Editing | Row actions and "New task" |
 | --- | --- | --- | --- | --- |
@@ -46,37 +43,34 @@ header changes who you are, and the same page changes with it:
 | Olga Outsider | Globex's tasks | 16, as the member | as the member, on Globex's tasks | as the member, on Globex's tasks |
 | Nobody | none: "No records" | 14: no "External ref", no "Estimate hours" and no "Project" | none | none |
 
-The columns counted here are the table's own. The column of the expanders
-and the "Actions" column are not among them.
+The counts leave out the expander column and the "Actions" column.
 
 ## Where actor and tenant come from
 
 The page of a router line (`ash_data_table "/tasks", MyApp.Tracker.Task`)
 looks at three socket assigns:
 
-1. `current_scope`, when it is assigned and not nil, is passed to Ash as the
-   `scope`. It must implement `Ash.Scope.ToOpts`, and it then carries the
-   actor and the tenant.
+1. `current_scope`, when assigned and not nil, is passed to Ash as the
+   `scope`. It must implement `Ash.Scope.ToOpts` and carries actor and
+   tenant.
 2. Otherwise `current_user` is the actor and `current_tenant` the tenant.
-3. An assign that is not there counts as nil. With none of them nobody is
-   logged in, which is not an error: the table shows what the resource
-   leaves to an anonymous visitor.
+3. A missing assign counts as nil. With none, nobody is logged in. That is
+   no error: the table shows what the resource leaves to an anonymous
+   visitor.
 
-When an `on_mount` hook of yours assigns another user, scope or tenant
-while the page is open (a hook that hears of a login elsewhere), the page
-attaches its table again as that person before anything else of the
-callback runs: its expanded rows close, its picker goes, and the table
-reads anew.
+If an `on_mount` hook of yours assigns another user, scope or tenant while
+the page is open (a login elsewhere, say), the page attaches its table again
+as that person before the rest of the callback runs: expanded rows close,
+the picker goes, the table reads anew.
 
-Who may open the page at all is not the table's concern. It is decided by
-your router, your pipelines and your `live_session`, as for any LiveView.
+Who may open the page at all is for your router, pipelines and
+`live_session`, as for any LiveView.
 
-A table in your own LiveView is told who is asking and does not look at
-the assigns: a tag (`<AshDataTable.table>`) is given `scope`, or `actor`
-and `tenant`, as attributes, and `AshDataTable.attach/4` takes the same as
-options. Give the tag new attributes, or attach again under the same name,
-and the table reads anew as the new person. See
-[Layout and embedding](layout-and-embedding.md).
+A table in your own LiveView ignores the assigns and is told who is asking:
+a tag (`<AshDataTable.table>`) takes `scope`, or `actor` and `tenant`, as
+attributes; `AshDataTable.attach/4` takes them as options. New attributes,
+or attaching again under the same name, make it read anew as the new
+person. See [Layout and embedding](layout-and-embedding.md).
 
 ## The domain section
 
@@ -104,8 +98,7 @@ table do
 end
 ```
 
-(`pub_sub` is about [live updates](live-updates.md), and has no say in
-authorization.)
+(`pub_sub` is for [live updates](live-updates.md), not authorization.)
 
 | Option | Default | Meaning |
 | --- | --- | --- |
@@ -114,12 +107,9 @@ authorization.)
 | `actor_assign` | `:current_user` | The socket assign holding the actor, used when there is no scope. |
 | `tenant_assign` | `:current_tenant` | The socket assign holding the tenant, used when there is no scope. |
 
-The extension is optional. A domain that does not list it behaves as one
-with these defaults.
-
-An app whose assigns have other names says so once per domain. The demo's
-own domains keep the defaults, so this example is from a domain that exists
-for the demo's tests
+The extension is optional; without it a domain has these defaults. Other
+assign names are said once per domain, as in this domain for the demo's
+tests
 ([`demo/test/support/guarded_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/guarded_tables.ex)):
 
 <!-- source: demo/test/support/guarded_tables.ex -->
@@ -131,13 +121,12 @@ table do
 end
 ```
 
-A domain that names its own assigns does not fall back to the conventional
-ones: with `actor_assign :reader`, a `current_user` on the socket is not
-looked at.
+There is no fallback to the conventional names: with `actor_assign :reader`,
+a `current_user` on the socket is ignored.
 
 ### `authorize? false`
 
-From the same test support file, a domain whose tables do not authorize:
+From the same file, a domain whose tables do not authorize:
 
 <!-- source: demo/test/support/guarded_tables.ex -->
 ```elixir
@@ -146,19 +135,17 @@ table do
 end
 ```
 
-**`authorize? false` removes every check.** The tables of that domain's
-resources read and save with no policy and no field policy applied, whoever
-is asking and even when nobody is logged in: every record the read reaches,
-every column, every declared edit. The resource behind this example forbids
-everything in its policies, and its table shows and saves everything. Use the
-setting only for a domain whose tables sit behind a gate of your own, such
-as an admin area that the router already restricts.
+**`authorize? false` removes every check.** The domain's tables read and
+save with no policy and no field policy, for anyone, even nobody: every
+record the read reaches, every column, every declared edit. The resource
+behind this example forbids everything, and its table shows and saves
+everything. Use it only behind a gate of your own, such as an admin area
+the router already restricts.
 
 ### `authorize?: false` on one page
 
-The same can be said for one mounted page, in the router. The demo's test
-routes mount a table twice, once as its domain says and once without
-authorization
+The same for one mounted page, in the router. The demo's test routes mount a
+table twice, once as its domain says and once without authorization
 ([`demo/lib/demo_web/router.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/router.ex)):
 
 <!-- source: demo/lib/demo_web/router.ex -->
@@ -168,27 +155,21 @@ ash_data_table "/closed/entries", Demo.Support.Closed.Entry, layout: false
 ash_data_table "/open/cases", Demo.Support.Closed.Case, layout: false, authorize?: false
 ```
 
-Every read and every action the table runs for that page is given
-`authorize?: false`, as the same option does in `Ash.read/2`. That covers
-the tables nested in its rows, its pickers, the actions on selected rows,
-and what the table offers: with no check, every public column and every
-declared action is there.
+Every read and action of that page gets `authorize?: false`, as in
+`Ash.read/2`: also its nested tables, pickers and actions on selected rows.
+With no check, every public column and every declared action is offered.
 
 > **Warning: this page shows everything to whoever can open it.** No policy
-> and no field policy is applied. Use it only for a page that your own code
-> already protects, such as an admin area behind a pipeline and an
-> `on_mount` hook that let only administrators in. Never use it for a page
-> that anybody can reach.
+> and no field policy applies. Use it only for a page your own code already
+> protects (an admin area behind a pipeline and an `on_mount` hook that let
+> only administrators in), never for a page anybody can reach.
 
-What does not change:
+What stays:
 
 - Only `public?` fields are columns, and only `public?` actions run.
-- The actor and the tenant are still passed to Ash. A change that reads the
-  actor still finds it, and a multitenant resource still needs its tenant.
+- Actor and tenant are still passed to Ash: a change that reads the actor
+  finds it, a multitenant resource still needs its tenant.
 - A sensitive column is still masked.
-
-The option is written in the router and comes from nowhere else: nothing in
-a URL, a session or an event can switch authorization off.
 
 | Said where | Applies to |
 | --- | --- |
@@ -197,50 +178,48 @@ a URL, a session or an event can switch authorization off.
 | `authorize?={false}` on `<AshDataTable.table>` | that table, and the tables nested in it |
 | `authorize?: false` given to `AshDataTable.attach/4` | that table, and the tables nested in it |
 
-The route, the attribute and the option win over the domain, in both
-directions: `authorize?: true` authorizes a table of a domain that says
-`false`. Nothing the browser sends can change it.
+Route, attribute and option win over the domain in both directions
+(`authorize?: true` authorizes a table of a domain that says `false`).
+Nothing in a URL, a session or an event can change it.
 
-A nested table links to its full view only on a page that is mounted the
-same way. A table without authorization never sends a person to a page that
-authorizes, and a table that authorizes never links to a page without.
+A nested table links to its full view only on a page mounted the same way,
+with or without authorization.
 
-**Try it:** the routes above exist in the demo's test environment only. Run
+**Try it:** these routes exist in the demo's test environment only. Run
 `mix test test/demo_web/tables/unchecked_table_test.exs` in `demo/`: the
-resources behind them forbid everything, the "closed" pages answer "not
-found", and the "open" pages read, save and run every action.
+resources forbid everything, the "closed" pages answer "not found", the
+"open" pages read, save and run every action.
 
 ## What each restriction looks like
 
 | The resource says | The table shows | In the demo |
 | --- | --- | --- |
-| The person may not see some **records**: a policy that filters | Those rows are not there and are not counted. Nothing indicates them. | `/tasks` as Olga Outsider shows Globex's tasks only; as nobody, "No records". |
-| The read is **refused outright**: a `Forbidden` error, as from an `access_type :strict` policy | The page answers as if it did not exist: status 404 and your "not found" page. With `on_forbidden :message` the page stays and says "You are not allowed to see these records." | `/projects` as nobody is a 404; `/comments` as nobody shows the message. |
-| The person can **never see a field**: a field policy that depends on the actor only | The column is left out for that person: no heading, no filter, no cells. A URL that sorts or filters by it is ignored. | "External ref" on `/tasks` exists for Ada Admin only. |
-| The person sees a field on **some records only**: a field policy with a check on the record | The column stays. Hidden cells are empty, announced as "Not available", and cannot be edited. | "Estimate hours" on `/tasks` as Max Member. |
-| The person can **never read a related resource** that a column or a row leads to | A [reference cell](nested-tables.md#the-reference-cell) of that relationship has no column for them, and the relationship has no line under an expanded row. | `/tasks` as Vera Viewer: no "Assignee" column, and no "Assignee" line under a task. |
-| The person may **not read one related record** | Its reference cell is empty, as for no related record. In a nested table its row is not there. | A task assigned to somebody of another organization. |
-| An **argument** of the read action, or of a calculation, is `public? false`, or is not asked for by a column | It is never on the [argument line](arguments.md), and nothing a person sends reaches it. What they give the public ones is given to Ash as they typed it, and Ash casts it. | `/tasks`: "Search", and the days of "Due within". |
-| The person can **never run an update action** | The columns it saves are read-only for that person. If that is every editable column, the table offers them no editing at all. | `/tasks` as Vera Viewer. |
-| The person may run an update action on **some records only** | Cells look editable. On a record the action refuses, the cell says "You are not allowed to change this." when it is saved. | `/tasks` as Max Member, on a task that is not his. |
-| The person can **never run any row action** on several rows | The table has no boxes to select rows with, and no line of buttons above the grid. | `/tasks` as Vera Viewer. |
-| The person may run a row action on **some of the selected records only** | It runs on those, and the table says of the others that it did not: "Archive: 2 done, 1 not done.", "You are not allowed to do this. (1)". The others stay selected. | `/tasks` as Max Member, with a task selected that is not his. |
-| The person can **never run a row action** | The action has no button for them. If that is every row action, the table has no "Actions" column. | `/tasks` as Vera Viewer; `/projects` as Max Member has "Set status" and no "Destroy". |
-| The person may run a row action on **some records only** | The button is on every row. On a record the action refuses, the row's actions cell, or the action panel, says "You are not allowed to do this." | `/tasks` as Max Member: "Archive" on a task that is not his. |
-| The person can **never run the create action** | The table has no create button for them. | `/tasks` as Vera Viewer; `/projects` and `/labels` as Max Member. |
-| The person can **never run a table action** | The action has no button for them, on the line of the table's name or on the line of a nested table. | `/labels` as Max Member: "Count unused", and neither "Recolour" nor "Remove unused". |
-| A table action, or a generic action in a row, is **refused when it runs** (a check on an argument) | The button is there. The refusal is shown as any failure of the action: "You are not allowed to do this." | (none in the demo) |
-| The person may create **some records only** | The button is there. A record the action refuses says "You are not allowed to do this." in the panel, and nothing is created. | (none in the demo) |
+| Some **records** are not the person's: a policy that filters | Those rows are not there and not counted. Nothing indicates them. | `/tasks` as Olga Outsider: Globex's tasks only; as nobody, "No records". |
+| The read is **refused outright**: a `Forbidden` error, as from an `access_type :strict` policy | The page answers as if it did not exist: status 404 and your "not found" page. With `on_forbidden :message` it stays and says "You are not allowed to see these records." | `/projects` as nobody: 404; `/comments` as nobody: the message. |
+| A field is **never visible** to them: a field policy on the actor only | No column for them: no heading, filter or cells. A URL that sorts or filters by it is ignored. | "External ref" on `/tasks`: Ada Admin only. |
+| A field is visible on **some records only**: a field policy with a check on the record | The column stays. Hidden cells are empty, announced as "Not available", and not editable. | "Estimate hours" on `/tasks` as Max Member. |
+| A **related resource** that a column or row leads to is **never readable** | No column for a [reference cell](nested-tables.md#the-reference-cell) of that relationship, no line for it under an expanded row. | `/tasks` as Vera Viewer: no "Assignee" column or line. |
+| **One related record** is not readable | Its reference cell is empty, as for none. In a nested table its row is not there. | A task assigned to somebody of another organization. |
+| An **argument** of the read action or of a calculation is `public? false`, or no column asks for it | Never on the [argument line](arguments.md); nothing a person sends reaches it. Values for the public ones go to Ash as typed, and Ash casts them. | `/tasks`: "Search", and the days of "Due within". |
+| An **update action** is **never** allowed | The columns it saves are read-only for them. If that is every editable column, no editing at all. | `/tasks` as Vera Viewer. |
+| An update action is allowed on **some records only** | Cells look editable. On a refused record, saving says "You are not allowed to change this." | `/tasks` as Max Member, on a task not his. |
+| **No row action** is ever allowed on several rows | No boxes to select rows, no button line above the grid. | `/tasks` as Vera Viewer. |
+| A row action is allowed on **some selected records only** | It runs on those and reports the others: "Archive: 2 done, 1 not done.", "You are not allowed to do this. (1)". The others stay selected. | `/tasks` as Max Member, with a task selected that is not his. |
+| A **row action** is **never** allowed | No button for it. If that is every row action, no "Actions" column. | `/tasks` as Vera Viewer; `/projects` as Max Member: "Set status", no "Destroy". |
+| A row action is allowed on **some records only** | The button is on every row. On a refused record the row's actions cell, or the action panel, says "You are not allowed to do this." | `/tasks` as Max Member: "Archive" on a task not his. |
+| The **create action** is **never** allowed | No create button. | `/tasks` as Vera Viewer; `/projects` and `/labels` as Max Member. |
+| A **table action** is **never** allowed | No button for it, on the line of the table's name or of a nested table. | `/labels` as Max Member: "Count unused", no "Recolour" or "Remove unused". |
+| A table action, or a generic action in a row, is **refused when it runs** (a check on an argument) | The button is there; the refusal shows as any failure: "You are not allowed to do this." | (none in the demo) |
+| Create is allowed for **some records only** | The button is there. A refused record says "You are not allowed to do this." in the panel; nothing is created. | (none in the demo) |
 
-"No records" is only ever shown for a read that succeeded and found nothing.
+"No records" only means a read that succeeded and found nothing.
 
-None of this depends on how a column is shown. A column with a
-[component](custom-components.md), such as "Estimate hours" on `/tasks`, has
-the same hidden cells: the component is not called for a value the person
-may not see, and it is never given the record.
+A column with a [component](custom-components.md), such as "Estimate hours"
+on `/tasks`, has the same hidden cells: the component is not called for a
+value the person may not see, and never gets the record.
 
-The policies behind the first two rows differ in one line. The tasks' read
-policy filters:
+The first two rows differ in one policy line. The tasks' read policy
+filters:
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -266,7 +245,8 @@ policy action_type(:read) do
 end
 ```
 
-The two kinds of hidden field are the two field policies of the tasks:
+The two kinds of hidden field are the tasks' two field policies (`# ...`
+marks lines left out):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -285,67 +265,53 @@ field_policies do
 end
 ```
 
-(A line `# ...` stands for lines that are left out.)
-
 ## Related records
 
-A row leads to other resources in two ways: a reference cell shows one
-related record by its label, and an expanded row opens the tables of its
-related records. The destination's own policies decide both, with the same
-actor, and the table asks the same two kinds of question of the destination
-that it asks of its own resource.
+A reference cell shows one related record by its label; an expanded row
+opens the tables of its related records. Both are decided by the
+destination's own policies, with the same actor and the same two kinds of
+question:
 
-- A destination the person can **never** read is left out: no column for
-  its reference cell, no line for its nested table.
-- What they may read of it is known when it is read. A related record that
-  is not theirs is an empty cell, and is not among a nested table's rows.
-- A nested table, and a page limited to the records of one parent, read that
-  parent again as the person on every read. A key in an event or in an
-  address gives access to nothing.
-- A reference cell is edited by choosing a record from the destination's
-  own table, read as the person. The record that is chosen is read again by
-  its key, as the person, before anything is saved: a key gives nobody a
-  record to point at that the table to choose from would not show them.
-  [Choosing a related record](choosing-a-related-record.md#who-may-choose-what)
-  has every case.
-- An argument that an action hands to a relationship is given the same
-  way, one record or several, and the same holds for every key in it: one
-  that was not related already is read as the person before the action
-  runs. Where the argument is everything the relationship is to hold, its
-  field starts with the related records as Ash reads them for that person
-  when the action runs. One they may not read is neither shown nor taken
-  away. Whether the relationship may be changed is the action's to say,
-  with the policies of what it relates through.
-  [Relationships an action manages](managing-relationships.md#who-may-choose-what)
-  has every case.
+- A destination the person can **never** read is left out: no reference
+  cell column, no nested table line.
+- A related record that is not theirs is an empty cell, and no row of a
+  nested table.
+- A nested table, and a page limited to one parent's records, read that
+  parent again as the person on every read. A key in an event or an address
+  gives access to nothing.
+- A reference cell is edited by choosing from the destination's own table,
+  read as the person
+  ([Choosing a related record](choosing-a-related-record.md#who-may-choose-what)).
+  An argument an action hands to a relationship is chosen the same way, for
+  every key not related already; a related record the person may not read
+  is neither shown nor taken away. Whether the relationship may change is
+  for the action and the policies of what it relates through
+  ([Relationships an action manages](managing-relationships.md#who-may-choose-what)).
 
 [Nested tables](nested-tables.md#what-a-person-may-not-see) has every case.
 
 ### Aggregates and calculations
 
-One thing here is Ash's rule and easy to get wrong in the resource: an
-**aggregate** applies the related resource's read policy and not its field
-policies, and a **calculation** applies no policy to what it references. An
-aggregate over a protected field, and a calculation that references one,
-need a field policy of their own on the resource that declares them. The
-table shows such a field as a column like any other, and warns when it is
-not protected. The rule, the warning and how to answer it are in
+Ash's rule, easy to get wrong: an **aggregate** applies the related
+resource's read policy but not its field policies; a **calculation** applies
+no policy to what it references. Over a protected field, both need a field
+policy of their own on the declaring resource. The table shows them as any
+column and warns when they are not protected: see
 [Columns and defaults](columns-and-defaults.md#aggregates-and-calculations-over-protected-fields).
 
 ## Every action a table runs is public
 
-**A table runs only actions that the resource declares `public?`, however
-it came by them**: named in the block, fallen back to, or reached through a
-relationship, an aggregate or a calculation. Actions are public unless they say otherwise,
-so a resource that marks none of its actions private never meets this rule.
+**A table runs only actions the resource declares `public?`**, whether named
+in the block, fallen back to, or reached through a relationship, an
+aggregate or a calculation. Actions are public by default, so a resource
+that marks none private never meets this rule.
 
-The reason is what the option means in Ash. An action has had `public?`
-since Ash 3.20, with the default `true`, and its documentation speaks to
-interfaces: "When `false`, the action is internal-only and must not be
-exposed by API extensions". Ash itself does not hold anybody to that. It
-runs a private action for whoever the policies allow, and the policy that
-its documentation gives for a private action allows everybody. This one is
-from a resource of the demo's tests
+Why: actions have had `public?` since Ash 3.20 (default `true`), and Ash's
+documentation addresses interfaces: "When `false`, the action is
+internal-only and must not be exposed by API extensions". Ash itself runs a
+private action for whoever the policies allow, and the policy its
+documentation gives for private actions allows everybody. From a resource
+of the demo's tests
 ([`demo/test/support/private_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/private_tables.ex)):
 
 <!-- source: demo/test/support/private_tables.ex -->
@@ -361,17 +327,16 @@ policies do
 end
 ```
 
-`open` is the public read action and returns the open dossiers. The primary
-read action of that resource is private, for the application's own code,
-and returns every dossier to anybody. What keeps the sealed dossiers from a
-person is that no interface runs the private action for them. A table is an
-interface, so it does not.
+`open` is the public read action and returns the open dossiers. The private
+primary read action, for the application's own code, returns every dossier
+to anybody. Only interfaces not running it keep the sealed dossiers from a
+person, and a table is an interface.
 
-The API extensions do the same. `ash_json_api`, `ash_graphql` and
-`ash_typescript` refuse a private action that a route, a query or an RPC
-action names, and `ash_json_api` and `ash_typescript` refuse a public
-relationship whose read action is private: "Public relationships on JSON:API
-resources must have `public?` read actions on their destination resources."
+The API extensions agree. `ash_json_api`, `ash_graphql` and `ash_typescript`
+refuse a private action that a route, query or RPC action names;
+`ash_json_api` and `ash_typescript` refuse a public relationship whose read
+action is private: "Public relationships on JSON:API resources must have
+`public?` read actions on their destination resources."
 
 ### Which actions
 
@@ -379,117 +344,110 @@ resources must have `public?` read actions on their destination resources."
 | --- | --- | --- |
 | `read_action` in the block | That action. | Reported; the table is refused. |
 | No `read_action` | The primary read action. | The same. |
-| A relationship a row offers | The relationship's own `read_action`, else the read action of the destination's table. | A declared `relationship` is reported, and the table refused. One of the default set is not offered. |
-| A many-to-many a row offers | Besides: the read action of the join resource, which says which records are related at all. It is the `read_action` of the join relationship, else the join resource's primary read action. | The same. |
-| A relationship `through` a path of others | Besides: the primary read action of every resource the path passes. | The same. |
+| A relationship a row offers | Its own `read_action`, else the read action of the destination's table. | A declared `relationship` is reported and the table refused; one of the default set is not offered. |
+| A many-to-many a row offers | Also the join resource's read action, which says which records are related at all: the join relationship's `read_action`, else the join resource's primary read action. | The same. |
+| A relationship `through` a path of others | Also the primary read action of every resource on the path. | The same. |
 | A [reference cell](nested-tables.md#the-reference-cell) | The relationship's own `read_action`, else the destination's primary read action: Ash loads the related record. | Reported; the table is refused. |
-| The [picker](choosing-a-related-record.md) of a reference cell, or of a field of the action panel | The relationship's own `read_action`, else the read action of the destination's table: the records to choose from, and the record that was chosen. | Nothing is offered: the cell is read-only, and the field is a typed key. The destination's own table is what is reported. |
-| The field of an argument that is [everything a relationship is to hold](managing-relationships.md#what-a-field-starts-with) | Besides the picker's: the relationship's own `read_action`, else the destination's primary read action, and for a many-to-many the read action of the join resource. Ash loads the records that are related now. | The argument is not chosen: one key is typed, and a list of keys has no field. An action that requires such a list is reported. |
-| An aggregate column | For every relationship of the aggregate's path: its own `read_action`, else the primary read action of its destination, and the read action of the join resource of a many-to-many. For the last relationship the aggregate's own `read_action` stands in for the primary one. | The same. |
+| The [picker](choosing-a-related-record.md) of a reference cell, or of an action panel field | The relationship's own `read_action`, else the read action of the destination's table: the records to choose from, and the chosen one. | Nothing is offered: the cell is read-only, the field a typed key. The destination's own table is reported. |
+| The field of an argument that is [everything a relationship is to hold](managing-relationships.md#what-a-field-starts-with) | Besides the picker's: the relationship's own `read_action`, else the destination's primary read action, plus the join resource's for a many-to-many. Ash loads the records related now. | Not chosen: one key is typed, a list of keys has no field. An action that requires such a list is reported. |
+| An aggregate column | For each relationship of its path: its own `read_action`, else its destination's primary read action, plus the join resource's for a many-to-many. For the last relationship the aggregate's own `read_action` replaces the primary one. | The same. |
 | A calculation column that is an expression | The read actions of every aggregate the expression holds, by name or written out (`count(comments)`), also inside a calculation it references. | The same. |
-| `update_action`, `action`, `create_action` | That action: an update, a destroy, a generic or a create action. | The same. |
-| Any of those three, where it names an update, a destroy or a create action: the table changes records | The primary read action. Ash loads what a create, an update or a destroy action returns through it, and asks its policies and field policies what of the result the person may have. | The same. A table that only reads is not affected, nor is one whose only actions are generic: Ash loads nothing for those. |
+| `update_action`, `action`, `create_action` | That action: an update, destroy, generic or create action. | The same. |
+| Any of those three naming an update, destroy or create action (the table changes records) | The primary read action: Ash loads the action's result through it, and asks its policies and field policies what of the result the person may have. | The same. A table that only reads is not affected, nor one with only generic actions: Ash loads nothing for those. |
 
-"Reported" is a finding when the resource is compiled, with the path of the
-declaration that leads to the action; the messages are in
+"Reported" is a compile-time finding naming the path of the declaration
+that leads to the action; the messages are in
 [Mistakes at compile time](mistakes-at-compile-time.md#a-private-action).
-"Refused" is what happens when the resource is compiled all the same: the
-table raises when it is built, and reads nothing.
+"Refused": if the resource compiles all the same, the table raises when it
+is built and reads nothing.
 
-Each finding names two ways out:
+Each finding names the ways out:
 
-- **Make the action public**, if a person may have what it returns. Its
-  policies then have to say who.
-- **Name a public action** in its place (`read_action` in the block, on the
-  relationship, on the join relationship or on the aggregate), or **do not
-  offer** what leads to the private one: leave the relationship or the
-  column out, or leave the table read-only.
+- **Make the action public**, if a person may have what it returns; its
+  policies then say who.
+- **Name a public action** instead (`read_action` in the block, on the
+  relationship, the join relationship or the aggregate), or **do not offer**
+  what leads to the private one: leave out the relationship or column, or
+  keep the table read-only.
 
-Only what a table offers is looked at: the relationships its rows expand
-into and its own columns, not every relationship of the resource. So a
-finding can always be settled in the `table` block, without a change to the
-resource.
+Only what a table offers is checked (the relationships its rows expand into
+and its own columns), so a finding can always be settled in the `table`
+block without changing the resource.
 
 ### What a table reads by itself
 
-A table reads more than its pages. Each of these reads goes through a read
-action that was looked at, and each read through the table's own read
-action is given the [arguments](arguments.md#where-the-arguments-are-given)
-the person gave it on the page:
+Besides its pages, a table reads the following, each through a checked read
+action. Reads through the table's own read action get the
+[arguments](arguments.md#where-the-arguments-are-given) the person gave on
+the page.
 
-- **The record of a row, before a cell of it is saved or a row action
-  runs**: through the table's read action. A row the table shows is a row it
-  can change, also where the primary read action would not return it.
-- **The records an action runs on that a person selected**: each through
-  the table's read action, by its primary key, before the action is run on
-  it; and for "all that match" the keys of everything the filters match,
-  through the same action. In a nested table both are read through the row
-  it belongs to. What the browser names is a claim: a key reaches no
-  record that the table would not show this person. See
+- **A row's record, before a cell is saved or a row action runs**: through
+  the table's read action. A row the table shows is a row it can change,
+  even where the primary read action would not return it.
+- **Selected records an action runs on**: each by primary key through the
+  table's read action, before the action runs on it; for "all that match",
+  the keys of everything the filters match, through the same action. In a
+  nested table both go through the row it belongs to. A key from the
+  browser reaches no record the table would not show this person. See
   [Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md#what-running-does).
-- **The record a person chose in the picker**: through the read action the
-  picker shows its rows through, by its primary key, before its key is
-  saved or put into the action panel. And the record a key of the panel
-  points at, by that key, when the panel opens (for what the field calls
-  it) and when its button is used (for a key that was put there).
-- **The records that are related now**, for the field of an argument that
-  is everything a relationship is to hold: the relationship is loaded onto
-  the row's record, as Ash loads it when the action runs, through the
-  relationship's own `read_action`, else the destination's primary read
-  action. When the panel opens, and when its button is used.
+- **The record chosen in the picker**: by primary key, through the read
+  action the picker shows its rows through, before its key is saved or put
+  into the action panel. Likewise the record a panel key points at, when the
+  panel opens (for the field's label) and when its button is used (for a key
+  put there).
+- **The records related now**, for an argument that is everything a
+  relationship is to hold: loaded onto the row's record as Ash loads it when
+  the action runs, through the relationship's own `read_action`, else the
+  destination's primary read action; when the panel opens and when its
+  button is used.
 - **The row a nested table belongs to**: through the read action of the
-  table that shows the row. For a row of the table on the page that is the
-  table's read action; for a row of a nested table it is the action that
-  nested table reads through, the relationship's own where it names one. A
-  row a table shows is a row it can open.
+  table showing the row: the table's own for a row on the page; for a row of
+  a nested table, the action that nested table reads through (the
+  relationship's own where it names one). A row a table shows is a row it
+  can open.
 - **The row a [full view](nested-tables.md#the-full-view) is limited to**:
-  through the read action of that row's own table, since an address says
-  which record and not which table showed it. A key in an address reaches
-  no record that the table of that record would not show.
-- **What is loaded onto the records of a page in a further step**
-  (aggregates, and everything a nested table's columns show besides
-  attributes): through the table's read action.
-- **A row that is shown again after an action**: as Ash loads the action's
-  result, through the primary read action, which is public for every table
-  that changes records.
+  through the read action of that row's own table, since an address names
+  the record, not the table that showed it. A key in an address reaches no
+  record that table would not show.
+- **What a further step loads onto a page's records** (aggregates, and what
+  a nested table's columns show besides attributes): through the table's
+  read action.
+- **A row shown again after an action**: Ash loads the result through the
+  primary read action, which is public for every table that changes
+  records.
 
 ### What it does not reach
 
-What a public action does while it runs is the action's own, as it is for
-an API extension. An update action may run its statement over another read
-action (`atomic_upgrade_with`; Ash asks no policy of it and shows nothing of
-it), manage a relationship through actions of the related resource, or call
-anything from a change. A table that named such an update action runs it as
-it is.
+The rule does not cover:
 
-The actions of an embedded resource are of this kind. Ash runs them while
-it casts the value of an attribute the action accepts: the create, update
-and destroy actions the attribute's constraints name, else the embedded
-resource's primary ones. It runs them whichever interface gave the value,
-does not ask whether they are `public?`, and neither do `ash_json_api` and
-`ash_graphql`. A table does not name them and does not check them. They
-are authorized as the action around them is, with the same actor: an
-embedded resource's own policies apply. See
-[Maps and embedded resources](maps-and-embedded-resources.md#what-ash-does-with-the-value).
-
-Code of the resource is not looked into either: a calculation computed in
-Elixir may load what it likes, and a manual relationship fetches as its
-module says.
-
-And what an expression references without an aggregate runs no action at
-all: `exists(comments, …)` or `author.name` in a calculation is a join, to
-which Ash applies no policy of the related resource, whichever read action
-the relationship names. That is the subject of
-[the warning about protected fields](columns-and-defaults.md#aggregates-and-calculations-over-protected-fields),
-not of this rule.
+- **What a public action does while it runs**, as for an API extension. An
+  update may run its statement over another read action
+  (`atomic_upgrade_with`; Ash asks no policy of it and shows nothing of
+  it), manage a relationship through actions of the related resource, or
+  call anything from a change. The table runs it as it is.
+- **An embedded resource's actions.** Ash runs them while casting the value
+  of an attribute the action accepts (the create, update and destroy actions
+  the attribute's constraints name, else the embedded resource's primary
+  ones), whichever interface gave the value, without asking whether they are
+  `public?`; nor do `ash_json_api` and `ash_graphql`. They are authorized as
+  the surrounding action, with the same actor, and the embedded resource's
+  own policies apply. See
+  [Maps and embedded resources](maps-and-embedded-resources.md#what-ash-does-with-the-value).
+- **Resource code**: a calculation computed in Elixir may load what it
+  likes, and a manual relationship fetches as its module says.
+- **References without an aggregate**: `exists(comments, …)` or
+  `author.name` in a calculation is a join, running no action, and Ash
+  applies no policy of the related resource to it, whatever read action
+  the relationship names. That is for
+  [the warning about protected fields](columns-and-defaults.md#aggregates-and-calculations-over-protected-fields).
 
 ## `on_forbidden`
 
-By default a person whose read is refused outright is not told that the
-table exists. The page of a router line raises `AshDataTable.NotFoundError`,
-which Phoenix renders as it renders a missing route; a tag or an attached
-table, which cannot make the host's page disappear, renders nothing. `on_forbidden :message` tells them
-instead. The demo's comments do
+By default a person whose read is refused outright is not told the table
+exists. The page of a router line raises `AshDataTable.NotFoundError`, which
+Phoenix renders as a missing route; a tag or an attached table, which cannot
+make the host's page disappear, renders nothing. `on_forbidden :message`
+tells them instead, as on the demo's comments
 ([`demo/lib/demo/tracker/comment.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/comment.ex)):
 
 <!-- source: demo/lib/demo/tracker/comment.ex -->
@@ -506,78 +464,67 @@ end
 | `:not_found` (default) | 404 | LiveView makes the browser ask for the page afresh, which answers 404 | The browser is redirected to the same URL, which answers 404 |
 | `:message` | The page, with the message in place of the rows | The same | The rows are replaced by the message |
 
-Choose `:message` when people know the table exists and should learn that
-they lack access. Keep `:not_found` when the table's existence is itself
-something not everybody should learn.
+Use `:message` when people know the table exists and should learn they lack
+access; keep `:not_found` when its existence is itself not for everybody.
 
 ## What the page adds is no authorization
 
-A page can give its table server values: `context` and `private_arguments`
-for every call to Ash the table makes, and `before_action`, a veto asked
-before every write. They are for a page's own rules (a value an action
-needs, a write the page wants to hold back). Who may see and do what
-belongs on the resource, in its policies, where every interface meets it.
-See [Events and commands](events-and-commands.md).
+A page can give its table `context` and `private_arguments` for every call
+to Ash, and `before_action`, a veto asked before every write. They serve a
+page's own rules (a value an action needs, a write to hold back). Who may
+see and do what belongs in the resource's policies, where every interface
+meets it. See [Events and commands](events-and-commands.md).
 
-A question (`confirm`) is no authorization either. It guards the person
-against a mistake, not the data against them: the server does not enforce
-it, also not where the page draws it itself
-([Controlled mode](controlled-mode.md)), and an event made by hand can skip
-it. What must not run is for the policies, or the veto, to refuse.
+A question (`confirm`) guards the person against a mistake, not the data
+against them. The server does not enforce it, also not where the page draws
+it ([Controlled mode](controlled-mode.md)), and a hand-made event can skip
+it. Leave refusing to the policies, or the veto.
 
 ## Why a rule that depends on the record shows on save
 
-The table asks Ash three questions, each time it reads: when the page is
-opened and at every change of sort, filter or page.
+On every read (page open, and each change of sort, filter or page) the table
+asks Ash three questions, none of which reads a record or runs a query:
 
-- **Which of these fields can this person never see?** One call of
-  `Ash.can_see_fields/4` for all columns, and one for the attributes that
-  the table's row actions and its create action accept.
-- **Which of these update actions can this person never run?** One call of
-  `Ash.can/3` per distinct update action, not per cell.
-- **Which of the row actions, and the create action, can this person never
-  run?** One call of `Ash.can/3` per action, not per row.
+- **Which fields can this person never see?** One `Ash.can_see_fields/4`
+  call for all columns, one for the attributes its row actions and create
+  action accept.
+- **Which update actions can they never run?** One `Ash.can/3` call per
+  distinct update action, not per cell.
+- **Which row actions, and the create action, can they never run?** One
+  `Ash.can/3` call per action, not per row.
 
-None of them reads a record or runs a query. Ash can answer "yes", "never",
-or "that depends on the record". Only "never" changes the table: the column
-is left out or made read-only, the button is left out. An answer Ash cannot
-give at all is taken as "never".
+Ash answers "yes", "never" or "that depends on the record". Only "never"
+changes the table: the column is left out or read-only, the button left out.
+An answer Ash cannot give counts as "never".
 
-"That depends on the record" leaves the cell looking editable, and this is
-the surprising part. The alternative would be to check every action against
-every row of the page before showing it. That is a check per cell, each of
-which may need the database, for an answer that can be out of date by the
-time the person presses Enter. The table asks once per action and leaves the
-decision about one record to the moment it matters: the action runs, and the
-action's policy answers. A refusal then appears on the cell.
+"Depends on the record" leaves the cell looking editable. Checking every
+action against every row first would be a check per cell, possibly each on
+the database, for an answer that may be stale when the person presses Enter.
+So the table asks once per action and leaves one record to the moment the
+action runs: its policy answers, and a refusal appears on the cell.
 
-A row action follows the same reasoning. Its button is on every row unless
-the person can never run it, and a refusal appears when it runs: on the
-row's actions cell for an action that runs straight away, above the fields
-for one that runs from the action panel. See
-[Row actions and create](row-actions-and-create.md#who-may-run-what).
+The same goes for:
 
-A table action, and a generic action in a row, are asked about once too,
-and without their arguments: before a button is used there are none. A
-generic action is given no record, so Ash allows its policy no check on
-one. It can look at the actor, which Ash answers ahead, and at an
-argument, which answers when the action runs. See
-[Table actions](table-actions.md#who-may-run-what).
+- **Row actions.** The button is on every row unless the person can never
+  run it; a refusal shows on the row's actions cell for an action that runs
+  straight away, above the fields for one run from the action panel. See
+  [Row actions and create](row-actions-and-create.md#who-may-run-what).
+- **Table actions and generic actions in a row**, asked about once without
+  their arguments, since there are none before a button is used. A generic
+  action gets no record, so Ash allows its policy no check on one. It can
+  check the actor (answered ahead) and an argument (answered when it runs).
+  See [Table actions](table-actions.md#who-may-run-what).
+- **Actions on selected rows.** The button is above the grid unless the
+  person can never run it. When it runs, the policy answers for each record
+  by itself, as from its row: a bulk action is never one statement with the
+  policy turned into a filter. Refused records are counted and stay
+  selected. See
+  [Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md#who-may-run-what).
+- **Fields.** Visibility on one record is known once it is read; Ash puts an
+  `Ash.ForbiddenField` there, and the table renders the placeholder.
 
-So does an action on the rows a person has selected. Its button is on the
-line above the grid unless the person can never run it. When it runs, the
-action's policy answers for each record by itself, as it would from that
-record's row: a bulk action is never one statement in which the policy is
-turned into a filter. The records it refuses are counted and stay
-selected. See
-[Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md#who-may-run-what).
-
-The same reasoning applies to fields. Whether a field is visible on one
-record is known once the record is read; Ash puts an `Ash.ForbiddenField` in
-its place, and the table renders the placeholder.
-
-The demo's update policy has both kinds of rule in it. The viewer's line
-depends on the actor only, the member's on the record:
+The demo's update policy has both kinds of rule: the viewer's line depends
+on the actor only, the member's on the record.
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -588,112 +535,91 @@ authorize_if expr(assignee_id == ^actor(:id) or reporter_id == ^actor(:id))
 
 ## Refusing to edit a hidden field protects the table only
 
-When a person is not shown a field on a record, the table does not let them
-change it there either. That is the table's doing, and it stops at the
-table.
+The table does not let a person change a field it does not show them on a
+record. That stops at the table.
 
-The action panel follows the same rule. An attribute the person can never
-see is no field of a row action's panel or of the create panel, an
-attribute hidden from them on one record is no field of that record's
-panel, and a value sent for either all the same is dropped before the
-action is given its inputs. On `/tasks`, "New task" has the field "External
-ref" for Ada Admin only.
+In the action panel, an attribute the person can never see is no field of a
+row action's panel or the create panel; one hidden from them on a record is
+no field of that record's panel; a value sent for either is dropped before
+the action gets its inputs. On `/tasks`, "New task" has "External ref" for
+Ada Admin only. The panel of an action on several selected rows also leaves
+out an attribute the person sees on some records only: the table cannot say
+on which, and does not read them to find out.
 
-The panel of an action on several selected rows goes one step further. An
-attribute the person sees on some records only is no field of it at all:
-over a selection the table cannot say on which records they see it, and it
-does not read them to find out.
-
-A field policy is about reading. The update action itself accepts the field
-from anyone its *policy* allows: the same action called through
-`ash_json_api`, `ash_graphql` or your own code changes a field the caller
-cannot see. The same holds for a create action. If a field must not be
-changed by people who cannot see it, say so in the resource: an action that
-does not accept the field, or a policy or validation on the one that does.
+A field policy is about reading. The update action accepts the field from
+anyone its *policy* allows: through `ash_json_api`, `ash_graphql` or your
+own code, it changes a field the caller cannot see. The same for a create
+action. If a field must not be changed by those who cannot see it, say so in
+the resource: an action that does not accept it, or a policy or validation
+on the one that does.
 
 ## Edge cases
 
-- **Filtering and sorting by a field hidden on some records** stays
-  possible and gives nothing away, because Ash treats a hidden value as
-  empty. A filter by a value finds only records whose value the person sees;
-  "is empty" also finds every record whose value is hidden; a sort puts the
-  hidden ones together with the empty ones.
-- **A field hidden by a record check from somebody no record can match.**
-  Nobody is no task's assignee, so "Estimate hours" is left out for nobody
-  on `/tasks`, although its policy depends on the record.
-- **A `save` event from a person who can never run the action is not run.**
-  The column is read-only in their table, and the server ignores the event
-  as it ignores one for any cell that cannot be edited.
-- **A save cannot reach a record the person cannot read.** A `save` event
-  names a row of the person's own page; an id that is not on it saves
-  nothing. For a row that is on the page, the record is read again as the
-  person, through the table's read action, before the action runs, so a
-  record that has left their reach since says "This record is no longer
-  available."
-- **An `act` or `create` event from a person who can never run the action
-  is not run**, and opens no panel: the action is looked up among the ones
-  the table offers that person.
-- **A row action cannot reach a record the person cannot read.** As for a
-  save, the event names a row of the person's own page, and the record is
-  read again as the person before the action runs, and for a panel before
-  it opens.
+- **Filtering and sorting by a field hidden on some records** works and
+  gives nothing away: Ash treats a hidden value as empty. A filter by value
+  finds only records whose value the person sees; "is empty" also finds
+  every hidden one; a sort puts hidden values with the empty ones.
+- **A record-dependent field policy that nobody can match.** Nobody is no
+  task's assignee, so "Estimate hours" is left out for nobody on `/tasks`.
+- **A `save` event from a person who can never run the action** is ignored,
+  as for any cell that cannot be edited.
+- **A save or row action cannot reach a record the person cannot read.**
+  The event names a row of the person's own page; an id not on it does
+  nothing. The row's record is read again first (see
+  [What a table reads by itself](#what-a-table-reads-by-itself)), for a
+  panel also before it opens; a record out of their reach since says "This
+  record is no longer available."
+- **An `act` or `create` event for an action the person can never run** is
+  not run and opens no panel: the action is looked up among those offered
+  to that person.
 - **No event reaches a private action.** A table that would run one is not
-  built, so there is nothing to send an event to. A relationship of the
-  default set that leads to one has no line, and a `toggle` event that
-  names it opens nothing.
+  built. A default-set relationship that leads to one has no line, and a
+  `toggle` event naming it opens nothing.
 - **A record created in a nested table is joined to the row above by the
-  table**, from that row as it is read again for the person. A key sent
-  with the form is not looked at.
-- **A record the person creates and may not read** is created, and is no
-  row of their table.
+  table**, from that row as read again for the person. A key sent with the
+  form is ignored.
+- **A created record the person may not read** is created, and is no row of
+  their table.
 - **A public `sensitive?` field is a column, with masked cells.**
-  Sensitivity is not an access rule, here or in the API extensions: whoever
-  may read the field can ask for a cell's value. Hide a field with a field
-  policy or make it private. See [Sensitive columns](sensitive-columns.md).
-- **An error names a field only if the person has a column for it.** An
-  error about a field whose column was left out for them is shown without
-  the field's name.
-- **Columns keep their numbering.** With a column left out, the remaining
-  ones are numbered without a gap for assistive technology.
-- **An aggregate hidden on some records cannot be sorted by.** Ash raises
-  for such a sort, so the table does not offer it to that person. Its filter
-  stays. See
+  Sensitivity is no access rule, here or in the API extensions: whoever may
+  read the field can ask for a cell's value. Hide it with a field policy or
+  make it private. See [Sensitive columns](sensitive-columns.md).
+- **An error names a field only if the person has its column**; otherwise
+  it is shown without the field's name.
+- **Columns keep their numbering**: with one left out, assistive technology
+  gets the rest numbered without a gap.
+- **An aggregate hidden on some records cannot be sorted by** (Ash raises),
+  so it is not offered to that person; its filter stays. See
   [Columns and defaults](columns-and-defaults.md#what-a-table-does-not-sort-by).
 
 ## Things people trip over
 
-- **Changing who is logged in in your own LiveView without telling the
-  table.** A tag follows its attributes, and an attached table what it was
-  last attached with: attach it again under the same name with the new
-  person. The router page follows its socket assigns by itself.
+- **Changing who is logged in, in your own LiveView, without telling the
+  table.** A tag follows its attributes; an attached table, what it was last
+  attached with: attach again under the same name. The router page follows
+  its socket assigns by itself.
 - **A table mounted outside the `live_session` that assigns the user** reads
   as nobody.
-- **Custom assign names without the domain section.** A table whose domain
-  says nothing looks at `current_scope`, `current_user` and
-  `current_tenant` only.
-- **An empty table that should be a 404, or the reverse.** A policy with a
-  filter check gives an empty table; a strict policy gives a refusal. The
-  table shows which of the two the resource chose.
-- **`authorize? false` for convenience.** It is the whole domain's tables,
-  for everybody.
-- **Relying on the table to protect a hidden field from being written.** See
-  above.
-- **A private primary read action under a table that edits.** The table
-  names a public read action, and is refused all the same: Ash loads what
-  an update returns through the primary one. Make it public, or keep the
-  table read-only.
-- **A relationship that is not under the row, with nothing reported.** Its
-  read action is private, or that of its join resource is, and the block
-  declares no `relationship`: it is left out of the default set, as one
-  whose destination has no table is. Declare it to be told why.
-- **A join resource whose primary read action is private.** Nobody names a
-  join resource in a table, and Ash reads it for every many-to-many. Give
-  the join relationship a public `read_action`.
+- **Custom assign names without the domain section.** Then only
+  `current_scope`, `current_user` and `current_tenant` are read.
+- **An empty table that should be a 404, or the reverse.** A filter check
+  gives an empty table, a strict policy a refusal.
+- **`authorize? false` for convenience.** It covers every table of the
+  domain, for everybody.
+- **Relying on the table to keep a hidden field from being written.**
+- **A private primary read action under a table that edits.** Naming a
+  public read action does not help: Ash loads what an update returns through
+  the primary one. Make it public, or keep the table read-only.
+- **A relationship missing under the row, with nothing reported.** Its read
+  action, or its join resource's, is private and the block declares no
+  `relationship`, so it is left out of the default set (like one whose
+  destination has no table). Declare it to be told why.
+- **A join resource whose primary read action is private.** Ash reads it for
+  every many-to-many; give the join relationship a public `read_action`.
 
 ## Not in the first version
 
-No authorization setting in the `table` block, no hiding of single
-rows' edit affordance ahead of a save or of a row's buttons ahead of an
-action, and no login or session handling: that is the host's. The roadmap
-is in the
+No authorization setting in the `table` block, no hiding of single rows'
+edit affordance ahead of a save or of a row's buttons ahead of an action,
+and no login or session handling: that is the host's. The roadmap is in the
 [specification](https://github.com/StefanRoesch/ash_data_table/issues/21).
