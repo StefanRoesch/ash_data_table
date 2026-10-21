@@ -4,8 +4,10 @@ A table action runs on the table as a whole, not on one record. On the
 resource it is a generic action: it takes arguments, returns a value and is
 given no record ("generic action" is the resource's word, "table action" the
 table's). This guide also covers turning a generic action into a row action
-(`record_argument`), choosing a key argument in the picker (`reference`),
-and table actions in nested tables.
+(`record_argument`), a generic action that runs once on the selected rows
+(`selection_argument`), a file an action returns, which the browser saves,
+choosing a key argument in the picker (`reference`), and table actions in
+nested tables.
 
 Row actions, the action panel and its fields:
 [Row actions and create](row-actions-and-create.md). The question an action
@@ -263,10 +265,12 @@ one short line above the grid, reads it out, then reads its records again.
 | A boolean | "Yes" or "No" after the action |
 | An atom | Its name. A value of an enum by its label: "Mood: High" |
 | Nothing, `nil`, an empty text | "Remove unused: done" |
+| A file, from an action that `returns Ash.Type.File` | The action and the file's name: "Export CSV: tasks.csv". The browser saves the file; see [A file the action returns](#a-file-the-action-returns). |
 | Anything else: a record, a list, a map | The same, "done". Returned records are not shown as a table. |
 
 The returned value decides, not the declared type: Ash does not cast what a
-generic action returns.
+generic action returns. A file is the one exception: an action declared to
+return `Ash.Type.File` has what it returns cast as Ash casts a file.
 
 The line stays until the table's next action has run, a filter changes, or
 the selection changes. The same line says what an action on the selected
@@ -346,13 +350,114 @@ row action, unless it says `bulk? false`. It asks first, with the number of
 records, and asks for its inputs once. It runs once per selected record,
 each read as the person first; the table says on how many it ran and on how
 many it did not. What each run returned is not shown. See
-[Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md).
+[Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md). An
+action that is to run once on all of them takes their keys as a list:
+[An action on the selection](#an-action-on-the-selection).
 
 **Try it:** `/labels` as Ada Admin. Every row has "Destroy" and "Copy".
 "Copy" opens a panel headed "Copy:" and the label's name, with one field,
 "Name \*". Another label's name gives "has already been taken" under the
 field. A new name gives "Copy: done", and the copy is a row where the sort
 puts it.
+
+## An action on the selection
+
+Some generic actions are about a set of records: an export, a report, a
+message to their owners. They take a list of keys. `selection_argument`
+names that argument and makes the action an action on the selection. The
+demo's tasks have one:
+
+<!-- source: demo/lib/demo/tracker/task.ex -->
+```elixir
+# An action on the selection: a generic action that runs once, given
+# the keys of every selected task (`selection_argument`) and the
+# table's sort (`sort_argument`). It returns a file, which the
+# person's browser saves: `tasks.csv`. Its button is in the line above
+# the grid, after the row actions that run on each selected task.
+action :export_csv do
+  label "Export CSV"
+  selection_argument :ids
+  sort_argument :sort
+end
+```
+
+<!-- source: demo/lib/demo/tracker/task.ex -->
+```elixir
+# The selected tasks as a CSV file, in the table's order: the table
+# gives it their keys and its sort, and the browser saves the file it
+# returns (`Demo.Tracker.Task.ExportCsv`, through ash_csv_interchange).
+action :export_csv, Ash.Type.File do
+  argument :ids, {:array, :uuid}, allow_nil?: false
+  argument :sort, :string
+
+  run Demo.Tracker.Task.ExportCsv
+end
+```
+
+- **Its button is in the line above the grid** while rows are selected,
+  among the actions on the selected rows, in declared order. No row and no
+  heading has it.
+- **It runs once**, given the keys of every selected record the person may
+  read. Selected rows are read again as the person first; "all that match"
+  is read when it runs, through the table's read action, with the person's
+  filters, keys only. A key that names nothing the person may read is left
+  out. With none left it does not run: "Export CSV failed: None of the
+  selected records is available any more."
+- **`sort_argument`** names a `:string` argument that is given the table's
+  sort in the syntax of `Ash.Query.sort_input/2` (`"title"`, `"-due_on"`),
+  or nil where the person chose none. A read the action runs over the keys
+  can keep the table's order with it. A sort by a column whose calculation
+  is given arguments cannot be written so, and is nil too.
+- **It asks first only with a `confirm` of its own**, as a table action
+  does; its other arguments are asked for in the action panel, once.
+- **Afterwards the table says what it returned and reads again**, as after
+  a table action. The rows stay selected.
+- **The page is told `:action_ran`**, with `key` nil, and `selected` (the
+  keys it was given) and `all?`.
+
+The compiler reports these:
+
+| The declaration | |
+| --- | --- |
+| The argument is no argument of the action, or not `public?` | Reported. |
+| The argument is not a list of what the primary key is stored as (`{:array, :uuid}` for a UUID key) | Reported. |
+| The resource's primary key is several attributes, or none | Reported. |
+| `selection_argument` on an update or a destroy action, or beside `record_argument` or `bulk?` | Reported. |
+| `sort_argument` without `selection_argument`, on no public argument, on a required one, or one that is not `:string` | Reported. |
+
+**Try it:** `/tasks` as Ada Admin. Select two rows, open "More" in the line
+above the grid and use "Export CSV": the browser saves `tasks.csv` with the
+two tasks, and the line says "Export CSV: tasks.csv". Sort by "Title" and
+export "all that match": the file has them in that order.
+
+## A file the action returns
+
+A generic action that `returns Ash.Type.File` has the file it returns saved
+in the person's browser, wherever it runs: from a row, from the line of the
+table's name, on the selection. It is Ash's own type, the other half of
+[Files](files.md), where an `Ash.Type.File` argument is an upload.
+
+- **The table casts what the action returned** as Ash casts a file
+  (`Ash.Type.cast_input/3`: the file itself, a `Plug.Upload`, anything that
+  implements `Ash.Type.File.Source`), opens it with `Ash.Type.File.open/2`,
+  reads it whole and closes it.
+- **It is named** by `Ash.Type.File.filename/1`, else after the action
+  (`export_csv`), and **typed** by `Ash.Type.File.content_type/1`, else as
+  `application/octet-stream`.
+- **It is sent to the page at once**, as the push `ash_data_table:download`,
+  its content in Base64, and is kept nowhere: not in the table, not in an
+  assign. The library's own window listener has the browser save it, in
+  every kit; nothing is to be set up.
+- **The line above the grid names it**: "Export CSV: tasks.csv".
+- **The page is told** `:action_ran` with the file as `result`, by its name
+  and type (`%{filename: …, content_type: …}`), never its content.
+- **An action that returns `nil`** saves nothing, and says "done".
+- **A file that cannot be read**, or a value that is no file, is "This
+  could not be done."; the reason is in the log.
+
+The demo's export returns a CSV file held in memory: a struct that
+implements `Ash.Type.File.Implementation` and `Ash.Type.File.Source`
+(`Demo.CsvFile`), so nothing is written to disk.
 
 ## What running does
 
@@ -495,6 +600,11 @@ out when it changes. All keys of a table are in
 - **A table with `on_forbidden :message` that was refused** has no buttons:
   a table that did not read offers nothing.
 - **Returned text is shown as is**, however long. Return a short line.
+- **A file travels through the LiveView's connection**, whole and in Base64,
+  a third larger than it is. A file of many megabytes is better served by a
+  controller the action links to.
+- **An action on the selection with "all that match" is given every key**,
+  in one list: as many as the filters match.
 
 ## Things people trip over
 
@@ -514,13 +624,17 @@ out when it changes. All keys of a table are in
   resource it refers to. Say it with `reference` in the `action`.
 - **A check on an argument that hides the button from everybody.** It is
   asked without the argument first.
+- **Expecting the keys of an action on the selection in the table's order.**
+  They come in no order; `sort_argument` gives the sort to apply.
+- **An action on the selection that runs once per record.** That is a row
+  action with `record_argument`; `selection_argument` runs once on all.
 
 ## Not in the first version
 
 No `reference` for an argument of the table's `create_action`, no own label
 for an argument's field, no way to give a table action in a nested table
-the row it is under, no table of returned records, no file to download from
-an action, no progress while an action runs and no way to stop one, no
-result per record after a run on the selected rows, and no icons on the
-buttons. The later slices are listed in the
+the row it is under, no table of returned records, no file streamed to the
+browser in parts (a returned file is sent whole), no progress while an
+action runs and no way to stop one, no result per record after a run on the
+selected rows, and no icons on the buttons. The later slices are listed in the
 [specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

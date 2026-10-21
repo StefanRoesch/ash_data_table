@@ -83,6 +83,9 @@ A kit can draw its parts with React through `live_react`, as the demo's
 - no React kit ships with the library: the demo's (`demo/lib/demo_web/react_kit.ex`,
   `demo/assets/islands/table/`) is the recipe.
 
+A file an action returns is saved by the library's own window listener,
+which importing the hooks sets up: a kit draws and hears nothing for it.
+
 ## Check it
 
 <!-- source: demo/test/demo_web/kits/div_kit_test.exs -->

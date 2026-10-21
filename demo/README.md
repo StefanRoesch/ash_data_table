@@ -160,6 +160,8 @@ column, an aggregate, two calculations; offset pages of 25.
   "New task" on the line of the table's name:
   [Row actions and create](#row-actions-and-create),
   [Selecting rows and bulk actions](#selecting-rows-and-bulk-actions).
+- **Export CSV** on the selected rows, through ash_csv_interchange: the
+  browser saves `tasks.csv`: [Export CSV](#export-csv).
 - **The argument line** above the grid: "Search" and "Due within: Days":
   [The argument line](#the-argument-line).
 - **Footer summaries** and **live updates**:
@@ -727,7 +729,7 @@ action that runs on several rows: the table's row actions, unless one says
 
 | Table | For the selected rows | Kept to one row |
 | --- | --- | --- |
-| `/tasks` | "Archive", "Reassign", "Set progress", "Destroy", "Set labels" | |
+| `/tasks` | "Archive", "Reassign", "Set progress", "Destroy", "Set labels", and "Export CSV", which runs once on all of them ([Export CSV](#export-csv)) | |
 | `/projects` | "Set status", "Set budget", "Assign open tasks" | "Destroy" (`bulk? false`) |
 | `/comments` | "Destroy" | |
 | `/labels` | "Destroy" | "Copy" (`bulk? false`: a name can be given to one label only) |
@@ -764,6 +766,38 @@ On `/tasks`:
 - **A nested table has its own.** Expand a task, open "Comments", tick two,
   "Destroy" on the line above them. The tasks around them are not selected.
 - As **Vera Viewer** there are no boxes: she can run no action.
+
+### Export CSV
+
+"Export CSV", in the menu "More" of the line above the grid of `/tasks`,
+saves the selected tasks as `tasks.csv`. It is an action on the selection
+(`selection_argument :ids`, `sort_argument :sort`): the generic action
+`:export_csv` of the tasks, run once with the keys of every selected task,
+which returns a file (`Ash.Type.File`), which the browser saves.
+
+The export is [ash_csv_interchange](https://hex.pm/packages/ash_csv_interchange)'s,
+a dependency of the demo only: `csv_exports` on the tasks declares the
+columns, `AshCsvInterchange.export_csv/2` (in `Demo.Tracker.Task.ExportCsv`)
+reads the tasks through the read action `:selected` (the keys, and the
+table's sort, else `:read`'s own) and writes the file, which `Demo.CsvFile`
+holds in memory. `config :ash_csv_interchange, otp_app: :demo` and the
+domain `Demo.Tracker` are in `config/config.exs`. Nothing is imported.
+
+- **Rows.** As Ada Admin, tick two boxes, "More", "Export CSV": the browser
+  saves `tasks.csv` with those two, and the line says "Export CSV:
+  tasks.csv". Nothing is asked first, and the rows stay selected.
+- **The page, all that match.** The header box exports the page; "Select
+  all … that match" every task the filters match, on every page, read when
+  the export runs.
+- **The sort.** Sort by "Title": the file has the tasks in that order.
+- **What a person may see.** No `external_ref` and no `estimate_hours`
+  column: field policies hide them from some people. As Max Member the
+  file has what he may read; the read policy applies once more inside the
+  export.
+- **No tenant.** ash_csv_interchange takes no tenant option, so the export
+  reads without one. That is fine here: the tasks are `global? true`, and
+  the read policy keeps the export to the person's organization. A
+  resource whose multitenancy needs a tenant could not be exported so.
 
 ### The argument line
 
@@ -1130,6 +1164,7 @@ through them as each actor. Resources made for tests only are in
 | `label_import_test.exs` | "Import" on `/labels`: the file input, the upload and its limits, what the action reads and what it refuses |
 | `file_actions_test.exs` | on `test/support/file_tables.ex`: a file for a row action, a generic action, the create action and the selected rows, two files in one action, a file that can be left out, and what becomes of the file afterwards |
 | `task_labels_action_test.exs` | "Set labels" on `/tasks`: its field, the picker for several, what a hand-made form cannot do, the action's policies, the selected rows, a nested table, German |
+| `task_export_test.exs` | "Export CSV" on `/tasks`: the file pushed for rows, the whole page and all that match, the table's sort, keys a person may not read, the columns a field policy hides (the browser's download: `e2e/export.spec.ts`) |
 | `deadline_assignee_test.exs` | the "Assignee" cell of `/deadlines`, edited through an argument |
 | `managed_relationships_test.exs` | on `test/support/relation_tables.ex`: an argument that adds, one that takes away, one key for a relationship of many, keys that are not the primary key, a destination whose rows are named by two attributes, a picker in pages and with an argument line, records a person may not read, and an action that is refused |
 | `translation_test.exs`, `translation_settings_test.exs` | languages |

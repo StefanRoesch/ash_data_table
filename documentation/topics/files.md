@@ -2,7 +2,9 @@
 
 An action can take a file: an argument of type `:file` (`Ash.Type.File`).
 The table gives it a file input in the action panel; the person chooses a
-file, uses the panel's button, and the action reads it.
+file, uses the panel's button, and the action reads it. The other way, a
+generic action can return a file, which the person's browser saves: see
+[A file an action returns](#a-file-an-action-returns).
 
 Ash stores no file: `Ash.Type.File` is an argument type, never an attribute
 type. So a file is never a column or a cell. What an action keeps of a file
@@ -204,6 +206,42 @@ the copy to the run, which takes it away when it ends, whether the page is
 still open or not. Closing the page does not stop a run that has started. If
 the page closes before the run has taken the copy, the run does not start.
 
+## A file an action returns
+
+A generic action that `returns Ash.Type.File` has the file it returns
+saved in the person's browser, from a row, from the line of the table's
+name, or run on the selection. The demo's tasks export the selected ones
+as CSV:
+
+<!-- source: demo/lib/demo/tracker/task.ex -->
+```elixir
+action :export_csv, Ash.Type.File do
+  argument :ids, {:array, :uuid}, allow_nil?: false
+  argument :sort, :string
+
+  run Demo.Tracker.Task.ExportCsv
+end
+```
+
+- **What the action returns is cast as Ash casts a file**: an
+  `Ash.Type.File` (`Ash.Type.File.from_path/1`, `from_io/1`), a
+  `Plug.Upload`, or a struct of your own that implements
+  `Ash.Type.File.Source`.
+- **The table reads it whole** (`Ash.Type.File.open/2`) where the action
+  ran, closes it, and sends it to the page at once; it keeps nothing of it.
+- **It is saved under `Ash.Type.File.filename/1`**, else the action's name,
+  and typed by `Ash.Type.File.content_type/1`, else as bytes. The line above
+  the grid names it: "Export CSV: tasks.csv".
+- **Nothing is set up in the page.** The library's own JavaScript hears the
+  file and has the browser save it, whatever kit draws the table.
+- **The page is told** the file's name and type (`:action_ran`, its
+  `result`), never its content.
+
+A file the action wrote to disk stays there: the table opens and reads it,
+and deletes nothing. Return one held in memory where you can; the demo's
+`Demo.CsvFile` is a struct that `Ash.Type.File` opens as a file in memory.
+More in [Table actions](table-actions.md#a-file-the-action-returns).
+
 ## Mistakes the compiler reports
 
 | Mistake | Where it is reported |
@@ -253,6 +291,12 @@ See [Mistakes at compile time](mistakes-at-compile-time.md#uploads).
   see [When a file is refused](#when-a-file-is-refused).
 - **The column should show the file.** A table has no column for a file.
   Let the action store where it put the file, and show that attribute.
+- **A returned file saves nothing.** The action does not declare `returns
+  Ash.Type.File` (a binary it returns is said as text, or "done"), or it
+  returned `nil`.
+- **A large returned file is slow.** It travels whole through the
+  LiveView's connection, in Base64. Link to a controller for files of many
+  megabytes.
 
 ## Not in the first version
 
@@ -260,8 +304,8 @@ See [Mistakes at compile time](mistakes-at-compile-time.md#uploads).
 - **Dropping a file onto the panel**, and an image preview.
 - **Uploads straight to a storage service** (`:external` in LiveView). The
   file comes to the server, and the action reads it there.
-- **A file to download from an action**, and a link to a stored file in a
-  cell.
+- **A link to a stored file in a cell**, and a returned file sent in
+  parts: a file an action returns is read and sent whole.
 - **Keeping the file when the action fails.**
 
 Showing a stored picture in a cell is a later addition in the

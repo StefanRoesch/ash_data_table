@@ -807,6 +807,43 @@ declared in the resource and mounted with one line in the router.
   whose primary key is several attributes or none, `bulk? true` on a table
   action, and a generic action with a required argument the panel has no
   field for.
+- `selection_argument` on an `action`: the argument of a generic action
+  that is given the primary keys of the selected rows, a list. The action
+  is then an action on the selection: its button is in the line above the
+  grid, among the actions on the selected rows in the declared order, and
+  it runs once, beside the page's process, given the keys of every selected
+  record the person may read (the named rows read again as the person,
+  "all that match" read when it runs, through the table's read action with
+  the person's filters, keys only; the server holds keys only). It asks
+  first only with a `confirm` of its own, and its other arguments are
+  asked for once, in the panel. Afterwards the table says what it returned
+  above the grid, as after a table action, the rows stay selected, and the
+  page is told `:action_ran` with `key` nil, `selected` and `all?`. With
+  none of the selected records left for the person it does not run: "None
+  of the selected records is available any more." (new message).
+- `sort_argument` beside it: a `:string` argument that is given the
+  table's sort in the syntax of `Ash.Query.sort_input/2` (`"-due_on"`), nil
+  for none or for a column whose calculation is given arguments.
+- Reported when the resource is compiled: a `selection_argument` on an
+  update or a destroy action, beside `record_argument` or `bulk?`, one that
+  names no argument of the action, a private one, one that is not a list
+  of what the primary key is stored as, one on a resource whose primary key
+  is several attributes or none; a `sort_argument` without
+  `selection_argument`, on its argument, on no argument, a private, a
+  required or one that is no text; a `page_argument` or a `reference` on
+  either of them.
+- A generic action that `returns Ash.Type.File`, wherever it runs (a row,
+  the table, the selection), has the file it returns saved in the person's
+  browser: cast as Ash casts a file, opened with `Ash.Type.File.open/2`,
+  read whole where the action ran and closed, named by
+  `Ash.Type.File.filename/1` (else after the action) and typed by
+  `Ash.Type.File.content_type/1`. It is sent to the page at once as the
+  push `ash_data_table:download` and kept nowhere; a small window listener
+  of the library's JavaScript (`assets/js/download.js`, set up once per
+  window as the hooks are imported) has the browser save it, in every kit.
+  The line above the grid names it ("Export CSV: tasks.csv"), and the page
+  is told its name and type as the `result` of `:action_ran`, never its
+  content.
 
 ### Unions
 
@@ -890,6 +927,8 @@ declared in the resource and mounted with one line in the router.
   or lists what LiveView does not know. An action that requires several
   files (`{:array, :file}`) cannot be run from a table, and a file is no
   input of the argument line.
+- The other way: a file a generic action returns (`returns Ash.Type.File`)
+  is saved in the person's browser. See "Table actions".
 
 ### Sensitive columns
 

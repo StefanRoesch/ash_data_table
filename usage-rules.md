@@ -83,6 +83,11 @@ end
 - `action :name` is a button in every row; `create_action :create` a button
   above the table
   ([Row actions and create](https://github.com/StefanRoesch/ash_data_table/blob/main/documentation/topics/row-actions-and-create.md)).
+  An `action` that names a generic action is a button above the table, a
+  row's with `record_argument`, and one that runs once on the selected rows
+  with `selection_argument` (their keys, a list; `sort_argument` gives it
+  the table's sort)
+  ([Table actions](https://github.com/StefanRoesch/ash_data_table/blob/main/documentation/topics/table-actions.md)).
 - Every option is in the DSL reference:
   [`AshDataTable.Resource`](https://github.com/StefanRoesch/ash_data_table/blob/main/documentation/dsls/DSL-AshDataTable.Resource.md)
   and
@@ -123,6 +128,21 @@ behaviour the table lacks is a change to the resource:
   included when the block names no `read_action`.
 - **A cell made of two fields** is a calculation of the resource, with a
   column of it.
+- **An export of the selected rows** is a generic action of the resource
+  that takes their keys (`selection_argument`) and `returns Ash.Type.File`:
+  the table runs it once, and the person's browser saves the file it
+  returns. Write the file in the action (an Ash extension such as
+  ash_csv_interchange), not in the page.
+
+  <!-- source: demo/lib/demo/tracker/task.ex -->
+  ```elixir
+  action :export_csv, Ash.Type.File do
+    argument :ids, {:array, :uuid}, allow_nil?: false
+    argument :sort, :string
+
+    run Demo.Tracker.Task.ExportCsv
+  end
+  ```
 - **Rules about values** belong in validations and policies. A `confirm`
   question, the page's `before_action` veto and its `context` are no
   authorization: a hand-made event can skip a question.
@@ -143,6 +163,8 @@ behaviour the table lacks is a change to the resource:
 - **An unstyled table, or Enter that does nothing**: the `@source` line is
   missing, the hooks are not spread into the `LiveSocket`'s `hooks`, or the
   assets were built before `mix compile`.
+- **A returned file that is said as text, or "done", and not saved**: the
+  generic action does not declare `returns Ash.Type.File`.
 
 Every diagnostic, with its cause and fix:
 [Mistakes at compile time](https://github.com/StefanRoesch/ash_data_table/blob/main/documentation/topics/mistakes-at-compile-time.md).
