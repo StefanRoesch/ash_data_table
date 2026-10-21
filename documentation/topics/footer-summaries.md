@@ -135,8 +135,8 @@ differ for a table that reads through another action.
 The rows never wait for the numbers: they are asked for beside the rows, in
 one more query. Until the new number is there the old one stays, marked
 `aria-busy` (the default kit dims it a little). A query for the numbers
-that is on its way when the page is left finishes, and its answer is
-dropped.
+that is on its way when the page is left, or its table closes, finishes,
+and its answer is dropped.
 
 If the numbers cannot be computed, every summary shows "–", the reason is
 logged, and the rows are as they are.

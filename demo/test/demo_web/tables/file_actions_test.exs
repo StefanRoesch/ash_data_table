@@ -409,9 +409,9 @@ defmodule DemoWeb.Tables.FileActionsTest do
           path
         end
 
-      # one copy for the run, and it is taken away
+      # one copy for the run, the run's process's: gone when its process is
       assert [path] = Enum.uniq(paths)
-      refute File.exists?(path)
+      assert gone?(path)
     end
 
     test "what the action makes of the panel's values as such is shown first, and nothing runs",

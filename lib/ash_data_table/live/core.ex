@@ -191,10 +191,10 @@ defmodule AshDataTable.Live.Core do
   defp topic(:select), do: Selection
   defp topic(event) when event in [:left, :read_again], do: Updates
 
-  # An answer for a table that is no longer shown is dropped: its tasks
-  # were cancelled as it closed, and the answer of a cancelled task comes
-  # all the same, maybe to a table of the same id opened since
-  # (`Registry.current?/2`).
+  # An answer for a table that is no longer shown is dropped here: its
+  # tasks were not stopped as it closed, but finish their query
+  # (`Registry.finishing/1`), and answer all the same, maybe to a table of
+  # the same id opened since (`Registry.current?/2`).
   def handle_async({:ash_data_table, id, {kind, _token}} = key, result, socket) do
     if Registry.current?(socket, key) do
       callback(fn ->

@@ -176,8 +176,8 @@ defmodule AshDataTable.Live.Core.Reading do
     else
       socket
       |> Core.put(summing?: true, summed: of)
-      # finishes its query when the page is left meanwhile, and the answer
-      # is dropped (`Registry.finishing/1`)
+      # finishes its query when the page is left or its table closes
+      # meanwhile, and the answer is dropped (`Registry.finishing/1`)
       |> start_async(
         Registry.async(socket, :summary),
         Registry.finishing(fn -> Query.summaries(model, state, parent, opts) end)

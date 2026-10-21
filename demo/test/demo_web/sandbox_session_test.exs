@@ -46,7 +46,8 @@ defmodule DemoWeb.SandboxSessionTest do
   end
 
   # The first of `events` in a process that `held?` names, held in that
-  # process while it holds the connection, until it is told `:go`.
+  # process while it holds the connection, until it is told `:go`. The test
+  # is told which event it holds, and its metadata.
   defp hold(events, held?) do
     test = self()
 
@@ -54,12 +55,12 @@ defmodule DemoWeb.SandboxSessionTest do
       :telemetry.attach_many(
         @handler,
         events,
-        fn _event, _measurements, _metadata, _config ->
+        fn event, _measurements, metadata, _config ->
           if held?.() do
             :telemetry.detach(@handler)
 
             Demo.Repo.checkout(fn ->
-              send(test, {:holding, self()})
+              send(test, {:holding, self(), event, metadata})
 
               receive do
                 :go -> :ok
@@ -100,7 +101,9 @@ defmodule DemoWeb.SandboxSessionTest do
     hold([[:ash, :tracker, :aggregate, :start]], fn -> true end)
     {:ok, view, _html} = build_conn() |> log_in(world.admin) |> live("/tasks")
 
-    assert_receive {:holding, summaries}
+    assert_receive {:holding, summaries, [:ash, :tracker, :aggregate, :start],
+                    %{resource_short_name: :task}}
+
     leave(view, summaries, metadata)
   end
 
@@ -112,7 +115,9 @@ defmodule DemoWeb.SandboxSessionTest do
     hold([[:ash, :tracker, :read, :start]], fn -> task_of?(view.pid) end)
     AshDataTable.Test.send_event(view, "task", "sort", %{"column" => "title"})
 
-    assert_receive {:holding, read}
+    assert_receive {:holding, read, [:ash, :tracker, :read, :start],
+                    %{resource_short_name: :task}}
+
     leave(view, read, metadata)
   end
 
@@ -122,14 +127,12 @@ defmodule DemoWeb.SandboxSessionTest do
     render_async(view)
     select_page(view)
 
-    hold(
-      [[:ash, :tracker, :read, :start], [:ash, :tracker, :bulk_update, :start]],
-      fn -> task_of?(view.pid) end
-    )
-
+    hold([[:ash, :tracker, :bulk_update, :start]], fn -> task_of?(view.pid) end)
     confirm_bulk(view, "task", "archive")
 
-    assert_receive {:holding, run}
+    assert_receive {:holding, run, [:ash, :tracker, :bulk_update, :start],
+                    %{resource_short_name: :task, action: :archive}}
+
     leave(view, run, metadata)
   end
 end

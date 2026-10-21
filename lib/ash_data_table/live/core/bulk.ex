@@ -230,7 +230,9 @@ defmodule AshDataTable.Live.Core.Bulk do
   # statement. `files` are the copies of the panel's files it runs with
   # (`Core.Files.attach/3`): they are handed to the run's process, and go
   # when it ends (`Plug.Upload.give_away/3`), whether the page is there
-  # then or not.
+  # then or not. A hand-over that fails (the page went before the run
+  # could take them, and its copies with it) ends the run before it
+  # starts, and its answer is dropped with the page.
   defp start_bulk(socket, action, run, files) do
     view = self()
     copies = for {_name, %{path: path}} <- files, do: path
@@ -247,7 +249,7 @@ defmodule AshDataTable.Live.Core.Bulk do
     |> start_async(
       Registry.async(socket, :bulk),
       Registry.finishing(fn ->
-        Enum.each(copies, &Plug.Upload.give_away(&1, self(), view))
+        Enum.each(copies, fn copy -> :ok = Plug.Upload.give_away(copy, self(), view) end)
         run.()
       end)
     )
