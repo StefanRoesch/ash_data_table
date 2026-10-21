@@ -1,5 +1,6 @@
 ## The German texts of the demo's own pages: the sprint planner
-## (`DemoWeb.PlannerLive`). The tables' texts are in `ash_data_table.po`.
+## (`DemoWeb.PlannerLive`) and the links between /tasks and /react/tasks
+## (`DemoWeb.Layouts.tasks/1`, `DemoWeb.ReactTasksLive`). The tables' texts are in `ash_data_table.po`.
 msgid ""
 msgstr ""
 "Language: de\n"
@@ -66,3 +67,9 @@ msgstr[1] "%{action}: %{count} Aufgaben erledigt"
 
 msgid "%{action}: %{done} done, %{failed} failed"
 msgstr "%{action}: %{done} erledigt, %{failed} fehlgeschlagen"
+
+msgid "The same table in HEEx"
+msgstr "Dieselbe Tabelle in HEEx"
+
+msgid "The same table in React"
+msgstr "Dieselbe Tabelle in React"

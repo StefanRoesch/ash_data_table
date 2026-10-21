@@ -63,8 +63,8 @@ msgstr ""
 msgid "Actions"
 msgstr ""
 
-#: lib/demo_web/components/layouts.ex:177
-#: lib/demo_web/components/layouts.ex:189
+#: lib/demo_web/components/layouts.ex:205
+#: lib/demo_web/components/layouts.ex:217
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr ""
@@ -104,7 +104,7 @@ msgstr ""
 msgid "Selected for the sprint"
 msgstr ""
 
-#: lib/demo_web/components/layouts.ex:184
+#: lib/demo_web/components/layouts.ex:212
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr ""
@@ -125,7 +125,7 @@ msgstr ""
 msgid "Tasks"
 msgstr ""
 
-#: lib/demo_web/components/layouts.ex:172
+#: lib/demo_web/components/layouts.ex:200
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr ""
@@ -138,4 +138,14 @@ msgstr ""
 #: lib/demo_web/live/planner_live.ex:182
 #, elixir-autogen, elixir-format
 msgid "This page shows how the rest of a page can follow a table. Tick tasks below: the card adds up their hours. Edit or create a task: the feed lists it. “Clear selection” goes the other way: the page tells the table what to do."
+msgstr ""
+
+#: lib/demo_web/live/react_tasks_live.ex:49
+#, elixir-autogen, elixir-format
+msgid "The same table in HEEx"
+msgstr ""
+
+#: lib/demo_web/components/layouts.ex:80
+#, elixir-autogen, elixir-format
+msgid "The same table in React"
 msgstr ""

@@ -98,7 +98,8 @@ The demo is a small issue tracker: projects, tasks, comments, labels, people.
 9. **`/specimens`:** one attribute of every Ash type, with nothing declared
    but the update action.
 10. **`/react/tasks`:** the same table drawn with React and shadcn, to show
-    the drawing can be swapped.
+    the drawing can be swapped. A link above each table switches between
+    the two.
 11. **`/tasks/planner`:** the sprint planner. Tick tasks in the table; the
     cards above follow. The page and the table talk through events and
     commands.

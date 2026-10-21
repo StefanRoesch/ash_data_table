@@ -8,7 +8,8 @@ defmodule DemoWeb.ReactTasksLive do
   the rows, the line above the grid (the selection line), the live region
   (the status), the pagination, the question, the action panel and the
   picker. Its sort, filters and page are in the URL, as on /tasks. The
-  front page links to it.
+  front page links to it, and so does /tasks (`DemoWeb.Layouts.tasks/1`);
+  its link back keeps the URL's query, so the sort and filters carry over.
   """
   use DemoWeb, :live_view
 
@@ -27,14 +28,26 @@ defmodule DemoWeb.ReactTasksLive do
      )}
   end
 
-  # the table patches the URL: LiveView calls this on every patch
+  # the table patches the URL: LiveView calls this on every patch. Both
+  # tables have the id "task", so /tasks reads the same query.
   @impl true
-  def handle_params(_params, _url, socket), do: {:noreply, socket}
+  def handle_params(_params, url, socket) do
+    heex =
+      case URI.parse(url).query do
+        nil -> ~p"/tasks"
+        query -> ~p"/tasks" <> "?" <> query
+      end
+
+    {:noreply, assign(socket, heex: heex)}
+  end
 
   @impl true
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} time_zone={@time_zone}>
+      <:same_table>
+        <.link navigate={@heex} class="link">{gettext("The same table in HEEx")}</.link>
+      </:same_table>
       <AshDataTable.attached table={@table} streams={@streams} uploads={assigns[:uploads]} />
     </Layouts.app>
     """
