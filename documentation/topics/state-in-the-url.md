@@ -1,13 +1,13 @@
 # State in the URL
 
-After reading this guide you can read and write a table's address by hand,
-know what a shared link carries and what it does not, and decide whether a
-table in one of your own pages keeps its state in the URL.
+This guide covers reading and writing a table's address by hand, what a
+shared link carries, and whether a table in your own page keeps its state in
+the URL.
 
 ## The smallest example
 
 The page of a router line (`ash_data_table "/tasks", MyApp.Tracker.Task`)
-keeps its table's sort, filters and page in the address, always, with no
+always keeps its table's sort, filters and page in the address, with no
 setup. Reload, the back button and shared links work.
 
 **Try it:** `/tasks` in the demo, as Ada Admin. Click the heading "Title",
@@ -18,8 +18,7 @@ then "Next" under the table. The address is now:
 /tasks?task[page]=2&task[sort]=title
 ```
 
-Open that address in a new tab: the same rows, the same heading marked as
-sorted.
+Open it in a new tab: the same rows, the same heading marked as sorted.
 
 ## What is kept, and what is not
 
@@ -37,16 +36,16 @@ sorted.
 | | The columns a person hid. They are shown again when the page is reloaded or left: see [Columns and defaults](columns-and-defaults.md#hiding-columns) |
 | | Which rows are selected. A selection lasts through a sort and a change of page, is given up when a filter, an argument or the limit to one parent changes, and is gone after a reload: see [Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md#what-is-selected-and-for-how-long) |
 
-A default is left out: no sort, no filters, the first page and the page size
-the table opens with give the plain path, `/tasks`.
+Defaults are left out: no sort, no filters, the first page and the opening
+page size give the plain path, `/tasks`.
 
-Every change is a live patch (`push_patch`), so each one is an entry in the
-browser's history and the back button steps through them.
+Every change is a live patch (`push_patch`), so each is a browser history
+entry and the back button steps through them.
 
 ## The parameter format
 
-All parameters of a table are nested under the table's id, so that they
-cannot collide with the page's own parameters or with another table's.
+A table's parameters are nested under its id, so they cannot collide with the
+page's own parameters or another table's.
 
 | State | Parameter | Example |
 | --- | --- | --- |
@@ -67,14 +66,14 @@ cannot collide with the page's own parameters or with another table's.
 | An argument that is a list | `ID[a][ARGUMENT][]=VALUE`, once per value | `deadline[a][tags][]=api` |
 | Limited to the records related to one record | `ID[of][PARENT][RELATIONSHIP]=KEY` | `comment[of][task][comments]=3f649715-…` |
 
-`COLUMN` is the field's name, or the name its column gives itself with `as`;
-[Arguments](arguments.md) has what an argument's value is and when it is
-applied. The operators are named `contains`, `equals`,
-`starts_with`, `is_empty`, `greater_than`, `less_than`, `at_least`,
-`at_most`, `on`, `before`, `after`, `between`, `is`, `any_of` and `none_of`;
-[Filtering](filtering.md) says which
-column offers which, and which one is the default. A cursor is the opaque
-value Ash returns for a record and is not meant to be written by hand.
+- `COLUMN` is the field's name, or the column's `as` name.
+  [Arguments](arguments.md) covers argument values and when they apply.
+- The operators are `contains`, `equals`, `starts_with`, `is_empty`,
+  `greater_than`, `less_than`, `at_least`, `at_most`, `on`, `before`, `after`,
+  `between`, `is`, `any_of` and `none_of`; [Filtering](filtering.md) says
+  which column offers which and which is the default.
+- A cursor is the opaque value Ash returns for a record, not meant to be
+  written by hand.
 
 A complete example, with four filters and a sort:
 
@@ -83,37 +82,36 @@ A complete example, with four filters and a sort:
 /tasks?task[f][billable%3F]=yes&task[f][due_on][is_empty]=&task[f][progress][at_least]=50&task[f][title]=report&task[sort]=-title
 ```
 
-The table writes the parameters in alphabetical order and percent-encodes
-what a query string requires, such as the `?` in `billable?`. When it reads
-them the order does not matter, and it accepts the default operator spelled
-out (`task[f][title][contains]=report`).
+The table writes parameters in alphabetical order and percent-encodes what a
+query string requires, such as the `?` in `billable?`. When reading, order
+does not matter, and the default operator may be spelled out
+(`task[f][title][contains]=report`).
 
 ## A table limited to the records of one parent
 
-The parameter `of` limits a table to the records related to one record:
-`/comments?comment[of][task][comments]=KEY` shows the comments of one task,
-under a heading that says so. This is the full view of a nested table, and
-the link in the last row of a nested table writes it.
+`of` limits a table to the records related to one record:
+`/comments?comment[of][task][comments]=KEY` shows one task's comments, under a
+heading that says so. This is a nested table's full view; the link in a
+nested table's last row writes it.
 
-- `PARENT` is the short name of the parent's resource (followed by `_` and
-  the table's name where a [named table](named-tables.md) of the parent
-  offers the relationship: `task_board`), `RELATIONSHIP` the
-  name of its relationship, and `KEY` its primary key. A key of several
-  attributes is written by attribute:
-  `ID[of][PARENT][RELATIONSHIP][ATTRIBUTE]=VALUE`.
+- `PARENT` is the short name of the parent's resource (plus `_` and the table
+  name where a [named table](named-tables.md) of the parent offers the
+  relationship: `task_board`), `RELATIONSHIP` its relationship's name, and
+  `KEY` its primary key. A key of several attributes is written per
+  attribute: `ID[of][PARENT][RELATIONSHIP][ATTRIBUTE]=VALUE`.
 - Sort, filters and page are written beside it, and it stays through every
   change of them. It is part of a shared link.
-- "Show all records" above the table removes it, together with the sort,
-  the filters and the page that were chosen under it.
+- "Show all records" above the table removes it, with the sort, filters and
+  page chosen under it.
 
 What the parameter can name, how the parent is looked up and read, and what
-the page shows for a parent that is not the person's to read, is in
+the page shows for a parent the person may not read: see
 [Nested tables](nested-tables.md#the-full-view).
 
 ## The table's id
 
-The id of a mounted table defaults to the last part of the resource's module
-name, underscored. The demo's router
+A mounted table's id defaults to the last part of the resource's module name,
+underscored. The demo's router
 ([`demo/lib/demo_web/router.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/router.ex)):
 
 <!-- source: demo/lib/demo_web/router.ex -->
@@ -129,21 +127,19 @@ ash_data_table "/specimens", Demo.KitchenSink.Specimen
 The ids are `task`, `project`, `comment`, `label`, `task_label` and
 `specimen`. The path plays no part: `/tasks` has the id `task`.
 
-A [named table](named-tables.md) has the resource's id followed by `_` and
-the table's name: `ash_data_table "/tasks/board", Demo.Tracker.Task, table:
-:board` has the id `task_board`, and its parameters are
-`task_board[sort]=title`.
+A [named table](named-tables.md)'s id is the resource's id plus `_` and the
+table name: `ash_data_table "/tasks/board", Demo.Tracker.Task, table: :board`
+has the id `task_board`, with parameters like `task_board[sort]=title`.
 
-`ash_data_table "/tasks", Demo.Tracker.Task, id: "tasks"` sets another id. It is
-a string of lower-case letters, digits, `_` and `-` that starts with a
-letter; anything else raises when the router is compiled. The id also
-prefixes every DOM id of the table, so changing it changes both the links
-people have saved and the selectors of your tests.
+`ash_data_table "/tasks", Demo.Tracker.Task, id: "tasks"` sets another id: lower-case
+letters, digits, `_` and `-`, starting with a letter; anything else raises
+when the router is compiled. The id also prefixes every DOM id of the table,
+so changing it breaks both saved links and your tests' selectors.
 
 ## What is ignored
 
-The address is input from outside. Whatever does not fit the table as the
-person meets it is dropped silently, and the rest is applied.
+The address is outside input. Whatever does not fit the table as the person
+meets it is dropped silently; the rest applies.
 
 | In the URL | Example | Result |
 | --- | --- | --- |
@@ -162,31 +158,29 @@ person meets it is dropped silently, and the rest is applied.
 | A limit that names no relationship the person is offered to this table: an unknown resource, a relationship to another table, a private one, a key that is not one | `comment[of][task][labels]=…` | The table, not limited |
 | Parameters that are not the table's | `utm=mail` | Left as they are, and kept when the table patches the URL |
 
-Nothing in the page says that a parameter was ignored. The next change the
-person makes writes a clean address.
+The page does not say a parameter was ignored. The person's next change
+writes a clean address.
 
 ## Shared links
 
-A link carries the sort, the filters, the arguments and the page. It does
-not carry the person. Whoever opens it sees the table as the resource lets them see it:
-their records, their columns. A link that sorts or filters by a column the
-receiver has no access to shows them the table without that sort or filter.
-[Authorization](authorization.md) has the details.
+A link carries the sort, filters, arguments and page, not the person. Whoever
+opens it sees the table as the resource lets them: their records, their
+columns. A sort or filter by a column the receiver cannot access is dropped
+for them. Details: [Authorization](authorization.md).
 
-In the demo, the "Acting as" switcher returns to the address you were at, so
-you can watch one link change with the person.
+In the demo, the "Acting as" switcher returns to the current address, so you
+can watch one link change with the person.
 
 ## A table inside your own LiveView
 
 A tag (`<AshDataTable.table>`) or a table attached with
-`AshDataTable.attach/4` does **not** use the URL by default. The host page
-owns its address, and the table cannot know whether the page wants table
-parameters in it. Such a table keeps its sort, filters and page itself.
-They last as long as the LiveView does and are gone after a reload. (See
-[Layout and embedding](layout-and-embedding.md) for the three ways to place
-a table.)
+`AshDataTable.attach/4` does **not** use the URL by default: the host page
+owns its address, and the table cannot know whether it wants table parameters
+there. Such a table keeps its sort, filters and page itself, for as long as
+the LiveView lives; they are gone after a reload. (The three ways to place a
+table: [Layout and embedding](layout-and-embedding.md).)
 
-The demo's dashboard has two tables of this kind
+The demo's dashboard has two such tables
 ([`demo/lib/demo_web/live/dashboard_live.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/live/dashboard_live.ex)):
 
 <!-- source: demo/lib/demo_web/live/dashboard_live.ex -->
@@ -201,22 +195,20 @@ The demo's dashboard has two tables of this kind
 />
 ```
 
-Neither is given `url`. (`heading` is about the line above the table; see
+Neither is given `url`. (`heading` concerns the line above the table; see
 [Layout and embedding](layout-and-embedding.md).)
 
-**Try it:** `/dashboard` in the demo. Sort one table and page the other: the
-address stays `/dashboard`, and neither table moves when the other does.
+**Try it:** `/dashboard`: sort one table and page the other. The address
+stays `/dashboard`, and neither table moves when the other does.
 
 ### An attached table: `url: true`
 
-A table attached with `AshDataTable.attach/4` keeps its state in the URL
-with `url: true`. That needs a LiveView mounted by the router (`live/3`),
-not one rendered inside another, which has no URL of its own; elsewhere
-`attach/4` raises an `ArgumentError`. The LiveView needs no
-`handle_params/3` of its own: the table hears every patch itself. The
-example is from a LiveView that exists for the demo's tests
-([`demo/test/support/attached_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/attached_tables.ex)),
-which has no `handle_params/3`:
+An attached table keeps its state in the URL with `url: true`. This needs a
+LiveView mounted by the router (`live/3`); one rendered inside another has no
+URL of its own, and there `attach/4` raises an `ArgumentError`. The LiveView
+needs no `handle_params/3`: the table hears every patch itself. The example
+is from a test LiveView without `handle_params/3`
+([`demo/test/support/attached_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/attached_tables.ex)):
 
 <!-- source: demo/test/support/attached_tables.ex -->
 ```elixir
@@ -234,17 +226,16 @@ def mount(_params, _session, socket),
 <AshDataTable.attached table={@bulletins} streams={@streams} />
 ```
 
-Where the LiveView has a `handle_params/3`, it runs after the table has
-taken its parameters. Call `attach/4` in `mount/3`: the table then reads
-once LiveView hands the LiveView its URL, before the first render.
+If the LiveView has a `handle_params/3`, it runs after the table has taken
+its parameters. Call `attach/4` in `mount/3`: the table then reads when
+LiveView hands over the URL, before the first render.
 
 ### A tag: `url`
 
-To keep a tag's state in the URL, pass the page's current URL as `url`.
-The demo's own pages do not do this, so the example is from a LiveView
-that exists for the demo's tests
+To keep a tag's state in the URL, pass the page's current URL as `url`. The
+demo's own pages don't, so the example is from a test LiveView
 ([`demo/test/support/plain_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/plain_tables.ex)).
-The LiveView assigns the URL that `handle_params/3` receives:
+It assigns the URL `handle_params/3` receives:
 
 <!-- source: demo/test/support/plain_tables.ex -->
 ```elixir
@@ -262,37 +253,33 @@ and hands it to its tables:
 <AshDataTable.table id="tickets" resource={Plain.Ticket} url={@url} />
 ```
 
-Each table then patches the page's URL, with its parameters under its id
-(`?entries[sort]=title`), and reads its state from the URL on every update.
-Everything above holds for it, as for the router page and an attached
-table with `url: true`: the format, what is ignored, reload, the back
-button and shared links.
-The tests of this page
+Each table then patches the page's URL with its parameters under its id
+(`?entries[sort]=title`) and reads its state from the URL on every update.
+Everything above holds, as for the router page and an attached table with
+`url: true`: format, what is ignored, reload, back button, shared links. The
+page's tests
 ([`demo/test/demo_web/tables/embedded_url_table_test.exs`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/demo_web/tables/embedded_url_table_test.exs))
-sort, filter and page both tables and open the addresses they arrive at.
+sort, filter and page both tables and open the resulting addresses.
 
-`handle_params/3` is called for a LiveView that is mounted in the router. A
-LiveView rendered inside another one has no URL of its own to hand down.
+`handle_params/3` is called for a LiveView mounted in the router. A LiveView
+rendered inside another has no URL of its own to hand down.
 
 ### Setting the state from the page
 
-A LiveView can give an attached table, or the router page's table, a sort,
-filters, arguments or a page itself with the command
-`AshDataTable.put_state/3`, in the format of this guide's parameters; with
-the state in the URL that patches the URL. See
-[Events and commands](events-and-commands.md).
+A LiveView can set an attached table's, or the router page table's, sort,
+filters, arguments or page with the command `AshDataTable.put_state/3`, in
+this guide's parameter format; with the state in the URL, that patches the
+URL. See [Events and commands](events-and-commands.md).
 
 ## Several tables on one page
 
-Each table needs an `id` that is unique on the page. Two tables of one
-resource, its default table and a named one, have different ids without one
-being written (`comment` and `comment_compact`); the same table placed
-twice needs an `id` for each. Because the parameters
-are nested under the id, several tables with their state in the URL share
-one address without
-touching each other's state, and each leaves the other's parameters and the
-page's own in place when it patches. On the page above, paging the tickets
-and then the entries gives:
+Each table needs an `id` unique on the page. Two tables of one resource, its
+default and a named one, differ without an `id` being written (`comment` and
+`comment_compact`); the same table placed twice needs an `id` for each.
+Because parameters are nested under the id, several URL-state tables share one
+address without touching each other's state, and each leaves the others' and
+the page's parameters in place when it patches. On the page above, paging the
+tickets and then the entries gives:
 
 <!-- sketch -->
 ```text
@@ -301,47 +288,44 @@ and then the entries gives:
 
 ## Edge cases
 
-- **A page number beyond the last page** is a valid page number. The table
-  shows "No records" and a way to the last page; see
+- **A page number beyond the last page** is valid: "No records" and a way to
+  the last page; see
   [Reading, sorting and pagination](reading-sorting-and-pagination.md).
-- **A cursor that was altered** is not dropped, because the table cannot tell
-  a valid cursor from an invalid one without reading. The read fails and the
-  table says "The records could not be loaded."
+- **An altered cursor** is not dropped, since the table cannot tell a valid
+  cursor from an invalid one without reading. The read fails: "The records
+  could not be loaded."
 - **A filter change removes the page.** Any change of sort, filters,
-  arguments or page size starts again at the first page, so `page`, `after`
-  and `before` disappear from the address.
+  arguments or page size starts at the first page, so `page`, `after` and
+  `before` leave the address.
 - **An ignored parameter stays in the address** until the person changes
-  something. Then the table writes its state afresh and the stray parameter
-  is gone.
-- **A refused read keeps the address.** When the router page's read comes
-  to be refused while the page is open, the browser is sent to the same URL
-  again, which then answers 404.
-- **The locale and the actor are not in the URL.** They come from the
-  session.
-- **A limit names a record, and gives no access to it.** The parent is read
-  as the person on every read. A key of a record that is not theirs shows
-  "This record is no longer available." and no rows.
+  something; then the table writes its state afresh without it.
+- **A refused read keeps the address.** When the router page's read becomes
+  refused while the page is open, the browser is sent to the same URL again,
+  which then answers 404.
+- **The locale and the actor are not in the URL.** They come from the session.
+- **A limit names a record but gives no access to it.** The parent is read as
+  the person on every read. A key of a record that is not theirs shows "This
+  record is no longer available." and no rows.
 - **Going back from a full view** returns to the page the link was on, with
-  the state in its address. The rows that were expanded there are closed.
+  its address state. Rows expanded there are closed.
 
 ## Things people trip over
 
-- **The id is `task`, not `tasks`.** It comes from the module name, not from
-  the path.
-- **A table in your own LiveView forgets its state on reload.** That is
-  the default. Pass `url` to a tag, or `url: true` to `attach/4`, if the
-  state should survive.
-- **Passing `url` to a tag without `handle_params/3`.** The table patches
-  the URL, but the LiveView has to receive the patch and hand the new URL
-  down, or the table never sees its new state. An attached table with
-  `url: true` needs none of this.
-- **Building a link with an unknown operator or column.** Nothing fails; the
-  filter is not there. Check the column's name and its operators.
+- **The id is `task`, not `tasks`.** It comes from the module name, not the
+  path.
+- **A table in your own LiveView forgets its state on reload.** That is the
+  default. Pass `url` to a tag, or `url: true` to `attach/4`, to keep it.
+- **Passing `url` to a tag without `handle_params/3`.** The table patches the
+  URL, but the LiveView must receive the patch and hand the new URL down, or
+  the table never sees its new state. An attached table with `url: true`
+  needs none of this.
+- **A link with an unknown operator or column.** Nothing fails; the filter is
+  simply absent. Check the column's name and operators.
 - **Expecting a link to show the sender's rows.** It shows the receiver's.
 
 ## Not in the first version
 
-No saved views, no per-user memory of a table's state, no sort by several
-columns in the address, and nothing of a nested table in the address but its
-full view. The roadmap is in the
+No saved views, no per-user memory of table state, no multi-column sort in
+the address, and nothing of a nested table in the address except its full
+view. The roadmap is in the
 [specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

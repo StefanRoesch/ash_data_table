@@ -1,19 +1,15 @@
 # Reading, sorting and pagination
 
-After reading this guide you can choose the read action behind a table, set
-its page size and default order, let a person choose the page size, pick
-between offset and keyset pagination, and say which columns a person can sort
-by and why.
-
-Filtering has [its own guide](filtering.md), and so have
-[what is kept in the URL](state-in-the-url.md) and the
-[arguments](arguments.md) a read action takes.
+This guide covers the read action behind a table, its page size and default
+order, a page-size menu, offset and keyset pagination, and which columns sort.
+[Filtering](filtering.md), [state in the URL](state-in-the-url.md) and
+[arguments](arguments.md) have their own guides.
 
 ## The smallest example
 
-A table reads through one read action of its resource: the primary read
-action, unless the block names another. Everything about how the records are
-read is declared on that action. The primary read action of the demo's tasks
+A table reads through one read action of its resource: the primary one,
+unless the block names another. How records are read is declared on that
+action. The primary read action of the demo's tasks
 ([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
@@ -32,54 +28,47 @@ read :read do
 end
 ```
 
-(What is left out here is the action's argument, a search term:
-[Arguments](arguments.md).)
+(Left out: the action's search-term argument, see [Arguments](arguments.md).)
 
-**Try it:** `/tasks` in the demo, as Ada Admin. The page holds 25 tasks,
-newest first, and says "1–25 of 320" under the table. None of the three
-facts is in the `table` block.
+**Try it:** `/tasks` in the demo, as Ada Admin: 25 tasks, newest first,
+"1–25 of 320" under the table. None of this is in the `table` block.
 
 ## Everything runs on the server, through the read action
 
-For every page it shows, the table builds a query for the read action and
-runs it:
+For every page, the table builds a query for the read action and runs it with:
 
-- the arguments the person gave the action, with `Ash.Query.for_read/4`;
-- the sort the person chose, with `Ash.Query.sort_input/2`;
-- the filters the person set, with `Ash.Query.filter_input/2`;
-- the calculations among the columns, each with the arguments its column
-  gives it, and the related records of its
-  [reference cells](columns-and-defaults.md#reference-cells), as loads;
-- the page, as the `page` option of the read;
+- the person's arguments for the action, via `Ash.Query.for_read/4`;
+- the person's sort, via `Ash.Query.sort_input/2`;
+- the person's filters, via `Ash.Query.filter_input/2`;
+- as loads: the calculation columns, each with its column's arguments, and
+  the related records of
+  [reference cells](columns-and-defaults.md#reference-cells);
+- the page, as the read's `page` option;
 - the actor, the tenant and `authorize?`.
 
-The aggregates among the columns are loaded onto the records of the page in
-a statement of their own, after the page is read, as the same person
-(`Ash.load/3`). Sorting and filtering by an aggregate are part of the
-query all the same. The extra statement is there for a defect in the SQL
-layer (tracked as #35): a statement that selects an aggregate beside a field
-that a field policy hides on some records is wrapped in a subquery, and the
-statement around it returns the page's rows in no particular order. On the
-demo's `/tasks`, which has one aggregate column, it costs a statement of
-about a millisecond and a half per read.
+Aggregate columns are loaded onto the page's records in a separate statement
+after the read, as the same person (`Ash.load/3`). Sorting and filtering by an
+aggregate stay in the query. The extra statement works around a SQL-layer
+defect (#35): a statement that selects an aggregate beside a field a field
+policy hides on some records is wrapped in a subquery, and the outer statement
+returns the rows in no particular order. On the demo's `/tasks` (one
+aggregate column) it costs about 1.5 ms per read.
 
-`sort_input` and `filter_input` are the functions Ash has for input from
-outside, the ones the API extensions use. They accept public fields only.
-The action's own filter, preparations and policies apply as they do for any
-other caller. Nothing is sorted, filtered or cut into pages in the browser.
+`sort_input` and `filter_input` are Ash's functions for outside input, used by
+the API extensions; they accept public fields only. The action's own filter,
+preparations and policies apply as for any caller. Nothing is sorted,
+filtered or paged in the browser.
 
 ## Page size and default sort live on the read action
 
-The `table` block has no option for the page size and none for the default
-order. This is the rule people least expect, and it is deliberate. A table is
-an interface to the resource, as `ash_json_api` and `ash_graphql` are, and in
-Ash it is the read action that says how records are paged and ordered. If the
-block had its own page size, the same action would behave differently
-depending on who called it, and there would be two places to look.
+The `table` block has no page-size option and no default-order option. This
+is deliberate: a table is an interface to the resource, like `ash_json_api`
+and `ash_graphql`, and in Ash the read action decides paging and order. A
+page size in the block would make the same action behave differently per
+caller, with two places to look.
 
-**Page size.** It is the action's `default_limit`. When the action has none
-it is 25. It is never more than the action's `max_page_size`, which is 250
-unless the action says otherwise.
+**Page size** is the action's `default_limit`, 25 if it has none, and never
+more than its `max_page_size` (250 unless the action says otherwise).
 
 | The action's `pagination` | Rows per page |
 | --- | --- |
@@ -88,13 +77,12 @@ unless the action says otherwise.
 | `max_page_size: 10`, no `default_limit` | 10 |
 | `default_limit: 500`, no `max_page_size` | 250 |
 
-A person cannot change the page size in the table, unless the block
-offers them a choice: see
+A person can change the page size only if the block offers a choice: see
 [Letting a person choose the page size](#letting-a-person-choose-the-page-size).
 
-**Default sort.** It is the sort the action's preparations build, such as
-`prepare build(sort: [inserted_at: :desc, id: :desc])` above. While a person
-sorts by a column, the action's sort still applies after theirs, as a
+**Default sort** is the sort the action's preparations build, such as
+`prepare build(sort: [inserted_at: :desc, id: :desc])` above. When a person
+sorts by a column, the action's sort still applies after theirs as a
 tie-breaker.
 
 ### A read action for the table
@@ -118,8 +106,8 @@ read :open do
 end
 ```
 
-The block names the action with `read_action`. No demo page is mounted on
-`open`, so this example is from the library's own test resources
+The block names it with `read_action`. No demo page uses `open`, so this
+example is from the library's test resources
 ([`test/support/reading.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/test/support/reading.ex)):
 
 <!-- source: test/support/reading.ex -->
@@ -134,14 +122,14 @@ table do
 end
 ```
 
-The action has to be a `public?` read action of the resource. So has the
-primary read action, where the block names none: a table runs no private
-action, however it came by it. See
+The action must be a `public?` read action of the resource, and so must the
+primary read action when the block names none: a table runs no private
+action. See
 [Authorization](authorization.md#every-action-a-table-runs-is-public).
 
 ### Letting a person choose the page size
 
-`page_sizes` in the block puts a "Rows per page" menu beside the pagination.
+`page_sizes` in the block adds a "Rows per page" menu beside the pagination.
 The demo's tasks offer three sizes:
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
@@ -149,66 +137,58 @@ The demo's tasks offer three sizes:
 page_sizes [10, 25, 50]
 ```
 
-The read action stays the authority. The block only says which of the sizes
-the action allows a person is offered:
+The read action stays the authority; the block only picks which allowed sizes
+to offer. Checked at compile time (see
+[Mistakes at compile time](mistakes-at-compile-time.md)):
 
-- No size may be more than the action's `max_page_size` (250 when the action
-  names none).
-- The action's `default_limit` has to be one of the sizes. It is the size the
-  table opens with.
-- An action without a `default_limit` opens with the first size as you wrote
-  it. The 25 from the table above does not apply then, whether or not 25 is
-  in the list.
-- The list needs at least two sizes, each once. One size is no choice.
+- No size may exceed the action's `max_page_size` (250 if it names none).
+- The action's `default_limit` must be one of the sizes; the table opens with it.
+- Without a `default_limit`, the table opens with the first size as written.
+  The default of 25 does not apply then, whether or not 25 is in the list.
+- At least two sizes, each once.
 
-Each of these is checked when the resource is compiled; see
-[Mistakes at compile time](mistakes-at-compile-time.md). The menu shows the
-sizes in ascending order, whatever order you wrote them in.
+The menu lists the sizes in ascending order, whatever order you wrote.
 
-Choosing a size applies at once. The table goes back to its first page and
-keeps the sort, the filters and the arguments. This is so under keyset
-pagination too: a cursor belongs to the size it was made with. The range
-("1–50 of 320"), the page numbers and "Select all 320 that match" follow the
-new size.
+Choosing a size applies at once: the table goes to its first page and keeps
+the sort, filters and arguments. This holds under keyset pagination too (a
+cursor belongs to the size it was made with). The range ("1–50 of 320"),
+page numbers and "Select all 320 that match" follow the new size.
 
-The choice is part of the table's state, like the sort: `task[per]=50` in
-the URL of a table that keeps its state there (the router page, a tag given
-`url`, a table attached with `url: true`), and kept by the table itself
-where it is nested or keeps its state itself. The size the table opens with
-is left out of the URL. See [State in the URL](state-in-the-url.md).
+The choice is table state, like the sort: `task[per]=50` in the URL of a table
+that keeps its state there (the router page, a tag given `url`, a table
+attached with `url: true`); otherwise the table keeps it itself (nested, or
+keeping its own state). The opening size is left out of the URL. See
+[State in the URL](state-in-the-url.md).
 
-A size is a claim, wherever it comes from. One that is not in `page_sizes`
-(`/tasks?task[per]=1000`, or an event somebody made up) is ignored, and the
-table reads with the size it opens with. The server never reads a larger
-page than the block offers.
+A size not in `page_sizes` (`/tasks?task[per]=1000`, or a made-up event) is
+ignored and the table reads with its opening size. The server never reads a
+larger page than the block offers.
 
 `page_sizes` belongs to one table: a [named table](named-tables.md) has its
 own or none. A nested table and a picker show the menu of the table they
-show. Two cases differ:
+show, except:
 
-- A nested table without pages has no menu. That is a single related record,
-  a relationship Ash cannot page, or a read action with a required argument
+- A nested table without pages has no menu: a single related record, a
+  relationship Ash cannot page, or a read action with a required argument
   (see [Nested tables](nested-tables.md)).
-- A relationship with a `read_action` of its own is read through that
-  action, so that action has to allow the sizes too. Where the relationship
-  is declared in a block, the compiler checks it. Where it is offered
-  without being declared, or a picker reads through an action of its own,
-  and that action does not allow the sizes, the table has that action's page
-  size and no menu.
+- A relationship with its own `read_action` is read through that action, which
+  must allow the sizes too. For a relationship declared in a block, the
+  compiler checks this. Where it is offered without being declared, or a
+  picker reads through its own action, and that action does not allow the
+  sizes, the table uses that action's page size and shows no menu.
 
-The menu has a visible label. It comes after Next, one more Tab stop, in a
+The menu has a visible label and comes after Next, one more Tab stop, in a
 nested table too.
 
-**Try it:** `/tasks` in the demo. Choose 50 under the table: the range says
-"1–50 of 320" and the address ends in `?task[per]=50`. Then open
-`/tasks?task[per]=1000`: the page holds 25 tasks. `/comments` has the menu
-with keyset pagination, and `/projects` has none.
+**Try it:** on `/tasks` choose 50: the range says "1–50 of 320" and the
+address ends in `?task[per]=50`. Open `/tasks?task[per]=1000`: 25 tasks.
+`/comments` has the menu with keyset pagination; `/projects` has none.
 
 ## Pagination
 
-When the read action supports pagination, the table always paginates. Which
-strategy it uses follows from the action, and `paginate_with` chooses when
-the action supports both:
+When the read action supports pagination, the table always paginates. The
+strategy follows from the action; `paginate_with` chooses when it supports
+both:
 
 | The action supports | `paginate_with` | The table pages by |
 | --- | --- | --- |
@@ -218,10 +198,8 @@ the action supports both:
 | both | `:keyset` | keyset |
 | neither | not set | nothing: every record is loaded |
 
-Naming a strategy the action does not support is a mistake the compiler
-reports. The option's name and values are those of `ash_graphql`.
-
-From the library's test resources:
+Naming a strategy the action does not support is a compile error. The
+option's name and values are those of `ash_graphql`. From the test resources:
 
 <!-- source: test/support/reading.ex -->
 ```elixir
@@ -234,7 +212,7 @@ table do
 end
 ```
 
-What a person gets differs by strategy:
+What a person gets per strategy:
 
 | | Offset | Keyset | No pagination |
 | --- | --- | --- | --- |
@@ -245,20 +223,22 @@ What a person gets differs by strategy:
 | Sorting by a calculation or aggregate | yes | no | yes |
 | Demo page | `/tasks`, `/projects`, `/specimens` | `/comments` | `/labels` |
 
-The controls are a navigation landmark under the table. They are ordinary
-buttons, Tab stops after the table's rows.
+The controls are a navigation landmark under the table: ordinary buttons, Tab
+stops after the rows.
 
-Under either strategy the table asks the read for the count when the action
-is `countable`, and only then. An offset table uses it for the range, the
-last page number and the announcement after a filter change. A keyset table
-has the total and nothing else: a cursor says where a page starts, not how
-many records lie before it. So it shows the total alone, "320 records", and
-announces it after a filter change. Counting is a query of its own on every
-read; `pagination countable: false` on the action switches it off, and the
-table then shows no total and announces "Results updated".
+The table asks for the count only when the action is `countable`, under
+either strategy:
 
-The comments in the demo are read by keyset only, twenty to a page. The
-action does not say `countable`, and in Ash an action counts unless it says
+- Offset uses it for the range, the last page number and the announcement
+  after a filter change.
+- Keyset shows only the total, "320 records", and announces it after a filter
+  change; a cursor says where a page starts, not how many records precede it.
+- Counting is an extra query on every read. `pagination countable: false`
+  switches it off; the table then shows no total and announces "Results
+  updated".
+
+The demo's comments are read by keyset only, twenty to a page. The action
+does not say `countable`, and in Ash an action counts unless it says
 `countable: false`:
 
 <!-- source: demo/lib/demo/tracker/comment.ex -->
@@ -271,8 +251,7 @@ end
 ```
 
 The labels are read without pagination. A read action that declares none
-loads every record, without a warning, as it does for the other Ash
-interfaces:
+loads every record, without a warning, as with the other Ash interfaces:
 
 <!-- source: demo/lib/demo/tracker/label.ex -->
 ```elixir
@@ -282,19 +261,18 @@ read :read do
 end
 ```
 
-Pages of more than a hundred rows or so are slow in the browser. There is no
-virtual scrolling yet, so keep `default_limit` moderate and give a table on a
-large resource a paginated action.
+Pages over about a hundred rows are slow in the browser. There is no virtual
+scrolling yet: keep `default_limit` moderate and give a table on a large
+resource a paginated action.
 
 ## Sorting
 
-A column that sorts has a button in its heading. A click on it, or Enter or
-Space while it has focus, sorts by that column: ascending first, then descending, then not at all, which leaves
-the action's own order. One column is sorted at a time. Any change of sort
-returns to the first page; the filters stay.
+A sortable column has a button in its heading. Click, Enter or Space cycles
+ascending, descending, then off (the action's own order). One column is
+sorted at a time. A sort change returns to the first page; filters stay.
 
-**Which columns can be sorted is the resource's decision.** The table asks
-`Ash.Resource.Info.sortable?/3`, with the pagination strategy the table uses:
+**The resource decides which columns sort.** The table asks
+`Ash.Resource.Info.sortable?/3` with its pagination strategy:
 
 | Column | Offset or no pagination | Keyset |
 | --- | --- | --- |
@@ -304,24 +282,21 @@ returns to the first page; the filters stay.
 | An aggregate | yes | no |
 | A reference cell | no | no |
 
-For one person an aggregate column can be without its sort where the table
-has it for others: an aggregate that a field policy hides from them on some
-records. See
+An aggregate column can lose its sort for one person while others keep it:
+when a field policy hides it from them on some records. See
 [Columns and defaults](columns-and-defaults.md#what-a-table-does-not-sort-by).
 
-An embedded resource is the one place where a table says no and
-`sortable?/3` says yes. `Ash.Query.sort_input/2`, through which a table
-sorts, refuses an embedded resource ("is not sortable"), and `ash_json_api`
-and `ash_graphql` leave embedded resources out of what they sort by. The
-same goes for a NewType of a map, which is a map all the same. See
+An embedded resource is the one case where the table says no and
+`sortable?/3` says yes: `Ash.Query.sort_input/2` refuses it ("is not
+sortable"), and `ash_json_api` and `ash_graphql` leave embedded resources out
+of sorting. The same goes for a NewType of a map. See
 [Maps and embedded resources](maps-and-embedded-resources.md#sorting-and-filtering).
 
-A calculation or an aggregate cannot be sorted under keyset pagination
-because that is Ash's answer: `sortable?/3` says no for both when the
-pagination type is keyset, and the table does not second-guess it. If a table
-has to sort by an aggregate, page it by offset.
+Under keyset pagination, `sortable?/3` says no for calculations and
+aggregates, and the table follows Ash. To sort by an aggregate, page by
+offset.
 
-The block can switch sorting off for a column, and cannot switch it on:
+The block can switch sorting off for a column, never on:
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -332,123 +307,105 @@ column :description do
 end
 ```
 
-`sortable? true` on a column the resource does not allow to be sorted is
-reported when the resource is compiled. See
-[Mistakes at compile time](mistakes-at-compile-time.md).
+`sortable? true` on a column the resource does not allow to sort is a compile
+error; see [Mistakes at compile time](mistakes-at-compile-time.md).
 
 **Try it:** on `/tasks`, "Comments" (an aggregate) and "Overdue?" (an
 expression calculation) sort. "Headline" (computed in Elixir) and
-"Description" (`sortable? false`) do not: a click on their heading does
-nothing.
+"Description" (`sortable? false`) do not: clicking their heading does nothing.
 
 ## Reading related records
 
-A nested table, and a page limited to the records of one parent, do not
-read their resource's action directly. They read the **parent record by its
-primary key, as the person**, with the relationship as a load that carries
-the query described above: the sort, the filters and the page.
-
-What differs from a table of its own:
-
-- The read action is the relationship's own `read_action` when it has one,
-  else the one of the destination's table. Either has to be `public?`.
-- The parent record is read through the read action of the table that
-  shows it.
-- With no sort chosen by the person, the relationship's own `sort` comes
-  first.
-- There are pages only where Ash can page the relationship. A single related
-  record has no sort, no filters and no pages.
-- The records are read bare, and everything the columns show besides
-  attributes is loaded onto them afterwards.
-- No total is asked for while a filter is set on a column the person sees
-  on some records only.
-
-Each of these is explained in [Nested tables](nested-tables.md).
+A nested table, and a page limited to one parent's records, do not read their
+resource's action directly. They read the **parent record by its primary key,
+as the person**, with the relationship as a load carrying the query above:
+sort, filters and page. The read action is the relationship's own
+`read_action` if it has one, else the destination table's; either must be
+`public?`. No total is asked for while a filter is set on a column the person
+sees on some records only. The other differences (the relationship's own
+`sort` first, pages only where Ash can page the relationship, records read
+bare) are in
+[Nested tables](nested-tables.md#how-a-nested-table-is-read-and-why).
 
 ## Loading, empty and failed reads
 
-The first read of the table on the page runs in place, before the first
-render, so that render already has its rows. Later reads, and every read of
-a nested table, run beside the LiveView process: the table is marked
-`aria-busy`, and the previous rows stay in view, dimmed, until the new ones
-arrive. A read that is on its way when the page is left, or when its table
-closes, finishes its query, and what it brings is dropped: stopping it
-could cut a statement off in the middle. A running query is not cancelled.
+The table's first read on the page runs in place, before the first render, so
+that render has its rows. Later reads, and every nested-table read, run
+beside the LiveView process: the table is marked `aria-busy` and the previous
+rows stay, dimmed, until the new ones arrive. A read still running when the
+page is left or its table closes finishes its query and its result is
+dropped; a running query is not cancelled, since that could cut a statement
+off mid-way.
 
-A read that succeeds and finds nothing shows "No records".
+A successful read that finds nothing shows "No records".
 
-A read that is refused is a matter of [authorization](authorization.md). Any
-other failure takes the rows away and puts a message in their place:
+A refused read is a matter of [authorization](authorization.md). Any other
+failure replaces the rows with a message:
 
 | The failure | What the person reads |
 | --- | --- |
 | An error the read action returned on purpose: Ash's "invalid" class, such as an argument it requires or an error a preparation added | The error's message. It names a field only if the person has a column for it. |
 | Anything else: a database error, an exception in a preparation | "The records could not be loaded." The error itself is logged. |
 
-The demo has no page that fails. The library's tests use a test-only
-resource for it
+No demo page fails; the tests use a test-only resource
 ([`demo/test/demo_web/tables/failed_read_test.exs`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/demo_web/tables/failed_read_test.exs)).
 
 ## Edge cases
 
-- **A column of a `sensitive?` field is not sorted by.** The order of the
-  rows would say what its masked cells hide. See
+- **A `sensitive?` field's column is not sorted by**: the row order would
+  reveal what its masked cells hide. See
   [Sensitive columns](sensitive-columns.md).
 - **A page beyond the last** (`/tasks?task[page]=99`) shows "No records" and
-  "Page 99". When the action is `countable`, the page numbers are the pages
-  there are and the one the person is at (1, 13 and 99), and Previous leads
-  to the last page, not to page 98. Without a count the table does not know
-  where the last page is: Previous goes back one page at a time.
-- **A keyset cursor that somebody altered in the URL** shows "The records
-  could not be loaded."
-- **An exception raised by the very first read** is not caught: the page
-  fails as any LiveView does that crashes while it is mounted. The same
-  exception on a later read shows the message above.
-- **A read action with a required argument** is not run while that
-  argument is empty: the table says "Fill in … to see records." in place of
-  its rows. See [Arguments](arguments.md#a-required-argument).
+  "Page 99". With a `countable` action the page numbers are the existing pages
+  plus the current one (1, 13 and 99), and Previous leads to the last page,
+  not page 98. Without a count, Previous goes back one page at a time.
+- **A keyset cursor altered in the URL** shows "The records could not be
+  loaded."
+- **An exception in the very first read** is not caught: the page fails like
+  any LiveView that crashes on mount. The same exception on a later read shows
+  the message above.
+- **A read action with a required argument** is not run while that argument
+  is empty; the table says "Fill in … to see records." in place of its rows.
+  See [Arguments](arguments.md#a-required-argument).
 - **An offset action that is not `countable`** has no total and no last page
   number. Next is offered as long as Ash reports more records.
 - **A keyset table does not say where its page lies.** Its rows are numbered
-  from the top of each page for assistive technology, also when the total is
+  from the top of each page for assistive technology, even when the total is
   known; see [Keyboard and accessibility](keyboard-and-accessibility.md#what-assistive-technology-is-told).
-- **Under keyset pagination a new sort starts at the first page.** A cursor
+- **Under keyset pagination a new sort starts at the first page**: a cursor
   belongs to the order it was made in.
 - **A resource without a primary read action** needs `read_action`. With
   editable columns, row actions or a create action, and calculation,
-  aggregate or reference columns, it needs a primary read action all the
-  same; see [Inline editing](inline-editing.md).
-- **A resource whose primary read action is private** needs `read_action`
-  with a public one, and its table can then only read: Ash loads what a
-  create, an update or a destroy action returns through the primary read
-  action. See
+  aggregate or reference columns, it still needs a primary read action; see
+  [Inline editing](inline-editing.md).
+- **A resource whose primary read action is private** needs a public
+  `read_action`, and its table can then only read: Ash loads what a create,
+  update or destroy returns through the primary read action. See
   [Authorization](authorization.md#every-action-a-table-runs-is-public).
-- **A row that a person creates or deletes in the table changes the total
-  by one**, and a new row stands at the top of the page, without a read.
-  The next read counts and orders afresh. See
+- **Creating or deleting a row in the table changes the total by one**, and a
+  new row stands at the top of the page, without a read. The next read counts
+  and orders afresh. See
   [Row actions and create](row-actions-and-create.md#the-total).
-- **Sorting by a field that is hidden from the person on some records** is
-  possible and gives nothing away. See [Authorization](authorization.md).
+- **Sorting by a field hidden from the person on some records** is possible
+  and reveals nothing. See [Authorization](authorization.md).
 
 ## Things people trip over
 
 - **Looking for `page_size` or `sort` in the block.** They are
   `pagination default_limit:` and `prepare build(sort:)` on the read action.
-  `page_sizes` only offers a person a choice among sizes the action allows.
+  `page_sizes` only offers a choice among sizes the action allows.
 - **A custom read action is not paginated by default.** `defaults [:read]`
   supports both strategies; `read :name do … end` supports none until it has
   a `pagination` line. Without one the table loads every record.
-- **250 rows per page.** A `default_limit` above the action's
-  `max_page_size` is capped at it, and the default maximum is 250.
+- **250 rows per page.** A `default_limit` above `max_page_size` is capped,
+  and the default maximum is 250.
 - **No order at all.** Without a sort on the action, records come in whatever
-  order the data layer returns them, and pages are not stable.
-- **Choosing keyset and losing a sort.** Calculations and aggregates stop
-  being sortable. The compiler says so only where the block asks for
-  `sortable? true`.
+  order the data layer returns, and pages are not stable.
+- **Keyset loses sorts.** Calculations and aggregates stop being sortable. The
+  compiler says so only where the block asks for `sortable? true`.
 
 ## Not in the first version
 
-No sorting by several columns, no
-virtual scrolling and no search across columns. The later slices and what is
-out of scope are listed in the
+No sorting by several columns, no virtual scrolling, no search across
+columns. Later slices and what is out of scope are in the
 [specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

@@ -1,15 +1,14 @@
 # Named tables
 
-After reading this guide you can give a resource a second table beside its
-first, mount it, place it, nest it under another resource's rows, and move a
-table's declaration into a file of its own.
+Give a resource a second table beside its first; mount it, place it, nest it
+under another resource's rows, and move a table's declaration into a file of
+its own.
 
 ## The smallest example
 
-A resource has one table without anything being named: its **default
-table**, the one of the `table` block. A **named table** is another table of
-the same resource, declared in the `tables` block under a name. The demo's
-labels have both
+Every resource has a **default table**: the one of the `table` block. A
+**named table** is another table of the same resource, declared under a name
+in the `tables` block. The demo's labels have both
 ([`demo/lib/demo/tracker/label.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/label.ex)):
 
 <!-- source: demo/lib/demo/tracker/label.ex -->
@@ -26,35 +25,32 @@ tables do
 end
 ```
 
-The default table of the labels, at `/labels`, edits, deletes and creates.
-`:short` shows two columns and does nothing else.
+The labels' default table, at `/labels`, edits, deletes and creates. `:short`
+shows two columns and nothing else.
 
-**Try it:** `/tasks/board` in the demo, as Ada Admin. This is a named table
-of the tasks. Expand a row and open "Labels": the nested table is the short
-one. Then open `/labels`: the same records in the default table.
+**Try it:** `/tasks/board` in the demo, as Ada Admin, is a named table of the
+tasks. Expand a row and open "Labels": the nested table is the short one. Then
+open `/labels`: the same records in the default table.
 
 ## What a named table is
 
-A named table has everything the `table` block has: `read_action`,
+A named table takes everything the `table` block takes: `read_action`,
 `paginate_with`, `update_action`, `create_action`, `max_depth`,
-`on_forbidden`, and its own `column`, `relationship`, `action`, `argument`
-and `upload` declarations. Each guide about one of these holds for a named
-table as it is written.
+`on_forbidden`, and its own `column`, `relationship`, `action`, `argument` and
+`upload` declarations. The guides on these apply to a named table unchanged.
 
 Two rules are its own.
 
-**A named table takes nothing over from the default table.** It does not
-inherit its columns, its `update_action`, its actions or its `on_forbidden`.
-What it does not say has the default, exactly as in a `table` block: with no
-`column` it shows every public attribute, with no `read_action` it reads
-through the primary read action, with no `update_action` nothing is edited.
-So each table can be read by itself, top to bottom.
+**A named table inherits nothing from the default table**: not its columns,
+`update_action`, actions or `on_forbidden`. What it leaves out has the default,
+as in a `table` block: no `column` shows every public attribute, no
+`read_action` reads through the primary read action, no `update_action` edits
+nothing. So each table reads on its own, top to bottom.
 
-**`label_field` is not an option of a named table.** It says what a record
-of the resource is called, in a reference cell, in the picker, in a heading
-and in a message, whichever table shows the record. It belongs to the
-resource and is written once, in the `table` block. Written in a named
-table it is reported when the resource is compiled.
+**`label_field` is not an option of a named table.** It names a record of the
+resource in a reference cell, the picker, a heading and a message, whichever
+table shows the record. It belongs to the resource and is written once, in the
+`table` block. In a named table it is reported at compile time.
 
 | | Default table | Named table |
 | --- | --- | --- |
@@ -66,25 +62,22 @@ table it is reported when the resource is compiled.
 
 ### The default table is always there
 
-A resource that lists the extension has a default table whether it writes a
-`table` block or not. So a resource may declare named tables
-only: its default table is then the default set of columns, read through the
-primary read action. It is the table that a picker shows, that a
-relationship nests when it names no table, and that `ash_data_table` mounts
-without `table:`.
+A resource that lists the extension has a default table with or without a
+`table` block. A resource may declare only named tables: its default table is
+then the default set of columns, read through the primary read action. It is
+the table a picker shows, that a relationship nests when it names no table,
+and that `ash_data_table` mounts without `table:`.
 
 ### Names
 
-A name is an atom of lower-case letters, digits and `_` that starts with a
+A name is an atom of lower-case letters, digits and `_`, starting with a
 letter, such as `:compact` or `:by_week`. It becomes part of the table's id,
-and so of ids in the page and of the parameters of its URL. No two tables of
-a resource have the same name.
+so of ids in the page and of its URL parameters. No two tables of a resource
+share a name.
 
-`:default` is the name of the default table. No named table can have it, and
-wherever a table is named, `:default` names the default table:
-`table: :default` in the router and in `attach/4`, `table={:default}` on the
-tag and `table :default` in a `relationship` all mean the same as leaving it
-out.
+`:default` names the default table; no named table can take it. `table:
+:default` in the router and in `attach/4`, `table={:default}` on the tag and
+`table :default` in a `relationship` all mean the same as leaving it out.
 
 ## Mounting a named table
 
@@ -97,19 +90,17 @@ ash_data_table "/tasks/board", Demo.Tracker.Task, table: :board
 ash_data_table "/comments/compact", Demo.Tracker.Comment, table: :compact
 ```
 
-The page is like any mounted table: the layout, who is reading, the heading
-and the URL work as [Layout and embedding](layout-and-embedding.md) says.
-The heading and the page title are the resource's name, as on the page of
-the default table.
+The page works like any mounted table: layout, reader, heading and URL as in
+[Layout and embedding](layout-and-embedding.md). The heading and page title
+are the resource's name, as for the default table.
 
 **Try it:** `/comments/compact` and `/comments` as Ada Admin. The first has
-three columns and nothing to click in a row; the second has the comments'
-own columns, "Destroy" and "New comment".
+three columns and nothing to click in a row; the second has the comments' own
+columns, "Destroy" and "New comment".
 
-The router does not look at the resource, so that it does not depend on it
-at compile time. A name the resource has no table for is therefore found
-when the page is opened, not when the router is compiled. The page raises,
-and lists the tables there are:
+The router does not look at the resource, so as not to depend on it at
+compile time. An unknown name is therefore found when the page is opened, not
+when the router compiles. The page raises and lists the tables there are:
 
 <!-- sketch -->
 ```text
@@ -117,13 +108,13 @@ and lists the tables there are:
 ```
 
 A `table:` that cannot be a name at all (a string, an atom with a capital
-letter) raises when the router is compiled.
+letter) raises when the router compiles.
 
 ## Placing a named table
 
-`<AshDataTable.table>` takes the name as `table`, and `AshDataTable.attach/4`
-as the option `table:`. The demo's page `/named`
-places two tables of the comments
+`<AshDataTable.table>` takes the name as `table`, `AshDataTable.attach/4` as
+the option `table:`. The demo's page `/named` places two tables of the
+comments
 ([`demo/lib/demo_web/live/named_live.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/live/named_live.ex)):
 
 <!-- source: demo/lib/demo_web/live/named_live.ex -->
@@ -140,42 +131,40 @@ places two tables of the comments
 />
 ```
 
-A name the resource has no table for raises when the table is placed,
-with the same list of tables.
+An unknown name raises when the table is placed, with the same list of
+tables.
 
-Two tables of one resource are called the same unless you say otherwise:
-the name on the line above the grid is the resource's. `label` gives each
-its own, as above.
+Two tables of one resource carry the same name above the grid, the
+resource's, unless `label` gives each its own, as above.
 
 ## Ids and the URL
 
-The id of a table names its URL parameters and prefixes its ids in the
-page. Unless you give one, it is:
+A table's id names its URL parameters and prefixes its ids in the page. The
+default:
 
 | Table | Default id | Example |
 | --- | --- | --- |
 | The default table | the last part of the resource's module name, underscored | `comment` |
 | A named table | that, `_` and the table's name | `comment_compact` |
 
-So two tables of one resource stand on one page, and in one address,
-without an `id` being written. This holds for `ash_data_table`,
-`<AshDataTable.table>` and `attach/4`.
+So two tables of one resource fit on one page and in one address without an
+`id`. This holds for `ash_data_table`, `<AshDataTable.table>` and `attach/4`.
 
-**Try it:** `/named` as Ada Admin. Click "Body" in the lower table, then in
-the upper one. The address holds both, each under its own id:
+**Try it:** `/named` as Ada Admin. Click "Body" in the lower table, then in the
+upper one. The address holds both, each under its own id:
 
 <!-- sketch -->
 ```text
 /named?comment[sort]=body&comment_compact[sort]=body
 ```
 
-The same table placed twice on one page still needs an `id` for each
-placement. [State in the URL](state-in-the-url.md) has the parameters.
+The same table placed twice on one page still needs an `id` per placement.
+[State in the URL](state-in-the-url.md) has the parameters.
 
 ## A relationship that names a table
 
-A `relationship` of a table says which of the destination's tables it nests
-with `table`. The board of the tasks
+A table's `relationship` picks which of the destination's tables it nests with
+`table`. The tasks' board
 ([`demo/lib/demo/tracker/task/board_table.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task/board_table.ex)):
 
 <!-- source: demo/lib/demo/tracker/task/board_table.ex -->
@@ -189,38 +178,36 @@ relationship :labels do
 end
 ```
 
-Without `table`, the destination's default table is nested. A
-relationship of the default set (a table that declares no `relationship`)
-always nests the default table.
+Without `table`, the destination's default table is nested. A relationship of
+the default set (a table that declares no `relationship`) always nests the
+default table.
 
-**Try it:** `/tasks/board` as Ada Admin: expand a row and open "Comments".
-The nested table has three columns and no "New comment" on its line. Do the
-same on `/tasks`: there the comments are the default table, with their
-actions and "New comment".
+**Try it:** `/tasks/board` as Ada Admin: expand a row and open "Comments". The
+nested table has three columns and no "New comment". On `/tasks` the comments
+are the default table, with their actions and "New comment".
 
-Each table of a resource says this for itself. `/tasks` and `/tasks/board`
-both offer "Comments", and each nests another table of the comments.
+Each table decides this for itself: `/tasks` and `/tasks/board` both offer
+"Comments", each nesting another table of the comments.
 
 The nested table reads through the relationship's own `read_action` when it
-names one, else through the `read_action` of the table that is nested. A
-name the destination has no table for is reported when the resource is
-compiled: see [Mistakes at compile time](mistakes-at-compile-time.md#named-tables).
+names one, else through the nested table's `read_action`. A name the
+destination has no table for is reported at compile time: see
+[Mistakes at compile time](mistakes-at-compile-time.md#named-tables).
 
 ### The full view of a nested named table
 
 "Open in full view" leads to the mounted page of **the same table**: the
-compact comments under a task of the board lead to `/comments/compact`,
-never to `/comments`. A person is not sent from one table to another with
-other columns and other actions.
+compact comments under a board task lead to `/comments/compact`, never to
+`/comments`. A person is never sent to another table with other columns and
+actions.
 
-When that table is mounted nowhere, the nested table has no link. In the
-demo the short table of the labels is mounted nowhere, so "Labels" under a
-task of the board has none, although `/labels` mounts the labels' default
-table.
+When that table is mounted nowhere, the nested table has no link. In the demo
+the labels' short table is mounted nowhere, so "Labels" under a board task has
+none, although `/labels` mounts the labels' default table.
 
-The address names the table that offers the relationship. For the default
-table of the parent that is the resource's short name; for a
-named table it is followed by `_` and the table's name:
+The address names the table that offers the relationship: the resource's short
+name for the parent's default table, followed by `_` and the table's name for a
+named one:
 
 <!-- sketch -->
 ```text
@@ -228,27 +215,26 @@ named table it is followed by `_` and the table's name:
 ```
 
 A limit is only taken from a table that nests this very table. On
-`/comments/compact`, `comment_compact[of][task][comments]=KEY` is no limit:
-the default table of the tasks nests the default comments, not the compact
-ones. The page then shows every record, as it does for any limit it cannot
-take. [Nested tables](nested-tables.md#the-full-view) has the rest.
+`/comments/compact`, `comment_compact[of][task][comments]=KEY` is no limit: the
+tasks' default table nests the default comments, not the compact ones. The
+page then shows every record, as for any limit it cannot take.
+[Nested tables](nested-tables.md#the-full-view) has the rest.
 
 ## The picker
 
-The picker shows the destination's **default table**, from whichever table
-it is opened. On `/tasks/board` the assignee is chosen from the people's
-table as on `/tasks`. A reference cell and a `reference` of an action cannot
-name another table yet.
+The picker always shows the destination's **default table**, whichever table
+opens it. On `/tasks/board` the assignee is chosen from the people's table as
+on `/tasks`. A reference cell and an action's `reference` cannot name another
+table yet.
 
 ## A table in a file of its own
 
-A table's declaration can become long. It can live in a file of its own, as
-a resource's actions or policies can: as a **fragment** of the resource.
-This is Spark's own mechanism (`Spark.Dsl.Fragment`) and needs nothing from
-this library.
+A long table declaration can live in a file of its own, as a resource's
+actions or policies can: as a **fragment** of the resource. This is Spark's own
+mechanism (`Spark.Dsl.Fragment`) and needs nothing from this library.
 
-The fragment is a module that says what it is a fragment of, and lists the
-extension. The compact table of the comments
+The fragment is a module that says what it is a fragment of and lists the
+extension. The comments' compact table
 ([`demo/lib/demo/tracker/comment/compact_table.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/comment/compact_table.ex)):
 
 <!-- source: demo/lib/demo/tracker/comment/compact_table.ex -->
@@ -293,15 +279,14 @@ use Ash.Resource,
 
 What works:
 
-- **One fragment per named table.** Each fragment has a `tables` block with
-  its table; the resource lists them all. The tables come in this order:
-  those of the resource's own file, then those of the fragments in the order
-  of `fragments:`.
-- **The default table in a fragment.** A fragment can hold the `table`
-  block, `label_field` included, while the named tables stay in the
-  resource, or the other way round, or everything in fragments.
-- **Every compile-time check.** A fragment is not checked by itself. It is
-  part of the resource that lists it, and is checked with it, completely.
+- **One fragment per named table.** Each fragment has a `tables` block with its
+  table; the resource lists them all. Order: the tables of the resource's own
+  file, then those of the fragments in `fragments:` order.
+- **The default table in a fragment.** A fragment can hold the `table` block,
+  `label_field` included, with the named tables in the resource, or the other
+  way round, or everything in fragments.
+- **Every compile-time check.** A fragment is not checked alone; it is checked
+  completely as part of the resource that lists it.
 
 A mistake inside a fragment is reported for the resource and **points at the
 fragment's file and line**:
@@ -323,32 +308,31 @@ The module in brackets is the resource, not the fragment.
 
 ### One table, one place
 
-Keep each table whole in one place. Spark puts a block that is written in
-several places together, and for one table that is rarely what you want:
+Keep each table whole in one place. Spark merges a block written in several
+places, which for one table is rarely what you want:
 
-- **Declarations are added up.** A `table` block in the resource and another
-  in a fragment become one default table, with the resource's columns
-  first, then the fragment's.
-- **An option is the one that was given.** `label_field` in a fragment and
-  `update_action` in the resource both count.
-- **An option given twice with two values is a warning, and the fragment
-  wins.** `max_depth 1` in the resource and `max_depth 2` in a fragment give
-  2, and Spark prints
-  `table.max_depth is being overwritten from 1 to 2 by fragment: …`.
-- **A named table cannot be split.** Two `table :board` in two places are
-  two tables of one name, which is reported.
+- **Declarations add up.** A `table` block in the resource and one in a
+  fragment become one default table: the resource's columns first, then the
+  fragment's.
+- **Each option given once counts.** `label_field` in a fragment and
+  `update_action` in the resource both apply.
+- **An option given twice with two values warns, and the fragment wins.**
+  `max_depth 1` in the resource and `max_depth 2` in a fragment give 2, and
+  Spark prints `table.max_depth is being overwritten from 1 to 2 by fragment: …`.
+- **A named table cannot be split.** Two `table :board` in two places are two
+  tables of one name, which is reported.
 
-**Try it:** in a checkout of the demo, add `column :nothing` to
+**Try it:** in a demo checkout, add `column :nothing` to
 `demo/lib/demo/tracker/comment/compact_table.ex` and run `mix compile` in
 `demo/`. The warning names `Demo.Tracker.Comment` and the fragment's file.
-Take the line out again.
+Remove the line again.
 
 ## Reading a resource's tables
 
-`AshDataTable.Resource.Info.tables/1` returns every table of a resource, the
-default table first, and `AshDataTable.Resource.Info.table/2` the one of a
-name. Both give an `AshDataTable.Resource.Table`, in one shape for the default
-table and a named one:
+`AshDataTable.Resource.Info.tables/1` returns every table of a resource,
+default first; `AshDataTable.Resource.Info.table/2` returns one by name. Both
+give an `AshDataTable.Resource.Table`, the same shape for default and named
+tables:
 
 <!-- sketch -->
 ```elixir
@@ -360,29 +344,29 @@ Enum.map(table.columns, & &1.name)
 #=> [:body, :author, :inserted_at]
 ```
 
-The functions of one table (`columns/1`, `table_read_action/1` and the
-others) are about the default table.
+The single-table functions (`columns/1`, `table_read_action/1` and the others)
+are about the default table.
 
 ## Edge cases
 
-- **A resource with named tables and no `table` block** has its default
-  table all the same, with every default. If the primary read action is
-  private, that default table is reported, although nothing mounts it: name
-  a public `read_action` in a `table` block.
-- **The same column in several tables** is fine. Each table declares its
-  own; a duplicate is one inside a single table.
-- **A named table without any declaration** (`table :plain`) is the default
-  set of columns under another name and id.
-- **Authorization is the resource's.** A named table adds no rule and
-  removes none: the policies and field policies of the resource decide what
-  a person sees in every table of it. A column a person can never see is
-  left out of each table that has it.
-- **`max_depth` and `on_forbidden` are per table.** A page of a named table
-  uses its own, and a nested named table says what its own `on_forbidden`
-  says when its read is refused.
-- **An upload** belongs to the table that declares it, and limits the file
-  arguments of that table's actions only.
-- **The settings of the domain** (`AshDataTable.Domain`: the assign names and
+- **Named tables and no `table` block:** the default table still exists, with
+  every default. If the primary read action is private, that default table is
+  reported even though nothing mounts it: name a public `read_action` in a
+  `table` block.
+- **The same column in several tables** is fine; a duplicate is one inside a
+  single table.
+- **A named table with no declaration** (`table :plain`) is the default set of
+  columns under another name and id.
+- **Authorization is the resource's.** A named table adds and removes no rule:
+  the resource's policies and field policies decide what a person sees in each
+  of its tables. A column a person can never see is left out of every table
+  that has it.
+- **`max_depth` and `on_forbidden` are per table.** A named table's page uses
+  its own, and a nested named table follows its own `on_forbidden` when its
+  read is refused.
+- **An upload** belongs to the table that declares it and limits only the file
+  arguments of that table's actions.
+- **The domain's settings** (`AshDataTable.Domain`: the assign names and
   `authorize?`) hold for every table of the domain's resources.
 - **A full view from a table placed with another `id`** works the same: the
   link is found by resource and table, not by id.
@@ -390,25 +374,28 @@ others) are about the default table.
 ## Things people trip over
 
 - **Expecting a named table to start from the default one.** It starts from
-  nothing. Copy what it should have.
-- **Writing `label_field` in a named table.** It is the resource's: write
-  it in the `table` block.
-- **Nesting a named table and missing the link.** "Open in full view" is
-  there only when that very table is mounted. Mount it, or accept that the
-  nested table is the only place it is shown.
+  nothing; copy what it should have.
+- **`label_field` in a named table.** It is the resource's: write it in the
+  `table` block.
+- **A nested named table without the full-view link.** The link is there only
+  when that very table is mounted. Mount it, or accept that the nested table
+  is the only place it shows.
 - **The id is `comment_compact`, not `compact`.** It starts with the
-  resource's, so that tables of two resources with the same table name do
-  not meet.
-- **Forgetting `fragments:`.** A fragment that no resource lists declares
-  nothing, and nothing warns.
+  resource's, so tables of two resources with the same table name do not
+  clash.
+- **Forgetting `fragments:`.** A fragment no resource lists declares nothing,
+  and nothing warns.
 - **Forgetting `extensions: [AshDataTable.Resource]` on the fragment.** The
-  `tables` block is then unknown there, and the fragment does not compile.
+  `tables` block is then unknown there and the fragment does not compile.
 
 ## Not in the first version
 
-A reference cell and a `reference` cannot name which table their picker
-shows; it is always the default table. A named table has no name of its own
-for people: its heading is the resource's unless `label` says otherwise. A
-relationship of the default set cannot be told to nest a named table: declare
-the `relationship`. The roadmap is in the
+- A reference cell or `reference` choosing which table its picker shows; it is
+  always the default table.
+- A people-facing name for a named table: its heading is the resource's unless
+  `label` says otherwise.
+- Telling a relationship of the default set to nest a named table: declare the
+  `relationship`.
+
+The roadmap is in the
 [specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

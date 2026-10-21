@@ -1,14 +1,13 @@
 # Arguments
 
-After reading this guide you can put a table over a read action that takes
-arguments, show a calculation that takes arguments as a column, fixed by you
-or asked from the person, and say what the table does while an argument is
-missing or wrong.
+This guide covers a table over a read action that takes arguments, a
+calculation with arguments as a column (fixed by you or asked from the
+person), and what the table does while an argument is missing or wrong.
 
 ## The smallest example
 
-A read action with an argument needs nothing in the `table` block. The
-demo's tasks are read through an action that takes a search term
+A read action with an argument needs nothing in the `table` block. The demo's
+tasks are read through an action that takes a search term
 ([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
@@ -28,20 +27,19 @@ read :read do
 end
 ```
 
-The table of the tasks has inputs above its grid, the **argument line**,
-with one input for `search`, labelled "Search". They stand on the table's
-heading line, after its name and "Columns"; a nested table's stand on the
-line that opens it.
+The tasks table gets the **argument line**: one input for `search`, labelled
+"Search", on the table's heading line after its name and "Columns". A nested
+table's inputs stand on the line that opens it.
 
 **Try it:** `/tasks` in the demo, as Ada Admin. Type `login` into "Search"
-and press Enter: the rows are the tasks with "login" in their title or their
-description, the line under the table counts them, and the address is
+and press Enter: the rows are the tasks with "login" in title or description,
+the line under the table counts them, and the address is
 `/tasks?task[a][search]=login`.
 
 ## The arguments of the read action
 
-Every `public?` argument of the action the table reads through has an input
-on the argument line, in the action's order. Nothing is declared for it.
+Every `public?` argument of the table's read action gets an input on the
+argument line, in the action's order. Nothing is declared.
 
 | The argument | Its input |
 | --- | --- |
@@ -54,24 +52,24 @@ on the argument line, in the action's order. Nothing is declared for it.
 | an array of text, numbers, dates or datetimes | an input per value, with a button that adds one and one each that takes it away |
 | a UUID, a time, and what else is written as one line of text | a text input |
 
-- An input is called by the argument's name in words ("Search"), which a
-  host translates as it translates a column's label (see
+- The input's label is the argument's name in words ("Search"), translated
+  like a column label (see
   [Messages and translations](messages-and-translations.md)). An `argument`
-  in the block gives another label, and nothing else.
-- An input starts with the default the argument has in the action, where
-  that is a value. A box that is not ticked gives `false`.
-- An argument that is `allow_nil? false` is marked with `*` and
-  `aria-required`, as a required field of the action panel is.
-- A text argument with a `max_length` has a counter after its input
-  ("5/60"), which follows what is typed. See
+  in the block only changes the label.
+- An input starts with the argument's default in the action, where that is a
+  value. An unticked box gives `false`.
+- An `allow_nil? false` argument is marked with `*` and `aria-required`, like
+  a required field of the action panel.
+- A text argument with a `max_length` has a counter after its input ("5/60")
+  that follows typing. See
   [Inline editing](inline-editing.md#the-counter-of-a-text).
-- An argument that is `public? false` is never on the line and never given.
-- An optional argument of a type without an input (a map, a union, a file)
-  is left out. A read action that *requires* such an argument cannot be
-  behind a table: the compiler says so.
+- A `public? false` argument is never on the line and never given.
+- An optional argument of a type without an input (a map, a union, a file) is
+  left out. A read action that *requires* one cannot be behind a table: the
+  compiler says so.
 
-The demo's deadlines are the tasks that are due by a day, read through an
-action with three arguments
+The demo's deadlines are the tasks due by a day, read through an action with
+three arguments
 ([`demo/lib/demo/tracker/deadline.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/deadline.ex)):
 
 <!-- source: demo/lib/demo/tracker/deadline.ex -->
@@ -87,7 +85,7 @@ read :due do
 end
 ```
 
-and its block names that action and gives one argument a label:
+Its block names that action and relabels one argument:
 
 <!-- source: demo/lib/demo/tracker/deadline.ex -->
 ```elixir
@@ -107,20 +105,18 @@ end
 
 ## When an argument is applied
 
-As a filter is: when its input is left, or when Enter is used in it; a
-choice, a box and a list's buttons at once. There is no button that runs the
-line. Typing sends nothing.
+Like a filter: when its input is left or Enter is pressed in it; a choice, a
+box and a list's buttons apply at once. There is no button that runs the
+line, and typing sends nothing.
 
-What the person gave is part of the table's state, with the sort and the
-filters:
+The arguments are table state, with the sort and filters:
 
-- a table with its state in the address (the router page, a tag given
-  `url`, a table attached with `url: true`) keeps them there, so the page
-  can be reloaded, linked, and stepped back through (see
+- a table with its state in the address (the router page, a tag given `url`,
+  a table attached with `url: true`) keeps them there, so the page can be
+  reloaded, linked and stepped back through (see
   [State in the URL](state-in-the-url.md));
-- a table that keeps its state itself (a tag without `url`, a table
-  attached without `url: true`, a nested table, a picker) keeps the
-  arguments there too.
+- a table that keeps its state itself (a tag without `url`, a table attached
+  without `url: true`, a nested table, a picker) keeps them itself.
 
 | In the address | Example |
 | --- | --- |
@@ -129,67 +125,62 @@ filters:
 | A list | `deadline[a][tags][]=api&deadline[a][tags][]=mobile` |
 | A list that was emptied, where its default is not empty | `deadline[a][tags]=` |
 
-An argument that is as its input shows it with nothing chosen is not in the
-address: the action's default is left to the action.
+An argument whose input shows nothing chosen is not in the address: the
+action's default is left to the action.
 
-A change of an argument starts at the first page again, keeps the sort and
-the filters, is read out as a change of the filters is ("12 results"), and
-gives up the selection of rows.
+Changing an argument returns to the first page, keeps sort and filters, is
+announced like a filter change ("12 results"), and clears the row selection.
 
 ## A required argument
 
-Whether an argument can be left out is the action's to say: Ash reports an
-argument that is `allow_nil? false` and missing, and applies a `default`.
-The table adds no rule.
+Ash decides whether an argument may be left out: it reports a missing
+`allow_nil? false` argument and applies a `default`. The table adds no rule.
 
 While such an argument is empty the read action is **not run**. In place of
-the rows the table says which argument to fill in:
+the rows the table names the argument to fill in:
 
 <!-- sketch -->
 ```text
 Fill in Due by to see records.
 ```
 
-That is neither an error nor "No records", and it is read out. The grid
-keeps its header and its filter row, and the table has no pages and no
-create button until it has read.
+This is neither an error nor "No records", and it is announced. The grid
+keeps its header and filter row; there are no pages and no create button
+until the table has read.
 
-**Try it:** `/deadlines` in the demo. Give "Due by" a day: the rows appear,
-and the address carries the day. Empty it again: the rows go.
+**Try it:** `/deadlines`: give "Due by" a day and the rows appear, with the
+day in the address. Empty it again: the rows go.
 
-A person who can never run the read action is not asked to fill in anything.
-Ash is asked first, without a read, and such a person is answered as when
-the read is refused: a page that does not exist, or the message of
-`on_forbidden :message` (see [Authorization](authorization.md)).
+A person who can never run the read action is not asked to fill anything in.
+Ash is asked first, without a read, and the person is answered as for a
+refused read: a page that does not exist, or the `on_forbidden :message`
+message (see [Authorization](authorization.md)).
 
 ## A value Ash refuses
 
-What a person types is given to the action as they typed it, and Ash casts
-it. A value that is none of the argument's type, or that its constraints
-refuse, is not applied:
+What a person types goes to the action as typed, and Ash casts it. A value
+that does not fit the argument's type or constraints is not applied:
 
-- it stays in its input, which is marked (`aria-invalid`) and described by
-  the action's message ("must be greater than or equal to 0"), in the words
-  of the host's error translator;
-- the message is read out, with the input's label;
-- the argument keeps the value it had, the rows stay as they are, and the
-  address does not change. No error takes the place of the rows.
+- it stays in its input, marked `aria-invalid` and described by the action's
+  message ("must be greater than or equal to 0") in the host's error
+  translator's words;
+- the message is announced with the input's label;
+- the argument keeps its previous value, the rows stay, the address does not
+  change, and no error replaces the rows.
 
-The input of a number says the least and the most the argument's
-constraints allow (`min`, `max`, `step`): the arrows of "Due within: Days"
-stop at 0. That describes and holds nothing back. A number past the limit
-can be typed, and is refused by Ash as above. See
+A number input shows the constraints' `min`, `max` and `step`: the arrows of
+"Due within: Days" stop at 0. This only describes; a number past the limit
+can still be typed and is refused by Ash as above. See
 [Limits an editor shows before saving](inline-editing.md#limits-an-editor-shows-before-saving).
 
 **Try it:** `/tasks`, "Due within: Days": type `-1` and press Enter.
 
-A value in an address that Ash refuses is treated the same way when the page
-is opened: shown in its input with the message, and not applied.
+A refused value in an opened address is treated the same: shown in its input
+with the message, not applied.
 
 ## Where the arguments are given
 
-Wherever the table runs its read action for the person on the page, it runs
-it with what they gave:
+Every read the table runs for the person on the page uses their arguments:
 
 | The read | With the arguments |
 | --- | --- |
@@ -202,17 +193,16 @@ it with what they gave:
 | What an action returned, loaded for the row to be shown again | no: Ash loads that through the primary read action, without arguments |
 | The related record of a reference cell, a picker's record by its key | those of that table, not of this one |
 
-The record of a row is therefore one the action returns *for these
-arguments*. A row that an edit takes out of them (a task whose title no
-longer holds the search term) stays where it is, shown from what the action
-returned, until the table reads again. A second edit of that row finds no
-record and says "This record is no longer available."
+So a row's record is one the action returns *for these arguments*. A row an
+edit takes out of them (a task whose title no longer holds the search term)
+stays, shown from what the action returned, until the next read. A second
+edit of that row finds no record and says "This record is no longer
+available."
 
 ## The arguments of a calculation
 
-A column that names a calculation with arguments says what they are. Either
-the block fixes them, or it asks the person. The demo's tasks have a
-calculation that needs a number of days:
+A column of a calculation with arguments either fixes them or asks the
+person. The demo's tasks have a calculation that needs a number of days:
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -245,42 +235,41 @@ column :due_within? do
 end
 ```
 
-- **`arguments`** fixes values: a keyword list by argument name. Nobody
-  changes them, and nothing of them is on the page.
+- **`arguments`** fixes values, as a keyword list by argument name. Nobody
+  changes them and they are not shown.
 - **`ask`** puts the argument on the argument line, after the read action's.
-  Its input is called by the column's label and the argument's name ("Due
-  within: Days"), so that it says which column it belongs to; `label` on the
-  `ask` replaces all of that.
-- **`as`** gives the column another name. A calculation can be a column more
-  than once, with other arguments, and the second column needs a name of its
-  own, as a calculation that is loaded twice does in Ash (`as:`). The column
-  is that name everywhere a column is named: in the address
-  (`task[sort]=due_within`), in the ids of the page, and in its header
+  Its label is the column label plus the argument name ("Due within: Days");
+  `label` on the `ask` replaces all of it.
+- **`as`** renames the column. A calculation can be a column more than once
+  with other arguments, and the second needs its own name, like a calculation
+  loaded twice in Ash (`as:`). That name is used everywhere a column is
+  named: the address (`task[sort]=due_within`), the page's ids, and its header
   unless `label` says otherwise.
-- An argument that is neither fixed nor asked keeps the default it has in
-  the resource.
+- An argument neither fixed nor asked keeps its default in the resource.
 
-Each column is loaded, sorted and filtered by with its own arguments. On
-`/tasks`, "Due within" can be filtered to "Yes" while "Due within 7 days"
-is filtered to "No".
+Each column is loaded, sorted and filtered with its own arguments. On
+`/tasks`, "Due within" can be filtered to "Yes" while "Due within 7 days" is
+filtered to "No".
 
 ### What an asked argument starts with
 
-The first of these that there is:
+The first that exists of:
 
 1. what the person chose (the address);
-2. the `default` of the `ask`: a value, or a function of the page's assigns;
-3. the default the argument has in the resource.
+2. the `ask`'s `default`: a value, or a function of the page's assigns;
+3. the argument's default in the resource.
 
 A column never starts without a value: an asked argument that cannot be
-empty and has neither default is a mistake the compiler reports.
+empty and has neither default is a compile error.
 
-A function is given the assigns of the page. On the router page those are
-the assigns of its socket, which the host's `on_mount` hooks set. A table
-attached with `AshDataTable.attach/4` gives it the assigns of the host's
-LiveView, as they are when it is called. A tag (`<AshDataTable.table>`) is
-given them as `assigns`. The example is
-from a domain that exists for the demo's tests
+A function gets the page's assigns:
+
+- on the router page, its socket's assigns, set by the host's `on_mount` hooks;
+- for a table attached with `AshDataTable.attach/4`, the host LiveView's
+  assigns as they are when it is called;
+- for a tag (`<AshDataTable.table>`), the `assigns` attribute.
+
+The example is from a domain that exists for the demo's tests
 ([`demo/test/support/argument_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/argument_tables.ex)):
 
 <!-- source: demo/test/support/argument_tables.ex -->
@@ -309,114 +298,112 @@ end
 />
 ```
 
-The table works nothing out by itself: not from the locale, not from who is
-asking. An MFA is taken as well (`default: {MyApp.Defaults, :rate, []}`) and
-is called with the assigns before its own arguments.
+The table works nothing out itself: not from the locale, not from who is
+asking. An MFA also works (`default: {MyApp.Defaults, :rate, []}`); it is
+called with the assigns before its own arguments.
 
 ## Nested tables, the full view and the picker
 
-A nested table is the table of its resource, read through the action its
-relationship runs: the relationship's own `read_action`, else the read
-action of the destination's table. It has the argument line of *that*
-action, above its own grid, and keeps what a person gave there with its own
-sort and filters: not in the address.
+A nested table is its resource's table, read through the action its
+relationship runs: the relationship's own `read_action`, else the
+destination table's read action. It has *that* action's argument line above
+its grid and keeps what a person gave there with its own sort and filters,
+not in the address.
 
-- Its inputs are ordinary tab stops, as those of the table on the page are.
-- A required argument that is empty is asked for in place of the nested
-  rows, as above.
+- Its inputs are ordinary Tab stops, like the page table's.
+- An empty required argument is asked for in place of the nested rows, as
+  above.
 - A nested table whose action requires an argument has no pages: Ash cannot
-  page related records through such an action (see "Edge cases"), so the
-  related records are shown in full.
+  page related records through such an action (see "Edge cases"), so they are
+  shown in full.
 - The row a nested table belongs to is read again with the arguments of the
   table that row is in.
 
-**Try it:** `/projects`, expand a project, open "Tasks": the nested table
-has "Search" and "Due within: Days" of its own.
+**Try it:** `/projects`, expand a project, open "Tasks": the nested table has
+its own "Search" and "Due within: Days".
 
 The full view of a nested table is the destination's page with the limit in
-its address, and with its own arguments beside it. It reads the row it is
-limited to through the read action of that row's table *as it runs without
-arguments*: a link cannot say what that table was given. So a table whose
-read action requires an argument has no "Open in full view" under its nested
-tables.
+its address and its own arguments. It reads the row it is limited to through
+that row's table's read action *without arguments*, because a link cannot
+carry what that table was given. So a table whose read action requires an
+argument has no "Open in full view" under its nested tables.
 
-A picker shows the table of the records to choose from, with the argument
-line of the action it reads them through. The record a person chooses is
-read once more by its key, through that action and with what the picker's
-line held, before anything is saved.
+A picker shows the table of records to choose from, with the argument line of
+the action it reads through. The chosen record is read once more by its key,
+through that action and with the picker line's arguments, before anything is
+saved.
 
-**Try it:** `/comments`, "New comment", "Choose" beside "Task": the tasks
-to choose from can be searched.
+**Try it:** `/comments`, "New comment", "Choose" beside "Task": the tasks can
+be searched.
 
 ## Mistakes the compiler reports
 
-[Mistakes at compile time](mistakes-at-compile-time.md) has every message.
-In short: a calculation's required argument that is given neither way; an
-argument the calculation or the read action does not have; a fixed value, or
-the default of an `ask`, that is none of the argument's type; an argument
-that is both fixed and asked, or asked twice; an asked argument that cannot
-be empty and has no default; `arguments`, `ask` or `as` on a column that is
-no calculation; an `as` that is a field's name, or that two columns share;
-a read action that requires an argument the line has no input for.
+Every message is in [Mistakes at compile time](mistakes-at-compile-time.md).
+In short:
+
+- a calculation's required argument given neither way;
+- an argument the calculation or read action does not have;
+- a fixed value, or an `ask` default, not of the argument's type;
+- an argument both fixed and asked, or asked twice;
+- an asked argument that cannot be empty and has no default;
+- `arguments`, `ask` or `as` on a column that is not a calculation;
+- an `as` that is a field's name, or that two columns share;
+- a read action that requires an argument the line has no input for.
 
 ## Edge cases
 
-- **A `sensitive?` argument has no input on the line**, as what the line
-  holds is kept in the URL. A read action that requires one cannot be
-  behind a table. See [Sensitive columns](sensitive-columns.md).
+- **A `sensitive?` argument has no input on the line**, since the line is kept
+  in the URL. A read action that requires one cannot be behind a table. See
+  [Sensitive columns](sensitive-columns.md).
 - **A counted page of related records through an action that requires an
-  argument fails in Ash** (3.36.1): beside the load that is given the
-  arguments, Ash counts the page through the action once more without any,
-  and that one's "is required" is the answer. Without a page the same load
-  works, and a table counts wherever the action can. This is why such a nested
-  table is shown in full.
+  argument fails in Ash** (3.36.1): besides the load that gets the arguments,
+  Ash counts the page through the action again without any, and that count's
+  "is required" is the answer. Without a page the same load works, and a
+  table counts wherever the action can. Hence such a nested table is shown in
+  full.
 - **Two filters on one calculation with different arguments** ("Due within"
-  and "Due within 7 days" at once) are right on a SQL data layer. A data
-  layer that filters in memory (ETS) computes the calculation once for both
-  in Ash 3.36.1, and so does the same filter written with
-  `Ash.Query.filter/2`.
-- **A constraint of a calculation's argument** is reported by Ash without
-  the argument's name. The table puts the message at the asked argument
-  whose own value its type refuses, and at all of the column's asked
-  arguments when it cannot tell.
-- **A default that is computed** (`default: &Date.utc_today/0` on the
-  action's argument) is applied by Ash, and its input starts empty: the
-  table does not call it to show it. For an asked argument the table does
-  call it, as it has to give the calculation a value.
-- **An input with the focus keeps what it holds.** LiveView does not write
-  into an input a person is in. After the back button the argument is what
-  the address says, though the input that still has the focus shows what was
-  typed last.
+  and "Due within 7 days" at once) are correct on a SQL data layer. An
+  in-memory data layer (ETS) computes the calculation once for both in Ash
+  3.36.1, as does the same filter written with `Ash.Query.filter/2`.
+- **A constraint of a calculation's argument** is reported by Ash without the
+  argument's name. The table puts the message at the asked argument whose own
+  value its type refuses, or at all the column's asked arguments when it
+  cannot tell.
+- **A computed default** (`default: &Date.utc_today/0` on the action's
+  argument) is applied by Ash; its input starts empty because the table does
+  not call it. For an asked argument the table does call it, since the
+  calculation needs a value.
+- **A focused input keeps what it holds.** LiveView does not write into an
+  input a person is in. After the back button the argument is what the
+  address says, though the focused input still shows what was typed last.
 - **A table that changes records** needs a primary read action that runs
-  without arguments, because Ash loads what an action returned through it.
-  The compiler reports a primary read action with a required argument under
-  such a table.
-- **The table to choose from in a picker** is read with what its line
-  holds. A key that is already in a field of the action panel when "Run" is
-  used, and that was not chosen in the picker, is looked up through the
-  action as it runs without arguments.
+  without arguments, because Ash loads action results through it. The
+  compiler reports a primary read action with a required argument under such
+  a table.
+- **A picker's table** is read with what its line holds. A key already in a
+  field of the action panel when "Run" is used, not chosen in the picker, is
+  looked up through the action without arguments.
 
 ## Things people trip over
 
-- **Declaring the read action's arguments.** There is nothing to declare;
-  `argument` only relabels. `ask` is for a calculation's.
-- **Expecting a "Run" button.** Leave the input, or press Enter.
+- **Declaring the read action's arguments.** Nothing to declare; `argument`
+  only relabels. `ask` is for a calculation's arguments.
+- **Expecting a "Run" button.** Leave the input or press Enter.
 - **Two columns of one calculation without `as`.** The compiler reports the
   second as a duplicate.
 - **`ask` without a default on a required argument.** The column would start
   without a value; the compiler asks for `default:`.
 - **Expecting an edited row to vanish at once.** It stays until the next
   read, as under a filter; then the action decides.
-- **A primary read action with arguments.** Ash warns about it
+- **A primary read action with arguments.** Ash warns
   (`primary_read_warning?`), since it also loads relationships and results
-  through that action. An optional argument is harmless there; a required
-  one belongs on a read action of its own, which the block names with
-  `read_action`.
+  through it. An optional argument is harmless; a required one belongs on a
+  separate read action, named with `read_action`.
 
 ## Not in the first version
 
-No input on the argument line for a value made of fields (an embedded
-resource, a map), no picker for an argument that is the key of a related
-record, no arguments of an aggregate, and no memory of what a person gave
-beyond the address. The roadmap is in the
+No argument-line input for a value made of fields (an embedded resource, a
+map), no picker for an argument that is a related record's key, no aggregate
+arguments, and no memory of what a person gave beyond the address. The
+roadmap is in the
 [specification](https://github.com/StefanRoesch/ash_data_table/issues/21).
