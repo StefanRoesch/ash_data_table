@@ -1,7 +1,7 @@
 defmodule DemoWeb.ReactKitTest do
   @moduledoc """
   What the React kit's server side gives its islands (`DemoWeb.ReactKit`,
-  `DemoWeb.ReactKit.Props`) goes to JSON (the React kit's note, 13 f): on
+  each part's projection made props) goes to JSON (the React kit's note, 13 f): on
   /react/tasks at rest, with a nested table open, sorted, filtered, with a
   row selected, with "No records" in place of the rows and limited to the
   records of one project, every island of the page is read with

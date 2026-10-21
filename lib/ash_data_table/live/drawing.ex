@@ -125,11 +125,11 @@ defmodule AshDataTable.Live.Drawing do
 
   defp heading(assigns) do
     ~H"""
-    <Kit.part
+    <.whole
       part={:heading}
       kit={@kit}
       id={@entry.id}
-      {Projection.of(:heading, %{
+      inputs={%{
         id: @entry.id,
         heading: @heading,
         label: @entry.label,
@@ -142,7 +142,7 @@ defmodule AshDataTable.Live.Drawing do
         state: @entry.state,
         lines: @entry.lines,
         refused: @entry.refused
-      })}
+      }}
     />
     """
   end
@@ -241,12 +241,12 @@ defmodule AshDataTable.Live.Drawing do
         myself={@myself}
         heading={@options.heading}
       />
-      <Kit.part
+      <.whole
         :if={@entry.related}
         part={:related}
         kit={@options.kit}
         id={@entry.id}
-        {Projection.of(:related, %{
+        inputs={%{
           id: @entry.id,
           via: @entry.related.via,
           title: @entry.related_title,
@@ -262,13 +262,13 @@ defmodule AshDataTable.Live.Drawing do
           create: @entry.model.create,
           offered: @entry.offered,
           target: @myself
-        })}
+        }}
       />
-      <Kit.part
+      <.whole
         part={:selection_line}
         kit={@options.kit}
         id={@entry.id}
-        {Projection.of(:selection_line, %{
+        inputs={%{
           id: @entry.id,
           bulk: @entry.bulk,
           choose: @entry.choose,
@@ -283,7 +283,7 @@ defmodule AshDataTable.Live.Drawing do
           all?: @entry.all?,
           whole_page?: Selection.whole_page?(@entry),
           state: @entry.state
-        })}
+        }}
       />
       <Kit.part
         part={:status}
@@ -537,18 +537,119 @@ defmodule AshDataTable.Live.Drawing do
 
   defp panel(assigns) do
     ~H"""
-    <Kit.part
+    <.whole
       part={:panel}
       kit={@kit}
       id={@id}
       uploads={uploads(files(@id, @held, @drawn?, @uploads))}
-      {Projection.of(:panel, %{
+      inputs={%{
         id: @id,
         panel: open_panel(@id, @held, @drawn?, @uploads),
         files: files(@id, @held, @drawn?, @uploads),
         target: @myself,
         presentation: @presentation
-      })}
+      }}
+    />
+    """
+  end
+
+  # A part whose projection is made whole (`Projection.of/2`: the heading
+  # line, the line of a table of related records, the selection line, the
+  # panel; parts whose keys change together): made once of the `inputs`
+  # it is given, and handed on an attribute per key. LiveView draws it
+  # again when an input changes (what the `inputs` attribute reads), and
+  # the part keeps LiveView's change tracking: given its projection as a
+  # spread (`{map}`), the part would be drawn as if for the first time,
+  # and a kit that draws in the browser would be told nothing changed
+  # (LiveReact reads its props' changes from LiveView's).
+  attr :part, :atom, required: true
+  attr :kit, :atom, required: true
+  attr :id, :string, required: true
+  attr :inputs, :map, required: true
+  attr :uploads, :map, default: nil
+
+  defp whole(%{part: :heading} = assigns) do
+    assigns = assign(assigns, :projection, Projection.of(:heading, assigns.inputs))
+
+    ~H"""
+    <Kit.part
+      part={:heading}
+      kit={@kit}
+      id={@id}
+      shown?={@projection.shown?}
+      nested?={@projection.nested?}
+      element={@projection.element}
+      title={@projection.title}
+      columns={@projection.columns}
+      argument_line={@projection.argument_line}
+      acts?={@projection.acts?}
+      create={@projection.create}
+      actions={@projection.actions}
+    />
+    """
+  end
+
+  defp whole(%{part: :related} = assigns) do
+    assigns = assign(assigns, :projection, Projection.of(:related, assigns.inputs))
+
+    ~H"""
+    <Kit.part
+      part={:related}
+      kit={@kit}
+      id={@id}
+      element={@projection.element}
+      heading={@projection.heading}
+      record={@projection.record}
+      create={@projection.create}
+      actions={@projection.actions}
+      clear={@projection.clear}
+      texts={@projection.texts}
+      messages={@projection.messages}
+    />
+    """
+  end
+
+  defp whole(%{part: :selection_line} = assigns) do
+    assigns = assign(assigns, :projection, Projection.of(:selection_line, assigns.inputs))
+
+    ~H"""
+    <Kit.part
+      part={:selection_line}
+      kit={@kit}
+      id={@id}
+      shown?={@projection.shown?}
+      nested?={@projection.nested?}
+      selection={@projection.selection}
+      notice={@projection.notice}
+      clear_filters={@projection.clear_filters}
+      texts={@projection.texts}
+      messages={@projection.messages}
+    />
+    """
+  end
+
+  defp whole(%{part: :panel} = assigns) do
+    assigns = assign(assigns, :projection, Projection.of(:panel, assigns.inputs))
+
+    ~H"""
+    <Kit.part
+      part={:panel}
+      kit={@kit}
+      id={@id}
+      uploads={@uploads}
+      open?={@projection.open?}
+      presentation={@projection.presentation}
+      destructive?={@projection.destructive?}
+      place={@projection.place}
+      frame={@projection.frame}
+      form={@projection.form}
+      title={@projection.title}
+      errors={@projection.errors}
+      cancel={@projection.cancel}
+      submit={@projection.submit}
+      fields={@projection.fields}
+      texts={@projection.texts}
+      messages={@projection.messages}
     />
     """
   end

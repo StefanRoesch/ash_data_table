@@ -1,7 +1,8 @@
 // The JS half of the bundle → props rule (the React kit's note, C3; the
-// server half is `AshDataTable.Attrs.props/1`, which `DemoWeb.ReactKit.Props`
-// calls): a bundle comes as HTML attributes, each value text, `""` for an
-// attribute without a value (an item's `attrs` keep `true` for it, 13 a);
+// server half is `AshDataTable.Attrs.props/1`, which the props rule of
+// `DemoWeb.ReactKit` calls): a bundle comes as HTML attributes, each value
+// text, `""` for an attribute without a value (an item's `attrs` keep
+// `true` for it, 13 a);
 // React takes some of them by other names. `aria-*`, `data-*`, `phx-*`,
 // `role` and `id` stay as they are.
 //
@@ -42,8 +43,10 @@ const BOOLEAN = new Set(["hidden", "disabled", "checked", "selected", "readOnly"
 // some elements of its own, which are not the ones the hooks write them on
 // (owned.js's `on`): `id`, `hidden` (the question's region, the
 // scrollbar, as they are first drawn), `aria-busy` (the table while it
-// reads) and `data-destructive` (an action's button).
-const GIVEN = new Set(["id", "hidden", "aria-busy", "data-destructive"])
+// reads), `data-destructive` (an action's button) and `disabled`
+// (Previous and Next where there is no such page, in the pagination's
+// projection).
+const GIVEN = new Set(["id", "hidden", "aria-busy", "data-destructive", "disabled"])
 const NEVER = new Set(OWNED.filter(owned => owned.kit === "never").map(owned => owned.attribute).filter(name => !GIVEN.has(name)))
 
 export function attrs(bundle: Bundle | null | undefined | false): Props {

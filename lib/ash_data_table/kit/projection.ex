@@ -440,6 +440,7 @@ defmodule AshDataTable.Kit.Projection do
   # one per message the table says now.
   def of({part, key}, inputs) do
     module = Map.fetch!(@parts, part)
+    inputs = plain(inputs)
 
     if keyed?(module),
       do: module.key(key, inputs),
@@ -448,11 +449,22 @@ defmodule AshDataTable.Kit.Projection do
 
   def of(part, inputs) do
     module = Map.fetch!(@parts, part)
+    inputs = plain(inputs)
 
     if keyed?(module),
       do: Map.new(module.keys(), &{&1, module.key(&1, inputs)}),
       else: module.of(inputs)
   end
+
+  # The component the events go to (`phx-target`, a table placed with the
+  # tag: LiveView's `@myself`) as the number LiveView writes of it, so that
+  # a bundle holds plain data and goes to JSON as it is; LiveView takes the
+  # number for the component, in an attribute and in a `JS.push`.
+  defp plain(%{target: %_{} = target} = inputs), do: plain(%{inputs | target: number(target)})
+  defp plain(%{myself: %_{} = myself} = inputs), do: plain(%{inputs | myself: number(myself)})
+  defp plain(inputs), do: inputs
+
+  defp number(component), do: component |> to_string() |> String.to_integer()
 
   # The parts drawn inside another, whose projections are in that one's
   # (question 25 of the design note): the keys of each.
