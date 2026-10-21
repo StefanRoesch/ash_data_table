@@ -5,7 +5,7 @@ defmodule AshDataTable.Test.LiveHost do
   and runs a function on its socket, in its process. What the function
   raises, a failed assertion too, is raised in the test.
 
-      AshDataTable.Test.LiveHost.run(fn socket -> Registry.take_stream(socket) end)
+      AshDataTable.Test.LiveHost.run(fn socket -> Phoenix.LiveView.connected?(socket) end)
 
   Its endpoint is started once, by `test_helper.exs` (`start/0`).
   `AshDataTable.KitCase` runs on it for `AshDataTable.Kit.Default`

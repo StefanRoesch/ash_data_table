@@ -5,8 +5,6 @@ defmodule AshDataTable.Live.Core.Bulk do
 
   require Logger
 
-  import Phoenix.LiveView
-
   alias AshDataTable.Caller
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Opener
@@ -18,33 +16,8 @@ defmodule AshDataTable.Live.Core.Bulk do
   alias AshDataTable.Table
   alias AshDataTable.Text
 
-  # What became of an action that ran on the selected rows: said above the
-  # grid and read out, and the hook is told on which rows it did not run,
-  # by their keys and by what it names them by: those stay selected. The
-  # table is read again, as the page may hold any of the records.
-  #
-  # A run goes on to its end when who is asking changes meanwhile: it was
-  # started as the person who could, and stopping it would leave it half
-  # done. What it came to is said to that person only, whose role or scope
-  # may have changed (`AshDataTable.Caller.who/1`): another is told nothing
-  # of it, and the table reads again as them.
-  def handle_async(:bulk, result, socket) do
-    %{caller: caller, entry: %{running: %{by: by}}} = Core.table(socket)
-
-    # the host is told what was done, whoever asks now
-    socket =
-      case result do
-        {:ok, %{event: event}} -> Core.notify(socket, event)
-        _exit -> socket
-      end
-
-    if Caller.who(caller) == by,
-      do: ran(result, socket),
-      else: {:noreply, ended(socket, result)}
-  end
-
-  defp ran({:ok, outcome}, socket) do
-    %{model: model, running: %{action: action}} = Core.table(socket).entry
+  defp ran({:ok, outcome}, table) do
+    %{model: model, selection: %{running: %{action: action}}} = table.entry
     not_done = Enum.sum(for {_message, count} <- outcome.failures, do: count)
     # what says the same words is one failure, as it is said in this process
     outcome = %{outcome | failures: Text.counted(outcome.failures)}
@@ -61,46 +34,41 @@ defmodule AshDataTable.Live.Core.Bulk do
     # the rows it did not run on stay selected, and no others
     failed = {:rows, Enum.map(outcome.failed, &Selection.named(model, &1))}
 
-    socket =
-      socket
-      |> Core.put(running: nil, result: %{summary: summary, failures: failures})
-      |> Core.say({:join, " ", [summary | failures]})
-
-    {:noreply,
-     socket
-     |> Core.stepped(Selection.put(Core.table(socket), failed, true))
-     |> Reading.reread()}
+    table
+    |> Table.put(running: nil, result: %{summary: summary, failures: failures})
+    |> Core.say({:join, " ", [summary | failures]})
+    |> Selection.put(failed, true)
+    |> Reading.reread()
   end
 
   # The run itself went down. What it had done by then is not known: the
   # rows stay selected, and the table is read again.
-  defp ran({:exit, reason}, socket) do
-    %{running: %{action: action}} = Core.table(socket).entry
-    went_down(socket, reason)
+  defp ran({:exit, reason}, table) do
+    %{selection: %{running: %{action: action}}} = table.entry
+    went_down(table, reason)
 
     summary =
       {:text, :action_not_done, action: action.label, message: {:text, :action_failed, []}}
 
-    {:noreply,
-     socket
-     |> Core.put(running: nil, result: %{summary: summary, failures: []})
-     |> Core.say(summary)
-     |> Reading.reread()}
+    table
+    |> Table.put(running: nil, result: %{summary: summary, failures: []})
+    |> Core.say(summary)
+    |> Reading.reread()
   end
 
   # A run that ended for a person who did not start it: the table is no
   # longer busy, the hook is told that it is over, and the rows are read
   # again as the person asking now.
-  defp ended(socket, result) do
-    with {:exit, reason} <- result, do: went_down(socket, reason)
+  defp ended(table, result) do
+    with {:exit, reason} <- result, do: went_down(table, reason)
 
-    socket
-    |> Core.put(running: nil, result: nil)
+    table
+    |> Table.put(running: nil, result: nil)
     |> Reading.reread()
   end
 
-  defp went_down(socket, reason) do
-    %{model: model, running: %{action: action}} = Core.table(socket).entry
+  defp went_down(table, reason) do
+    %{model: model, selection: %{running: %{action: action}}} = table.entry
 
     Logger.error(
       "ash_data_table: running `#{action.name}` on the selected rows of #{inspect(model.resource)} " <>
@@ -108,10 +76,34 @@ defmodule AshDataTable.Live.Core.Bulk do
     )
   end
 
+  # What became of an action that ran on the selected rows: said above the
+  # grid and read out, and the hook is told on which rows it did not run,
+  # by their keys and by what it names them by: those stay selected. The
+  # table is read again, as the page may hold any of the records.
+  #
+  # A run goes on to its end when who is asking changes meanwhile: it was
+  # started as the person who could, and stopping it would leave it half
+  # done. What it came to is said to that person only, whose role or scope
+  # may have changed (`AshDataTable.Caller.who/1`): another is told nothing
+  # of it, and the table reads again as them.
+  def step({:async, :bulk, result}, table) do
+    %{caller: caller, entry: %{selection: %{running: %{by: by}}}} = table
+
+    # the host is told what was done, whoever asks now
+    table =
+      case result do
+        {:ok, %{event: event}} -> Core.notify(table, event)
+        _exit -> table
+      end
+
+    if Caller.who(caller) == by,
+      do: {ran(result, table), nil},
+      else: {ended(table, result), nil}
+  end
+
   # Sent by the hook when the person changes the selection while the table
-  # still says what the last run came to: that is said no longer. A step
-  # over the table (stage 9g).
-  def step(:bulk_seen, table, _context), do: {Table.put(table, result: nil), [], nil}
+  # still says what the last run came to: that is said no longer.
+  def step(:bulk_seen, table), do: {Table.put(table, result: nil), nil}
 
   # Sent by the hook when a person uses a button of the line above the grid,
   # on what they have selected (`AshDataTable.Live.Core.Selection`): `rows`,
@@ -125,28 +117,24 @@ defmodule AshDataTable.Live.Core.Bulk do
   # The rows are not looked up among those of the page, as a selection
   # outlives its page: they are claims, and the run reads each as the
   # person before anything is done to it (`AshDataTable.Bulk`).
-  def on({:bulk, name} = intent, socket) do
-    case Operation.bulk_action(
-           Core.operation(Core.table(socket), Core.context(socket), intent),
-           name
-         ) do
+  def step({:bulk, name} = intent, table) do
+    case Operation.bulk_action(Core.operation(table, intent), name) do
       {:ok, action, selection} ->
-        %{entry: entry} = Core.table(socket)
-        question = question(action, selected(selection, entry))
-        token = Selection.token(entry)
+        question = question(action, selected(selection, table.entry))
+        token = Selection.token(table.entry.selection)
 
         if action.panel? do
-          {:reply, %{panel: true}, open_bulk(socket, action, selection, question)}
+          {open_bulk(table, action, selection, question), %{panel: true}}
         else
           # the hook asks it, or the host does (controlled mode)
-          case Opener.ask(socket, {:bulk_run, name, token}, question, %{action: name}) do
-            {:run, socket} -> {:reply, %{ask: Text.say(question), selection: token}, socket}
-            {:held, _reply, socket} -> {:reply, %{ok: true}, socket}
+          case Opener.ask(table, {:bulk_run, name, token}, question, %{action: name}) do
+            {:run, table} -> {table, %{ask: Text.say(question), selection: token}}
+            {:held, _reply, table} -> {table, %{ok: true}}
           end
         end
 
       :error ->
-        {:reply, %{ok: false}, socket}
+        {table, %{ok: false}}
     end
   end
 
@@ -158,41 +146,37 @@ defmodule AshDataTable.Live.Core.Bulk do
   # the page in use, and the selection may change before it is answered
   # (as it may while a host asks it, in controlled mode). Then nothing runs,
   # and the person is told why.
-  def on({:bulk_run, name, token}, socket) do
-    input = Core.operation(Core.table(socket), Core.context(socket), {:bulk_run, name})
+  def step({:bulk_run, name, token}, table) do
+    input = Core.operation(table, {:bulk_run, name})
 
     with {:ok, action, _selection} <- Operation.bulk_action(input, name),
-         :named <- named(socket, token),
+         :named <- named(table, token),
          {:start, run, files} <- Operation.bulk(input) do
-      {:noreply, start_bulk(socket, action, run, files)}
+      {start_bulk(table, action, run, files), nil}
     else
       :changed ->
         changed = {:text, :bulk_selection_changed, []}
-
-        {:noreply,
-         socket
-         |> Core.put(result: %{summary: changed, failures: []})
-         |> Core.say(changed)}
+        {table |> Table.put(result: %{summary: changed, failures: []}) |> Core.say(changed), nil}
 
       {:halted, message} ->
-        {:noreply, Core.say(socket, message)}
+        {Core.say(table, message), nil}
 
       _other ->
-        {:noreply, socket}
+        {table, nil}
     end
   end
 
   # The host's Confirm of the question before a run (controlled mode).
-  def on({:confirmed, {:bulk_run, _name, _token} = intent}, socket), do: on(intent, socket)
+  def step({:confirmed, {:bulk_run, _name, _token} = intent}, table), do: step(intent, table)
 
   # What came of the panel of an action on the selection: its run, handed
   # back to be started (`AshDataTable.Live.Core.Panel`).
-  def on({:bulk_start, action, run, files}, socket),
-    do: {:noreply, start_bulk(socket, action, run, files)}
+  def step({:bulk_start, action, run, files}, table),
+    do: {start_bulk(table, action, run, files), nil}
 
   # Whether what is selected is what the token names.
-  defp named(socket, token),
-    do: if(token == Selection.token(Core.table(socket).entry), do: :named, else: :changed)
+  defp named(table, token),
+    do: if(token == Selection.token(table.entry.selection), do: :named, else: :changed)
 
   # How many records a selection is: the rows that were named, or what the
   # last read counted, nil where the read action does not count.
@@ -217,15 +201,15 @@ defmodule AshDataTable.Live.Core.Bulk do
 
   # The panel of an action that is to run on the selected rows
   # (`AshDataTable.Live.Core.Panel.open/4`), which asks its question before it runs.
-  defp open_bulk(socket, action, selection, question) do
-    count = selected(selection, Core.table(socket).entry)
+  defp open_bulk(table, action, selection, question) do
+    count = selected(selection, table.entry)
 
-    {:ok, socket} =
-      Core.Panel.open(socket, :bulk, %{action: action, selection: selection, count: count},
+    {:ok, table} =
+      Core.Panel.open(table, :bulk, %{action: action, selection: selection, count: count},
         question: question
       )
 
-    socket
+    table
   end
 
   # Runs an action on the selected rows, beside the process: a run takes as
@@ -237,30 +221,19 @@ defmodule AshDataTable.Live.Core.Bulk do
   # meanwhile, and what it came to is dropped (`Registry.finishing/1`):
   # stopped, it would leave a record's transaction in the middle of a
   # statement. `files` are the copies of the panel's files it runs with
-  # (`Core.Files.attach/3`): they are handed to the run's process, and go
-  # when it ends (`Plug.Upload.give_away/3`), whether the page is there
-  # then or not. A hand-over that fails (the page went before the run
-  # could take them, and its copies with it) ends the run before it
-  # starts, and its answer is dropped with the page.
-  defp start_bulk(socket, action, run, files) do
-    view = self()
+  # (`Core.Files.copies/1`): the run's process is given them before its
+  # work starts and before the callback that starts it is over
+  # (`{:async, key, fun, files}`, `Registry.owned/2`), and they go when it
+  # ends, whether the page is there then or not.
+  defp start_bulk(table, action, run, files) do
     copies = for {_name, %{path: path}} <- files, do: path
 
-    socket
+    table
     |> Core.Panel.close()
     # who started it: what it comes to is said to that person only
-    |> Core.put(
-      running: %{action: action, by: Caller.who(Core.table(socket).caller)},
-      result: nil
-    )
+    |> Table.put(running: %{action: action, by: Caller.who(table.caller)}, result: nil)
     # The run says why a record was not done as message terms: their words
     # are made when the outcome is drawn, in this process, whose locale it is.
-    |> start_async(
-      Registry.async(socket, :bulk),
-      Registry.finishing(fn ->
-        Enum.each(copies, fn copy -> :ok = Plug.Upload.give_away(copy, self(), view) end)
-        run.()
-      end)
-    )
+    |> Core.effect({:async, Registry.async(table, :bulk), run, copies})
   end
 end

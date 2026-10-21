@@ -1,42 +1,75 @@
 defmodule AshDataTable.Live.Core do
   @moduledoc false
-  # The live core of a table (target.md 4.4): socket in, socket
-  # out. What the table component's callbacks were: `mount/1`, `update/2`
-  # (what the table is told), `handle_event/3` (each event parsed once by
-  # `AshDataTable.Intent` and handed to the module of its topic) and
-  # `handle_async/3`, each ending in `tidy/1`. Besides: the fields of the
-  # table (`put/2`), who is asking (`reader/1,2`), what a write is given
-  # (`operation/4`), the live region (`say/2`), the resource's wording as
-  # the person reads it (`in_words/1`). Every table a placed table shows is
-  # an entry of its `AshDataTable.Table` (`AshDataTable.Live.Registry`).
+  # The live core of a table (target.md 4.4), in two halves (stage 9g).
   #
-  # The step (stage 9g, the partial form of question 30 b): an intent of a
-  # topic that needs none of LiveView's resources (no stream, no async
-  # task, no upload) is a step over the table, `step/3`: `(table, intent,
-  # context)` → `{table, effects, reply}`, with no socket. `context` is
-  # what the socket gives (`context/1`: the page's assigns, LiveView's
-  # uploads); the effects are data, which `effects/2` applies to the
-  # socket in their order:
+  # The step, over the table: `step/3`, `(table, intent, context)` →
+  # `{table, effects, reply}`, with no socket. `context` is what the socket
+  # gives (`context/1`: its assigns, LiveView's uploads, whether the page
+  # is connected, its endpoint); the effects are data (below); the reply
+  # is what the hook is answered (nil for none). An intent is a browser's
+  # (`AshDataTable.Intent`, run within the table it names), a host's answer
+  # or command, or the core's own: what a table is told (`{:told, …}`), a
+  # listener's batch (`{:heard, …}`), a task's answer (`{:task, …}`), the
+  # files of a panel consumed (`{:consumed, …}`), and `:tidy`, which every
+  # callback ends with. Each runs through the module of its topic
+  # (`topic/1`), whose `step/2` clause is `(intent, table)` → `{table,
+  # reply}`: the table holds the step's context (`table.context`) and
+  # gathers its effects (`effect/2`), as LiveView's socket gathers the
+  # events it pushes. Besides: who is asking (`reader/1`), what a write is
+  # given (`operation/3`), the live region (`say/2`), what the host is told
+  # (`notify/3`).
+  #
+  # The adapter, on the socket: the callbacks of the tag's component and
+  # the hooks of an attached table, each the step of what came (`mount/1`,
+  # `update/2`, `handle_event/3`, `handle_async/3`, `heard/3`, `tell/2`,
+  # `command/2`), then the step `:tidy`, each step's table put and its
+  # effects applied (`effects/2`) in their order:
   #
   #   * `{:push, event, payload}`: an event to the hooks (`push_event/3`);
   #   * `{:tell, top, message}`: an event to the host, sent to the
   #     LiveView's own process (`AshDataTable.Live.Core.Notify`);
-  #   * `{:patch, url}`: the URL of a table whose state is in it
-  #     (`push_patch/2`);
-  #   * `:read`: the table reads for its state (`Reading.read/1`, which
-  #     streams and starts tasks, and stays on the socket).
-  #
-  # The intents that step are `@steps`; every other intent runs on the
-  # socket, through `on/2` of its topic (streams, async reads, summaries
-  # and runs, uploads, the opener's questions). `run/2` takes either way.
+  #   * `{:patch, url}`, `{:redirect, url}`: the URL of a table whose state
+  #     is in it, and a page that is gone;
+  #   * `{:stream, op}`: the stream of a table, `{:configure, name}`,
+  #     `{:reset, name, items}`, `{:insert, name, item, opts}`,
+  #     `{:delete, name, dom_id}`;
+  #   * `{:async, key, fun}`: a task beside the process (`start_async/3`),
+  #     which finishes its query whatever happens meanwhile
+  #     (`Registry.finishing/1`); its answer comes back as `{:task, key,
+  #     result}`. `{:async, key, fun, files}` gives the task temporary
+  #     files of this process before its work starts (`Registry.owned/1`);
+  #   * `{:uploads, op}`: the uploads of a panel's file fields,
+  #     `{:allow, name, opts}`, `{:drop, names, spent}` (the files no action
+  #     was given), `{:close, names}` (a table that closes), and
+  #     `{:consume, id, files, panel, write}`: the files of a panel's
+  #     submit, consumed one inside the other, and inside the last the
+  #     intent `{:consumed, panel, write, files}` of the table `id`, which
+  #     runs the rest of the write while LiveView holds them (see
+  #     `AshDataTable.Live.Core.Panel`).
 
   require Logger
 
-  import Phoenix.Component, only: [assign: 2, assign: 3]
-  import Phoenix.LiveView, only: [push_event: 3, push_patch: 2, put_private: 3]
+  import Phoenix.Component, only: [assign: 3]
+
+  import Phoenix.LiveView,
+    only: [
+      allow_upload: 3,
+      cancel_upload: 3,
+      connected?: 1,
+      consume_uploaded_entry: 3,
+      disallow_upload: 2,
+      push_event: 3,
+      push_patch: 2,
+      put_private: 3,
+      redirect: 2,
+      start_async: 3,
+      stream: 4,
+      stream_configure: 3,
+      stream_delete_by_dom_id: 3,
+      stream_insert: 4
+    ]
 
   alias AshDataTable.Caller
-  alias AshDataTable.Geometry
   alias AshDataTable.Intent
   alias AshDataTable.Live.Core.Bulk
   alias AshDataTable.Live.Core.Cells
@@ -47,25 +80,18 @@ defmodule AshDataTable.Live.Core do
   alias AshDataTable.Live.Core.Picker
   alias AshDataTable.Live.Core.Reading
   alias AshDataTable.Live.Core.Selection
+  alias AshDataTable.Live.Core.Told
   alias AshDataTable.Live.Core.Updates
   alias AshDataTable.Live.Core.Url
   alias AshDataTable.Live.Registry
-  alias AshDataTable.Model
   alias AshDataTable.Operation
   alias AshDataTable.Query
-  alias AshDataTable.State
   alias AshDataTable.Table
-  alias AshDataTable.Text
 
-  # the page's values of the callback that runs, by the table that asks (`callback/1`)
+  # the page's values of the callback that runs, by the table that asks (`callback/2`)
   @values {__MODULE__, :page_values}
 
-  # The intents that are a step over the table (`step/3`): of the topics,
-  # those that need no stream, no async task and no upload.
-  @steps [:select, :sort, :filter, :clear_filter, :clear_filters, :page, :page_size] ++
-           [:arguments, :argument_add, :argument_remove, :bulk_seen, :read_again, :reveal] ++
-           [:open, :panel_validate, :panel_add, :panel_remove, :panel_clear, :panel_cancel] ++
-           [:pick, :pick_input, :panel_unpick, :picker_cancel]
+  # ---- the adapter: the socket ------------------------------------------
 
   def mount(socket) do
     # Everything the table holds, in one value: what it was told, who is
@@ -73,230 +99,79 @@ defmodule AshDataTable.Live.Core do
     # explained where it is defined), under the assign `table` of the
     # component, which draws it with the target of its events and the
     # router of its page.
-    socket =
-      socket
-      |> put_private(:ash_data_table, %{current: :table})
-      |> assign(table: Table.new())
+    table = Table.put(Table.new(), target: socket.assigns.myself, router: socket.router)
 
-    {:ok, put(socket, target: socket.assigns.myself, router: socket.router)}
+    {:ok,
+     socket
+     |> put_private(:ash_data_table, %{current: :table})
+     |> assign(:table, table)}
   end
 
   # What a listener hands over (`AshDataTable.Listener`): a batch of what was
-  # announced, each the action's type and the record's primary key, for the
-  # table whose listener it is. It is looked at once this update is done
-  # (`tidy/1`). A batch for a table that is no longer shown is dropped.
+  # announced, for the table whose listener it is. A batch for a table that
+  # is no longer shown is dropped.
   def update(%{live: {:heard, id, batch}}, socket), do: {:ok, heard(socket, id, batch)}
 
+  # What the table on the page is told by the tag's attributes.
   def update(assigns, socket), do: {:ok, tell(socket, assigns)}
 
   # The same for a table attached to a LiveView (`AshDataTable.Live.Hooks`),
   # whose listener sends it the batch as a message.
-  def heard(socket, id, batch) do
-    if Registry.known?(socket, id) do
-      callback(fn ->
-        socket
-        |> Registry.within(id, &put(&1, waiting: table(&1).entry.waiting ++ batch))
-        |> tidy()
-      end)
-    else
-      socket
-    end
-  end
-
-  # What the host asks of the table on the page (`AshDataTable.refresh/2`
-  # and the other commands), and all that follows from it.
-  def command(socket, fun), do: callback(fn -> socket |> fun.() |> tidy() end)
+  def heard(socket, id, batch), do: socket |> callback({:to, id, {:heard, batch}}) |> elem(0)
 
   # What the table on the page is told, by the tag's attributes or by
   # `AshDataTable.attach/4`, and all that follows from it.
-  def tell(socket, given) do
-    callback(fn ->
-      {:ok, socket} = told(given, socket)
-      tidy(socket)
-    end)
-  end
+  def tell(socket, given), do: socket |> callback({:told, given}) |> elem(0)
 
-  # Every event is parsed first (`AshDataTable.Intent`): what it asks for,
-  # its values still claims, handed to the module of its topic. One whose
-  # payload has another shape, and one that is not named for this table,
-  # gets the answer the table gives such an event (`malformed/2`).
-  def handle_event(event, params, socket), do: callback(fn -> event(event, params, socket) end)
-
-  defp event(event, params, socket) do
-    {id, plain} = addressed(event)
-
-    result =
-      case id && Registry.known?(socket, id) && Intent.parse(plain, params) do
-        {:ok, intent} -> Registry.within(socket, id, &run(intent, &1))
-        _another_table_or_malformed -> malformed(plain, socket)
-      end
-
-    # Every update, event and answer ends the same way: see `tidy/1`.
-    case result do
-      {:noreply, socket} -> {:noreply, tidy(socket)}
-      {:reply, reply, socket} -> {:reply, reply, tidy(socket)}
+  # What the host asks of the table on the page (`AshDataTable.refresh/2`
+  # and the other commands, the answers to its requests): the socket, or
+  # `{:reply, reply, socket}` where the command answers.
+  def command(socket, intent) do
+    case callback(socket, intent) do
+      {socket, nil} -> socket
+      {socket, reply} -> {:reply, reply, socket}
     end
   end
 
-  # The browser names an event with the table it is for (target.md Q4):
-  # `ash_data_table:ID:event`, split at the first and the last `:`. The
-  # table's id, a claim that is looked up among the tables shown (nil for
-  # an event without it), and the event's own name.
-  def addressed(event) do
-    case String.split(event, ":") do
-      ["ash_data_table" | [_, _ | _] = rest] ->
-        {ids, [plain]} = Enum.split(rest, -1)
-        {Enum.join(ids, ":"), plain}
-
-      _unaddressed ->
-        {nil, event}
+  # Every event of the browser, with the table it is named for.
+  def handle_event(event, params, socket) do
+    case callback(socket, {:event, event, params}) do
+      {socket, nil} -> {:noreply, socket}
+      {socket, reply} -> {:reply, reply, socket}
     end
   end
+
+  # The answer of a task of a table (`{:async, …}`).
+  def handle_async(key, result, socket),
+    do: {:noreply, socket |> callback({:task, key, result}) |> elem(0)}
+
+  # Every table closes, the one on the page too (`AshDataTable.detach/2`):
+  # nothing is tidied after, as nothing is shown any more.
+  def detach(socket), do: socket |> callback(:close_all, false) |> elem(0)
 
   # An event named for a table that is not attached, or no longer: the
   # answer of an event of another shape (`AshDataTable.Live.Hooks`).
-  def unknown(event, socket), do: malformed(event |> addressed() |> elem(1), socket)
+  def unknown(event, socket) do
+    case malformed(event |> addressed() |> elem(1)) do
+      nil -> {:noreply, socket}
+      reply -> {:reply, reply, socket}
+    end
+  end
 
-  # The answers of the host to what a table holds for it (controlled mode,
-  # `AshDataTable.confirm_request/3` and the other commands): the request
-  # `ref`, where the table that holds it holds it as one of `kinds`. Each
-  # table shown is asked (`Opener.answer/3`); the one that holds it gives
-  # the intent `answer` makes of it, which runs within that table through
-  # the module of its topic, as a browser's does (`run/2`), and what came
-  # of it is told (`Opener.Host.replied/4`: only the host answers); nil
-  # runs nothing. A stale or forged `ref` does nothing.
-  def answer(socket, ref, kinds, answer) do
-    each(socket, fn socket ->
-      case Opener.answer(socket, ref, {kinds, answer}) do
-        {:ok, nil, socket} ->
-          socket
-
-        {:ok, intent, socket} ->
-          case run(intent, socket) do
-            {:noreply, socket} -> Opener.Host.replied(socket, ref, intent, nil)
-            {:reply, reply, socket} -> Opener.Host.replied(socket, ref, intent, reply)
-          end
-
-        :none ->
-          socket
-      end
+  # One callback of the LiveView: the step of what came, then `:tidy`, each
+  # step's table put and its effects applied. The page's values are called
+  # once in it for each table that asks (`values/1`), and forgotten when it
+  # ends, also when it raises. A callback inside another (a command a hook
+  # of the page gives while the table's own runs) shares the outer one's.
+  defp callback(socket, intent, tidy? \\ true) do
+    once(fn ->
+      {socket, reply} = stepped(socket, intent)
+      socket = if tidy?, do: socket |> stepped(:tidy) |> elem(0), else: socket
+      {socket, reply}
     end)
   end
 
-  # Runs an intent within the table the callback works on, through the
-  # module of its topic: what an event asks for once it is parsed, a host's
-  # answer, and what a topic hands on (a run on the selection its panel
-  # started, `{:bulk_start, …}`). An intent of `@steps` is a step over the
-  # table (`step/3`), whose table is put and whose effects are applied;
-  # every other runs on the socket (`on/2` of its topic).
-  def run(intent, socket) do
-    if step?(intent) do
-      {table, effects, reply} = step(table(socket), intent, context(socket))
-      socket = socket |> put(table) |> effects(effects)
-      if reply, do: {:reply, reply, socket}, else: {:noreply, socket}
-    else
-      topic(intent).on(intent, socket)
-    end
-  end
-
-  # The step of an intent of `@steps` over `table`, the table the callback
-  # works on, with what the socket gives (`context/1`): the table as it is
-  # then, the effects to apply (`effects/2`) and the reply to the hook (nil
-  # for none). No socket: the step reads through Ash and calls the page's
-  # functions as the socket's way did, nothing else.
-  def step(%Table{} = table, intent, context), do: topic(intent).step(intent, table, context)
-
-  defp step?({:confirmed, _intent}), do: false
-  defp step?(intent) when is_tuple(intent), do: step?(elem(intent, 0))
-  defp step?(event), do: event in @steps
-
-  # What a step is given of the socket: the page's assigns (`page_assigns/1`)
-  # and the uploads LiveView knows (`uploads`, `%{}` for none).
-  def context(socket),
-    do: %{page_assigns: page_assigns(socket), uploads: socket.assigns[:uploads] || %{}}
-
-  # Puts what a function over the table gave, `{table, effects}`, into the
-  # socket: the table, then its effects (`effects/2`). For the socket's way
-  # of a topic that calls one (`Selection.put/3` after a run, `tidy/1`'s
-  # `Selection.scoped/1`, `Url.put_state/3`).
-  def stepped(socket, {%Table{} = table, effects}), do: socket |> put(table) |> effects(effects)
-
-  # Applies the effects of a step to the socket, in their order (see the top).
-  def effects(socket, effects), do: Enum.reduce(effects, socket, &effect/2)
-
-  defp effect({:push, event, payload}, socket), do: push_event(socket, event, payload)
-
-  defp effect({:tell, top, message}, socket) do
-    send(self(), {:ash_data_table, top, message})
-    socket
-  end
-
-  defp effect({:patch, url}, socket), do: push_patch(socket, to: url)
-  defp effect(:read, socket), do: Reading.read(socket)
-
-  # Tells the host `event` of the table the callback works on, where the
-  # page asked for it (`Notify.told/3`); `always?` whatever `notify` says.
-  def notify(socket, event, always? \\ false),
-    do: effects(socket, Notify.told(table(socket), event, always?))
-
-  # The module of an intent's topic. A host's Confirm (`{:confirmed,
-  # intent}`) is of the intent's.
-  defp topic({:confirmed, intent}), do: topic(intent)
-  defp topic(intent) when is_tuple(intent), do: topic(elem(intent, 0))
-
-  defp topic(event)
-       when event in [:sort, :filter, :clear_filter, :clear_filters, :filter_values, :page] or
-              event == :page_size,
-       do: Reading
-
-  defp topic(event) when event in [:arguments, :argument_add, :argument_remove], do: Url
-  defp topic(event) when event in [:expand, :toggle], do: Nesting
-  defp topic(event) when event in [:save, :clear, :reveal, :edit, :discard, :dismiss], do: Cells
-
-  defp topic(event)
-       when event in [:pick, :pick_input, :picked, :picker_cancel, :panel_unpick, :chosen] or
-              event == :refer,
-       do: Picker
-
-  defp topic(event) when event in [:act, :open, :table_act, :table_run, :create], do: Panel
-
-  defp topic(event)
-       when event in [:panel_validate, :panel_submit, :panel_add, :panel_remove] or
-              event in [:panel_clear, :panel_cancel],
-       do: Panel
-
-  defp topic(event) when event in [:bulk, :bulk_run, :bulk_seen, :bulk_start], do: Bulk
-  defp topic(:select), do: Selection
-  defp topic(event) when event in [:left, :read_again], do: Updates
-
-  # An answer for a table that is no longer shown is dropped here: its
-  # tasks were not stopped as it closed, but finish their query
-  # (`Registry.finishing/1`), and answer all the same, maybe to a table of
-  # the same id opened since (`Registry.current?/2`).
-  def handle_async({:ash_data_table, id, {kind, _token}} = key, result, socket) do
-    if Registry.current?(socket, key) do
-      callback(fn ->
-        {:noreply, socket} =
-          Registry.within(socket, id, fn socket ->
-            case kind do
-              :bulk -> Bulk.handle_async(kind, result, socket)
-              _read_or_summary -> Reading.handle_async(kind, result, socket)
-            end
-          end)
-
-        {:noreply, tidy(socket)}
-      end)
-    else
-      {:noreply, socket}
-    end
-  end
-
-  # One callback of the LiveView, the tables' and every table's under them:
-  # the page's values are called once in it for each table that asks
-  # (`values/2`), and forgotten when it ends, also when it raises. A
-  # callback inside another (a command a hook of the page gives while the
-  # table's own runs) shares the outer one's.
-  defp callback(fun) do
+  defp once(fun) do
     case Process.get(@values) do
       nil ->
         Process.put(@values, %{})
@@ -312,384 +187,278 @@ defmodule AshDataTable.Live.Core do
     end
   end
 
-  # The table the current callback works on: the `AshDataTable.Table` under
-  # the assign whose name the socket's private data holds (`current`), as
-  # `AshDataTable.Live.Registry.within/3` holds the entry it works on.
-  def table(socket), do: Map.fetch!(socket.assigns, socket.private.ash_data_table.current)
-
-  # Puts the table back whole, or fields of it where each lives
-  # (`AshDataTable.Table.put/2`).
-  def put(socket, %Table{} = table),
-    do: assign(socket, socket.private.ash_data_table.current, table)
-
-  def put(socket, fields),
-    do: assign(socket, socket.private.ash_data_table.current, Table.put(table(socket), fields))
-
-  # What a table is told: by the host for the table on the page
-  # (`update/2`), by the table it is in for any other (`Nesting.reconcile/1`).
-  def told(assigns, socket) do
-    socket = asker(assigns, socket)
-
-    socket =
-      put(
-        socket,
-        Map.take(
-          assigns,
-          [:id, :resource, :table, :scope, :actor, :tenant, :url, :label, :mounted?, :heading] ++
-            [:via, :parent_key, :parent_authorize?, :depth, :depth_limit, :labelledby] ++
-            [:select, :choose, :page_assigns, :parent_arguments] ++
-            [:context, :private_arguments, :page_arguments, :before_action, :notify] ++
-            [:controlled, :kit, :presentation, :look]
-        )
-      )
-
-    # its stream, named after the table on the page: a nested table is
-    # rendered before its first read has come back
-    socket =
-      if table(socket).entry.stream do
-        socket
-      else
-        {stream, socket} = Registry.take_stream(socket)
-        put(socket, stream: stream)
-      end
-
-    # where it is: under the tables it was told it is rendered in
-    socket = put(socket, path: Map.get(assigns, :path, []) ++ [table(socket).entry.id])
-
-    # what the table was told about live updates: nil where it was told nothing
-    socket = put(socket, live_given: assigns[:live?])
-
-    # what the page's "Open" of a row says: the table on the page's only
-    socket =
-      if Map.has_key?(assigns, :open),
-        do: put(socket, open_label: if(length(table(socket).entry.path) == 1, do: assigns.open)),
-        else: socket
-
-    # the zone of the page, nil and "UTC" being UTC
-    socket =
-      if Map.has_key?(assigns, :time_zone),
-        do:
-          put(socket,
-            time_zone: AshDataTable.Zone.check!(assigns.time_zone, "The `time_zone` of the table")
-          ),
-        else: socket
-
-    # Unless the table is told, it authorizes as its resource's domain says.
-    # What it was told is kept as it was given, for the tables nested in it.
-    socket =
-      put(socket,
-        authorize_given: assigns[:authorize?],
-        authorize?:
-          case assigns[:authorize?] do
-            nil -> AshDataTable.Domain.Info.authorize?(table(socket).entry.resource)
-            authorize? -> authorize?
-          end
-      )
-
-    # nil is the default table, as `:default` is
-    socket = put(socket, table: table(socket).entry.table || :default)
-
-    socket =
-      socket
-      |> put(nested?: table(socket).entry.depth > 0)
-      |> Nesting.relate()
-
-    {built, socket} = Nesting.built(socket)
-
-    # The table as the person asking meets it: without the columns they can
-    # never see, and with the columns they can never edit read-only. Ash is
-    # asked again on every update, which for a table with its state in the
-    # URL is every sort, filter and page change; it costs no query.
-    model =
-      built
-      |> Model.for_actor(reader(socket))
-      |> Model.zoned(table(socket).caller.time_zone)
-      |> in_words()
-      |> Model.defaults(page_assigns(socket))
-
-    # What the person chose for the arguments is given to Ash to look at,
-    # here and before every read: the model then holds what the read action
-    # and the calculations are given. What Ash refuses is not kept.
-    {state, model, missing, refused} =
-      Reading.settle(model, current_state(table(socket), model), reader(socket))
-
-    # what was refused before is shown for as long as nothing else has
-    # taken its place
-    refused =
-      table(socket).entry.refused
-      |> Map.filter(fn {key, %{held: held}} -> Map.get(state.arguments, key) == held end)
-      |> Map.merge(refused)
-
-    # How deep a person can expand is said by the table on the page, for
-    # everything beneath it.
-    depth_limit = table(socket).entry.depth_limit || model.max_depth
-
-    expandable? = expandable?(model, table(socket).entry.depth, depth_limit)
-    selecting = selecting(table(socket).entry.select, model)
-
-    {:ok,
-     socket
-     |> put(model: model, state: state)
-     |> put(
-       pending:
-         awaited(
-           table(socket).entry.pending,
-           table(socket).entry.state.filters,
-           state.filters
-         )
-     )
-     |> put(missing: missing, refused: refused)
-     |> put(lines: lines(table(socket).entry.lines, model, state, refused))
-     # the table actions are offered once the table has read, as create is
-     |> put(offered: model.table_actions)
-     |> put(depth_limit: depth_limit)
-     |> put(expandable?: expandable?)
-     # where the columns and rows stand: the box and the expander before
-     # the data columns, the actions cell (row actions, the page's "Open")
-     # after them, the header rows and the footer row
-     |> put(geometry: Geometry.of(model, selecting, expandable?, table(socket).entry.open_label))
-     # the actions offered for the selected rows are this person's row
-     # actions that run on several records
-     |> put(selecting: selecting)
-     |> put(bulk: if(selecting == :multi, do: Model.bulk_actions(model), else: []))
-     # before the read: what changes from here on is heard
-     |> Updates.listen()
-     |> Reading.read()}
+  # The step of `intent` over the socket's table, its table put back and
+  # its effects applied: `{socket, reply}`.
+  defp stepped(socket, intent) do
+    {table, effects, reply} = step(table(socket), intent, context(socket))
+    {socket |> put(table) |> effects(effects), reply}
   end
 
-  # Whether the rows of the table can be selected, and how many at a time.
-  # They can where the table was told so, and where it has something to do
-  # with a selection: an action that runs on several rows. Never in a table
-  # whose records have no primary key: a row that cannot be named cannot be
-  # told from another.
-  defp selecting(_select, %{primary_key: []}), do: nil
-
-  defp selecting(select, _model) when select in [:multi, :single], do: select
-
-  defp selecting(_select, model), do: if(Model.bulk_actions(model) != [], do: :multi)
-
-  # Whether the rows of the table have an expander: there is something to
-  # offer this person, the table lets its rows expand at all (`max_depth 0`
-  # says never, wherever the table is shown), and the table on the page lets
-  # them expand this deep.
-  defp expandable?(model, depth, depth_limit),
-    do: model.relationships != [] and model.max_depth > 0 and depth < depth_limit
-
-  # The resource's own wording, as the person reads it: the labels of the
-  # columns and of their values, and the questions, in the host's
-  # translation where it has one. Done here, once per update and in the
-  # process whose locale the host has set, so that everything rendered from
-  # the model, and every message that names a column, uses the same words.
-  def in_words(model) do
-    columns =
-      for column <- model.columns do
-        label = Text.label(column.label)
-
-        values =
-          column.values &&
-            Enum.map(column.values, fn {value, label} -> {value, Text.label(label)} end)
-
-        %{
-          column
-          | label: label,
-            confirm: column.confirm && Text.label(column.confirm),
-            values: values,
-            fields: fields_in_words(column.fields),
-            members: fields_in_words(column.members),
-            # what the column's component is told, in the same words
-            component:
-              column.component &&
-                %{
-                  column.component
-                  | column: %{column.component.column | label: label, values: values}
-                }
-        }
-      end
-
-    # the components of the columns, by column: those of the inputs below
-    # are told the same
-    components =
-      for %{component: %{} = component, name: name} <- columns, into: %{}, do: {name, component}
-
-    relationships = Enum.map(model.relationships, &%{&1 | label: Text.label(&1.label)})
-
-    # An argument is called by its label; one that a column asks for, and
-    # that has no label of its own, by the column's label and its own name,
-    # so that it says which column it belongs to.
-    arguments =
-      for argument <- model.arguments do
-        label = Text.label(argument.label)
-
-        label =
-          case argument.column_label do
-            nil -> label
-            column -> Text.t(:argument_of, column: Text.label(column), argument: label)
-          end
-
-        values =
-          argument.values &&
-            Enum.map(argument.values, fn {value, label} -> {value, Text.label(label)} end)
-
-        %{argument | label: label, column_label: nil, values: values}
-      end
-
-    # an input of an attribute the table has a column for is called what
-    # that column is; the others by their own names
-    action = fn action ->
-      inputs =
-        for input <- action.inputs do
-          %{
-            input
-            | label: Text.label(input.label),
-              values:
-                input.values &&
-                  Enum.map(input.values, fn {value, label} -> {value, Text.label(label)} end),
-              fields: fields_in_words(input.fields),
-              members: fields_in_words(input.members),
-              component: input.component && Map.get(components, input.name, input.component)
-          }
-        end
-
-      # the values a generic action returns are said by their labels
-      returns =
-        with %{values: values} = returns <- action.returns do
-          %{
-            returns
-            | values: Enum.map(values, fn {value, label} -> {value, Text.label(label)} end)
-          }
-        end
-
-      %{
-        action
-        | label: Text.label(action.label),
-          confirm: action.confirm && Text.label(action.confirm),
-          inputs: inputs,
-          returns: returns
-      }
-    end
-
-    # the create action is called after the resource: "New task"
-    create =
-      model.create &&
-        %{action.(model.create) | label: Text.t(:new_record, name: Text.label(model.name))}
-
+  # What a step is given of the socket: its assigns (the page's, for a
+  # table attached to a LiveView, `page_assigns/1`), the uploads LiveView
+  # knows (`%{}` for none), whether the page is connected, and its endpoint.
+  def context(socket) do
     %{
-      model
-      | columns: columns,
-        arguments: arguments,
-        relationships: relationships,
-        actions: Enum.map(model.actions, action),
-        table_actions: Enum.map(model.table_actions, action),
-        create: create
+      assigns: socket.assigns,
+      uploads: socket.assigns[:uploads] || %{},
+      connected?: connected?(socket),
+      endpoint: socket.endpoint
     }
   end
 
-  # The fields of a map cell, in the same words: what each is called, the
-  # labels of its values, and the fields of a field that is one itself.
-  defp fields_in_words(nil), do: nil
+  # The table the callback works on: the `AshDataTable.Table` under the
+  # assign whose name the socket's private data holds (`current`).
+  defp table(socket), do: Map.fetch!(socket.assigns, socket.private.ash_data_table.current)
 
-  defp fields_in_words(fields) do
-    for field <- fields do
-      %{
-        field
-        | label: Text.label(field.label),
-          values:
-            field.values &&
-              Enum.map(field.values, fn {value, label} -> {value, Text.label(label)} end),
-          fields: fields_in_words(field.fields),
-          # the kinds of a union are called in the same words
-          members: fields_in_words(field.members)
-      }
+  defp put(socket, %Table{} = table),
+    do: assign(socket, socket.private.ash_data_table.current, table)
+
+  # Applies the effects of a step to the socket, in their order (see the top).
+  def effects(socket, effects), do: Enum.reduce(effects, socket, &applied/2)
+
+  defp applied({:push, event, payload}, socket), do: push_event(socket, event, payload)
+
+  defp applied({:tell, top, message}, socket) do
+    send(self(), {:ash_data_table, top, message})
+    socket
+  end
+
+  defp applied({:patch, url}, socket), do: push_patch(socket, to: url)
+  defp applied({:redirect, url}, socket), do: redirect(socket, to: url)
+
+  # `stream_configure/3` cannot be undone: a name is configured once
+  # (`Registry.take_stream/1`)
+  defp applied({:stream, {:configure, name}}, socket),
+    do: stream_configure(socket, name, dom_id: & &1.dom_id)
+
+  defp applied({:stream, {:reset, name, items}}, socket),
+    do: stream(socket, name, items, reset: true)
+
+  defp applied({:stream, {:insert, name, item, opts}}, socket),
+    do: stream_insert(socket, name, item, opts)
+
+  defp applied({:stream, {:delete, name, dom_id}}, socket),
+    do: stream_delete_by_dom_id(socket, name, dom_id)
+
+  defp applied({:async, key, fun}, socket),
+    do: start_async(socket, key, Registry.finishing(fun))
+
+  # A run that is given files of this process (#66): they are its own
+  # before its work starts and before this callback is over
+  # (`Registry.owned/1`).
+  defp applied({:async, key, fun, files}, socket) do
+    {task, hand_over} = Registry.owned(fun)
+    socket = start_async(socket, key, Registry.finishing(task))
+    hand_over.(files)
+    socket
+  end
+
+  # allowed once, and again after a table of the same id closed and gave
+  # it up; this table's either way, also when the table before it could
+  # not give it up
+  defp applied({:uploads, {:allow, name, opts}}, socket) do
+    if match?(%{^name => %{allowed?: true}}, socket.assigns[:uploads] || %{}),
+      do: socket,
+      else: allow_upload(socket, name, opts)
+  end
+
+  # the files a person chose and no action was given (`Core.Files.allowed/1`)
+  defp applied({:uploads, {:drop, names, spent}}, socket) do
+    uploads = socket.assigns[:uploads] || %{}
+
+    for name <- names,
+        %{entries: entries} <- [uploads[name]],
+        entry <- entries,
+        not entry.cancelled? and entry.ref not in spent,
+        reduce: socket do
+      socket -> cancel_upload(socket, name, entry.ref)
     end
   end
 
-  # A table whose state lives in the URL takes it from there on every update;
-  # an embedded table keeps what its own events set.
-  defp current_state(%{options: %{url: url}, entry: %{id: id}}, model) when is_binary(url) do
-    State.from_params(model, url |> Url.query_params() |> Map.get(id))
-  end
+  # An upload with entries cannot be given up: they are cancelled first.
+  # One that is being sent is only told to stop, and is there until it
+  # has: LiveView refuses to give up its upload till then.
+  defp applied({:uploads, {:close, names}}, socket) do
+    Enum.reduce(names, socket, fn name, socket ->
+      case socket.assigns[:uploads] do
+        %{^name => %{entries: entries}} ->
+          socket = Enum.reduce(entries, socket, &cancel_upload(&2, name, &1.ref))
 
-  # What it kept is fitted to the model of the person who is asking now.
-  defp current_state(%{entry: %{state: state}}, model), do: State.fit(state, model)
+          if socket.assigns.uploads[name].entries == [],
+            do: disallow_upload(socket, name),
+            else: socket
 
-  # What the filter row shows beside the filters that apply (`pending`),
-  # when an update brings the filters: kept while they are as they were, and
-  # when they are the ones the row's last change was to give, which is then
-  # all they are shown among. Filters from anywhere else (the back button, a
-  # link) are shown as they are.
-  defp awaited(pending, filters, filters), do: pending
-
-  defp awaited(%{among: [_before, filters]} = pending, _old, filters),
-    do: %{pending | among: [filters]}
-
-  defp awaited(_pending, _old, _filters), do: %{controls: %{}, among: []}
-
-  # The rows of the arguments that are given value by value, as far as
-  # they still say what their argument shows: an empty row holds no value,
-  # so rows that differ in more than those are of another time.
-  defp lines(lines, model, state, refused) do
-    Map.filter(lines, fn {key, rows} ->
-      case Model.argument(model, key) do
-        nil ->
-          false
-
-        argument ->
-          Enum.reject(rows, &(&1 == "")) == Model.Argument.shown(argument, state, refused)
+        _gone ->
+          socket
       end
     end)
   end
 
-  # Who is reading and saving.
-  #
-  # A table that follows live updates also says which listener is its own
-  # (`origin`): what it changes itself is not announced to it, as it shows
-  # what its action returned (`AshDataTable.Query.reader_opts/1`).
-  # Who is asking, with what the page gives every call to Ash for the table
-  # the callback works on (`values/2`): of the socket, or of a step's table
-  # and context.
-  def reader(%Phoenix.LiveView.Socket{} = socket), do: reader(table(socket), context(socket))
+  defp applied({:uploads, {:consume, id, files, panel, write}}, socket),
+    do: consume(socket, id, files, %{}, panel, write)
 
-  def reader(%Table{} = table) do
-    # with what the table resolved of `authorize?` for itself
-    reader = [authorize?: table.entry.authorize?] ++ Caller.reader_opts(table.caller)
+  # Each file in turn, consumed by LiveView (`consume_uploaded_entry/3`),
+  # given as a `Plug.Upload`, which is what Ash takes for a file from a web
+  # request: the path LiveView wrote it to, the name the browser gave (a
+  # name, never a way to somewhere), its content type. Inside the last, the
+  # step of `{:consumed, panel, write, files}` of the table `id`: the write
+  # goes on while LiveView holds the files, and LiveView takes them away
+  # when this returns. Its table and effects are what the socket comes to.
+  defp consume(socket, id, [], files, panel, write),
+    do: socket |> stepped({:to, id, {:consumed, panel, write, files}}) |> elem(0)
 
-    case table.entry.live do
-      %{pid: pid} -> [origin: pid] ++ reader
-      _not_listening -> reader
+  defp consume(socket, id, [{name, entry} | rest], files, panel, write) do
+    consume_uploaded_entry(socket, entry, fn %{path: path} ->
+      file = %Plug.Upload{
+        path: path,
+        filename: Path.basename(entry.client_name),
+        content_type: entry.client_type
+      }
+
+      {:ok, consume(socket, id, rest, Map.put(files, name, file), panel, write)}
+    end)
+  end
+
+  # ---- the step: over the table ---------------------------------------
+
+  @doc """
+  The step of `intent` over `table` with what the socket gives (`context`):
+  the table as it is then, the effects to apply (`effects/2`) and the reply
+  to the hook (nil for none). No socket: a step reads through Ash and calls
+  the page's functions, nothing else.
+  """
+  def step(%Table{} = table, intent, context) do
+    {table, reply} = run(intent, %{table | context: context, effects: []})
+    {%{table | context: nil, effects: []}, Enum.reverse(table.effects), reply}
+  end
+
+  @doc """
+  Adds an effect, or a list of them in their order, to what the step gives
+  back.
+  """
+  def effect(%Table{effects: effects} = table, list) when is_list(list),
+    do: %{table | effects: Enum.reverse(list, effects)}
+
+  def effect(%Table{effects: effects} = table, effect),
+    do: %{table | effects: [effect | effects]}
+
+  @doc """
+  Runs an intent within the table: `{table, reply}`. What a step is, and
+  what a topic hands on (a run on the selection its panel started,
+  `{:bulk_start, …}`; Cancel of what the host held, `Opener.Host`).
+  """
+  # Every event of the browser is parsed first (`AshDataTable.Intent`): what
+  # it asks for, its values still claims, run within the table it is named
+  # for. One whose payload has another shape, and one that is not named for
+  # a table shown, gets the answer the table gives such an event
+  # (`malformed/1`).
+  def run({:event, event, params}, table) do
+    {id, plain} = addressed(event)
+
+    case id && Registry.known?(table, id) && Intent.parse(plain, params) do
+      {:ok, intent} -> Registry.within(table, id, &run(intent, &1))
+      _another_table_or_malformed -> {table, malformed(plain)}
     end
   end
 
-  def reader(%Table{} = table, context),
-    do: reader(table) ++ [page_values: values(table, context)]
-
-  # When who is asking changes (another `scope`, `actor`, `tenant` or
-  # `authorize?`), the table forgets what is open in it: its expanded rows
-  # are put back closed and its picker goes, and the tables under them close
-  # in this update (`tidy/1`), before they start a read for the new person
-  # that their closing would cut off (target 6a). The table reads again.
-  defp asker(assigns, socket) do
-    case table(socket) do
-      %{entry: %{read: nil}} -> socket
-      table -> asker(assigns, socket, table)
-    end
+  # An intent of the table `id`, run within it; nothing for a table that is
+  # no longer shown.
+  def run({:to, id, intent}, table) do
+    if Registry.known?(table, id),
+      do: Registry.within(table, id, &run(intent, &1)),
+      else: {table, nil}
   end
 
-  defp asker(assigns, socket, %{caller: caller, entry: entry}) do
-    asking = fn assigns ->
-      {Map.get(assigns, :scope, caller.scope), Map.get(assigns, :actor, caller.actor),
-       Map.get(assigns, :tenant, caller.tenant),
-       Map.get(assigns, :authorize?, entry.authorize_given)}
-    end
+  # The answer of a task. One for a table that is no longer shown is
+  # dropped here: its tasks were not stopped as it closed, but finish their
+  # query (`Registry.finishing/1`), and answer all the same, maybe to a
+  # table of the same id opened since (`Registry.current?/2`).
+  def run({:task, {:ash_data_table, id, {kind, _token}} = key, result}, table) do
+    if Registry.current?(table, key),
+      do: Registry.within(table, id, &run({:async, kind, result}, &1)),
+      else: {table, nil}
+  end
 
-    if asking.(assigns) == asking.(%{}) do
-      socket
-    else
-      %{open: open, rows: rows} = entry
+  def run(:tidy, table), do: {tidy(table), nil}
 
-      open
-      |> Map.keys()
-      |> Enum.filter(&is_map_key(rows, &1))
-      |> Enum.reduce(put(socket, open: %{}, picker: nil), &Reading.put_detail(&2, &1))
+  def run(:close_all, table), do: {Registry.close_all(table), nil}
+
+  # The answers of the host to what a table holds for it (controlled mode,
+  # `AshDataTable.confirm_request/3` and the other commands): the request
+  # `ref`, where the table that holds it holds it as one of `kinds`. Each
+  # table shown is asked (`Opener.answer/3`); the one that holds it gives
+  # the intent `answer` makes of it, which runs within that table through
+  # the module of its topic, as a browser's does, and what came of it is
+  # told (`Opener.Host.replied/4`: only the host answers); nil runs
+  # nothing. A stale or forged `ref` does nothing.
+  def run({:answer, ref, kinds, answer}, table) do
+    answered =
+      each(table, fn table ->
+        case Opener.answer(table, ref, {kinds, answer}) do
+          {:ok, nil, table} ->
+            table
+
+          {:ok, intent, table} ->
+            {table, reply} = run(intent, table)
+            Opener.Host.replied(table, ref, intent, reply)
+
+          :none ->
+            table
+        end
+      end)
+
+    {answered, nil}
+  end
+
+  def run(intent, table), do: topic(intent).step(intent, table)
+
+  # The module of an intent's topic. A host's Confirm (`{:confirmed,
+  # intent}`) is of the intent's.
+  defp topic({:confirmed, intent}), do: topic(intent)
+  defp topic({:async, :bulk, _result}), do: Bulk
+  defp topic({:async, _read_or_summary, _result}), do: Reading
+  defp topic(intent) when is_tuple(intent), do: topic(elem(intent, 0))
+
+  defp topic(event)
+       when event in [:sort, :filter, :clear_filter, :clear_filters, :filter_values, :page] or
+              event in [:page_size, :refresh],
+       do: Reading
+
+  defp topic(event) when event in [:arguments, :argument_add, :argument_remove, :put_state],
+    do: Url
+
+  defp topic(event) when event in [:expand, :toggle], do: Nesting
+  defp topic(event) when event in [:save, :clear, :reveal, :edit, :discard, :dismiss], do: Cells
+
+  defp topic(event)
+       when event in [:pick, :pick_input, :picked, :picker_cancel, :panel_unpick, :chosen] or
+              event == :refer,
+       do: Picker
+
+  defp topic(event) when event in [:act, :open, :table_act, :table_run, :create], do: Panel
+
+  defp topic(event)
+       when event in [:panel_validate, :panel_submit, :panel_add, :panel_remove] or
+              event in [:panel_clear, :panel_cancel, :consumed],
+       do: Panel
+
+  defp topic(event) when event in [:bulk, :bulk_run, :bulk_seen, :bulk_start], do: Bulk
+  defp topic(event) when event in [:select, :clear_selection, :selected_records], do: Selection
+  defp topic(event) when event in [:left, :read_again, :heard], do: Updates
+  defp topic(:told), do: Told
+
+  # The browser names an event with the table it is for (target.md Q4):
+  # `ash_data_table:ID:event`, split at the first and the last `:`. The
+  # table's id, a claim that is looked up among the tables shown (nil for
+  # an event without it), and the event's own name.
+  def addressed(event) do
+    case String.split(event, ":") do
+      ["ash_data_table" | [_, _ | _] = rest] ->
+        {ids, [plain]} = Enum.split(rest, -1)
+        {Enum.join(ids, ":"), plain}
+
+      _unaddressed ->
+        {nil, event}
     end
   end
 
@@ -708,12 +477,12 @@ defmodule AshDataTable.Live.Core do
   #     (`Opener.opened/3`): in controlled mode one is held or let go as a
   #     request, in every table;
   #   * the summaries that are due are asked for.
-  defp tidy(socket) do
-    socket
+  defp tidy(table) do
+    table
     |> Nesting.reconcile()
     |> each(&Updates.follow/1)
     |> Nesting.reconcile()
-    |> each(&stepped(&1, Selection.scoped(table(&1))))
+    |> each(&Selection.scoped/1)
     |> each(&Nesting.counted/1)
     |> each(&opened/1)
     |> each(&Reading.summarise/1)
@@ -721,45 +490,98 @@ defmodule AshDataTable.Live.Core do
 
   # The panel and the picker, as what draws them is told (the panel
   # first: a picker the host draws comes before it).
-  defp opened(socket) do
-    %{panel: panel, picker: picker} = table(socket).entry
-    socket |> Opener.opened(:panel, panel) |> Opener.opened(:picker, picker)
+  defp opened(table) do
+    %{panel: panel, picker: picker} = table.entry
+    table |> Opener.opened(:panel, panel) |> Opener.opened(:picker, picker)
   end
 
   # Runs `fun` on every table shown, parents first.
-  defp each(socket, fun) do
-    table(socket).entries
+  defp each(table, fun) do
+    table.entries
     |> Map.values()
     |> Enum.sort_by(&{length(&1.path), &1.id})
-    |> Enum.reduce(fun.(socket), fn %{id: id}, socket ->
-      if is_map_key(table(socket).entries, id),
-        do: Registry.within(socket, id, fun),
-        else: socket
+    |> Enum.reduce(fun.(table), fn %{id: id}, table ->
+      if is_map_key(table.entries, id),
+        do: Registry.within(table, id, fun),
+        else: table
     end)
   end
 
-  # What a default of an asked argument and a function of the page are
-  # given: the assigns the tag was given, or for a
-  # table attached to a LiveView its assigns as they are now, as LiveView
-  # gives them (`socket.assigns`, a field of `Phoenix.LiveView.Socket.t`).
-  def page_assigns(socket) do
-    case table(socket).options.page_assigns do
-      :socket -> socket.assigns
-      assigns -> assigns
-    end
+  # What an event of a shape the table never sends is answered with: what
+  # the hook that sends it takes as "nothing came of it"; nil for no
+  # answer. An event the table does not know has no answer.
+  defp malformed(event) when event in ~w(save clear reveal act bulk edit pick picked),
+    do: %{ok: false}
+
+  defp malformed("expand"), do: %{open: false}
+
+  defp malformed(event) when event in ~w(panel_add panel_remove panel_unpick panel_clear),
+    do: %{}
+
+  defp malformed(event)
+       when event in ~w(sort filter clear_filter clear_filters filter_values arguments argument_add
+                        argument_remove page page_size toggle table_act table_run bulk_run
+                        bulk_seen select panel_validate panel_submit panel_cancel pick_input
+                        picker_cancel create open discard dismiss left read_again),
+       do: nil
+
+  # A name the table has no event of: nothing is done, and nothing is
+  # answered. Only a browser that was changed sends one.
+  defp malformed(event) do
+    Logger.debug("ash_data_table: an event no table has was ignored: #{inspect(event)}")
+    nil
   end
 
-  # What the page gives every call to Ash for the table the callback works
-  # on, as its functions say now: `context`, `private_arguments`
-  # and `page_arguments`, each a map, or a function of the page's assigns and
-  # of which table asks (`%{table: id, path: path, resource: resource}`).
-  # Called in the LiveView's process, before any read or write starts; a
-  # change of what they return reads nothing again by itself.
+  @doc "Puts a text into the live region, to be read out."
+  def say(%Table{} = table, text),
+    do: Table.put(table, announcement: text, announcements: table.entry.announcements + 1)
+
+  @doc """
+  Tells the host `event` of the table, where the page asked for it
+  (`Notify.told/3`): an effect; `always?` whatever `notify` says.
+  """
+  def notify(%Table{} = table, event, always? \\ false),
+    do: effect(table, Notify.told(table, event, always?))
+
+  # Who is reading and saving, with what the page gives every call to Ash
+  # for the table (`values/1`).
   #
-  # Each function is called once per callback and table (`callback/1`): the
-  # reads and the write of one event are given the same values. `context`
-  # is a step's (`context/1`): its `page_assigns` are what they are given.
-  def values(%Table{entry: entry} = table, context) do
+  # A table that follows live updates also says which listener is its own
+  # (`origin`): what it changes itself is not announced to it, as it shows
+  # what its action returned (`AshDataTable.Query.reader_opts/1`).
+  def reader(%Table{} = table) do
+    # with what the table resolved of `authorize?` for itself
+    reader = [authorize?: table.entry.authorize?] ++ Caller.reader_opts(table.caller)
+
+    reader =
+      case table.entry.updates.live do
+        %{pid: pid} -> [origin: pid] ++ reader
+        _not_listening -> reader
+      end
+
+    reader ++ [page_values: values(table)]
+  end
+
+  # What a default of an asked argument and a function of the page are
+  # given: the assigns the tag was given, or for a table attached to a
+  # LiveView its assigns as they are now, as LiveView gives them (the
+  # step's `context`, `socket.assigns`, a field of
+  # `Phoenix.LiveView.Socket.t`).
+  def page_assigns(%Table{options: %{page_assigns: :socket}, context: context}),
+    do: context.assigns
+
+  def page_assigns(%Table{options: %{page_assigns: assigns}}), do: assigns
+
+  # What the page gives every call to Ash for the table, as its functions
+  # say now: `context`, `private_arguments` and `page_arguments`, each a
+  # map, or a function of the page's assigns and of which table asks
+  # (`%{table: id, path: path, resource: resource}`). Called in the
+  # LiveView's process, before any read or write starts; a change of what
+  # they return reads nothing again by itself.
+  #
+  # Each function is called once per callback and table (`callback/2`): the
+  # reads and the write of one event are given the same values.
+  def values(%Table{entry: entry} = table) do
     ref = %{table: entry.id, path: entry.path, resource: entry.resource}
 
     case Process.get(@values) do
@@ -767,12 +589,12 @@ defmodule AshDataTable.Live.Core do
         values
 
       %{} = known ->
-        values = values(table, context.page_assigns, ref)
+        values = values(table, page_assigns(table), ref)
         Process.put(@values, Map.put(known, ref, values))
         values
 
       nil ->
-        values(table, context.page_assigns, ref)
+        values(table, page_assigns(table), ref)
     end
   end
 
@@ -813,18 +635,18 @@ defmodule AshDataTable.Live.Core do
               __STACKTRACE__
   end
 
-  # The page's veto, as `AshDataTable.Operation` asks it: a
-  # function of the request, which holds the page's assigns as they are now
-  # and says which table asks. It answers `:cont` or `{:halt, message}`;
-  # any other answer raises, as a veto that answers `:ok` would otherwise
-  # refuse every write without a word.
-  def veto(%Table{caller: %{before_action: before}, entry: entry}, context) do
-    assigns = context.page_assigns
+  # The page's veto, as `AshDataTable.Operation` asks it: a function of the
+  # request, which holds the page's assigns as they are now and says which
+  # table asks. It answers `:cont` or `{:halt, message}`; any other answer
+  # raises, as a veto that answers `:ok` would otherwise refuse every write
+  # without a word.
+  def veto(%Table{caller: %{before_action: before}, entry: entry} = table) do
+    assigns = page_assigns(table)
 
     fn request ->
       request = %{request | table: entry.id, path: entry.path}
 
-      case answer(before, request, assigns) do
+      case vetoed(before, request, assigns) do
         :cont ->
           :cont
 
@@ -839,48 +661,14 @@ defmodule AshDataTable.Live.Core do
     end
   end
 
-  defp answer(nil, _request, _assigns), do: :cont
-  defp answer(fun, request, _assigns) when is_function(fun, 1), do: fun.(request)
-  defp answer(fun, request, assigns), do: fun.(request, assigns)
-
-  # Puts a text into the live region, to be read out: into a step's table,
-  # or into the socket's (its table head's table put).
-  def say(%Table{} = table, text),
-    do: Table.put(table, announcement: text, announcements: table.entry.announcements + 1)
-
-  def say(socket, text), do: put(socket, say(table(socket), text))
-
-  # What an event of a shape the table never sends is answered with: what
-  # the hook that sends it takes as "nothing came of it". An event the table
-  # does not know has no answer.
-  defp malformed(event, socket)
-       when event in ~w(save clear reveal act bulk edit pick picked),
-       do: {:reply, %{ok: false}, socket}
-
-  defp malformed("expand", socket), do: {:reply, %{open: false}, socket}
-
-  defp malformed(event, socket)
-       when event in ~w(panel_add panel_remove panel_unpick panel_clear),
-       do: {:reply, %{}, socket}
-
-  defp malformed(event, socket)
-       when event in ~w(sort filter clear_filter clear_filters filter_values arguments argument_add
-                        argument_remove page page_size toggle table_act table_run bulk_run
-                        bulk_seen select panel_validate panel_submit panel_cancel pick_input
-                        picker_cancel create open discard dismiss left read_again),
-       do: {:noreply, socket}
-
-  # A name the table has no event of: nothing is done, and nothing is
-  # answered. Only a browser that was changed sends one.
-  defp malformed(event, socket) do
-    Logger.debug("ash_data_table: an event no table has was ignored: #{inspect(event)}")
-    {:noreply, socket}
-  end
+  defp vetoed(nil, _request, _assigns), do: :cont
+  defp vetoed(fun, request, _assigns) when is_function(fun, 1), do: fun.(request)
+  defp vetoed(fun, request, assigns), do: fun.(request, assigns)
 
   # What a write is given (`AshDataTable.Operation.Input`): the intent, the
-  # table as it is now, and the page's veto and values, made now of what
-  # the socket gives (`context/1`).
-  def operation(%Table{} = table, context, intent, more \\ []) do
+  # table as it is now, and the page's veto and values, made now of the
+  # step's context.
+  def operation(%Table{} = table, intent, more \\ []) do
     entry = table.entry
 
     parent =
@@ -888,7 +676,7 @@ defmodule AshDataTable.Live.Core do
         do: %{
           key: entry.parent_key,
           authorize?: entry.parent_authorize?,
-          arguments: entry.parent_arguments
+          arguments: entry.arguments.parent_arguments
         }
 
     struct!(
@@ -898,13 +686,16 @@ defmodule AshDataTable.Live.Core do
         state: entry.state,
         parent: parent,
         opts: reader(table),
-        veto: veto(table, context),
-        page_values: values(table, context),
+        veto: veto(table),
+        page_values: values(table),
         picking: Picker.picking(table),
         rows: entry.rows,
-        selection: if(entry.all?, do: :all, else: {:rows, entry.selected}),
+        selection: if(entry.selection.all?, do: :all, else: {:rows, entry.selection.selected}),
         read?: match?(%Query.Page{}, entry.page),
-        offered: %{table: entry.offered, bulk: if(entry.running, do: [], else: entry.bulk)}
+        offered: %{
+          table: entry.offered,
+          bulk: if(entry.selection.running, do: [], else: entry.selection.bulk)
+        }
       },
       more
     )

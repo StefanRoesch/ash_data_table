@@ -74,6 +74,23 @@ defmodule AshDataTable.Listener do
     end
   end
 
+  @doc """
+  What a listener of the table `id` hands each batch to, in the calling
+  LiveView process's name: the component that draws the table (`target`,
+  the tag's `@myself`) with `Phoenix.LiveView.send_update/3`, or for nil
+  the LiveView itself, as `{:ash_data_table_heard, id, batch}`, which a
+  hook of the table's takes (`AshDataTable.Live.Hooks`).
+  """
+  @spec relay(term, String.t()) :: ([announcement] -> term)
+  def relay(target, id) do
+    view = self()
+
+    case target do
+      nil -> fn batch -> send(view, {:ash_data_table_heard, id, batch}) end
+      cid -> fn batch -> Phoenix.LiveView.send_update(view, cid, live: {:heard, id, batch}) end
+    end
+  end
+
   @doc "Ends a listener. It has relayed its last batch."
   @spec stop(pid) :: :ok
   def stop(pid) when is_pid(pid) do

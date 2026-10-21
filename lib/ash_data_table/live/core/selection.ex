@@ -20,9 +20,10 @@ defmodule AshDataTable.Live.Core.Selection do
   # under a filter: what is chosen there is kept while the person looks for
   # another record.
   #
-  # Over the table (stage 9g): `select` is a step (`step/3`), and `put/3`,
-  # `scoped/1` and `gone/2` give the table and the effects
-  # (`Live.Core.stepped/2` puts them where a socket asks).
+  # Over the table (stage 9g): what the hook and the host are told are
+  # effects of the table (`{:push, …}`, `{:tell, …}`). What is selected is
+  # read in one place, `records/1` (the host's `selected_records/2`, and an
+  # export of the selection).
 
   alias AshDataTable.Errors
   alias AshDataTable.Event
@@ -37,19 +38,24 @@ defmodule AshDataTable.Live.Core.Selection do
 
   # Sent by the hook on every change of what a person has selected: every
   # record that matches (`all`), or the rows, by their primary keys.
-  def step({:select, selection}, table, _context) do
-    {table, effects} = put(table, selection, false)
-    {table, effects, nil}
-  end
+  def step({:select, selection}, table), do: {put(table, selection, false), nil}
+
+  # The host takes every row out of the selection
+  # (`AshDataTable.clear_selection/2`); the hook is told.
+  def step(:clear_selection, table), do: {put(table, {:rows, []}, true), nil}
+
+  # The host asks what is selected (`AshDataTable.selected_records/2`): the
+  # answer is the records (`records/1`).
+  def step(:selected_records, table), do: {table, records(table)}
 
   @doc """
   Makes `selection` (`:all`, or `{:rows, rows}`) what is selected in
   `table`, and tells the host when that changed (`:selection_changed`).
   `told?` is for a change the server made, of which the hook is told
-  (`ash_data_table:select`). `{table, effects}`.
+  (`ash_data_table:select`).
   """
   def put(%Table{} = table, selection, told?) do
-    %{id: id, model: model, selected: before, all?: all_before} = table.entry
+    %{id: id, model: model, selection: %{selected: before, all?: all_before}} = table.entry
 
     {all?, rows} =
       case selection do
@@ -80,31 +86,32 @@ defmodule AshDataTable.Live.Core.Selection do
           ),
         else: []
 
-    {table, pushed ++ told}
+    Core.effect(table, pushed ++ told)
   end
 
   # A selection is given up when what it was made under changes: the
   # filters, the arguments, and the record the table is limited to. Not the
   # sort, nor the page: a selection outlives its page.
   def scoped(%Table{} = table) do
-    %{state: state, related: related, choose: choose, selected_under: held} = entry = table.entry
+    %{state: state, related: related, choose: choose, selection: selection} = table.entry
+    %{selected_under: held} = selection
 
     scope =
       if choose, do: :choose, else: {state.filters, state.arguments, related && related.param}
 
     table = Table.put(table, selected_under: scope)
 
-    if not is_nil(held) and held != scope and (entry.all? or entry.selected != []),
+    if not is_nil(held) and held != scope and (selection.all? or selection.selected != []),
       do: put(table, {:rows, []}, true),
-      else: {table, []}
+      else: table
   end
 
   # A row that went, with the primary key `pk`, is selected no longer.
   def gone(%Table{} = table, pk) do
-    %{model: model, selected: selected} = table.entry
+    %{model: model, selection: %{selected: selected}} = table.entry
 
     case Enum.reject(selected, &(key(model, &1) == pk)) do
-      ^selected -> {table, []}
+      ^selected -> table
       rows -> put(table, {:rows, rows}, true)
     end
   end
@@ -116,11 +123,11 @@ defmodule AshDataTable.Live.Core.Selection do
   `all?` everything that matches, read in batches; scrubbed of sensitive
   values. `{:error, message}` where the read fails.
   """
-  def records(socket) do
-    %{model: model, selected: rows, all?: all?, state: state, parent_key: parent} =
-      Core.table(socket).entry
+  def records(%Table{} = table) do
+    %{model: model, selection: %{selected: rows, all?: all?}, state: state, parent_key: parent} =
+      table.entry
 
-    opts = Reading.read_opts(socket)
+    opts = Reading.read_opts(table)
 
     keys =
       if all?,
@@ -139,7 +146,7 @@ defmodule AshDataTable.Live.Core.Selection do
       {:error, error} -> {:error, failed(error, model)}
     end
   rescue
-    error -> {:error, failed(error, Core.table(socket).entry.model)}
+    error -> {:error, failed(error, table.entry.model)}
   end
 
   defp failed(error, model) do
@@ -184,7 +191,7 @@ defmodule AshDataTable.Live.Core.Selection do
   What is selected of the rows of the page, as the hook names them: in a
   table to choose one record from, the record a person can take.
   """
-  def in_view(%{rows: rows, selected: selected, model: model}) do
+  def in_view(%{rows: rows, selection: %{selected: selected}, model: model}) do
     shown = MapSet.new(rows, fn {key, row} -> Reading.names(model, row.pk, key) || key end)
     Enum.filter(selected, &MapSet.member?(shown, &1))
   end

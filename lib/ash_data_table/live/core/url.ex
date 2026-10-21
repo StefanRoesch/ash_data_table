@@ -3,9 +3,8 @@ defmodule AshDataTable.Live.Core.Url do
   # The URL: the arguments of the line, and a change of the state,
   # which is a patch where the state is in the URL.
   #
-  # Over the table (stage 9g): the intents of the line are steps
-  # (`step/3`), and a change of the state gives the table and its effects
-  # (`go/2`: `{:patch, url}`, or the state put and `:read`).
+  # Over the table (stage 9g): a change of the state is a patch where the
+  # state is in the URL (`{:patch, url}`), else the state put and a read.
 
   alias AshDataTable.Ids
   alias AshDataTable.Live.Core
@@ -17,7 +16,7 @@ defmodule AshDataTable.Live.Core.Url do
 
   # Sent by the form of the argument line when one of its controls changes
   # or is left, and on Enter, with everything the line holds.
-  def step({:arguments, form}, table, context) do
+  def step({:arguments, form}, table) do
     %{state: state, model: model} = table.entry
 
     # the rows of the arguments that are given value by value, as they stand
@@ -27,48 +26,52 @@ defmodule AshDataTable.Live.Core.Url do
           into: %{},
           do: {Model.Argument.key(argument), rows}
 
-    {table, effects} =
-      table |> Table.put(lines: lines) |> reargue(State.argue(state, model, form), context)
-
-    {table, effects, nil}
+    {table |> Table.put(lines: lines) |> reargue(State.argue(state, model, form)), nil}
   end
 
   # Sent by the button of an argument that is given value by value: a row
   # is added for one more value. An empty row holds no value, so nothing is
   # read for it; focus goes into it.
-  def step({:argument_add, named}, table, _context) do
-    %{id: id, lines: lines} = table.entry
+  def step({:argument_add, named}, table) do
+    %{id: id, arguments: %{lines: lines}} = table.entry
 
     case listed(table.entry, named) do
       nil ->
-        {table, [], nil}
+        {table, nil}
 
       {key, rows} ->
-        {Table.put(table, lines: Map.put(lines, key, rows ++ [""])),
-         [focus(id, named, length(rows))], nil}
+        {table
+         |> Table.put(lines: Map.put(lines, key, rows ++ [""]))
+         |> Core.effect(focus(id, named, length(rows))), nil}
     end
   end
 
   # And by the button of one of its rows: the value is taken away. Focus
   # goes to the row that stands in its place, else to the one before it,
   # else to the button that adds one.
-  def step({:argument_remove, named, at}, table, context) do
-    %{id: id, state: state, model: model, lines: lines} = table.entry
+  def step({:argument_remove, named, at}, table) do
+    %{id: id, state: state, model: model, arguments: %{lines: lines}} = table.entry
 
     with {key, rows} <- listed(table.entry, named),
          true <- at < length(rows) do
       rows = List.delete_at(rows, at)
       focus = if rows == [], do: :add, else: min(at, length(rows) - 1)
 
-      {table, effects} =
-        table
-        |> Table.put(lines: Map.put(lines, key, rows))
-        |> reargue(State.put_argument(state, model, key, rows), context)
-
-      {table, effects ++ [focus(id, named, focus)], nil}
+      {table
+       |> Table.put(lines: Map.put(lines, key, rows))
+       |> reargue(State.put_argument(state, model, key, rows))
+       |> Core.effect(focus(id, named, focus)), nil}
     else
-      _ -> {table, [], nil}
+      _ -> {table, nil}
     end
+  end
+
+  # A state the host put (`AshDataTable.put_state/3`): as the URL's
+  # parameters are read, with what the model does not allow dropped, and
+  # then as the person's own choice of arguments is taken.
+  def step({:put_state, params}, table) do
+    %{model: model} = table.entry
+    {reargue(table, model |> State.from_params(params) |> State.fit(model)), nil}
   end
 
   # Where focus goes in the line: a row of an argument's values, or `:add`.
@@ -83,18 +86,9 @@ defmodule AshDataTable.Live.Core.Url do
   # argument stays as it was, and its input keeps what was typed, marked,
   # with Ash's message, which is read out. What is left is a change like
   # one of the filters.
-  # A state the host put (`AshDataTable.put_state/3`): as the URL's
-  # parameters are read, with what the model does not allow dropped, and
-  # then as the person's own choice of arguments is taken. `{table,
-  # effects}`.
-  def put_state(%Table{} = table, params, context) do
-    %{model: model} = table.entry
-    reargue(table, model |> State.from_params(params) |> State.fit(model), context)
-  end
-
-  defp reargue(table, chosen, context) do
+  defp reargue(table, chosen) do
     %{model: model, state: state} = table.entry
-    reader = Core.reader(table, context)
+    reader = Core.reader(table)
 
     {next, model, missing, refused} =
       case Reading.settle(model, chosen, reader) do
@@ -128,7 +122,7 @@ defmodule AshDataTable.Live.Core.Url do
   # The argument of the line that an event names, when it is one that is
   # given value by value: its key, and its rows as they stand. Looked up by
   # the name it has in the page, as text.
-  defp listed(%{model: model, state: state, refused: refused, lines: lines}, named)
+  defp listed(%{model: model, state: state, arguments: %{refused: refused, lines: lines}}, named)
        when is_binary(named) do
     case Enum.find(
            model.arguments,
@@ -146,8 +140,7 @@ defmodule AshDataTable.Live.Core.Url do
   defp listed(_assigns, _named), do: nil
 
   # A change of the filters is announced once its rows have been read.
-  # `{table, effects}`, as `go/2`.
-  def refilter(table, state) when table.entry.state == state, do: {table, []}
+  def refilter(table, state) when table.entry.state == state, do: table
 
   # With the filters goes what the last run on a selection came to (the
   # selection itself is given up by `Selection.scoped/1`).
@@ -156,9 +149,8 @@ defmodule AshDataTable.Live.Core.Url do
 
   # With the state in the URL the change is a patch, and the new state comes
   # back through `update/2`. Otherwise the entry holds it, and the table
-  # reads for it (`:read`, `Reading.read/1` on the socket). `{table,
-  # effects}`.
-  def go(table, state) when table.entry.state == state, do: {table, []}
+  # reads for it (`Reading.read/1`).
+  def go(table, state) when table.entry.state == state, do: table
 
   def go(table, state) when is_binary(table.options.url) do
     %{options: %{url: url}, entry: %{id: id, related: related, model: model}} = table
@@ -170,10 +162,10 @@ defmodule AshDataTable.Live.Core.Url do
         %{param: param} -> %{Related.param() => param}
       end
 
-    {table, [{:patch, path(url, id, Map.merge(State.to_params(state, model), limit))}]}
+    Core.effect(table, {:patch, path(url, id, Map.merge(State.to_params(state, model), limit))})
   end
 
-  def go(table, state), do: {Table.put(table, state: state), [:read]}
+  def go(table, state), do: table |> Table.put(state: state) |> Reading.read()
 
   # The URL with these parameters for the table `id`, and those of the
   # page's other tables as they are.

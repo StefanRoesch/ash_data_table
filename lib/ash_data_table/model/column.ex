@@ -91,7 +91,7 @@ defmodule AshDataTable.Model.Column do
   #   * `component`, `max_lines` and `sticky_label?` (the table's, on the
   #     model) are presentation hints: what the parts draw with, which the
   #     core passes on and never reads (target.md 6, F3;
-  #     `test/architecture_test.exs`), but `Live.Core.in_words/1`,
+  #     `test/architecture_test.exs`), but `Live.Core.Told.in_words/1`,
   #     which puts the words of a component's column into it. `editor` is no
   #     hint: it says how a value is given and written.
   #   * `component` is the column's component, nil when the block names

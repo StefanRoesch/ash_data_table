@@ -9,8 +9,8 @@ defmodule AshDataTable.Live.Core.Notify do
   # inside one, sends none.
   #
   # Over the table (stage 9g): what is told is an effect of a step,
-  # `{:tell, top, {event, details}}`, which `Live.Core.effects/2` sends;
-  # the socket's way of a topic tells with `Live.Core.notify/3`.
+  # `{:tell, top, {event, details}}`, which `Live.Core.effects/2` sends
+  # (`Live.Core.notify/3`).
 
   @doc """
   What the host is told of `event` of `table` (the table the callback

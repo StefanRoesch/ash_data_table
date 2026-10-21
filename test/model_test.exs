@@ -146,7 +146,7 @@ defmodule AshDataTable.ModelTest do
 
       # the way the core goes, every time: `in_words/1`, then `supply/2`
       # (`Core.Reading.settle/4`)
-      core = model |> AshDataTable.Live.Core.in_words() |> Model.supply(%{})
+      core = model |> AshDataTable.Live.Core.Told.in_words() |> Model.supply(%{})
       assert core.label_column in core.columns
     end
 

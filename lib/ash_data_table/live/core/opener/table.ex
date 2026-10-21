@@ -10,16 +10,16 @@ defmodule AshDataTable.Live.Core.Opener.Table do
   @behaviour AshDataTable.Live.Core.Opener
 
   @impl true
-  def ask(socket, _intent, _question, _about), do: {:run, socket}
+  def ask(table, _intent, _question, _about), do: {:run, table}
 
   @impl true
-  def opened(socket, _kind, _value), do: socket
+  def opened(table, _kind, _value), do: table
 
   @impl true
-  def closed(socket, _kind), do: socket
+  def closed(table, _kind), do: table
 
   @impl true
-  def answer(_socket, _ref, _answer), do: :none
+  def answer(_table, _ref, _answer), do: :none
 
   @impl true
   def draws?(_options, _kind), do: true

@@ -56,9 +56,6 @@ defmodule AshDataTable do
   """
   use Phoenix.Component
 
-  alias AshDataTable.Live.Core
-  alias AshDataTable.Live.Core.Selection
-  alias AshDataTable.Live.Core.Url
   alias AshDataTable.Routes
 
   # What the page gives the table, as `attach/4` and the tag take it.
@@ -486,7 +483,7 @@ defmodule AshDataTable do
         opts,
         [:id, :table, :scope, :actor, :tenant, :authorize?, :live?, :label, :time_zone] ++
           [:notify, :open, :kit, :presentation, :look] ++
-          @page ++ [heading: true, url: false, controlled: []]
+          @page ++ [heading: true, url: false] ++ AshDataTable.Live.Core.Opener.option()
       )
 
     page!(Map.new(Keyword.take(opts, @page)), "AshDataTable.attach/4")
@@ -532,25 +529,13 @@ defmodule AshDataTable do
       before_action: opts[:before_action],
       notify: opts[:notify],
       open: open!(opts[:open], "AshDataTable.attach/4"),
-      controlled: controlled!(opts[:controlled]),
+      draws: AshDataTable.Live.Core.Opener.draws!(opts),
       kit: kit!(opts[:kit], "AshDataTable.attach/4"),
       presentation: presentation!(opts[:presentation] || [], "AshDataTable.attach/4"),
       look: AshDataTable.Kit.look!(opts[:look] || [], "AshDataTable.attach/4")
     }
 
     AshDataTable.Live.Hooks.attach(socket, name, given, opts[:url] == true)
-  end
-
-  # What the host draws itself (controlled mode): the questions, the action
-  # panels and the pickers of the table and of every table it shows.
-  defp controlled!(kinds) do
-    if not (is_list(kinds) and Enum.all?(kinds, &(&1 in [:confirm, :panel, :picker]))) do
-      raise ArgumentError,
-            "the `controlled` of AshDataTable.attach/4 is a list of `:confirm`, `:panel` and " <>
-              "`:picker`, got: #{inspect(kinds, limit: 5)}"
-    end
-
-    Enum.uniq(kinds)
   end
 
   # The kit a table is drawn with: the one it is given, else the one of the
@@ -662,7 +647,7 @@ defmodule AshDataTable do
   """
   @spec refresh(Phoenix.LiveView.Socket.t(), atom) :: Phoenix.LiveView.Socket.t()
   def refresh(socket, name) when is_atom(name),
-    do: command(socket, name, "AshDataTable.refresh/2", &AshDataTable.Live.Core.Reading.reread/1)
+    do: command(socket, name, "AshDataTable.refresh/2", :refresh)
 
   @doc """
   Gives the table under `name` the state `params` say, as its URL
@@ -678,7 +663,7 @@ defmodule AshDataTable do
         socket,
         name,
         "AshDataTable.put_state/3",
-        &Core.stepped(&1, Url.put_state(Core.table(&1), params, Core.context(&1)))
+        {:put_state, params}
       )
 
   @doc "Takes every row out of the selection of the table under `name`."
@@ -689,7 +674,7 @@ defmodule AshDataTable do
         socket,
         name,
         "AshDataTable.clear_selection/2",
-        &Core.stepped(&1, Selection.put(Core.table(&1), {:rows, []}, true))
+        :clear_selection
       )
 
   @doc """
@@ -705,14 +690,7 @@ defmodule AshDataTable do
           {:ok, [Ash.Resource.record()]} | {:error, String.t()}
   def selected_records(socket, name) when is_atom(name) do
     {:reply, result, _socket} =
-      AshDataTable.Live.Hooks.command(
-        socket,
-        name,
-        "AshDataTable.selected_records/2",
-        fn socket ->
-          {:reply, Selection.records(socket), socket}
-        end
-      )
+      command(socket, name, "AshDataTable.selected_records/2", :selected_records)
 
     result
   end
@@ -894,9 +872,8 @@ defmodule AshDataTable do
           Phoenix.LiveView.Socket.t()
   def validate_request(socket, name, ref, params) when is_map(params),
     do:
-      answer(socket, name, ref, [:panel], "AshDataTable.validate_request/4", fn socket,
-                                                                                _request ->
-        {{:panel_validate, params}, socket}
+      answer(socket, name, ref, [:panel], "AshDataTable.validate_request/4", fn table, _request ->
+        {{:panel_validate, params}, table}
       end)
 
   @doc """
@@ -908,8 +885,8 @@ defmodule AshDataTable do
           Phoenix.LiveView.Socket.t()
   def submit_request(socket, name, ref, params) when is_map(params),
     do:
-      answer(socket, name, ref, [:panel], "AshDataTable.submit_request/4", fn socket, _request ->
-        {{:panel_submit, params}, socket}
+      answer(socket, name, ref, [:panel], "AshDataTable.submit_request/4", fn table, _request ->
+        {{:panel_submit, params}, table}
       end)
 
   @doc """
@@ -931,8 +908,8 @@ defmodule AshDataTable do
           Phoenix.LiveView.Socket.t()
   def pick_request(socket, name, ref, keys),
     do:
-      answer(socket, name, ref, [:picker], "AshDataTable.pick_request/4", fn socket, _request ->
-        {{:chosen, keys}, socket}
+      answer(socket, name, ref, [:picker], "AshDataTable.pick_request/4", fn table, _request ->
+        {{:chosen, keys}, table}
       end)
 
   @doc """
@@ -948,9 +925,9 @@ defmodule AshDataTable do
           Phoenix.LiveView.Socket.t()
   def add_group_request(socket, name, ref, path),
     do:
-      answer(socket, name, ref, [:panel], "AshDataTable.add_group_request/4", fn socket,
+      answer(socket, name, ref, [:panel], "AshDataTable.add_group_request/4", fn table,
                                                                                  _request ->
-        {AshDataTable.Live.Core.Opener.Host.group(:panel_add, path), socket}
+        {AshDataTable.Live.Core.Opener.Host.group(:panel_add, path), table}
       end)
 
   @doc """
@@ -970,8 +947,8 @@ defmodule AshDataTable do
         ref,
         [:panel],
         "AshDataTable.remove_group_request/4",
-        fn socket, _request ->
-          {AshDataTable.Live.Core.Opener.Host.group(:panel_remove, path), socket}
+        fn table, _request ->
+          {AshDataTable.Live.Core.Opener.Host.group(:panel_remove, path), table}
         end
       )
 
@@ -990,9 +967,10 @@ defmodule AshDataTable do
       )
 
   # The host's answer to request `ref`: `fun` gives the intent it stands
-  # for, which runs as the browser's would (`AshDataTable.Live.Core.answer/4`).
+  # for, which runs as the browser's would (the step `{:answer, …}` of
+  # `AshDataTable.Live.Core`).
   defp answer(socket, name, ref, kinds, where, fun),
-    do: command(socket, name, where, &AshDataTable.Live.Core.answer(&1, ref, kinds, fun))
+    do: command(socket, name, where, {:answer, ref, kinds, fun})
 
   @doc """
   What a host may read of an `AshDataTable.Table`, as the assign holds it:
@@ -1022,21 +1000,23 @@ defmodule AshDataTable do
       error: entry.error && AshDataTable.Text.say(entry.error),
       selected:
         for(
-          row <- entry.selected,
+          row <- entry.selection.selected,
           key = AshDataTable.Record.key(entry.resource, row),
           do: key
         ),
-      all?: entry.all?
+      all?: entry.selection.all?
     }
   end
 
-  defp command(socket, name, where, fun),
+  # A command of the host: a step of the table under `name`
+  # (`AshDataTable.Live.Core.command/2`).
+  defp command(socket, name, where, intent),
     do:
       AshDataTable.Live.Hooks.command(
         socket,
         name,
         where,
-        &AshDataTable.Live.Core.command(&1, fun)
+        &AshDataTable.Live.Core.command(&1, intent)
       )
 
   @doc """

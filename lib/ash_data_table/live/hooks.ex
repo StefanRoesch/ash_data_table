@@ -7,7 +7,7 @@ defmodule AshDataTable.Live.Hooks do
   # The socket's private data, under `:ash_data_table`:
   #
   #   * `current`: the name of the table the callback works on, nil between
-  #     callbacks (`AshDataTable.Live.Core.table/1`);
+  #     callbacks (the assign `AshDataTable.Live.Core` steps over);
   #   * `tables`: the attached tables, by the name of their assign, each
   #     with what it was told (`given`, as the tag's attributes are given)
   #     and whether its state is in the URL (`url?`);
@@ -29,7 +29,6 @@ defmodule AshDataTable.Live.Hooks do
 
   alias AshDataTable.Ids
   alias AshDataTable.Live.Core
-  alias AshDataTable.Live.Registry
   alias AshDataTable.Table
 
   @doc """
@@ -136,7 +135,7 @@ defmodule AshDataTable.Live.Hooks do
 
     case {Map.fetch(private.tables, name), socket.assigns[name]} do
       {{:ok, %{given: %{id: id}}}, %Table{}} ->
-        socket = within(socket, name, &Registry.close_all/1)
+        socket = within(socket, name, &Core.detach/1)
         %Table{pool: pool} = socket.assigns[name]
         private = private(socket)
 

@@ -14,7 +14,6 @@ defmodule AshDataTable.Live.Drawing do
   alias AshDataTable.Kit
   alias AshDataTable.Kit.Projection
   alias AshDataTable.Live.Core.Files
-  alias AshDataTable.Live.Core.Opener
   alias AshDataTable.Live.Core.Selection
   alias AshDataTable.Live.Core.Url
   alias AshDataTable.Live.Registry
@@ -162,9 +161,9 @@ defmodule AshDataTable.Live.Drawing do
                 model: @entry.model,
                 myself: @myself,
                 nested?: @entry.nested?,
-                lines: @entry.lines,
+                lines: @entry.arguments.lines,
                 state: @entry.state,
-                refused: @entry.refused
+                refused: @entry.arguments.refused
               }),
             acts?:
               Projection.of({:heading, :acts?}, %{
@@ -339,19 +338,19 @@ defmodule AshDataTable.Live.Drawing do
           line <- [
             Projection.of(:selection_line, %{
               id: @entry.id,
-              notice?: @entry.notice?,
+              notice?: @entry.updates.notice?,
               filtered?: @entry.state.filters != %{},
-              selecting: @entry.selecting,
-              all?: @entry.all?,
-              selected: length(@entry.selected),
+              selecting: @entry.selection.selecting,
+              all?: @entry.selection.all?,
+              selected: length(@entry.selection.selected),
               total: @entry.page && @entry.page.total,
-              bulk: @entry.bulk,
-              running: @entry.running && @entry.running.action,
+              bulk: @entry.selection.bulk,
+              running: @entry.selection.running && @entry.selection.running.action,
               whole_page?:
                 Selection.whole_page?(%{
-                  all?: @entry.all?,
+                  all?: @entry.selection.all?,
                   rows: @entry.rows,
-                  selected: @entry.selected,
+                  selected: @entry.selection.selected,
                   model: @entry.model
                 }),
               choose: @entry.choose,
@@ -379,16 +378,17 @@ defmodule AshDataTable.Live.Drawing do
             %{
               region: Projection.of({:status, :region}, %{id: @entry.id}),
               again?: Projection.of({:status, :again?}, %{announcements: @entry.announcements}),
-              result: Projection.of({:status, :result}, %{id: @entry.id, result: @entry.result}),
+              result:
+                Projection.of({:status, :result}, %{id: @entry.id, result: @entry.selection.result}),
               texts:
                 Projection.of({:status, :texts}, %{
                   announcement: @entry.announcement,
-                  result: @entry.result
+                  result: @entry.selection.result
                 }),
               messages:
                 Projection.of({:status, :messages}, %{
                   announcement: @entry.announcement,
-                  result: @entry.result
+                  result: @entry.selection.result
                 })
             }
           ]
@@ -421,7 +421,7 @@ defmodule AshDataTable.Live.Drawing do
                   id: @entry.id,
                   myself: @myself,
                   geometry: @entry.geometry,
-                  selecting: @entry.selecting,
+                  selecting: @entry.selection.selecting,
                   choose: @entry.choose
                 }),
               table:
@@ -432,7 +432,7 @@ defmodule AshDataTable.Live.Drawing do
                   geometry: @entry.geometry,
                   page: @entry.page,
                   busy?: @entry.busy?,
-                  running: @entry.running && @entry.running.action
+                  running: @entry.selection.running && @entry.selection.running.action
                 }),
               head:
                 Projection.of({:grid, :head}, %{
@@ -440,7 +440,7 @@ defmodule AshDataTable.Live.Drawing do
                   model: @entry.model,
                   state: @entry.state,
                   geometry: @entry.geometry,
-                  selecting: @entry.selecting,
+                  selecting: @entry.selection.selecting,
                   expandable?: @entry.expandable?,
                   myself: @myself
                 }),
@@ -449,7 +449,7 @@ defmodule AshDataTable.Live.Drawing do
                   id: @entry.id,
                   model: @entry.model,
                   geometry: @entry.geometry,
-                  selecting: @entry.selecting,
+                  selecting: @entry.selection.selecting,
                   expandable?: @entry.expandable?,
                   myself: @myself,
                   rejected: @entry.rejected,
@@ -461,10 +461,10 @@ defmodule AshDataTable.Live.Drawing do
                   id: @entry.id,
                   model: @entry.model,
                   geometry: @entry.geometry,
-                  selecting: @entry.selecting,
+                  selecting: @entry.selection.selecting,
                   expandable?: @entry.expandable?,
                   open: @entry.open_label,
-                  asks?: Opener.draws?(%{controlled: @options.controlled}, :confirm)
+                  asks?: @options.draws.confirm
                 }),
               footer:
                 Projection.of({:grid, :footer}, %{
@@ -473,13 +473,13 @@ defmodule AshDataTable.Live.Drawing do
                   page: @entry.page,
                   state: @entry.state,
                   geometry: @entry.geometry,
-                  selecting: @entry.selecting,
+                  selecting: @entry.selection.selecting,
                   expandable?: @entry.expandable?,
                   row_count: @entry.row_count,
                   label: @entry.label,
                   full_view: @entry.full_view,
-                  summary: @entry.summary,
-                  summing?: @entry.summing?,
+                  summary: @entry.footer.summary,
+                  summing?: @entry.footer.summing?,
                   time_zone: @time_zone,
                   nested?: @entry.nested?,
                   myself: @myself
@@ -488,7 +488,7 @@ defmodule AshDataTable.Live.Drawing do
                 Projection.of({:grid, :editors}, %{
                   id: @entry.id,
                   model: @entry.model,
-                  asks?: Opener.draws?(%{controlled: @options.controlled}, :confirm)
+                  asks?: @options.draws.confirm
                 }),
               failure:
                 Projection.of({:grid, :failure}, %{
@@ -529,7 +529,7 @@ defmodule AshDataTable.Live.Drawing do
             Projection.of(:message, %{
               id: @entry.id,
               error: @entry.error,
-              fill: @entry.fill,
+              fill: @entry.arguments.fill,
               loading?: @entry.loading?,
               row_count: @entry.row_count,
               nested?: @entry.nested?
@@ -561,7 +561,7 @@ defmodule AshDataTable.Live.Drawing do
           kit={@options.kit}
           id={@entry.id}
           model={@entry.model}
-          bulk={@entry.bulk}
+          bulk={@entry.selection.bulk}
           presentation={presentation(@options, :confirm)}
           place={nil}
         />
@@ -573,7 +573,7 @@ defmodule AshDataTable.Live.Drawing do
         <.panel
           id={@entry.id}
           held={@entry.panel}
-          drawn?={Opener.draws?(%{controlled: @options.controlled}, :panel)}
+          drawn?={@options.draws.panel}
           uploads={@uploads}
           kit={@options.kit}
           presentation={presentation(@options, :panel)}
@@ -581,7 +581,7 @@ defmodule AshDataTable.Live.Drawing do
         />
         <.portal
           :if={
-            @entry.panel != nil and Opener.draws?(@options, :panel) and
+            @entry.panel != nil and @options.draws.panel and
               (in_panel?(@options) or asked_in?(@options, :panel))
           }
           id={"#{@entry.id}-panel-portal"}
@@ -612,7 +612,7 @@ defmodule AshDataTable.Live.Drawing do
         that a field of the panel has opened. While the panel is open over the
         page and the picker opens in it, the picker is drawn in the panel. --%>
         <.picker
-          :if={not (@entry.panel != nil and Opener.draws?(@options, :panel) and in_panel?(@options))}
+          :if={not (@entry.panel != nil and @options.draws.panel and in_panel?(@options))}
           entry={@entry}
           options={@options}
           chooser={@chooser}
@@ -630,7 +630,7 @@ defmodule AshDataTable.Live.Drawing do
   # The action panel, nil while it is closed (or the host draws it), with
   # what each of its fields is drawn with. Given what it is made of, field
   # by field (`held`, the entry's panel; `drawn?`, whether the table draws
-  # it, `Opener.draws?/2` asked of the options' `controlled` alone), so
+  # it, the options' `draws` of the opener, read key by key), so
   # that LiveView draws it again only when one of them changes, not with
   # every change of its table: a kit that draws in the browser is sent its
   # props again only then. (LiveView marks an attribute changed when what
@@ -752,7 +752,7 @@ defmodule AshDataTable.Live.Drawing do
     <.picker_part
       id={@entry.id}
       held={@entry.picker}
-      drawn?={Opener.draws?(%{controlled: @options.controlled}, :picker)}
+      drawn?={@options.draws.picker}
       kit={@options.kit}
       presentation={presentation(@options, :picker)}
       takes?={!!@chooser and !@chooser.gone? and Selection.in_view(@chooser) != []}
@@ -760,7 +760,7 @@ defmodule AshDataTable.Live.Drawing do
     />
     <%!-- its table, moved into its place --%>
     <.portal
-      :if={@entry.picker != nil and Opener.draws?(@options, :picker)}
+      :if={@entry.picker != nil and @options.draws.picker}
       id={"#{@entry.id}-picker-portal"}
       target={"[id='#{Ids.picker_place(@entry.id)}']"}
       class={@options.kit.class(:portal, %{})}
@@ -863,7 +863,7 @@ defmodule AshDataTable.Live.Drawing do
       kit={@options.kit}
       id={@entry.id}
       model={@entry.model}
-      bulk={@entry.bulk}
+      bulk={@entry.selection.bulk}
       presentation={:inline}
       place={@place}
     />

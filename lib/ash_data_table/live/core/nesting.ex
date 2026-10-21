@@ -8,12 +8,14 @@ defmodule AshDataTable.Live.Core.Nesting do
   alias AshDataTable.Ids
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Reading
+  alias AshDataTable.Live.Core.Told
   alias AshDataTable.Live.Core.Url
   alias AshDataTable.Live.Registry
   alias AshDataTable.Model
   alias AshDataTable.Model.Relationship
   alias AshDataTable.Present
   alias AshDataTable.Related
+  alias AshDataTable.Table
   alias AshDataTable.Text
 
   # What makes the table one of related records. A nested table is told by
@@ -21,46 +23,44 @@ defmodule AshDataTable.Live.Core.Nesting do
   # full view. A table with its state in the URL finds it there, and is then
   # read as a nested table is: through the parent, read again as the person.
   # Any other table is not limited.
-  def relate(socket), do: relate(socket, Core.table(socket))
-
-  defp relate(socket, %{entry: %{nested?: true, via: via, parent_key: key}}) do
+  def relate(%Table{entry: %{nested?: true, via: via, parent_key: key}} = table) do
     # on a page that is mounted as this table was told to authorize
-    Core.put(socket,
+    Table.put(table,
       full_view:
         Related.path(
-          Core.table(socket).options.router,
-          socket.endpoint,
+          table.options.router,
+          table.context.endpoint,
           via,
           key,
-          Core.table(socket).entry.authorize_given
+          table.entry.authorize_given
         )
     )
   end
 
-  defp relate(socket, %{options: %{url: url}, entry: %{id: id, resource: resource, table: table}})
-       when is_binary(url) do
+  def relate(%Table{options: %{url: url}, entry: %{id: id, resource: resource}} = table)
+      when is_binary(url) do
     params = url |> Url.query_params() |> Map.get(id)
 
     case Related.from_params(
            resource,
-           table,
+           table.entry.table,
            params,
-           Core.reader(socket),
-           socket.endpoint
+           Core.reader(table),
+           table.context.endpoint
          ) do
       nil ->
-        Core.put(socket, via: nil, parent_key: nil, related: nil, related_title: nil)
+        Table.put(table, via: nil, parent_key: nil, related: nil, related_title: nil)
 
       %{via: via, key: key} = related ->
         # as the table around a nested one says for it: what this table was
         # told, else what the parent's own domain says
         parent_authorize? =
-          case Core.table(socket).entry.authorize_given do
+          case table.entry.authorize_given do
             nil -> AshDataTable.Domain.Info.authorize?(via.source)
             authorize? -> authorize?
           end
 
-        Core.put(socket,
+        Table.put(table,
           via: via,
           parent_key: key,
           parent_authorize?: parent_authorize?,
@@ -69,7 +69,7 @@ defmodule AshDataTable.Live.Core.Nesting do
     end
   end
 
-  defp relate(socket, _table), do: socket
+  def relate(%Table{} = table), do: table
 
   # The table's model as its resource and block say it, which is the same
   # whoever asks: kept in the `AshDataTable.Table` (`models`), by all it is
@@ -84,27 +84,21 @@ defmodule AshDataTable.Live.Core.Nesting do
   # be what the block says now.
   #
   # A table to choose from is built for the read action it is told.
-  def built(socket) do
-    %{resource: resource, table: table, via: via, choose: choose, live_given: live} =
-      Core.table(socket).entry
+  def built(%Table{} = table) do
+    %{resource: resource, table: named, via: via, choose: choose, live_given: live} = table.entry
+    key = {resource, named, via, choose && choose.read_action, live}
+    build = fn -> Model.build(resource, table: named, via: via, choose: choose, live?: live) end
 
-    model(socket, {resource, table, via, choose && choose.read_action, live})
-  end
+    cond do
+      reloading?(table.context) ->
+        {build.(), table}
 
-  defp model(socket, {resource, table, via, choose, live} = key) do
-    build = fn -> Model.build(resource, table: table, via: via, choose: choose, live?: live) end
+      Map.has_key?(table.models, key) ->
+        {Map.fetch!(table.models, key), table}
 
-    if reloading?(socket), do: {build.(), socket}, else: cached(socket, key, build)
-  end
-
-  defp cached(socket, key, build) do
-    case Core.table(socket) do
-      %{models: %{^key => model}} ->
-        {model, socket}
-
-      table ->
+      true ->
         model = build.()
-        {model, Core.put(socket, %{table | models: Map.put(table.models, key, model)})}
+        {model, %{table | models: Map.put(table.models, key, model)}}
     end
   end
 
@@ -120,16 +114,15 @@ defmodule AshDataTable.Live.Core.Nesting do
   # Only a row of the page can be expanded, and only where the table has
   # expanders: this is where the depth limit holds against an event that the
   # table never offered.
-  def on({:expand, key}, socket) do
-    %{rows: rows, open: open, expandable?: expandable?} = Core.table(socket).entry
+  def step({:expand, key}, table) do
+    %{rows: rows, open: open, expandable?: expandable?} = table.entry
 
     if expandable? and is_map_key(rows, key) do
       open = if is_map_key(open, key), do: Map.delete(open, key), else: Map.put(open, key, [])
 
-      {:reply, %{open: is_map_key(open, key)},
-       socket |> Core.put(open: open) |> Reading.put_detail(key)}
+      {table |> Table.put(open: open) |> Reading.put_detail(key), %{open: is_map_key(open, key)}}
     else
-      {:reply, %{open: false}, socket}
+      {table, %{open: false}}
     end
   end
 
@@ -139,23 +132,22 @@ defmodule AshDataTable.Live.Core.Nesting do
   #
   # Only a line that is on the page can be used: of an expanded row of the
   # page, and for a relationship this person is offered.
-  def on({:toggle, key, name}, socket) do
-    %{model: model, open: open, expandable?: expandable?} = Core.table(socket).entry
+  def step({:toggle, key, name}, table) do
+    %{model: model, open: open, expandable?: expandable?} = table.entry
 
     with true <- expandable?,
          lines when is_list(lines) <- open[key],
          %Relationship{name: name} <- Model.relationship(model, name) do
       event = if name in lines, do: :row_collapsed, else: :row_expanded
       lines = if name in lines, do: List.delete(lines, name), else: lines ++ [name]
-      pk = Core.table(socket).entry.rows[key].pk
+      pk = table.entry.rows[key].pk
 
-      {:noreply,
-       socket
-       |> Core.put(open: Map.put(open, key, lines))
+      {table
+       |> Table.put(open: Map.put(open, key, lines))
        |> Reading.put_detail(key)
-       |> Core.notify(Event.line(event, pk, name))}
+       |> Core.notify(Event.line(event, pk, name)), nil}
     else
-      _ -> {:noreply, socket}
+      _ -> {table, nil}
     end
   end
 
@@ -163,9 +155,8 @@ defmodule AshDataTable.Live.Core.Nesting do
   # read and where that is known: its total, or all its rows where it has
   # one page. Its line says it; the row's detail is put into the stream
   # again where that changed (in `tidy/1`, after the nested table's read).
-  def counted(socket) do
-    %{entry: %{id: id, open: open, rows: rows, counts: counts}, entries: entries} =
-      Core.table(socket)
+  def counted(%Table{} = table) do
+    %{entry: %{id: id, open: open, rows: rows, counts: counts}, entries: entries} = table
 
     now =
       for {key, lines} <- open, is_map_key(rows, key), into: %{} do
@@ -183,9 +174,9 @@ defmodule AshDataTable.Live.Core.Nesting do
     changed = for {key, said} <- now, Map.get(counts, key, %{}) != said, do: key
 
     if now == counts do
-      socket
+      table
     else
-      Enum.reduce(changed, Core.put(socket, counts: now), &Reading.put_detail(&2, &1))
+      Enum.reduce(changed, Table.put(table, counts: now), &Reading.put_detail(&2, &1))
     end
   end
 
@@ -250,52 +241,47 @@ defmodule AshDataTable.Live.Core.Nesting do
   # parents first; every table that is no longer reached is closed, with
   # all under it, in the same render as the cell its portal went into or
   # the picker it was in.
-  def reconcile(socket) do
-    {socket, reached} = walk(socket, [Core.table(socket).entry.id], MapSet.new())
+  def reconcile(%Table{} = table) do
+    {table, reached} = walk(table, [table.entry.id], MapSet.new())
 
-    Core.table(socket).entries
+    table.entries
     |> Map.keys()
     |> Enum.reject(&MapSet.member?(reached, &1))
-    |> Enum.reduce(socket, &Registry.close(&2, &1))
+    |> Enum.reduce(table, &Registry.close(&2, &1))
   end
 
-  defp walk(socket, [], reached), do: {socket, reached}
+  defp walk(table, [], reached), do: {table, reached}
 
-  defp walk(socket, [id | rest], reached) do
-    {socket, children} =
-      Enum.reduce(children(socket, id), {socket, []}, fn {child, given, target},
-                                                         {socket, children} ->
-        socket =
-          case Core.table(socket).entries do
+  defp walk(table, [id | rest], reached) do
+    {table, children} =
+      Enum.reduce(children(table, id), {table, []}, fn {child, given, target},
+                                                       {table, children} ->
+        table =
+          case table.entries do
             %{^child => %{given: ^given}} ->
-              socket
+              table
 
             %{^child => _told_otherwise} ->
-              tell(socket, child, given)
+              tell(table, child, given)
 
             _missing ->
-              socket |> Registry.add(child, target) |> tell(child, given)
+              table |> Registry.add(child, target) |> tell(child, given)
           end
 
-        {socket, [child | children]}
+        {table, [child | children]}
       end)
 
-    walk(socket, rest ++ Enum.reverse(children), Enum.into(children, reached))
+    walk(table, rest ++ Enum.reverse(children), Enum.into(children, reached))
   end
 
-  defp tell(socket, id, given) do
-    Registry.within(socket, id, fn socket ->
-      {:ok, socket} = Core.told(given, socket)
-      Core.put(socket, given: given)
-    end)
-  end
+  defp tell(table, id, given),
+    do: Registry.within(table, id, &(&1 |> Told.told(given) |> Table.put(given: given)))
 
   # The tables the table `id` renders: by id, with what each is told and
   # where its portals go, the cell and the place on its line for its heading
   # (nil for the table of a picker, which is drawn where its dialog is). A nested table only for a line of a row that
   # is on the page, and of a relationship the person is offered.
-  def children(socket, id) do
-    table = Core.table(socket)
+  def children(%Table{} = table, id) do
     entry = if table.entry.id == id, do: table.entry, else: Map.fetch!(table.entries, id)
     nested(table, entry) ++ chooser(table, entry)
   end

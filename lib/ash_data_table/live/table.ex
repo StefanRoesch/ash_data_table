@@ -32,10 +32,12 @@ defmodule AshDataTable.Table do
   #   * `router`: the router of the page, which says where the host mounts a
   #     table (the full view, the parent of a table limited to related
   #     records).
-  #   * `controlled`: what the host draws itself, of `:confirm` (the
-  #     questions), `:panel` (the action panels) and `:picker`, with
-  #     `attach(…, controlled: …)` (`AshDataTable.Live.Core.Opener`), for
-  #     every table the table shows, nested tables and pickers' tables too.
+  #   * `draws`: what the table draws itself of what it opens, by kind
+  #     (`:confirm`, the questions; `:panel`, the action panels; `:picker`),
+  #     true for each but what the host draws (controlled mode), as
+  #     `AshDataTable.Live.Core.Opener` makes it of `attach/4`'s option
+  #     (`Opener.draws!/1`), for every table the table shows, nested tables
+  #     and pickers' tables too.
   #   * `kit`: the module the table is drawn with (`AshDataTable.Kit`),
   #     which the wiring names; every table it shows is drawn with it.
   #   * `presentation`: what the table was told opens in the page or over
@@ -66,6 +68,15 @@ defmodule AshDataTable.Table do
   # (`AshDataTable.Live.Core.Nesting.built/1`). What depends on the person
   # is never here: each table makes its own model of it on every update
   # (`AshDataTable.Model.for_actor/2`).
+  #
+  # `context` and `effects` are a step's (`AshDataTable.Live.Core.step/3`,
+  # stage 9g), and empty between steps: what the step was given of the
+  # socket (`Live.Core.context/1`: the page's assigns, LiveView's uploads,
+  # whether the page is connected, its endpoint), and the effects it gives
+  # back, gathered newest first (`Live.Core.effect/2`), which the adapter
+  # applies to the socket (`Live.Core.effects/2`). A step reads the one and
+  # adds to the other as LiveView's own socket gathers the events it
+  # pushes; neither is ever drawn, nor kept past the step.
 
   alias AshDataTable.Caller
   alias AshDataTable.Live.Entry
@@ -77,7 +88,7 @@ defmodule AshDataTable.Table do
     page_assigns: %{},
     target: nil,
     router: nil,
-    controlled: [],
+    draws: %{confirm: true, panel: true, picker: true},
     kit: nil,
     presentation: [],
     look: []
@@ -100,7 +111,9 @@ defmodule AshDataTable.Table do
               required(:next) => non_neg_integer,
               optional(:prefix) => String.t() | nil
             },
-            models: %{optional(tuple) => AshDataTable.Model.t()}
+            models: %{optional(tuple) => AshDataTable.Model.t()},
+            context: map | nil,
+            effects: [tuple | atom]
           }
 
   defstruct options: @options,
@@ -108,7 +121,9 @@ defmodule AshDataTable.Table do
             entry: nil,
             entries: %{},
             pool: %{free: [], next: 0, prefix: nil},
-            models: %{}
+            models: %{},
+            context: nil,
+            effects: []
 
   # A new table, with the stream names its id configured before as its
   # `pool` (`AshDataTable.Live.Hooks`: they are kept across `detach/2`).
@@ -118,7 +133,7 @@ defmodule AshDataTable.Table do
     do: %__MODULE__{caller: Caller.new(), entry: Entry.new(), pool: pool}
 
   # The table with the given fields put where each lives: an option, a
-  # value of the caller, else a field of the entry. A name none of them has
+  # value of the caller, else a field of the entry (`Entry.put/3`). A name none of them has
   # raises.
   @doc false
   @spec put(t, keyword | map) :: t
@@ -131,7 +146,7 @@ defmodule AshDataTable.Table do
         %{table | options: Map.replace!(table.options, key, value)}
 
       {key, value}, table ->
-        %{table | entry: Map.replace!(table.entry, key, value)}
+        %{table | entry: Entry.put(table.entry, key, value)}
     end)
   end
 end

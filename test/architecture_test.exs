@@ -38,12 +38,14 @@ defmodule AshDataTable.ArchitectureTest do
       topic is called through `Live.Core`, which they all ask for the
       table; the check is of the edges among them. The opener has no edge
       to any topic module: the topics ask it;
-    * no module but the opener and its adapters reads what the host draws
-      itself (`controlled`, stage 9e): the drawing and the topics ask
-      `Opener`. `AshDataTable.attach/4` checks the option, `Live.Core`
-      puts it among the table's options and `AshDataTable.Table` holds it;
-      the drawing hands it to `Opener.draws?/2` alone, for LiveView's
-      change tracking;
+    * no module but the opener and its adapters names what the host draws
+      itself (`controlled`, stages 9e, 9g): the opener owns `attach/4`'s
+      option (`Opener.option/0`) and makes of it what the table draws
+      itself (`Opener.draws!/1`), the table's option `draws`, which the
+      topics ask `Opener` about and the drawing reads key by key;
+    * no topic of the live core (`live/core/**`) names the socket or
+      `Phoenix.LiveView`, calls a function of LiveView's, or has an `on/2`
+      (stage 9g): each intent is a clause of `step/2`;
     * `act.ex`, `edit.ex` and `present.ex` have no edge to `panel.ex`: the
       panel builds its forms through `Act` and `Edit` and makes what a
       part draws of it (`Panel.shown/2`), and `Operation` gives `Act` and
@@ -67,7 +69,7 @@ defmodule AshDataTable.ArchitectureTest do
     * the presentation hints of `Model.Column` (`component`, `max_lines`,
       `sticky_label?`), which the core passes on (target 6, F3): the second
       test checks that no module of 2a or 2b but the model, which makes
-      them, reads one, but `Live.Core.in_words/1`, which puts the words of
+      them, reads one, but `Live.Core.Told.in_words/1`, which puts the words of
       a component's column into it (the design note of stage 7, D14).
       `editor` is no hint: it decides how a value is given and written.
 
@@ -263,31 +265,20 @@ defmodule AshDataTable.ArchitectureTest do
     ])
   end
 
-  # Who reads what the host draws itself (stage 9e): `.controlled`,
+  # Who names what the host draws itself (stages 9e, 9g): `.controlled`,
   # `:controlled` or `controlled:` on a line of code (no comment, no
-  # documentation) of `lib/` but the opener's. Allowed besides, line by
-  # line: the option's check (`attach/4`, and the router page's `[]`), the
-  # table's options (`Live.Core.told/2`) and their default. The drawing
-  # hands `Opener.draws?/2` the options' `controlled` alone
-  # (`%{controlled: @options.controlled}`), which it does not read: so that
-  # LiveView marks what it gives a part changed only when that changed, not
-  # with every option (measured, stage 9e: all of them sent a page change
-  # again with every patch of the URL).
+  # documentation) of `lib/` but the opener's. None: the opener owns
+  # `attach/4`'s option (`Opener.option/0`, `Opener.draws!/1`), and every
+  # other module reads what the table draws itself as data (`draws` of the
+  # table's options), which the drawing reads key by key.
   @controlled ~r/\.controlled\b|[^\w:]:controlled\b|\bcontrolled:/
   @openers ~w(live/core/opener.ex live/core/opener/table.ex live/core/opener/host.ex)
-  @allowed %{
-    "lib/ash_data_table.ex" => ["controlled: controlled!(opts[:controlled])", "controlled: []"],
-    "lib/ash_data_table/live/core.ex" => ["[:controlled, :kit, :presentation, :look]"],
-    "lib/ash_data_table/live/table.ex" => ["controlled: [],"],
-    "lib/ash_data_table/live/drawing.ex" => ["Opener.draws?(%{controlled: @options.controlled}, "]
-  }
 
   defp controlled do
     for file <- Path.wildcard("lib/**/*.ex"),
         String.replace_prefix(file, @lib <> "/", "") not in @openers,
         {line, at} <- code_lines(file),
         Regex.match?(@controlled, line),
-        not Enum.any?(Map.get(@allowed, file, []), &String.contains?(line, &1)),
         do: "#{file}:#{at}"
   end
 
@@ -317,7 +308,7 @@ defmodule AshDataTable.ArchitectureTest do
   # `.max_lines`, `.sticky_label?`, or the atom (`Map.get(c, :max_lines)`,
   # `c[:component]`), in a file of 2a or 2b but
   # the model's own (`model.ex`, `model/`), which makes them from the
-  # declaration, and but `Live.Core.in_words/1`.
+  # declaration, and but `Live.Core.Told.in_words/1`.
   @hint ~r/\b(component|max_lines|sticky_label\?):|\.(component|max_lines)\b|\.sticky_label\?|[^\w:]:(component|max_lines)\b|[^\w:]:sticky_label\?/
 
   test "no module of the internals reads a presentation hint" do
@@ -335,41 +326,40 @@ defmodule AshDataTable.ArchitectureTest do
     assert found == []
   end
 
-  # The step over the table (stage 9g, question 30 b): a clause of `step/3`
-  # in the live core, from its head to the next function or comment,
-  # names no socket and calls nothing of LiveView; what it asks of the
-  # socket is its `context`, what it does to it are its effects.
-  test "a step of the live core names no socket (9g)" do
-    found =
-      for file <- [@lib <> "/live/core.ex" | Path.wildcard(@lib <> "/live/core/**/*.ex")],
-          {line, number} <- step_lines(file),
-          line =~ ~r/\bsocket\b|Phoenix\.LiveView|push_event|push_patch|start_async|stream/,
+  # The step over the table (stage 9g): no module of the live core's topics
+  # (`live/core/**`: the topics, the opener and its adapters, `Notify`,
+  # `Files`, `Told`) names the socket or `Phoenix.LiveView`, not even in a
+  # comment, nor calls a function of LiveView's on a line of code: what it
+  # asks of the socket is the step's `context`, what it does to it are its
+  # effects, which only `Live.Core` applies. And every intent is a clause
+  # of a topic's `step/2`: no topic has an `on/2` left.
+  @live_calls ~r/\b(push_event|push_patch|push_navigate|redirect|start_async|cancel_async|stream|stream_insert|stream_delete|stream_delete_by_dom_id|stream_configure|allow_upload|disallow_upload|cancel_upload|consume_uploaded_entry|consume_uploaded_entries|send_update|connected\?|assign|put_private)\(/
+  test "no topic of the live core names the socket or LiveView (9g)" do
+    files = Path.wildcard(@lib <> "/live/core/**/*.ex")
+
+    named =
+      for file <- files,
+          {line, number} <- file |> File.read!() |> String.split("\n") |> Enum.with_index(1),
+          line =~ ~r/\bsocket\b|Phoenix\.LiveView/,
           do: "#{file}:#{number}: #{String.trim(line)}"
 
-    assert found == []
+    called =
+      for file <- files,
+          {line, number} <- code_lines(file),
+          line =~ @live_calls,
+          do: "#{file}:#{number}: #{String.trim(line)}"
+
+    on =
+      for file <- files,
+          {line, number} <- code_lines(file),
+          line =~ ~r/^  def on\(/,
+          do: "#{file}:#{number}: #{String.trim(line)}"
+
+    assert named ++ called ++ on == []
   end
 
-  # The lines of every `def step(` clause of a file but `Live.Core.step/3`
-  # itself (the dispatch), each to the next function, doc or comment.
-  defp step_lines(file) do
-    file
-    |> File.read!()
-    |> String.split("\n")
-    |> Enum.with_index(1)
-    |> Enum.flat_map_reduce(false, fn {line, number}, in_step? ->
-      cond do
-        line =~ ~r/^  def step\((%Table|table)/ -> {[], false}
-        line =~ ~r/^  def step\(/ -> {[{line, number}], true}
-        line =~ ~r/^  (defp? |@doc|@spec|# |end)/ or line == "end" -> {[], false}
-        in_step? -> {[{line, number}], true}
-        true -> {[], false}
-      end
-    end)
-    |> elem(0)
-  end
-
-  # The lines of `Live.Core.in_words/1`: from its head to the next function.
-  defp in_words(@lib <> "/live/core.ex" = file) do
+  # The lines of `Live.Core.Told.in_words/1`: from its head to the next function.
+  defp in_words(@lib <> "/live/core/told.ex" = file) do
     lines = file |> File.read!() |> String.split("\n") |> Enum.with_index(1)
     {_line, first} = Enum.find(lines, fn {line, _number} -> line =~ ~r/^  def in_words\(/ end)
 

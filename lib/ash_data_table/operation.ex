@@ -12,7 +12,9 @@ defmodule AshDataTable.Operation do
   #      what they found (`AshDataTable.Request`). It can only halt
   #      (`{:halted, message}`);
   #   3. the files of the panel, which LiveView holds while the action runs
-  #      (`with_files`);
+  #      (`with_files`: it is given the rest of the write, steps 4, as a
+  #      function of the files; the live layer hands that back and runs it
+  #      inside LiveView's consume of the files, `Live.Core.Panel`);
   #   4. the record read again, as the person, and the action run with what
   #      the page gives it (`page_values`: its context, private arguments and
   #      page arguments; `AshDataTable.Act`, `AshDataTable.Edit`,
@@ -66,9 +68,13 @@ defmodule AshDataTable.Operation do
     #     offers no table action and no "all that match"; `offered` the
     #     table actions and the actions on a selection this person is
     #     offered now (none on a selection while a run is on its way);
-    #   * `with_files` runs a function with the files of the panel's
-    #     uploads, by argument name, while LiveView holds them; for a run on
-    #     a selection, with copies the run outlasts the event with;
+    #   * `with_files` is given the rest of a panel's write, once the checks
+    #     and the veto let it go on: a function of the files of the panel's
+    #     uploads, by argument name, which reads the record again and runs
+    #     the action. The default runs it at once with no file; the live
+    #     layer hands it back (`{:files, write}`) and runs it while LiveView
+    #     holds the files (for a run on a selection, with copies the run
+    #     outlasts the event with);
     #   * `veto` asks the page before a write: a function of the
     #     `AshDataTable.Request`, which the live layer makes of the page's
     #     `before_action`, and which answers `:cont` or `{:halt, message}`;
@@ -292,9 +298,11 @@ defmodule AshDataTable.Operation do
   `picked_with`). The save of a map cell (`:submit_cell`), a row action
   (`:submit_row`), a table action (`:submit_table`), a create
   (`:submit_create`), and an action on a selection (`:submit_bulk`), which
-  is handed back to be started (`{:start, run, files}`).
+  is handed back to be started (`{:start, run, files}`). Past the checks and
+  the veto, what `with_files` makes of the rest of the write is what it
+  returns.
   """
-  @spec submit(Input.t()) :: result | {:start, (-> Bulk.outcome()), map}
+  @spec submit(Input.t()) :: result | {:start, (-> Bulk.outcome()), map} | term
   def submit(%Input{intent: {:submit_cell, key, name, %{inputs: [field]} = held}} = input) do
     with %{} = column <-
            Enum.find(

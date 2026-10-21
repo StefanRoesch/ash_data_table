@@ -10,12 +10,13 @@ defmodule AshDataTable.Live.Entry do
   # and a picker's table are told theirs by the table they are in
   # (`AshDataTable.Live.Core.Nesting.reconcile/1`).
   #
-  # Flat on purpose (#56): one value per table, put field by field
-  # (`Core.put/2`) and compared field by field by LiveView's change
-  # tracking, so a part is drawn again only when a field it is given
-  # changed. Measured in stage 9d on /tasks (`demo/perf/baseline.mjs`, the
-  # callbacks' time): `panel_validate` 0.65 ms, opening a panel 8.1 ms, a
-  # cell save 23.9 ms, most of it the record read again and the action.
+  # Grouped by topic (#56, question 31 b, stage 9g): the fields of the
+  # argument line, of what is selected, of live updates and of the footer
+  # row are each one value (`arguments`, `selection`, `updates`, `footer`),
+  # the rest flat. A field is put by its own name wherever it lives
+  # (`put/3`, `AshDataTable.Table.put/2`), and read where it lives
+  # (`entry.selection.selected`); LiveView's change tracking compares what
+  # a part reads of it key by key, as it does a field.
 
   alias AshDataTable.State
 
@@ -70,18 +71,14 @@ defmodule AshDataTable.Live.Entry do
     row_count: 0,
     busy?: false,
     read: nil,
-    # The argument line. `missing` are the arguments the read action does
-    # not run without and that are empty, and `fill` what the table says in
-    # place of its rows while there are any. `refused` holds, by argument,
-    # what a person typed that Ash does not take, with Ash's messages, and
-    # `lines` the rows of the arguments that are given value by value.
-    # `parent_arguments` are what the read action of the table around a
-    # nested one is given.
-    missing: [],
-    fill: nil,
-    refused: %{},
-    lines: %{},
-    parent_arguments: %{},
+    # The argument line (`arguments`). `missing` are the arguments the read
+    # action does not run without and that are empty, and `fill` what the
+    # table says in place of its rows while there are any. `refused` holds,
+    # by argument, what a person typed that Ash does not take, with Ash's
+    # messages, and `lines` the rows of the arguments that are given value
+    # by value. `parent_arguments` are what the read action of the table
+    # around a nested one is given.
+    arguments: %{missing: [], fill: nil, refused: %{}, lines: %{}, parent_arguments: %{}},
     # Whether a refused read has left the table with nothing to show at all.
     gone?: false,
     # The rows of the page by the key in their DOM id: each one's primary key
@@ -167,57 +164,76 @@ defmodule AshDataTable.Live.Entry do
     # that is chosen now (`choose`).
     picker: nil,
     choose: nil,
-    # Whether rows can be selected, and how. `selecting` is what the table
-    # does: what it was told (`select` of `AshDataTable.Table`), else
-    # `:multi` while it has an action that runs on several rows (`bulk`),
-    # else nil. Which rows are selected (`AshDataTable.Live.Core.Selection`):
-    # `selected`, each as the hook names it, its primary key, a claim; or
-    # every record that matches (`all?`). `selected_under` is what they were
-    # selected under: the filters, the arguments and what the table is
-    # limited to.
-    selecting: nil,
     # What the button of the page's "Open" says in every row's actions
     # cell, first among its buttons (`open` of the table on the page, never
     # a nested table's); nil for none.
     open_label: nil,
-    selected: [],
-    all?: false,
-    selected_under: nil,
-    bulk: [],
-    # The action that is running on the selected rows, while it does, with
+    # What is selected (`selection`). `selecting` is whether rows can be
+    # selected, and how: what the table was told (`select` of
+    # `AshDataTable.Table`), else `:multi` while it has an action that runs
+    # on several rows (`bulk`), else nil. Which rows are selected
+    # (`AshDataTable.Live.Core.Selection`): `selected`, each as the hook
+    # names it, its primary key, a claim; or every record that matches
+    # (`all?`). `selected_under` is what they were selected under: the
+    # filters, the arguments and what the table is limited to. `running` is
+    # the action that is running on the selected rows, while it does, with
     # who started it (`%{action: action, by: AshDataTable.Caller.who/1}`),
-    # and what the last one came to, until the person selects something
-    # else.
-    running: nil,
-    result: nil,
-    # Live updates (see "Live updates" at the top of `AshDataTable.Attrs`). `live`
-    # is the table's listener while it follows them: the process and the
-    # topic it listens to. `waiting` is what was announced and not looked at
-    # yet, and `held` the keys of the rows that are read again once the
-    # person is done with them. `notice?` says that there are new or changed
-    # records to read again for.
-    live: nil,
-    waiting: [],
-    held: [],
-    notice?: false,
-    # the rows that go once the hook says that no cell of them is edited
-    leaving: MapSet.new(),
-    # The footer row (see "Footer summaries" at the top of `AshDataTable.Attrs`).
-    # `summary` holds, by column, what the last answer said: `{:ok, value}`
-    # or `:unavailable`; nil before the first answer, and while an argument
-    # the read action requires is empty. `summing?` says that an answer is
-    # on its way, `summed` what the last question was of, and `summary_due`
-    # that there is one to ask once this update is done (`tidy/1`):
-    # `:changed` after a read, `:force` after something was written or
-    # announced. Whether the grid has a footer row at all is the geometry's
-    # (`summary?`: a column of this person's has a summary).
-    summary: nil,
-    summing?: false,
-    summed: nil,
-    summary_due: nil
+    # and `result` what the last one came to, until the person selects
+    # something else.
+    selection: %{
+      selecting: nil,
+      selected: [],
+      all?: false,
+      selected_under: nil,
+      bulk: [],
+      running: nil,
+      result: nil
+    },
+    # Live updates (`updates`; see "Live updates" at the top of
+    # `AshDataTable.Attrs`). `live` is the table's listener while it follows
+    # them: the process and the topic it listens to. `waiting` is what was
+    # announced and not looked at yet, and `held` the keys of the rows that
+    # are read again once the person is done with them. `notice?` says that
+    # there are new or changed records to read again for; `leaving` are the
+    # rows that go once the hook says that no cell of them is edited.
+    updates: %{live: nil, waiting: [], held: [], notice?: false, leaving: MapSet.new()},
+    # The footer row (`footer`; see "Footer summaries" at the top of
+    # `AshDataTable.Attrs`). `summary` holds, by column, what the last answer
+    # said: `{:ok, value}` or `:unavailable`; nil before the first answer,
+    # and while an argument the read action requires is empty. `summing?`
+    # says that an answer is on its way, `summed` what the last question was
+    # of, and `summary_due` that there is one to ask once this update is
+    # done (`tidy`): `:changed` after a read, `:force` after something was
+    # written or announced. Whether the grid has a footer row at all is the
+    # geometry's (`summary?`: a column of this person's has a summary).
+    footer: %{summary: nil, summing?: false, summed: nil, summary_due: nil}
   ]
 
+  # The topics an entry's fields are grouped by, and the fields of each
+  # (#56, question 31 b, stage 9g).
+  @groups %{
+    arguments: [:missing, :fill, :refused, :lines, :parent_arguments],
+    selection: [:selecting, :selected, :all?, :selected_under, :bulk, :running, :result],
+    updates: [:live, :waiting, :held, :notice?, :leaving],
+    footer: [:summary, :summing?, :summed, :summary_due]
+  }
+
+  @grouped for {group, fields} <- @groups, field <- fields, into: %{}, do: {field, group}
+
   @type t :: %__MODULE__{}
+
+  @doc """
+  The entry with `field` put where it lives: in the value of its topic
+  (`arguments`, `selection`, `updates`, `footer`), else at the top. A name
+  no field has raises.
+  """
+  @spec put(t, atom, term) :: t
+  def put(%__MODULE__{} = entry, field, value) do
+    case @grouped do
+      %{^field => group} -> Map.update!(entry, group, &Map.replace!(&1, field, value))
+      %{} -> Map.replace!(entry, field, value)
+    end
+  end
 
   @doc "The entry of a table that has read nothing yet."
   @spec new() :: t

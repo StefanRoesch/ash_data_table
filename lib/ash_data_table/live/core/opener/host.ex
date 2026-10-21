@@ -41,7 +41,7 @@ defmodule AshDataTable.Live.Core.Opener.Host do
   # Every table the table on the page shows is controlled as it is: a
   # nested table holds requests of its own, at once with its parent's
   # (`AshDataTable.requests/1` lists them). An answer is looked for in
-  # every table (`AshDataTable.Live.Core.answer/4`), and found in the one
+  # every table (the step `{:answer, …}` of `AshDataTable.Live.Core`), and found in the one
   # that holds its `ref`. A request ends, `:request_ended`, when it
   # is answered, given up, taken over by another, or when its table closes
   # (its row collapsed, or the nested table went with its parent's rows).
@@ -49,19 +49,18 @@ defmodule AshDataTable.Live.Core.Opener.Host do
   #
   # An answer of the host is the intent it stands for (`confirmed/2`,
   # `cancelled/2`, `group/2`): `answer/3` gives it, and
-  # `AshDataTable.Live.Core.answer/4` runs it within the table that holds
+  # the step `{:answer, …}` of `AshDataTable.Live.Core` runs it within the table that holds
   # the request, through the module of its topic, as it runs a browser's
   # (stage 9d). This module calls no topic.
 
   @behaviour AshDataTable.Live.Core.Opener
-
-  import Phoenix.LiveView, only: [push_event: 3]
 
   alias AshDataTable.Event
   alias AshDataTable.Ids
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Files
   alias AshDataTable.Panel
+  alias AshDataTable.Table
 
   @doc "The host draws every kind this adapter is chosen for: the table, none."
   @impl true
@@ -78,11 +77,11 @@ defmodule AshDataTable.Live.Core.Opener.Host do
   A panel or picker held ends first. The reply holds the `ref`.
   """
   @impl true
-  def ask(socket, intent, question, about) do
+  def ask(table, intent, question, about) do
     column = about[:column]
 
-    socket =
-      socket
+    table =
+      table
       |> yield()
       |> held(%{
         for: made_for(intent),
@@ -96,7 +95,7 @@ defmodule AshDataTable.Live.Core.Opener.Host do
         kind: :confirm
       })
 
-    {:held, %{held: true, ref: Core.table(socket).entry.request.ref}, socket}
+    {:held, %{held: true, ref: table.entry.request.ref}, table}
   end
 
   # What a question is made for: a cell's by its row and column, so that
@@ -111,17 +110,17 @@ defmodule AshDataTable.Live.Core.Opener.Host do
   # A panel or a picker held for the host ends as a question takes its
   # place: cancelled, as the person's Cancel would (the panel's adapter
   # closes the panel, and the picker over it).
-  defp yield(socket) do
-    case Core.table(socket).entry.request do
-      %{kind: :panel} -> cancel(socket, :panel_cancel)
-      %{kind: :picker} -> cancel(socket, :picker_cancel)
-      _confirm_or_none -> socket
+  defp yield(table) do
+    case table.entry.request do
+      %{kind: :panel} -> cancel(table, :panel_cancel)
+      %{kind: :picker} -> cancel(table, :picker_cancel)
+      _confirm_or_none -> table
     end
   end
 
-  defp cancel(socket, intent) do
-    {:noreply, socket} = Core.run(intent, socket)
-    socket
+  defp cancel(table, intent) do
+    {table, nil} = Core.run(intent, table)
+    table
   end
 
   @doc """
@@ -133,14 +132,14 @@ defmodule AshDataTable.Live.Core.Opener.Host do
   stays until a panel or picker opens after it.
   """
   @impl true
-  def opened(socket, kind, value) do
-    %{request: request, picker: picker} = Core.table(socket).entry
+  def opened(table, kind, value) do
+    %{request: request, picker: picker} = table.entry
     made_for = made_for(kind, value)
 
     case request do
-      %{kind: ^kind, for: ^made_for} -> socket
-      %{kind: :picker} when kind == :panel and picker != nil -> socket
-      _other -> held(socket, %{ref: new_ref(), kind: kind, for: made_for})
+      %{kind: ^kind, for: ^made_for} -> table
+      %{kind: :picker} when kind == :panel and picker != nil -> table
+      _other -> held(table, %{ref: new_ref(), kind: kind, for: made_for})
     end
   end
 
@@ -155,43 +154,43 @@ defmodule AshDataTable.Live.Core.Opener.Host do
   the hook puts back a cell that waited for it.
   """
   @impl true
-  def closed(socket, kind) do
-    case Core.table(socket).entry.request do
-      %{kind: ^kind} -> socket |> let_go() |> done()
-      _other_or_none -> socket
+  def closed(table, kind) do
+    case table.entry.request do
+      %{kind: ^kind} -> table |> let_go() |> done()
+      _other_or_none -> table
     end
   end
 
-  defp held(socket, request) do
-    socket
+  defp held(table, request) do
+    table
     |> let_go()
     |> done()
-    |> Core.put(request: request)
+    |> Table.put(request: request)
     |> Core.notify({:requested, %{ref: request.ref, kind: request.kind}})
   end
 
   # The request is held no more: the host is told it (`:request_ended`).
-  defp done(socket) do
-    case Core.table(socket).entry.request do
+  defp done(table) do
+    case table.entry.request do
       %{ref: ref, kind: kind} ->
-        socket
-        |> Core.put(request: nil)
+        table
+        |> Table.put(request: nil)
         |> Core.notify({:request_ended, %{ref: ref, kind: kind}})
 
       nil ->
-        socket
+        table
     end
   end
 
   # The question of a cell that a new request takes the place of, or that
   # is given up: the hook puts the cell back.
-  defp let_go(socket) do
-    case Core.table(socket).entry.request do
+  defp let_go(table) do
+    case table.entry.request do
       %{kind: :confirm, for: {kind, key, name}, ref: ref} when kind in [:save, :clear, :refer] ->
-        answered(socket, ref, key, name, %{ok: false})
+        answered(table, ref, key, name, %{ok: false})
 
       _other ->
-        socket
+        table
     end
   end
 
@@ -200,16 +199,20 @@ defmodule AshDataTable.Live.Core.Opener.Host do
   answer to the request `ref` (`ash_data_table:answered`): saved, or not
   (and why, where the row could not be sent).
   """
-  def answered(socket, ref, key, name, reply) do
-    id = Core.table(socket).entry.id
+  def answered(table, ref, key, name, reply) do
+    id = table.entry.id
 
-    push_event(socket, "ash_data_table:answered", %{
-      table: id,
-      ref: ref,
-      cell: Ids.cell(Ids.row(id, key), name),
-      saved: Map.get(reply, :ok) == true,
-      error: Map.get(reply, :error)
-    })
+    Core.effect(
+      table,
+      {:push, "ash_data_table:answered",
+       %{
+         table: id,
+         ref: ref,
+         cell: Ids.cell(Ids.row(id, key), name),
+         saved: Map.get(reply, :ok) == true,
+         error: Map.get(reply, :error)
+       }}
+    )
   end
 
   @doc """
@@ -220,11 +223,11 @@ defmodule AshDataTable.Live.Core.Opener.Host do
   one of another kind: nothing is done.
   """
   @impl true
-  def answer(socket, ref, {kinds, fun}) do
-    with %{ref: ^ref, kind: kind} = request <- Core.table(socket).entry.request,
+  def answer(table, ref, {kinds, fun}) do
+    with %{ref: ^ref, kind: kind} = request <- table.entry.request,
          true <- kinds == :any or kind in kinds do
-      {intent, socket} = fun.(socket, request)
-      {:ok, intent, socket}
+      {intent, table} = fun.(table, request)
+      {:ok, intent, table}
     else
       _stale_other_or_none -> :none
     end
@@ -236,30 +239,30 @@ defmodule AshDataTable.Live.Core.Opener.Host do
   it, marked as answered (`{:confirmed, intent}`, which the module of its
   topic runs without asking again).
   """
-  def confirmed(socket, %{run: run}), do: {{:confirmed, run}, done(socket)}
+  def confirmed(table, %{run: run}), do: {{:confirmed, run}, done(table)}
 
   @doc """
   Gives the request up, as Cancel does: the intent of Cancel for a panel or
   a picker; for a question nothing runs, and a cell is put back.
   """
-  def cancelled(socket, %{kind: :panel}), do: {:panel_cancel, socket}
+  def cancelled(table, %{kind: :panel}), do: {:panel_cancel, table}
 
-  def cancelled(socket, %{kind: :picker}), do: {:picker_cancel, socket}
+  def cancelled(table, %{kind: :picker}), do: {:picker_cancel, table}
 
-  def cancelled(socket, _question), do: {nil, socket |> let_go() |> done()}
+  def cancelled(table, _question), do: {nil, table |> let_go() |> done()}
 
   @doc """
   What came of the intent the answer to the request `ref` stood for
   (`reply`, nil for none): the hook is told of a cell whose save waited
-  for the host's Confirm (`AshDataTable.Live.Core.answer/4`).
+  for the host's Confirm (the step `{:answer, …}` of `AshDataTable.Live.Core`).
   """
-  def replied(socket, ref, {:confirmed, run}, reply)
+  def replied(table, ref, {:confirmed, run}, reply)
       when elem(run, 0) in [:save, :clear, :refer] do
     [_kind, key, name | _rest] = Tuple.to_list(run)
-    answered(socket, ref, key, name, reply || %{})
+    answered(table, ref, key, name, reply || %{})
   end
 
-  def replied(socket, _ref, _intent, _reply), do: socket
+  def replied(table, _ref, _intent, _reply), do: table
 
   @doc """
   Adds a value to a field made of groups of the panel the host draws, or
