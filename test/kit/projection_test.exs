@@ -271,6 +271,82 @@ defmodule AshDataTable.Kit.ProjectionTest do
     json!(refusal)
   end
 
+  test "panel: each field's projection, with what a value made of fields holds" do
+    model = model()
+    inputs = Map.new(model.create.inputs, &{&1.name, &1})
+
+    field = fn name, value ->
+      %AshDataTable.Present.Field{
+        name: name,
+        path: [Atom.to_string(name)],
+        form_name: "panel[#{name}]",
+        input: inputs[name],
+        value: value
+      }
+    end
+
+    panel = %AshDataTable.Present.Panel{
+      title: {:text, :create, []},
+      submit: {:text, :create, []},
+      ask: nil,
+      method: "post",
+      fields: [
+        field.(:name, "Anchor"),
+        field.(:size, "3"),
+        field.(:place, %{"_present" => "", "city" => "Bern", "zip" => "3000"}),
+        field.(:stops, %{"_present" => "", "0" => %{"_present" => "", "city" => "Thun"}}),
+        field.(:kind, %{"_union_type" => "count", "_union_value" => "7"}),
+        field.(:tags, ["red"])
+      ],
+      inside: %{errors: %{}, touched: MapSet.new(), submitted?: false, time_zone: "Etc/UTC"}
+    }
+
+    given = %{id: "t", panel: panel, presentation: :modal, target: nil, files: %{}}
+    projection = Projection.of(:panel, given)
+    assert projection.open?
+    assert projection.form["id"] == "t-panel-form"
+    fields = Map.new(projection.fields, &{&1.element["data-field"], &1})
+
+    for {_name, field} <- fields,
+        do: assert(Enum.sort(Map.keys(field)) == Enum.sort(Projection.keys(:field)))
+
+    assert %{id: "t-panel-f-name", counted: %{max: 40}, count: %{length: 6}} = fields["name"]
+    assert fields["size"].limits == %{min: "0", max: "100", step: "1"}
+    assert %{control: %{id: "t-panel-f-size", editor: :number}} = fields["size"]
+
+    # a value made of fields: its members, each a field as the panel's,
+    # with the hidden entries it sends beside them (named by
+    # `AshDataTable.GroupValue`, whose tests say how)
+    assert %{hidden: [present], fields: [city, _zip]} = fields["place"].group.members
+    assert Map.keys(present) == ["name", "value"]
+    assert %{value: "Bern", label: _} = city
+    assert fields["place"].group.remove["phx-click"] == "ash_data_table:t:panel_remove"
+    refute fields["place"].group.add
+
+    # a list of them: an item per value, under its own number, and its own entry
+    assert [%{key: "0", members: stop} = item] = fields["stops"].groups.items
+    assert is_binary(item.element["id"]) and is_binary(item.remove["id"])
+    assert fields["stops"].groups.add["phx-click"] == "ash_data_table:t:panel_add"
+    assert %{fields: [%{value: "Thun"} | _]} = stop
+    assert [_own] = fields["stops"].groups.hidden
+
+    # a union: the kind chosen, its one value, what its choice is sent under
+    # and the entry that says which kind its value is of
+    assert %{kind: "count", single: %{value: "7"}, members: nil} = fields["kind"].union
+    assert is_binary(fields["kind"].union.select["name"])
+    assert [%{"value" => "count"}] = fields["kind"].union.hidden
+    refute fields["tags"].group || fields["tags"].groups || fields["tags"].union
+    assert %{rows: [%{value: "red", position: 1}]} = fields["tags"].list
+
+    json!(projection)
+
+    # drawn closed: none while the panel is closed
+    closed = Projection.of(:panel, %{given | panel: nil})
+    refute closed.open?
+    assert closed.fields == [] and closed.frame == nil
+    assert closed.place == %{"id" => "t-panel-place"}
+  end
+
   defp argument_words(model) do
     argument = hd(model.arguments)
     value = Model.Argument.shown(argument, %State{}, %{})

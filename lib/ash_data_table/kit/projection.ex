@@ -18,7 +18,8 @@ defmodule AshDataTable.Kit.Projection do
     related: Projection.Related,
     full_view: Projection.FullView,
     selection_line: Projection.SelectionLine,
-    heading: Projection.Heading
+    heading: Projection.Heading,
+    panel: Projection.Panel
   }
 
   @doc false
@@ -85,14 +86,73 @@ defmodule AshDataTable.Kit.Projection do
       :texts,
       :messages
     ],
-    count: [:element, :length, :max, :over?]
+    count: [:element, :length, :max, :over?],
+    field: [
+      :id,
+      :name,
+      :element,
+      :editor,
+      :label,
+      :required?,
+      :secret?,
+      :item,
+      :values,
+      :value,
+      :boxless,
+      :invalid?,
+      :places,
+      :limits,
+      :counted,
+      :described,
+      :labelled?,
+      :group_label,
+      :labelledby,
+      :error,
+      :reference,
+      :references,
+      :list,
+      :file,
+      :component,
+      :control,
+      :clear,
+      :count,
+      :group,
+      :groups,
+      :union,
+      :texts,
+      :messages,
+      :locale
+    ],
+    control: [
+      :id,
+      :name,
+      :value,
+      :editor,
+      :secret?,
+      :invalid?,
+      :required?,
+      :described,
+      :limits,
+      :values
+    ],
+    list: [:element, :item, :limits, :name, :template, :rows, :texts, :messages]
   }
 
   @doc false
   # The parts given a projection.
   def parts,
     do:
-      [:status, :message, :confirm, :pagination, :picker, :related, :selection_line, :heading] ++
+      [
+        :status,
+        :message,
+        :confirm,
+        :pagination,
+        :picker,
+        :related,
+        :selection_line,
+        :heading,
+        :panel
+      ] ++
         Map.keys(@inner)
 
   @doc false

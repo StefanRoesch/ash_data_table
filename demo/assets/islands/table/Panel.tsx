@@ -9,37 +9,38 @@
 // opens the island mounts the table's panel hook on it (`mountPanel`):
 // focus in and back, Escape and Cancel, the question of an action, the
 // rows of a list field, focus after a button the server names; as it
-// closes it destroys it and closes the dialog.
+// closes it destroys it and closes the dialog. It draws the part's
+// projection (`AshDataTable.Kit.Projection`), each key a prop of the
+// island, a field each with what is in it.
 //
 // The form is the island's: LiveView hears its `phx-change` and
 // `phx-submit` from its root, as it hears the argument line's. Its controls
 // are uncontrolled: what is typed is the browser's, and what the server
 // gives is set where it changes, unless the person is in the control
-// (`useServerValue`), as LiveView patches a form. Each field is what the
-// table gives its `field` part (`DemoWeb.ReactKit.Props`), a value made of
-// fields with its fields in it. The rows of a list field are the hook's
-// once drawn (as the HEEx kit's `phx-update="ignore"`): drawn once per
-// opening, never again.
+// (`useServerValue`), as LiveView patches a form. The rows of a list field
+// are the hook's once drawn (as the HEEx kit's `phx-update="ignore"`):
+// drawn once per opening, never again.
 //
 // A file field: LiveView's own file input is drawn beside the island, out
 // of sight, in this form (`form=`); the island's control hands it the files
 // a person chooses (`uploadTo`, LiveView's documented hook function, which
 // live_react gives the island), and says how far each has come.
 import * as React from "react"
-import {count, ids, mountPanel} from "ash_data_table"
+import {mountPanel} from "ash_data_table"
 import {useLiveReact} from "live_react"
 
-import {attrs, type Bundle} from "./props"
+import {attrs, type Bundle, type Message} from "./props"
 import {Commits, ServerBox, Strict, useMountedWhile, useServerValue, type Live, type ServerBoxProps} from "./mounting"
 import {usePart} from "./parts"
-import {Template, type EditorProps, type Limits} from "./Editors"
+import {Template, type CountProps, type EditorProps, type Limits} from "./Editors"
 import {closeDialog} from "./Picker"
 import {box, button, input, select} from "./look"
 import {cn} from "../lib/utils"
 
 type Counted = {max: number; unit: string; "trim?": boolean; casing: string | null}
-// What a field is given of its texts (`Kit.Words`), the last three for a
-// list of groups only.
+type Choice = {value: string; label: string; "chosen?": boolean}
+// What a field is given of its texts, the last three for a list of groups
+// only.
 type FieldTexts = {
   required: string
   choose: string
@@ -62,73 +63,115 @@ type FieldTexts = {
 // spread on an `<input type="hidden">` as the library gives it.
 type Hidden = Bundle & {name: string}
 type Members = {hidden: Hidden[]; fields: FieldProps[]}
+type ListRow = {value: string; position: number | null; count: CountProps | null}
+
+export type ListProps = {
+  element: Bundle
+  item: string | null
+  limits: Limits
+  name: string
+  template: ListRow
+  rows: ListRow[]
+  texts: {add_value: string; value_label: string; remove_label: string; value_position: string[]; remove_value: string[]}
+}
+
+export type ControlProps = {
+  id: string
+  name: string
+  value: string
+  editor: string
+  "secret?": boolean
+  "invalid?": boolean
+  "required?": boolean
+  described: string | null
+  limits: Limits
+  values: null | Choice[]
+}
 
 export type FieldProps = {
   id: string
   name: string
-  path: string
+  element: Bundle
   editor: string
   label: string
-  required: boolean
-  sensitive: boolean
+  "required?": boolean
+  "secret?": boolean
   item: string | null
-  values: null | {value: string; label: string}[]
-  value: string | string[] | null
+  values: null | Choice[]
+  value: string | string[] | null | Record<string, unknown>
   boxless: string[]
-  invalid: boolean
-  places: false | string
+  "invalid?": boolean
+  places: string | null
   limits: Limits
   counted: Counted | null
-  count: Bundle | false | null
-  clear: null | "offered" | "asked"
-  clear_button: Bundle | false | null
-  choose: Bundle | false
-  chosen: null | {key: string; unpick: Bundle}[]
-  component: string | false
-  upload: null | {
+  described: string | null
+  "labelled?": boolean
+  group_label: Bundle | null
+  labelledby: string
+  error: Bundle | null
+  reference: null | {chosen: null | {element: Bundle; text: string}; choose: Bundle}
+  references: null | {entries: {key: string; element: Bundle; text: string; unpick: Bundle}[]; choose: Bundle}
+  list: ListProps | null
+  file: null | {
     name: string
     ref: string
     accept: string | null
-    multiple: boolean
-    entries: {ref: string; name: string; progress: number; done: boolean; cancelled: boolean}[]
+    "multiple?": boolean
+    label: Bundle
+    entries: {ref: string; name: string; progress: number; "done?": boolean; "cancelled?": boolean; "sending?": boolean}[]
   }
-  add: Bundle | false
-  remove: Bundle | false
-  hidden: Hidden[]
-  members: Members | null
-  items: {key: string; id: string; remove: Bundle; members: Members}[]
-  kind: string | null
-  kind_id: string | null
-  kind_name: string | null
-  kind_path: string | null
-  kinds: null | {value: string; label: string}[]
-  single: FieldProps | null
+  component: null | {module: string; control: Bundle}
+  control: ControlProps | null
+  clear: null | {"asked?": boolean; cleared: Bundle | null; button: Bundle}
+  count: CountProps | null
+  group: null | {label: Bundle; members: Members | null; add: Bundle | null; remove: Bundle | null}
+  groups: null | {
+    label: Bundle
+    items: {key: string; element: Bundle; label: Bundle; labelledby: string; error: Bundle | null; remove: Bundle; members: Members}[]
+    hidden: Hidden[]
+    add: Bundle
+  }
+  union: null | {
+    label: Bundle
+    hidden: Hidden[]
+    kind: string
+    choice: Bundle
+    kind_label: Bundle
+    select: Bundle
+    "empty?": boolean
+    kinds: Choice[]
+    "own_errors?": boolean
+    single: FieldProps | null
+    members: Members | null
+  }
   texts: FieldTexts
-  list: false | {add_value: string; value_label: string; remove_label: string; value_position: string[]; remove_value: string[]}
+  messages: Record<string, Message | Message[] | null>
+  locale: string
 }
 
 export type PanelProps = {
   panel: {
-    id: string
-    open: boolean
+    "open?": boolean
     presentation: "modal" | "inline"
-    place: string
+    "destructive?": boolean
+    place: Bundle
     frame: Bundle | null
     form: Bundle | null
-    title: string | null
-    errors: false | null | string[]
-    destructive: boolean
-    cancel: {attrs: Bundle; text: string}
-    submit: {id: string; text: string | null}
+    title: Bundle
+    errors: Bundle | null
+    cancel: Bundle
+    submit: Bundle
     fields: FieldProps[]
+    texts: {title: string | null; submit: string | null; question: string | null; errors: string[]; cancel: string}
+    messages: Record<string, Message | Message[] | null>
   }
 }
 
-export function AshPanel(props: PanelProps) {
+export function AshPanel(props: PanelProps["panel"]) {
   const PanelPart = usePart("Panel")
   return (
     <Strict>
-      <PanelPart {...props} />
+      <PanelPart panel={props} />
     </Strict>
   )
 }
@@ -138,10 +181,11 @@ export function Panel({panel}: PanelProps) {
   const Field = usePart("Field")
   const live = useLiveReact() as unknown as Live
   const ref = React.useRef<HTMLElement>(null)
-  const mounted = useMountedWhile(ref, panel.open, mountPanel, live, closeDialog)
+  const open = panel["open?"]
+  const mounted = useMountedWhile(ref, open, mountPanel, live, closeDialog)
   const modal = panel.presentation === "modal"
   const Tag = modal ? "dialog" : "section"
-  const {open, id} = panel
+  const {texts} = panel
 
   return (
     <Tag
@@ -152,13 +196,13 @@ export function Panel({panel}: PanelProps) {
       <Commits mounted={mounted}>
         {open && (
           <form {...attrs(panel.form)}>
-            <h2 id={`${id}-panel-title`} className="mb-4 text-lg font-semibold">
-              {panel.title}
+            <h2 {...attrs(panel.title)} className="mb-4 text-lg font-semibold">
+              {texts.title}
             </h2>
             {/* what the action says that is about none of the fields */}
             {panel.errors && (
-              <div id={`${id}-panel-errors`} role="alert" className="mb-4 text-sm font-medium">
-                {panel.errors.map((message, at) => (
+              <div {...attrs(panel.errors)} className="mb-4 text-sm font-medium">
+                {texts.errors.map((message, at) => (
                   <p key={at}>{message}</p>
                 ))}
               </div>
@@ -167,30 +211,25 @@ export function Panel({panel}: PanelProps) {
               <Field key={field.id} field={field} />
             ))}
             <div className="mt-6 flex justify-end gap-2">
-              <button type="button" {...attrs(panel.cancel.attrs)} className={button("outline", "sm")}>
-                {panel.cancel.text}
+              <button type="button" {...attrs(panel.cancel)} className={button("outline", "sm")}>
+                {texts.cancel}
               </button>
-              <button type="submit" id={panel.submit.id} className={button(panel.destructive ? "destructive" : "default", "sm")}>
-                {panel.submit.text}
+              <button type="submit" {...attrs(panel.submit)} className={button(panel["destructive?"] ? "destructive" : "default", "sm")}>
+                {texts.submit}
               </button>
             </div>
           </form>
         )}
       </Commits>
       {/* what opens inside it is moved in here */}
-      <div id={panel.place} className="contents"></div>
+      <div {...attrs(panel.place)} className="contents"></div>
     </Tag>
   )
 }
 
-// What a control names as its description: the ids of what says something of it.
-const described = (...given: (string | false | null | undefined)[]) => given.filter(Boolean).join(" ") || undefined
-
 const text = (value: FieldProps["value"]) => (typeof value === "string" ? value : "")
-const list = (value: FieldProps["value"]) => (Array.isArray(value) ? value : [])
 
 const LABEL = "flex items-center gap-2 text-sm"
-const TYPED = ["text", "enum", "number", "date", "datetime", "plain"]
 
 // The part `Field`: one field of the panel, its label, the control of its
 // type, and the action's errors about it; inside a value made of fields
@@ -206,30 +245,24 @@ export function Field({field}: {field: FieldProps}) {
   const ComponentEditor = usePart("ComponentEditor")
   const Counter = usePart("Counter")
   const {id, editor, texts} = field
-  const array = editor === "choices" || editor === "list"
-  const group = editor === "group" || editor === "groups" || editor === "union"
-  const file = editor === "file" && field.upload
-  const reference = editor === "reference"
-  const references = editor === "references"
-  const counter = field.counted && editor === "text" ? `${id}-count` : null
-  const error = field.invalid ? ids.error(id) : null
-  const describedBy = described(error, counter)
-  const secret = field.sensitive
-  const called = reference ? texts.chosen?.[0] : null
+  const invalid = field["invalid?"]
+  const describedBy = field.described ?? undefined
+  const group = field.group || field.groups || field.union
+  const {reference, references} = field
 
   return (
-    <div className="mb-3 flex flex-col gap-1" data-field={field.path}>
+    <div className="mb-3 flex flex-col gap-1" {...attrs(field.element)}>
       {/* an unchecked box sends nothing: this says "false" for it */}
       {editor === "boolean" && <input type="hidden" name={field.name} value="false" />}
-      {!array && !reference && !references && !group && !file && (
+      {field["labelled?"] && (
         <label htmlFor={id} className={LABEL}>
-          {editor === "boolean" && <PanelBox id={id} name={field.name} checked={field.value === "true"} invalid={field.invalid} describedBy={describedBy} />}
+          {editor === "boolean" && <PanelBox id={id} name={field.name} checked={field.value === "true"} invalid={invalid} describedBy={describedBy} />}
           <span data-label="">{field.label}</span>
-          {field.required && editor !== "boolean" && <span aria-hidden="true">*</span>}
+          {field["required?"] && editor !== "boolean" && <span aria-hidden="true">*</span>}
         </label>
       )}
-      {(array || references) && (
-        <span id={`${id}-label`} className="text-sm">
+      {field.group_label && !reference && (
+        <span {...attrs(field.group_label)} className="text-sm">
           <span data-label="">{field.label}</span>
         </span>
       )}
@@ -237,52 +270,52 @@ export function Field({field}: {field: FieldProps}) {
       called, and the button that opens the picker, as a group */}
       {reference && (
         <>
-          <span id={`${id}-label`} className="text-sm">
+          <span {...attrs(field.group_label)} className="text-sm">
             <span data-label="">{field.label}</span>
-            {field.required && <span aria-hidden="true">*</span>}
-            {field.required && <span className="sr-only">{texts.required}</span>}
+            {field["required?"] && <span aria-hidden="true">*</span>}
+            {field["required?"] && <span className="sr-only">{texts.required}</span>}
           </span>
-          <div id={id} role="group" aria-labelledby={`${id}-label`} aria-describedby={describedBy} className="flex items-center gap-2">
+          <div id={id} role="group" aria-labelledby={field.labelledby} aria-describedby={describedBy} className="flex items-center gap-2">
             <input type="text" name={field.name} value={text(field.value)} readOnly hidden data-key="" />
-            {called && (
-              <span id={`${id}-chosen`} className="text-sm" data-chosen="">
-                {called}
+            {reference.chosen && (
+              <span {...attrs(reference.chosen.element)} className="text-sm" data-chosen="">
+                {reference.chosen.text}
               </span>
             )}
-            <button type="button" id={ids.choose(id)} aria-describedby={called ? `${id}-chosen` : undefined} {...attrs(field.choose)} className={button("outline", "sm")}>
+            <button type="button" {...attrs(reference.choose)} className={button("outline", "sm")}>
               {texts.choose}
             </button>
           </div>
         </>
       )}
       {references && (
-        <div id={id} role="group" aria-labelledby={`${id}-label`} aria-describedby={describedBy} data-references="" className="flex flex-col gap-1">
+        <div id={id} role="group" aria-labelledby={field.labelledby} aria-describedby={describedBy} data-references="" className="flex flex-col gap-1">
           <input type="text" name={`${field.name}[]`} value="" readOnly hidden data-own="" />
-          {(field.chosen || []).map((chosen, at) => (
-            <div key={chosen.key} className="flex items-center gap-1" data-chosen-item="">
-              <input type="text" name={`${field.name}[]`} value={chosen.key} readOnly hidden data-key="" />
-              <span id={`${id}-c-${at}`} className="text-sm" data-chosen="">
-                {texts.chosen[at]}
+          {references.entries.map(entry => (
+            <div key={entry.key} className="flex items-center gap-1" data-chosen-item="">
+              <input type="text" name={`${field.name}[]`} value={entry.key} readOnly hidden data-key="" />
+              <span {...attrs(entry.element)} className="text-sm" data-chosen="">
+                {entry.text}
               </span>
-              <button type="button" id={ids.unpick(id, at)} {...attrs(chosen.unpick)} aria-label={texts.remove_chosen[at]} className={button("ghost", "xs")}>
+              <button type="button" {...attrs(entry.unpick)} className={button("ghost", "xs")}>
                 <span aria-hidden="true">✕</span>
               </button>
             </div>
           ))}
-          <button type="button" id={ids.choose(id)} {...attrs(field.choose)} className={button("outline", "sm", "self-start")}>
+          <button type="button" {...attrs(references.choose)} className={button("outline", "sm", "self-start")}>
             {texts.choose}
           </button>
         </div>
       )}
-      {array && (
-        <div id={id} role="group" aria-labelledby={`${id}-label`} aria-describedby={described(error)} data-invalid={field.places || undefined} className="flex flex-col gap-1">
+      {(editor === "choices" || editor === "list") && (
+        <div id={id} role="group" aria-labelledby={field.labelledby} aria-describedby={describedBy} data-invalid={field.places ?? undefined} className="flex flex-col gap-1">
           {/* a form sends nothing for a list without values: this entry is
           sent before the values in every case */}
           <input type="text" name={`${field.name}[]`} value="" readOnly hidden data-own="" />
           {editor === "choices" &&
             (field.values || []).map(choice => (
               <label key={choice.value} className={LABEL}>
-                <PanelBox name={`${field.name}[]`} value={choice.value} checked={list(field.value).includes(choice.value)} invalid={field.invalid} />
+                <PanelBox name={`${field.name}[]`} value={choice.value} checked={choice["chosen?"]} invalid={invalid} />
                 {choice.label}
               </label>
             ))}
@@ -290,38 +323,31 @@ export function Field({field}: {field: FieldProps}) {
           {field.boxless.map(value => (
             <input key={value} type="hidden" name={`${field.name}[]`} value={value} />
           ))}
-          {editor === "list" && <ListPart field={field} />}
+          {field.list && <ListPart list={field.list} />}
         </div>
       )}
-      {editor === "group" && <Group field={field} />}
-      {editor === "groups" && <Groups field={field} />}
-      {editor === "union" && <Union field={field} />}
-      {file && <FileField field={field} describedBy={described(error)} />}
-      {editor === "component" && <ComponentEditor field={field} describedBy={describedBy} />}
+      {field.group && <Group field={field} />}
+      {field.groups && <Groups field={field} />}
+      {field.union && <Union field={field} />}
+      {field.file && <FileField field={field} />}
+      {field.component && <ComponentEditor field={field} />}
       {/* a sensitive input, which is text or a number: typed hidden */}
-      {((secret && field.clear !== "asked") || (!secret && TYPED.includes(editor))) && <Control field={field} describedBy={describedBy} />}
+      {field.control && <Control control={field.control} />}
       {/* a sensitive field the action may empty: "Clear", and "Keep" once asked */}
-      {field.clear === "asked" && (
-        <p id={`${id}-cleared`} className="text-sm" data-cleared="">
+      {field.clear && field.clear["asked?"] && (
+        <p {...attrs(field.clear.cleared)} className="text-sm" data-cleared="">
           {texts.will_be_cleared}
         </p>
       )}
       {field.clear && (
-        <button
-          type="button"
-          id={ids.clear(id)}
-          aria-label={field.clear === "asked" ? texts.keep_value : texts.clear_value}
-          aria-describedby={field.clear === "asked" ? `${id}-cleared` : undefined}
-          {...attrs(field.clear_button)}
-          className={button("outline", "sm", "self-start")}
-        >
-          {field.clear === "asked" ? texts.keep : texts.clear}
+        <button type="button" {...attrs(field.clear.button)} className={button("outline", "sm", "self-start")}>
+          {field.clear["asked?"] ? texts.keep : texts.clear}
         </button>
       )}
-      {counter && <Counter id={counter} field={field} value={text(field.value)} className="self-end" />}
+      {field.count && <Counter count={field.count} value={text(field.value)} className="self-end" />}
       {/* in the text colour: the error colour is too faint for small text */}
-      {field.invalid && !group && (
-        <div id={ids.error(id)} className="mt-1 text-xs">
+      {field.error && !group && (
+        <div {...attrs(field.error)} className="mt-1 text-xs">
           {texts.errors.map((message: string, at: number) => (
             <p key={at} data-error="">
               {message}
@@ -336,10 +362,9 @@ export function Field({field}: {field: FieldProps}) {
 // The part `Counter`: the counter of a text, drawn anew where the server's
 // value changes, as the server would draw it; the hook counts again as it
 // is typed.
-export function Counter({id, field, value, className}: {id: string; field: FieldProps; value: string; className?: string}) {
+export function Counter({count, value, className}: {count: CountProps; value: string; className?: string}) {
   const Count = usePart("Count")
-  const counted = field.counted!
-  return <Count key={value} count={{element: {...(field.count || {}), id}, length: count(value, counted), max: counted.max, "over?": false}} className={className} />
+  return <Count key={value} count={count} className={className} />
 }
 
 // The part `PanelBox`: a checkbox of the panel, checked as the server says
@@ -357,28 +382,28 @@ const STEP: Record<string, string> = {number: "any", datetime: "1"}
 // what was typed into it in this panel), a text in a textarea, a choice
 // in a menu, anything else in an input of its type, with what the
 // constraints of a number say of it (`limits`).
-export function Control({field, describedBy}: {field: FieldProps; describedBy?: string}) {
+export function Control({control}: {control: ControlProps}) {
   // one ref for whichever of the three it draws: an input, a textarea or a select
   const ref = React.useRef<HTMLInputElement & HTMLTextAreaElement & HTMLSelectElement>(null)
-  const value = text(field.value)
+  const value = control.value ?? ""
   useServerValue(ref, value)
   const common = {
     ref,
-    id: field.id,
-    name: field.name,
+    id: control.id,
+    name: control.name,
     defaultValue: value,
-    "aria-required": field.required ? ("true" as const) : undefined,
-    "aria-invalid": field.invalid ? ("true" as const) : undefined,
-    "aria-describedby": describedBy,
+    "aria-required": control["required?"] ? ("true" as const) : undefined,
+    "aria-invalid": control["invalid?"] ? ("true" as const) : undefined,
+    "aria-describedby": control.described ?? undefined,
   }
 
-  if (field.sensitive) return <input type="password" autoComplete="off" {...common} className={input("h-8 w-full text-sm")} />
-  if (field.editor === "text") return <textarea rows={3} {...common} className={input("h-auto w-full py-1 text-sm")} />
-  if (field.editor === "enum") {
+  if (control["secret?"]) return <input type="password" autoComplete="off" {...common} className={input("h-8 w-full text-sm")} />
+  if (control.editor === "text") return <textarea rows={3} {...common} className={input("h-auto w-full py-1 text-sm")} />
+  if (control.editor === "enum") {
     return (
       <select {...common} className={select("h-8 w-full text-sm")}>
-        {(!field.required || value === "") && <option value=""></option>}
-        {(field.values || []).map(choice => (
+        {(!control["required?"] || value === "") && <option value=""></option>}
+        {(control.values || []).map(choice => (
           <option key={choice.value} value={choice.value}>
             {choice.label}
           </option>
@@ -388,10 +413,10 @@ export function Control({field, describedBy}: {field: FieldProps; describedBy?: 
   }
   return (
     <input
-      type={INPUT[field.editor] ?? "text"}
-      step={field.limits.step ?? STEP[field.editor]}
-      min={field.limits.min ?? undefined}
-      max={field.limits.max ?? undefined}
+      type={INPUT[control.editor] ?? "text"}
+      step={control.limits.step ?? STEP[control.editor]}
+      min={control.limits.min ?? undefined}
+      max={control.limits.max ?? undefined}
       {...common}
       className={input("h-8 w-full text-sm")}
     />
@@ -402,19 +427,16 @@ export function Control({field, describedBy}: {field: FieldProps; describedBy?: 
 // hook's once drawn (it adds them from the template and takes them away):
 // drawn once, never again while the panel is open.
 export const List = React.memo(
-  function List({field}: {field: FieldProps}) {
+  function List({list}: {list: ListProps}) {
     const ListItem = usePart("ListItem")
-    const texts = field.list || {add_value: "", value_label: "", remove_label: "", value_position: [], remove_value: []}
-    const listId = `${field.id}-values`
-    const values = list(field.value)
-    const item = (value: string, position: number | null) => (
-      <ListItem field={field} listId={listId} value={value} position={position} valueLabel={position ? texts.value_position[position - 1] : null} removeLabel={position ? texts.remove_value[position - 1] : null} />
-    )
+    const {texts} = list
     return (
-      <div id={listId} data-list="" data-value-label={texts.value_label} data-remove-label={texts.remove_label} className="flex flex-col items-stretch gap-1">
-        <Template bundle={{}}>{item("", null)}</Template>
-        {values.map((value, at) => (
-          <React.Fragment key={at}>{item(value, at + 1)}</React.Fragment>
+      <div {...attrs(list.element)} className="flex flex-col items-stretch gap-1">
+        <Template bundle={{}}>
+          <ListItem list={list} row={list.template} valueLabel={null} removeLabel={null} />
+        </Template>
+        {list.rows.map((row, at) => (
+          <ListItem key={at} list={list} row={row} valueLabel={texts.value_position[at]} removeLabel={texts.remove_value[at]} />
         ))}
         <button type="button" data-add="" className={button("outline", "sm", "self-start")}>
           {texts.add_value}
@@ -426,34 +448,26 @@ export const List = React.memo(
 )
 
 // The part `ListItem`: one value of a list field, with its remove button;
-// with no position, the template the hook adds a value from.
-export function ListItem({field, listId, value, position, valueLabel, removeLabel}: {
-  field: FieldProps
-  listId: string
-  value: string
-  position: number | null
-  valueLabel: string | null
-  removeLabel: string | null
-}) {
+// the template's (no position), which the hook adds a value from.
+export function ListItem({list, row, valueLabel, removeLabel}: {list: ListProps; row: ListRow; valueLabel: string | null; removeLabel: string | null}) {
   const Count = usePart("Count")
-  const kind = field.item
-  const name = `${field.name}[]`
-  const countId = field.counted && position ? `${listId}-count-${position}` : undefined
+  const kind = list.item
+  const {name} = list
   const label = valueLabel ?? undefined
   return (
     <div data-item="" className="flex items-center gap-1">
-      {kind === "boolean" && <input type="hidden" name={name} value={String(value === "true")} />}
-      {kind === "boolean" && <input type="checkbox" defaultChecked={value === "true"} aria-label={label} className={box()} />}
-      {kind === "text" && <textarea rows={1} name={name} defaultValue={value} aria-label={label} aria-describedby={countId} className={input("h-auto min-h-0 flex-1 py-1 text-sm")} />}
-      {kind === "text" && field.counted && <Count count={{element: {...(field.count || {}), ...(countId ? {id: countId} : {})}, length: count(value, field.counted), max: field.counted.max, "over?": false}} />}
+      {kind === "boolean" && <input type="hidden" name={name} value={String(row.value === "true")} />}
+      {kind === "boolean" && <input type="checkbox" defaultChecked={row.value === "true"} aria-label={label} className={box()} />}
+      {kind === "text" && <textarea rows={1} name={name} defaultValue={row.value} aria-label={label} aria-describedby={(row.count?.element.id as string | undefined) ?? undefined} className={input("h-auto min-h-0 flex-1 py-1 text-sm")} />}
+      {kind === "text" && row.count && <Count count={row.count} />}
       {(kind === "number" || kind === "date" || kind === "datetime") && (
         <input
           type={INPUT[kind]}
-          step={field.limits.step ?? STEP[kind]}
-          min={field.limits.min ?? undefined}
-          max={field.limits.max ?? undefined}
+          step={list.limits.step ?? STEP[kind]}
+          min={list.limits.min ?? undefined}
+          max={list.limits.max ?? undefined}
           name={name}
-          defaultValue={value}
+          defaultValue={row.value}
           aria-label={label}
           className={input("h-8 flex-1 text-sm")}
         />
@@ -490,10 +504,11 @@ function HiddenEntries({entries}: {entries: Hidden[]}) {
   )
 }
 
-// The part `Errors`: what the action says about a group or one value of it.
-export function Errors({id, errors}: {id: string; errors: string[]}) {
+// The part `Errors`: what the action says about a group or one value of it,
+// in its element (`error`).
+export function Errors({error, errors}: {error: Bundle | null; errors: string[]}) {
   return (
-    <div id={ids.error(id)} className="mb-1 text-xs">
+    <div {...attrs(error)} className="mb-1 text-xs">
       {errors.map((message, at) => (
         <p key={at} data-error="">
           {message}
@@ -504,12 +519,12 @@ export function Errors({id, errors}: {id: string; errors: string[]}) {
 }
 
 // The part `GroupLabel`: the label of a group or a union.
-export function GroupLabel({field}: {field: FieldProps}) {
+export function GroupLabel({field, label}: {field: FieldProps; label: Bundle}) {
   return (
-    <span id={`${field.id}-label`} className="text-sm">
+    <span {...attrs(label)} className="text-sm">
       <span data-label="">{field.label}</span>
-      {field.required && <span aria-hidden="true">*</span>}
-      {field.required && <span className="sr-only">{field.texts.required}</span>}
+      {field["required?"] && <span aria-hidden="true">*</span>}
+      {field["required?"] && <span className="sr-only">{field.texts.required}</span>}
     </span>
   )
 }
@@ -521,24 +536,25 @@ export function Group({field}: {field: FieldProps}) {
   const Errors = usePart("Errors")
   const MembersOf = usePart("MembersOf")
   const {id, texts} = field
+  const group = field.group!
   return (
-    <div id={id} role="group" aria-labelledby={`${id}-label`} aria-describedby={field.invalid ? ids.error(id) : undefined} data-group="">
+    <div id={id} role="group" aria-labelledby={field.labelledby} aria-describedby={(field.error?.id as string | undefined) ?? undefined} data-group="">
       <div className="flex items-center gap-1">
-        <GroupLabel field={field} />
-        {field.members && field.remove && (
-          <button type="button" {...attrs(field.remove)} aria-label={texts.remove_group} className={button("ghost", "xs")}>
+        <GroupLabel field={field} label={group.label} />
+        {group.remove && (
+          <button type="button" {...attrs(group.remove)} aria-label={texts.remove_group} className={button("ghost", "xs")}>
             <span aria-hidden="true">✕</span>
           </button>
         )}
       </div>
-      {field.invalid && <Errors id={id} errors={texts.errors} />}
-      {field.members && (
+      {field.error && <Errors error={field.error} errors={texts.errors} />}
+      {group.members && (
         <div className="ps-4">
-          <MembersOf members={field.members} />
+          <MembersOf members={group.members} />
         </div>
       )}
-      {!field.members && (
-        <button type="button" {...attrs(field.add)} className={button("outline", "sm")}>
+      {group.add && (
+        <button type="button" {...attrs(group.add)} className={button("outline", "sm")}>
           {texts.add_value}
         </button>
       )}
@@ -552,33 +568,31 @@ export function Groups({field}: {field: FieldProps}) {
   const Errors = usePart("Errors")
   const MembersOf = usePart("MembersOf")
   const {id, texts} = field
+  const groups = field.groups!
   return (
-    <div id={id} role="group" aria-labelledby={`${id}-label`} aria-describedby={field.invalid ? ids.error(id) : undefined} data-groups="">
-      <span id={`${id}-label`} className="text-sm">
+    <div id={id} role="group" aria-labelledby={field.labelledby} aria-describedby={(field.error?.id as string | undefined) ?? undefined} data-groups="">
+      <span {...attrs(groups.label)} className="text-sm">
         <span data-label="">{field.label}</span>
       </span>
-      {field.invalid && <Errors id={id} errors={texts.errors} />}
-      <HiddenEntries entries={field.hidden} />
-      {field.items.map((item, index) => {
-        const errors: string[] = texts.item_errors?.[index] || []
-        return (
-          <div key={item.key} id={item.id} role="group" aria-labelledby={`${item.id}-label`} aria-describedby={errors.length > 0 ? ids.error(item.id) : undefined} data-group-item="" className="mb-2">
-            <div className="flex items-center gap-1">
-              <span id={`${item.id}-label`} className="text-sm">
-                {texts.value_position?.[index]}
-              </span>
-              <button type="button" {...attrs(item.remove)} aria-label={texts.remove_value?.[index]} className={button("ghost", "xs")}>
-                <span aria-hidden="true">✕</span>
-              </button>
-            </div>
-            {errors.length > 0 && <Errors id={item.id} errors={errors} />}
-            <div className="ps-4">
-              <MembersOf members={item.members} />
-            </div>
+      {field.error && <Errors error={field.error} errors={texts.errors} />}
+      <HiddenEntries entries={groups.hidden} />
+      {groups.items.map((item, index) => (
+        <div key={item.key} {...attrs(item.element)} role="group" aria-labelledby={item.labelledby} aria-describedby={(item.error?.id as string | undefined) ?? undefined} data-group-item="" className="mb-2">
+          <div className="flex items-center gap-1">
+            <span {...attrs(item.label)} className="text-sm">
+              {texts.value_position?.[index]}
+            </span>
+            <button type="button" {...attrs(item.remove)} aria-label={texts.remove_value?.[index]} className={button("ghost", "xs")}>
+              <span aria-hidden="true">✕</span>
+            </button>
           </div>
-        )
-      })}
-      <button type="button" {...attrs(field.add)} className={button("outline", "sm")}>
+          {item.error && <Errors error={item.error} errors={texts.item_errors?.[index] || []} />}
+          <div className="ps-4">
+            <MembersOf members={item.members} />
+          </div>
+        </div>
+      ))}
+      <button type="button" {...attrs(groups.add)} className={button("outline", "sm")}>
         {texts.add_value}
       </button>
     </div>
@@ -592,31 +606,31 @@ export function Union({field}: {field: FieldProps}) {
   const Errors = usePart("Errors")
   const MembersOf = usePart("MembersOf")
   const {id, texts} = field
-  const kind = field.kind ?? ""
-  const own: string[] = field.single ? [] : texts.errors
+  const union = field.union!
+  const own = union["own_errors?"]
   const ref = React.useRef<HTMLSelectElement>(null)
-  useServerValue(ref, kind)
+  useServerValue(ref, union.kind)
   return (
-    <div id={id} role="group" aria-labelledby={`${id}-label`} aria-describedby={own.length > 0 ? ids.error(id) : undefined} data-union="">
-      <GroupLabel field={field} />
-      {own.length > 0 && <Errors id={id} errors={own} />}
+    <div id={id} role="group" aria-labelledby={field.labelledby} aria-describedby={own ? ((field.error?.id as string | undefined) ?? undefined) : undefined} data-union="">
+      <GroupLabel field={field} label={union.label} />
+      {own && <Errors error={field.error} errors={texts.errors} />}
       <div className="ps-4">
-        <HiddenEntries entries={field.hidden} />
-        <div className="mb-3 flex flex-col gap-1" data-field={field.kind_path ?? undefined}>
-          <label htmlFor={field.kind_id ?? undefined} className={LABEL}>
+        <HiddenEntries entries={union.hidden} />
+        <div className="mb-3 flex flex-col gap-1" {...attrs(union.choice)}>
+          <label {...attrs(union.kind_label)} className={LABEL}>
             <span data-label="">{texts.kind}</span>
           </label>
-          <select ref={ref} id={field.kind_id ?? undefined} name={field.kind_name ?? undefined} defaultValue={kind} aria-required={field.required ? "true" : undefined} className={select("h-8 w-full text-sm")}>
-            {(!field.required || kind === "") && <option value=""></option>}
-            {(field.kinds || []).map(choice => (
+          <select ref={ref} {...attrs(union.select)} defaultValue={union.kind} className={select("h-8 w-full text-sm")}>
+            {union["empty?"] && <option value=""></option>}
+            {union.kinds.map(choice => (
               <option key={choice.value} value={choice.value}>
                 {choice.label}
               </option>
             ))}
           </select>
         </div>
-        {field.single && <Field key={field.single.id} field={field.single} />}
-        {field.members && <MembersOf members={field.members} />}
+        {union.single && <Field key={union.single.id} field={union.single} />}
+        {union.members && <MembersOf members={union.members} />}
       </div>
     </div>
   )
@@ -625,9 +639,9 @@ export function Union({field}: {field: FieldProps}) {
 // The part `FileField`: a file, the island's own file input, which hands the files chosen to
 // LiveView's input of the field (`uploadTo`, with the panel's form, which
 // that input names), and a bar per file while it is sent.
-export function FileField({field, describedBy}: {field: FieldProps; describedBy?: string}) {
+export function FileField({field}: {field: FieldProps}) {
   const live = useLiveReact() as unknown as Live & {uploadTo: (target: Element, name: string, files: FileList) => void}
-  const upload = field.upload!
+  const upload = field.file!
   const ref = React.useRef<HTMLInputElement>(null)
   // a file is given once: where the server holds none of it any more (it
   // was sent, or taken back), the control is empty again, as LiveView's is
@@ -645,23 +659,23 @@ export function FileField({field, describedBy}: {field: FieldProps; describedBy?
     <>
       <label htmlFor={field.id} className={LABEL}>
         <span data-label="">{field.label}</span>
-        {field.required && <span aria-hidden="true">*</span>}
+        {field["required?"] && <span aria-hidden="true">*</span>}
       </label>
       <input
         ref={ref}
         type="file"
         id={field.id}
         accept={upload.accept ?? undefined}
-        multiple={upload.multiple}
-        aria-required={field.required ? "true" : undefined}
-        aria-invalid={field.invalid ? "true" : undefined}
-        aria-describedby={describedBy}
+        multiple={upload["multiple?"]}
+        aria-required={field["required?"] ? "true" : undefined}
+        aria-invalid={field["invalid?"] ? "true" : undefined}
+        aria-describedby={field.described ?? undefined}
         onChange={handed}
         onInput={handed}
         className={cn(input("h-8 w-full py-1 text-sm"), "file:me-2 file:border-0 file:bg-transparent file:text-sm")}
       />
       {upload.entries
-        .filter(entry => entry.progress > 0 && !entry.done && !entry.cancelled)
+        .filter(entry => entry["sending?"])
         .map(entry => (
           <progress key={entry.ref} value={entry.progress} max={100} aria-label={entry.name} className="mt-1 w-full">
             {entry.progress}%
@@ -673,30 +687,24 @@ export function FileField({field, describedBy}: {field: FieldProps; describedBy?
 
 // The part `ComponentEditor`: a field whose column's component edits, that component's editor (by its
 // module, `reactKit({editors})`, as in a cell), on its control the field's
-// id, name and value, else the control of its type, with a warning in
-// development.
-export function ComponentEditor({field, describedBy}: {field: FieldProps; describedBy?: string}) {
+// id, name and what says it is required or wrong (`component.control`),
+// else the control of its type, with a warning in development.
+export function ComponentEditor({field}: {field: FieldProps}) {
   const components = usePart("editors")
-  const Component = field.component ? components[field.component] : null
-  const control: Bundle = {
-    id: field.id,
-    name: field.name,
-    "data-control": true,
-    ...(field.required ? {"aria-required": "true"} : {}),
-    ...(field.invalid ? {"aria-invalid": "true"} : {}),
-    ...(describedBy ? {"aria-describedby": describedBy} : {}),
-  }
+  const component = field.component!
+  const Component = components[component.module] ?? null
+  const value = text(field.value)
   if (!Component) {
-    if (process.env.NODE_ENV !== "production") console.warn(`ash_data_table: the React kit has no editor for ${field.component}; the field is typed as text`)
-    return <input type="text" {...attrs(control)} defaultValue={text(field.value)} className={input("h-8 w-full text-sm")} />
+    if (process.env.NODE_ENV !== "production") console.warn(`ash_data_table: the React kit has no editor for ${component.module}; the field is typed as text`)
+    return <input type="text" {...attrs(component.control)} defaultValue={value} className={input("h-8 w-full text-sm")} />
   }
   const editor = {
     name: field.name,
     label: field.label,
-    required: field.required,
+    required: field["required?"],
     limits: field.limits,
-    control: {...control, defaultValue: text(field.value)},
-    value: text(field.value),
+    control: {...component.control, defaultValue: value},
+    value,
   } as unknown as EditorProps
   return <Component editor={editor} />
 }

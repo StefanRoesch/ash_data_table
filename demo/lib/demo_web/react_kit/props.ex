@@ -369,159 +369,6 @@ defmodule DemoWeb.ReactKit.Props do
 
   # ---- what opens -----------------------------------------------------------
 
-  @doc """
-  The action panel (the part `panel`), drawn closed too: whether it is
-  open, how it opens, its place (`Ids.panel_place/1`), and while it is open
-  its element's bundle (`Attrs.panel/5`), its form, its words and a field
-  each (`field/2`).
-  """
-  def panel(id, panel, fields, target, presentation, texts) do
-    %{
-      id: id,
-      open: panel != nil,
-      presentation: presentation,
-      place: Ids.panel_place(id),
-      frame: panel && bundle(Attrs.panel(id, panel, texts.question, target, presentation)),
-      form:
-        panel &&
-          bundle(%{
-            "id" => "#{id}-panel-form",
-            "method" => panel.method,
-            "phx-change" => Attrs.event(id, "panel_validate"),
-            "phx-submit" => Attrs.event(id, "panel_submit"),
-            "phx-target" => target,
-            "novalidate" => true
-          }),
-      title: texts.title,
-      errors: panel && panel.errors && texts.errors,
-      destructive: panel != nil and panel.destructive?,
-      cancel: %{attrs: bundle(Attrs.cancel("#{id}-panel-cancel")), text: texts.cancel},
-      submit: %{id: "#{id}-panel-submit", text: texts.submit},
-      fields: Enum.map(fields, &field(&1, target))
-    }
-  end
-
-  # One field of the panel, of what its `field` part is given: its ids, name
-  # and value, what its control is and says, its buttons' bundles
-  # (`Attrs.unpick/4`, `Attrs.clear_field/3`, `Attrs.add_group/4`,
-  # `Attrs.remove_group/4`, with the buttons' ids, and the picker's `pick_input`), a file's upload,
-  # and what a value made of fields holds, each a field again, with its
-  # hidden entries as bundles (`hidden`) and a union's choice of its kind
-  # (`kind_name`, `kind_path`).
-  defp field(given, target) do
-    input = given.input
-    editor = input.editor
-    group? = editor in [:group, :groups, :union]
-
-    %{
-      id: given.id,
-      name: given.name,
-      path: Enum.join(given.path, "."),
-      editor: editor,
-      label: input.label,
-      required: input.required?,
-      sensitive: Map.get(input, :sensitive?) == true,
-      item:
-        case input.cell_type do
-          {:array, item} -> item
-          _one -> nil
-        end,
-      values: choices(input.values),
-      value: if(group?, do: nil, else: given.value),
-      boxless: boxless(input, given.value),
-      invalid: given.errors != [],
-      places: given.places != [] && Attrs.held(given.places),
-      limits: given.limits,
-      counted: given.counted,
-      count: given.counted && bundle(Attrs.count(given.counted, false)),
-      clear: given.clear,
-      clear_button: given.clear && bundle(Attrs.clear_field(given.table, input.name, target)),
-      choose:
-        editor in [:reference, :references] &&
-          bundle(%{
-            "phx-click" => Attrs.event(given.table, "pick_input"),
-            "phx-value-input" => input.name,
-            "phx-target" => target
-          }),
-      chosen:
-        if editor == :references do
-          for key <- given.value,
-              do: %{key: key, unpick: bundle(Attrs.unpick(given.table, input.name, key, target))}
-        end,
-      component: editor == :component && inspect(input.component.module),
-      upload: given.upload && upload(given.upload),
-      add:
-        group? && editor != :union &&
-          bundle(Attrs.add_group(given.add_id, given.table, given.path, target)),
-      remove:
-        editor == :group and not input.required? and
-          bundle(Attrs.remove_group(given.remove_id, given.table, given.path, target)),
-      members: members(given.members, target),
-      items:
-        for item <- given.items do
-          %{
-            key: item.key,
-            id: item.id,
-            remove: bundle(Attrs.remove_group(item.remove_id, given.table, item.path, target)),
-            members: members(item.members, target)
-          }
-        end,
-      hidden: Enum.map(given.hidden, &bundle/1),
-      kind: given.kind,
-      kind_id: given.kind_id,
-      kind_name: given.kind_name,
-      kind_path: given.kind_path && Enum.join(given.kind_path, "."),
-      kinds:
-        if editor == :union do
-          for member <- input.members,
-              do: %{value: Atom.to_string(member.name), label: member.label}
-        end,
-      single: given.single && field(given.single, target),
-      texts: given.texts,
-      list:
-        editor == :list &&
-          Words.texts(:list, %{label: input.label, values: given.value})
-    }
-  end
-
-  defp members(nil, _target), do: nil
-
-  defp members(members, target),
-    do: %{
-      hidden: Enum.map(members.hidden, &bundle/1),
-      fields: Enum.map(members.fields, &field(&1, target))
-    }
-
-  # What a field of multiple choice holds that is none of its values, which
-  # it sends back as it came.
-  defp boxless(%{editor: :choices, values: values}, held) when is_list(held) do
-    choices = Enum.map(values, fn {choice, _label} -> to_string(choice) end)
-    Enum.reject(held, &(&1 in choices))
-  end
-
-  defp boxless(_input, _held), do: []
-
-  # What LiveView keeps of a file field (`Phoenix.LiveView.UploadConfig`):
-  # its name, what it takes, and each file chosen with how far it has come.
-  defp upload(upload) do
-    %{
-      name: to_string(upload.name),
-      ref: upload.ref,
-      accept: if(is_binary(upload.accept), do: upload.accept),
-      multiple: upload.max_entries > 1,
-      entries:
-        for entry <- upload.entries do
-          %{
-            ref: entry.ref,
-            name: entry.client_name,
-            progress: entry.progress,
-            done: entry.done?,
-            cancelled: entry.cancelled?
-          }
-        end
-    }
-  end
-
   # whether a column is the label column (by name: the model's copy of it
   # is the same column)
   defp label?(%{label_column: nil}, _column), do: false
@@ -541,7 +388,26 @@ defmodule DemoWeb.ReactKit.Props do
       else: Map.new(map, fn {key, value} -> {key, of(value)} end)
   end
 
+  # what a column's component is told of its column (its own contract,
+  # `AshDataTable.Component.Column`): the island is given what it draws with
+  def of(%AshDataTable.Component.Column{} = column),
+    do: %{
+      name: column.name,
+      label: column.label,
+      cell_type: column.cell_type,
+      min: number(column.constraints[:min]),
+      max: number(column.constraints[:max])
+    }
+
   def of(values) when is_list(values), do: Enum.map(values, &of/1)
+  # a module (a column's component) by its name, as Elixir writes it
+  def of(value) when is_atom(value) and not is_boolean(value) and not is_nil(value) do
+    case Atom.to_string(value) do
+      "Elixir." <> name -> name
+      _atom -> value
+    end
+  end
+
   def of(value), do: value
 
   # A bundle as an island's props: without what LiveView reads of an

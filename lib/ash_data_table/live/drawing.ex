@@ -466,21 +466,28 @@ defmodule AshDataTable.Live.Drawing do
       part={:panel}
       kit={@kit}
       id={@id}
-      panel={open_panel(@id, @held, @drawn?, @uploads)}
-      fields={
-        Kit.fields(
-          @id,
-          open_panel(@id, @held, @drawn?, @uploads),
-          files(@id, @held, @drawn?, @uploads)
-        )
-      }
-      target={@myself}
-      presentation={@presentation}
-      texts={Words.texts(:panel, %{panel: open_panel(@id, @held, @drawn?, @uploads)})}
-      messages={Words.messages(:panel, %{panel: open_panel(@id, @held, @drawn?, @uploads)})}
+      uploads={uploads(files(@id, @held, @drawn?, @uploads))}
+      {Projection.of(:panel, %{
+        id: @id,
+        panel: open_panel(@id, @held, @drawn?, @uploads),
+        files: files(@id, @held, @drawn?, @uploads),
+        target: @myself,
+        presentation: @presentation
+      })}
     />
     """
   end
+
+  # LiveView's uploads of the open panel's file fields, by the name of each
+  # (what a file field's projection names its upload by).
+  defp uploads(files),
+    do:
+      for(
+        {_field, %{upload: upload}} <- files,
+        upload,
+        into: %{},
+        do: {to_string(upload.name), upload}
+      )
 
   # The picker, with the table a record is chosen from in it.
   attr :entry, :any, required: true

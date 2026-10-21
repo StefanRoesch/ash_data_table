@@ -255,13 +255,25 @@ defmodule DemoWeb.ReactKit do
       id={"#{@id}-panel-island"}
       name="AshPanel"
       class="contents"
-      panel={Props.panel(@id, @panel, @fields, @target, @presentation, @texts)}
+      open?={@open?}
+      presentation={@presentation}
+      destructive?={@destructive?}
+      place={Props.of(@place)}
+      frame={Props.of(@frame)}
+      form={Props.of(@form)}
+      title={Props.of(@title)}
+      errors={Props.of(@errors)}
+      cancel={Props.of(@cancel)}
+      submit={Props.of(@submit)}
+      fields={Props.of(@fields)}
+      texts={@texts}
+      messages={@messages}
     />
     <.live_file_input
       :for={field <- @fields}
-      :if={field.upload}
-      upload={field.upload}
-      form={"#{@id}-panel-form"}
+      :if={field.file}
+      upload={@uploads[field.file.name]}
+      form={@form["id"]}
       hidden
     />
     """

@@ -4,7 +4,6 @@ defmodule AshDataTable.Parts.Editors do
   # the parts `count` and `list` of `AshDataTable.Kit.Default`.
   use Phoenix.Component
 
-  alias AshDataTable.Attrs
   alias AshDataTable.Kit
 
   # How long a text is and the most it can be, beside the control the text
@@ -76,54 +75,45 @@ defmodule AshDataTable.Parts.Editors do
   #
   # What a control is called says its place ("Tags 2"), which changes as
   # values are added and taken away: the hook numbers them, from the two
-  # texts given here with `{n}` where the number goes. `rest` are further
-  # attributes of the list's element.
-  attr :label, :string, required: true
+  # texts given here with `{n}` where the number goes.
+  #
+  # Its projection (`AshDataTable.Kit.Projection`, a field's `list`): its
+  # element (which a patch leaves alone), what its values are (`item`), a
+  # row per value and the template's (`template`), each with its counter.
+  attr :element, :map, required: true
   attr :item, :atom, required: true
   attr :limits, :map, required: true
-  attr :counted, :any, required: true
-  attr :values, :list, required: true
   attr :name, :string, required: true
-  attr :id, :string, required: true
-  attr :rest, :map, required: true
+  attr :template, :map, required: true
+  attr :rows, :list, required: true
   attr :kit, :atom, required: true
   attr :texts, :map, required: true
+  attr :messages, :map, required: true
 
   def list(assigns) do
     ~H"""
     <div
-      id={@id}
-      data-list
-      {Attrs.list(@texts)}
+      {@element}
       class="flex flex-col items-stretch gap-1"
-      {@rest}
     >
       <template><.list_item
         kit={@kit}
-        label={@label}
         item={@item}
         limits={@limits}
-        counted={@counted}
-        list={@id}
         name={@name}
-        value=""
-        position={nil}
+        row={@template}
         value_label={nil}
         remove_label={nil}
       /></template>
       <.list_item
-        :for={{value, position} <- Enum.with_index(@values, 1)}
+        :for={row <- @rows}
         kit={@kit}
-        label={@label}
         item={@item}
         limits={@limits}
-        counted={@counted}
-        list={@id}
         name={@name}
-        value={value}
-        position={position}
-        value_label={Enum.at(@texts.value_position, position - 1)}
-        remove_label={Enum.at(@texts.remove_value, position - 1)}
+        row={row}
+        value_label={Enum.at(@texts.value_position, row.position - 1)}
+        remove_label={Enum.at(@texts.remove_value, row.position - 1)}
       />
       <button
         type="button"
@@ -138,30 +128,22 @@ defmodule AshDataTable.Parts.Editors do
 
   # One value of such an array. A box sends nothing while it is not checked,
   # so in the panel what it holds is sent by an input beside it, which the
-  # hook keeps at the box's state.
+  # hook keeps at the box's state. The counter of a value that is text with
+  # a most it can be long says the row's place in its id, as what the row's
+  # controls are called does, and the hook numbers it with them.
   defp list_item(assigns) do
-    assigns =
-      assign(assigns,
-        # The counter of a value that is text with a most it can be long.
-        # Its id says the row's place, as what the row's controls are
-        # called does, and the hook numbers it with them.
-        count_id:
-          assigns.counted && assigns.position && assigns.list &&
-            "#{assigns.list}-count-#{assigns.position}"
-      )
-
     ~H"""
     <div data-item class="flex items-center gap-1">
       <input
         :if={@item == :boolean and @name}
         type="hidden"
         name={@name}
-        value={to_string(@value == "true")}
+        value={to_string(@row.value == "true")}
       />
       <input
         :if={@item == :boolean}
         type="checkbox"
-        checked={@value == "true"}
+        checked={@row.value == "true"}
         aria-label={@value_label}
         class={["checkbox checkbox-sm", box_edge()]}
       />
@@ -170,16 +152,10 @@ defmodule AshDataTable.Parts.Editors do
         rows="1"
         name={@name}
         aria-label={@value_label}
-        aria-describedby={@count_id}
+        aria-describedby={@row.count && @row.count.element["id"]}
         class={["textarea min-h-0 flex-1", control_edge()]}
-      >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
-      <Kit.part
-        :if={@item == :text && @counted}
-        part={:count}
-        kit={@kit}
-        class={nil}
-        {AshDataTable.Kit.Projection.Count.of(@count_id, @counted, @value)}
-      />
+      >{Phoenix.HTML.Form.normalize_value("textarea", @row.value)}</textarea>
+      <Kit.part :if={@row.count} part={:count} kit={@kit} class={nil} {@row.count} />
       <input
         :if={@item in [:number, :date, :datetime]}
         type={input_type(@item)}
@@ -187,7 +163,7 @@ defmodule AshDataTable.Parts.Editors do
         min={@limits.min}
         max={@limits.max}
         name={@name}
-        value={@value}
+        value={@row.value}
         aria-label={@value_label}
         class={["input flex-1", control_edge()]}
       />

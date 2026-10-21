@@ -180,8 +180,12 @@ defmodule DemoWeb.ReactKitTest do
              "dialog" => %{"id" => "task-dialog"}
            } = island!(html, "task-dialogs", "AshConfirm", :confirm)
 
-    assert %{"open" => false, "place" => "task-panel-place", "fields" => [], "frame" => nil} =
-             island!(html, "task-panel-island", "AshPanel", ~w(panel))["panel"]
+    assert %{
+             "open?" => false,
+             "place" => %{"id" => "task-panel-place"},
+             "fields" => [],
+             "frame" => nil
+           } = island!(html, "task-panel-island", "AshPanel", :panel)
 
     assert %{"open?" => false, "place" => %{"id" => "task-picker-place"}, "frame" => nil} =
              island!(html, "task-picker-island", "AshPicker", :picker)
@@ -193,10 +197,10 @@ defmodule DemoWeb.ReactKitTest do
 
     # the create panel: its form, and a field of each kind it has
     html = send.("create", %{})
-    panel = island!(html, "task-panel-island", "AshPanel", ~w(panel))["panel"]
+    panel = island!(html, "task-panel-island", "AshPanel", :panel)
 
     assert %{
-             "open" => true,
+             "open?" => true,
              "frame" => %{"id" => "task-panel", "data-table" => "task", "role" => "dialog"},
              "form" => %{
                "id" => "task-panel-form",
@@ -206,13 +210,15 @@ defmodule DemoWeb.ReactKitTest do
 
     refute Map.has_key?(panel["frame"], "phx-hook")
     refute Map.has_key?(panel["frame"], "phx-mounted")
-    fields = Map.new(panel["fields"], &{&1["path"], &1})
+    fields = Map.new(panel["fields"], &{&1["element"]["data-field"], &1})
 
     assert %{"id" => "task-panel-f-title", "editor" => "text", "counted" => %{"max" => 120}} =
              fields["title"]
 
-    assert %{"editor" => "reference", "choose" => %{"phx-value-input" => "assignee_id"}} =
-             fields["assignee_id"]
+    assert %{
+             "editor" => "reference",
+             "reference" => %{"choose" => %{"phx-value-input" => "assignee_id"}}
+           } = fields["assignee_id"]
 
     # the picker of a reference cell, its place for its table
     send.("panel_cancel", %{})
