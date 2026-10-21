@@ -26,6 +26,12 @@ defmodule AshDataTable.DocumentationTest do
   A block with neither comment, or without a language, fails. So does a link
   that does not resolve: one to another guide or to a heading, and one to a
   file of this repository on GitHub.
+
+  The usage rules for agents (`usage-rules.md` and `usage-rules/*.md`, which
+  the `usage_rules` package copies into a host's `AGENTS.md` or its skills)
+  are held to the same rules for their code blocks and links. As they are
+  read away from this repository, a link in them names a file by its URL on
+  GitHub, never by a relative path.
   """
   use ExUnit.Case, async: true
 
@@ -37,6 +43,12 @@ defmodule AshDataTable.DocumentationTest do
           |> Path.wildcard()
           |> Enum.map(&Path.relative_to(&1, @root))
           |> Enum.sort()
+
+  @rules [@root, "{usage-rules.md,usage-rules/*.md}"]
+         |> Path.join()
+         |> Path.wildcard()
+         |> Enum.map(&Path.relative_to(&1, @root))
+         |> Enum.sort()
 
   @elisions ["# ...", "// ...", "/* ... */", "<%!-- ... --%>"]
 
@@ -64,6 +76,53 @@ defmodule AshDataTable.DocumentationTest do
 
     test "is all in the documentation that is built" do
       assert @guides -- extras() == []
+    end
+  end
+
+  describe "the set of usage rules" do
+    test "is the main rules and the five sub-rules" do
+      assert @rules == [
+               "usage-rules.md",
+               "usage-rules/controlled_mode.md",
+               "usage-rules/custom_components.md",
+               "usage-rules/events_and_commands.md",
+               "usage-rules/kits.md",
+               "usage-rules/testing.md"
+             ]
+    end
+
+    test "is in the package" do
+      files = Mix.Project.config()[:package][:files]
+
+      assert "usage-rules.md" in files
+      assert "usage-rules" in files
+    end
+  end
+
+  for rules <- @rules do
+    describe rules do
+      @rules_file rules
+
+      test "every code block says where it comes from, and is found there" do
+        for block <- blocks(@rules_file) do
+          case check(block) do
+            :ok ->
+              :ok
+
+            {:error, reason} ->
+              flunk("#{@rules_file}:#{block.line}: #{reason}\n\n#{code(block)}")
+          end
+        end
+      end
+
+      test "every link resolves, and none is relative" do
+        for {target, line} <- links(@rules_file) do
+          case resolve_rule(@rules_file, target) do
+            :ok -> :ok
+            {:error, reason} -> flunk("#{@rules_file}:#{line}: the link to #{target} #{reason}")
+          end
+        end
+      end
     end
   end
 
@@ -278,6 +337,28 @@ defmodule AshDataTable.DocumentationTest do
       # ExDoc only turns links to its own pages into links that work on HexDocs
       assert {:error, "is relative but not to a page of the documentation" <> _} =
                resolve(guide, "../../CONTEXT.md")
+    end
+
+    test "a link of the usage rules is to GitHub, the web or a heading, never relative" do
+      rules = "usage-rules.md"
+
+      assert :ok =
+               resolve_rule(rules, "#{@repository}/blob/main/documentation/topics/kits.md")
+
+      assert :ok = resolve_rule(rules, "#{@repository}/blob/main/usage-rules/kits.md")
+      assert :ok = resolve_rule(rules, "https://hexdocs.pm/ash")
+      assert :ok = resolve_rule(rules, "#the-table-block")
+
+      assert {:error, "is relative" <> _} = resolve_rule(rules, "usage-rules/kits.md")
+
+      assert {:error, "is relative" <> _} =
+               resolve_rule(rules, "documentation/topics/kits.md")
+
+      assert {:error, "names a file that is not in the repository" <> _} =
+               resolve_rule(rules, "#{@repository}/blob/main/usage-rules/kit.md")
+
+      assert {:error, "names a heading that is not in" <> _} =
+               resolve_rule(rules, "#no-such-heading")
     end
   end
 
@@ -540,6 +621,21 @@ defmodule AshDataTable.DocumentationTest do
 
       _other ->
         :ok
+    end
+  end
+
+  # A link of the usage rules. They are read in a host's `deps/` or copied
+  # into its `AGENTS.md`, where no relative path leads back to this
+  # repository.
+  defp resolve_rule(rules, target) do
+    case URI.parse(target) do
+      %URI{scheme: nil, host: nil, path: path} when is_binary(path) ->
+        {:error,
+         "is relative, and the usage rules are read away from this repository. " <>
+           "Link to #{@repository}/blob/main/#{path}"}
+
+      _other ->
+        resolve(rules, target)
     end
   end
 

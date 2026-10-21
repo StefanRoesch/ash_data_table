@@ -220,8 +220,10 @@ defmodule AshDataTable.MixProject do
     [
       licenses: ["MIT"],
       links: %{"GitHub" => @source_url},
+      # `usage-rules.md` and `usage-rules/` are for the `usage_rules`
+      # package, which finds them in a host's `deps/ash_data_table`.
       files:
-        ~w(lib priv assets/js package.json documentation .formatter.exs mix.exs README.md CHANGELOG.md LICENSE)
+        ~w(lib priv assets/js package.json documentation usage-rules.md usage-rules .formatter.exs mix.exs README.md CHANGELOG.md LICENSE)
     ]
   end
 end
