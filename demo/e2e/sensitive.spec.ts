@@ -30,24 +30,32 @@ function projectsOf(page: Page): Table {
   return new Table(page, "project", "/projects")
 }
 
-/** What the page received over its WebSocket: the rows, the patches, the answers. */
+/**
+ * What the page received over its WebSocket: the rows, the patches, the
+ * answers. LiveView sends the browser text frames only; a binary one would
+ * be what no search below reads, so it is counted, and fails the search.
+ */
 class Received {
   private frames: string[] = []
+  private binary = 0
 
   constructor(page: Page) {
     page.on("websocket", (socket) => {
       socket.on("framereceived", (frame) => {
         if (typeof frame.payload === "string") this.frames.push(frame.payload)
+        else this.binary += 1
       })
     })
   }
 
   clear(): void {
     this.frames = []
+    this.binary = 0
   }
 
-  /** The frames that hold `text`. */
+  /** The frames that hold `text`; none may be binary, unread. */
   holding(text: string): string[] {
+    expect(this.binary, "frames the page received as binary, which no search reads").toBe(0)
     return this.frames.filter((frame) => frame.includes(text))
   }
 
