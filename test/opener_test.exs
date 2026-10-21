@@ -17,6 +17,7 @@ defmodule AshDataTable.OpenerTest do
   use ExUnit.Case, async: true
 
   alias AshDataTable.Live.Core
+  alias AshDataTable.Live.Core.Nesting
   alias AshDataTable.Live.Core.Opener
   alias AshDataTable.Live.Core.Opener.Host
   alias AshDataTable.Live.Registry
@@ -301,7 +302,14 @@ defmodule AshDataTable.OpenerTest do
 
     case adapter do
       :table ->
+        # nothing is held, so no answer finds anything: the tables are as
+        # they were
         assert nested.request == nil
+
+        assert Core.table(Core.answer(socket, "r0", :any, &Host.cancelled/2)) ==
+                 Core.table(socket)
+
+        assert told() == []
 
       :host ->
         assert %{kind: :confirm, ref: ref} = nested.request
@@ -315,8 +323,13 @@ defmodule AshDataTable.OpenerTest do
     options = Core.table(socket).options
 
     case adapter do
-      :table -> assert Opener.draws?(options, :picker) and Opener.draws?(options, :confirm)
-      :host -> refute Opener.draws?(options, :picker) or Opener.draws?(options, :confirm)
+      :table ->
+        assert Opener.draws?(options, :picker) and Opener.draws?(options, :confirm)
+
+      :host ->
+        refute Opener.draws?(options, :picker) or Opener.draws?(options, :confirm)
+        socket = Core.put(socket, picker: %{for: {:cell, "1", :owner}})
+        assert Nesting.children(socket, "t") == []
     end
   end
 

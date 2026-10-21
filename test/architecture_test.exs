@@ -264,28 +264,52 @@ defmodule AshDataTable.ArchitectureTest do
   end
 
   # Who reads what the host draws itself (stage 9e): `.controlled`,
-  # `:controlled` or `controlled:` on a line that is no comment, in a file
-  # of `lib/` but the opener's, the option's check (`attach/4`), the
-  # table's options (`Live.Core.told/2`) and their struct. The drawing
+  # `:controlled` or `controlled:` on a line of code (no comment, no
+  # documentation) of `lib/` but the opener's. Allowed besides, line by
+  # line: the option's check (`attach/4`, and the router page's `[]`), the
+  # table's options (`Live.Core.told/2`) and their default. The drawing
   # hands `Opener.draws?/2` the options' `controlled` alone
   # (`%{controlled: @options.controlled}`), which it does not read: so that
   # LiveView marks what it gives a part changed only when that changed, not
   # with every option (measured, stage 9e: all of them sent a page change
   # again with every patch of the URL).
   @controlled ~r/\.controlled\b|[^\w:]:controlled\b|\bcontrolled:/
-  @handed "Opener.draws?(%{controlled: @options.controlled}, "
-  @controlling ~w(live/core/opener.ex live/core/opener/table.ex live/core/opener/host.ex) ++
-                 ~w(live/core.ex live/table.ex)
+  @openers ~w(live/core/opener.ex live/core/opener/table.ex live/core/opener/host.ex)
+  @allowed %{
+    "lib/ash_data_table.ex" => ["controlled: controlled!(opts[:controlled])", "controlled: []"],
+    "lib/ash_data_table/live/core.ex" => ["[:controlled, :kit, :presentation, :look]"],
+    "lib/ash_data_table/live/table.ex" => ["controlled: [],"],
+    "lib/ash_data_table/live/drawing.ex" => ["Opener.draws?(%{controlled: @options.controlled}, "]
+  }
 
   defp controlled do
     for file <- Path.wildcard("lib/**/*.ex"),
-        file != "lib/ash_data_table.ex",
-        String.replace_prefix(file, @lib <> "/", "") not in @controlling,
-        {line, at} <- file |> File.read!() |> String.split("\n") |> Enum.with_index(1),
-        not String.starts_with?(String.trim_leading(line), "#"),
+        String.replace_prefix(file, @lib <> "/", "") not in @openers,
+        {line, at} <- code_lines(file),
         Regex.match?(@controlled, line),
-        not (file == @lib <> "/live/drawing.ex" and String.contains?(line, @handed)),
+        not Enum.any?(Map.get(@allowed, file, []), &String.contains?(line, &1)),
         do: "#{file}:#{at}"
+  end
+
+  # The lines of a file that are code: no comment, nothing inside a
+  # heredoc (a moduledoc or doc).
+  defp code_lines(file) do
+    file
+    |> File.read!()
+    |> String.split("\n")
+    |> Enum.with_index(1)
+    |> Enum.flat_map_reduce(false, fn {line, at}, in_doc? ->
+      trimmed = String.trim(line)
+      quotes = trimmed |> String.split(~s(""")) |> length() |> Kernel.-(1)
+      toggled = if rem(quotes, 2) == 1, do: not in_doc?, else: in_doc?
+
+      cond do
+        in_doc? or toggled != in_doc? -> {[], toggled}
+        String.starts_with?(trimmed, "#") -> {[], in_doc?}
+        true -> {[{line, at}], in_doc?}
+      end
+    end)
+    |> elem(0)
   end
 
   # The presentation hints (stage 7, D14): a key `component:`,
