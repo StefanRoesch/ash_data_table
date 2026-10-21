@@ -8,10 +8,14 @@
 
 export const row = (id, key) => `${id}-row-${key}`
 export const cell = (row, name) => `${row}-c-${name}`
+export const record = row => `${row}-r`
 export const actionsCell = row => `${row}-a`
+export const action = (cell, name) => `${cell}-${name}`
+export const open = cell => `${cell}-open`
 export const selector = row => `${row}-s`
 export const expander = row => `${row}-e`
 export const detail = row => `${row}-x`
+export const line = (row, name) => `${row}-l-${name}`
 export const lineCell = (row, name) => `${row}-l-${name}-c`
 export const lineButton = (row, name) => `${row}-l-${name}-b`
 export const lineHeading = (row, name) => `${row}-l-${name}-h`

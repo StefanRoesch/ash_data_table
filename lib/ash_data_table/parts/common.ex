@@ -8,8 +8,6 @@ defmodule AshDataTable.Parts.Common do
   # stands is the table's geometry's (`AshDataTable.Geometry`).
   use Phoenix.Component
 
-  alias AshDataTable.Attrs
-
   # A function of a column's component (`AshDataTable.Component`), which
   # is known at runtime only: called as LiveView's `Phoenix.Component` docs
   # say under "Dynamic Component Rendering", by a function component that
@@ -30,9 +28,11 @@ defmodule AshDataTable.Parts.Common do
   # `nested?` says whether the table is shown inside another (nested in a
   # row, or a picker's); `look` is its look (`AshDataTable.Kit`), whose
   # heights the table on the page holds as custom properties.
+  # Its projection (`AshDataTable.Kit.Projection`, `root`).
   attr :id, :string, required: true
+  attr :element, :map, required: true
+  attr :skip_target, :map, required: true
   attr :nested?, :boolean, required: true
-  attr :page, :any, required: true
   attr :look, :map, required: true
   attr :kit, :atom, required: true
   slot :inner_block, required: true
@@ -41,11 +41,11 @@ defmodule AshDataTable.Parts.Common do
   def root(assigns) do
     ~H"""
     <div
-      {Attrs.root(@id, @page)}
+      {@element}
       class={@kit.class(:root, %{nested?: @nested?, look: @look})}
       {!@nested? && AshDataTable.Parts.Look.style(@look) || %{}}
     >
-      {render_slot(@inner_block)}<span {Attrs.skip_target(@id)} class="outline-none"></span>{render_slot(
+      {render_slot(@inner_block)}<span {@skip_target} class="outline-none"></span>{render_slot(
         @opened
       )}
     </div>
@@ -60,6 +60,7 @@ defmodule AshDataTable.Parts.Common do
   # the hook copies (`ID-failure`). Without whitespace: the hook copies it.
   attr :id, :string, default: nil
   attr :text, :string, required: true
+  attr :message, :map, required: true
 
   def failure(assigns) do
     ~H"""

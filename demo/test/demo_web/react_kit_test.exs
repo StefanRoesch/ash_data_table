@@ -26,11 +26,13 @@ defmodule DemoWeb.ReactKitTest do
 
   # the islands of a table and their props, by the suffix of their ids
   @props %{
-    "heading" => {"AshHeading", {:heading, ~w(table)}},
+    "heading" => {"AshHeading", {:heading, ~w(table_id)}},
+    # the grid's projection but the sender and the filter row's form, drawn
+    # as markup of the LiveView's beside the island
     "grid" =>
       {"AshGrid",
-       ~w(texts skip scrollbar grid table head filters columns row footer editors failure)},
-    "selection" => {"AshSelectionLine", {:selection_line, ~w(table)}},
+       ~w(table_id nested? skip scrollbar grid table head filters row footer editors failure texts messages)},
+    "selection" => {"AshSelectionLine", {:selection_line, ~w(table_id)}},
     "status" => {"AshStatus", :status},
     "pagination" => {"AshPagination", :pagination}
   }
@@ -45,7 +47,7 @@ defmodule DemoWeb.ReactKitTest do
 
     top = islands!(html, "task", Map.keys(@props))
 
-    assert %{"grid" => %{"data-table" => "task"}, "columns" => [_ | _]} = top["grid"]
+    assert %{"grid" => %{"data-table" => "task"}, "row" => %{"columns" => [_ | _]}} = top["grid"]
     assert %{"id" => "task-skip", "href" => "#task-end"} = top["grid"]["skip"]
 
     assert %{"id" => "task-scrollbar", "hidden" => "", "data-scrollbar" => ""} =
@@ -60,18 +62,22 @@ defmodule DemoWeb.ReactKitTest do
 
     assert %{
              "template" => %{"id" => "task-editor-title", "data-editor" => "text"},
-             "editor" => "text",
-             "counted" => %{"max" => 120},
-             "control" => %{"aria-describedby" => "task-editor-title-count"}
+             "editor" => %{
+               "editor" => "text",
+               "counted" => %{"max" => 120},
+               "control" => %{"aria-describedby" => "task-editor-title-count"}
+             }
            } = editors["title"]
 
     assert %{
-             "editor" => "component",
-             "component" => "DemoWeb.Cells.Progress",
-             "limits" => %{"min" => "0", "max" => "100", "step" => "1"}
+             "editor" => nil,
+             "component" => %{
+               "module" => "DemoWeb.Cells.Progress",
+               "limits" => %{"min" => "0", "max" => "100", "step" => "1"}
+             }
            } = editors["progress"]
 
-    assert %{"editor" => nil, "template" => %{"data-editor" => "reference"}} =
+    assert %{"editor" => nil, "component" => nil, "template" => %{"data-editor" => "reference"}} =
              editors["assignee"]
 
     # the heading line: "Columns", and the argument line with what the
@@ -116,7 +122,7 @@ defmodule DemoWeb.ReactKitTest do
     sorted = islands!(html, "task", Map.keys(@props))
 
     assert %{"mark" => " ▲"} =
-             Enum.find(sorted["grid"]["head"]["columns"], &(&1["name"] == "title"))
+             Enum.find(sorted["grid"]["head"]["cells"], &(&1["label"] == "Title"))
 
     # filtered, then no longer
     html = send.("filter", %{"filter" => %{"title" => %{"o" => "contains", "v" => "a"}}})
@@ -243,7 +249,7 @@ defmodule DemoWeb.ReactKitTest do
   # a part given its projection: a prop per key of it, and `more`
   defp island!(html, id, name, part) when is_atom(part), do: island!(html, id, name, {part, []})
 
-  defp island!(html, id, name, {part, more}) when is_atom(part),
+  defp island!(html, id, name, {part, more}) when is_atom(part) and is_list(more),
     do:
       island!(
         html,

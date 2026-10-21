@@ -13,13 +13,11 @@ defmodule AshDataTable.Live.Drawing do
   alias AshDataTable.Ids
   alias AshDataTable.Kit
   alias AshDataTable.Kit.Projection
-  alias AshDataTable.Kit.Words
   alias AshDataTable.Live.Core.Files
   alias AshDataTable.Live.Core.Opener
   alias AshDataTable.Live.Core.Selection
   alias AshDataTable.Live.Core.Url
   alias AshDataTable.Live.Registry
-  alias AshDataTable.Parts
   alias AshDataTable.Present
   alias AshDataTable.Routes
 
@@ -230,9 +228,10 @@ defmodule AshDataTable.Live.Drawing do
       part={:root}
       kit={@options.kit}
       id={@entry.id}
-      nested?={length(@entry.path) > 1}
-      page={@entry.page}
-      look={Kit.look(@options.kit, @options.look)}
+      element={Projection.of({:root, :element}, %{id: @entry.id, page: @entry.page})}
+      skip_target={Projection.of({:root, :skip_target}, %{id: @entry.id})}
+      nested?={Projection.of({:root, :nested?}, %{nested?: length(@entry.path) > 1})}
+      look={Projection.of({:root, :look}, %{look: Kit.look(@options.kit, @options.look)})}
     >
       <%!-- a nested table's heading line is on its line (`nested/1`) --%>
       <.heading
@@ -309,33 +308,109 @@ defmodule AshDataTable.Live.Drawing do
       <Kit.part
         part={:grid}
         kit={@options.kit}
-        open={@entry.open_label}
-        asks?={Opener.draws?(%{controlled: @options.controlled}, :confirm)}
-        busy?={@entry.busy?}
-        choose={@entry.choose}
-        expandable?={@entry.expandable?}
-        full_view={@entry.full_view}
-        geometry={@entry.geometry}
-        filters={filters(@entry.model, @entry.rejected, @entry.pending, @entry.state)}
         id={@entry.id}
-        label={@entry.label}
-        labelledby={@entry.labelledby}
-        model={@entry.model}
-        myself={@myself}
-        nested?={@entry.nested?}
-        page={@entry.page}
-        pages?={Projection.Pagination.pages?(@entry.page, @entry.model)}
-        row_count={@entry.row_count}
         rows={@rows}
-        running={@entry.running && @entry.running.action}
-        selecting={@entry.selecting}
-        state={@entry.state}
-        summary={@entry.summary}
-        summing?={@entry.summing?}
-        time_zone={@time_zone}
-        editors={Kit.editors(@entry.model)}
-        texts={Words.texts(:grid, %{label: @entry.label, columns: @entry.model.columns})}
-        messages={Words.messages(:grid, %{label: @entry.label, columns: @entry.model.columns})}
+        nested?={Projection.of({:grid, :nested?}, %{nested?: @entry.nested?})}
+        sender={Projection.of({:grid, :sender}, %{id: @entry.id})}
+        skip={Projection.of({:grid, :skip}, %{id: @entry.id})}
+        scrollbar={Projection.of({:grid, :scrollbar}, %{id: @entry.id})}
+        filter_form={
+          Projection.of({:grid, :filter_form}, %{
+            id: @entry.id,
+            geometry: @entry.geometry,
+            myself: @myself
+          })
+        }
+        grid={
+          Projection.of({:grid, :grid}, %{
+            id: @entry.id,
+            myself: @myself,
+            geometry: @entry.geometry,
+            selecting: @entry.selecting,
+            choose: @entry.choose
+          })
+        }
+        table={
+          Projection.of({:grid, :table}, %{
+            id: @entry.id,
+            label: @entry.label,
+            labelledby: @entry.labelledby,
+            geometry: @entry.geometry,
+            page: @entry.page,
+            busy?: @entry.busy?,
+            running: @entry.running && @entry.running.action
+          })
+        }
+        head={
+          Projection.of({:grid, :head}, %{
+            id: @entry.id,
+            model: @entry.model,
+            state: @entry.state,
+            geometry: @entry.geometry,
+            selecting: @entry.selecting,
+            expandable?: @entry.expandable?,
+            myself: @myself
+          })
+        }
+        filters={
+          Projection.of({:grid, :filters}, %{
+            id: @entry.id,
+            model: @entry.model,
+            geometry: @entry.geometry,
+            selecting: @entry.selecting,
+            expandable?: @entry.expandable?,
+            myself: @myself,
+            rejected: @entry.rejected,
+            pending: @entry.pending,
+            state: @entry.state
+          })
+        }
+        row={
+          Projection.of({:grid, :row}, %{
+            id: @entry.id,
+            model: @entry.model,
+            geometry: @entry.geometry,
+            selecting: @entry.selecting,
+            expandable?: @entry.expandable?,
+            open: @entry.open_label,
+            asks?: Opener.draws?(%{controlled: @options.controlled}, :confirm)
+          })
+        }
+        footer={
+          Projection.of({:grid, :footer}, %{
+            id: @entry.id,
+            model: @entry.model,
+            page: @entry.page,
+            state: @entry.state,
+            geometry: @entry.geometry,
+            selecting: @entry.selecting,
+            expandable?: @entry.expandable?,
+            row_count: @entry.row_count,
+            label: @entry.label,
+            full_view: @entry.full_view,
+            summary: @entry.summary,
+            summing?: @entry.summing?,
+            time_zone: @time_zone,
+            nested?: @entry.nested?,
+            myself: @myself
+          })
+        }
+        editors={
+          Projection.of({:grid, :editors}, %{
+            id: @entry.id,
+            model: @entry.model,
+            asks?: Opener.draws?(%{controlled: @options.controlled}, :confirm)
+          })
+        }
+        failure={
+          Projection.of({:grid, :failure}, %{
+            id: @entry.id,
+            model: @entry.model,
+            geometry: @entry.geometry
+          })
+        }
+        texts={Projection.of({:grid, :texts}, %{label: @entry.label, model: @entry.model})}
+        messages={Projection.of({:grid, :messages}, %{label: @entry.label, model: @entry.model})}
       />
       <%!-- keyed by its kind: a message of another kind is another
       element, drawn anew, not the one before it changed --%>
@@ -732,18 +807,4 @@ defmodule AshDataTable.Live.Drawing do
   # else as its kit says.
   defp presentation(options, thing),
     do: Keyword.get(options.presentation, thing) || options.kit.presentation(thing)
-
-  # What the filter of each column shows: what was typed and rejected, else
-  # what the filter row was last sent, else the filter that applies
-  # (`AshDataTable.Parts.Filter.shown_filter/4`).
-  defp filters(model, rejected, pending, state) do
-    for column <- model.columns, into: %{} do
-      {column.name,
-       %{
-         filter: Parts.Filter.shown_filter(rejected, pending, state, column.name),
-         rejected?: is_map_key(rejected, column.name),
-         applied?: is_map_key(state.filters, column.name)
-       }}
-    end
-  end
 end

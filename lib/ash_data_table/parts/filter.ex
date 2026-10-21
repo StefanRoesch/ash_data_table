@@ -1,23 +1,10 @@
 defmodule AshDataTable.Parts.Filter do
   @moduledoc false
-  # The filter row's form and one column's filter control.
-  # It draws from the assigns of the table's component.
+  # One column's filter control, in the filter row: the part `filter` of
+  # `AshDataTable.Kit.Default`.
   use Phoenix.Component
 
-  alias AshDataTable.Attrs
-  alias AshDataTable.Ids
   alias AshDataTable.Parts
-  alias AshDataTable.State
-
-  # What a column's filter shows: what was typed and rejected; else what
-  # the row was last sent, an operator without its value among it, while the
-  # table is filtered by what it was sent among (the filters before it, and
-  # after: a change of the filters goes through the URL, and is not in the
-  # state at once); else the filter that applies.
-  def shown_filter(rejected, pending, state, name) do
-    rejected[name] || (state.filters in pending.among && pending.controls[name]) ||
-      state.filters[name]
-  end
 
   # The controls of one column's filter, showing the filter that applies.
   # Each is a Tab stop of its own.
@@ -26,144 +13,107 @@ defmodule AshDataTable.Parts.Filter do
   # says (`takes`): one control for one value; for a range two inputs,
   # one above the other, so that the column needs no more room than for one;
   # for several values a button that opens the side panel with a box for
-  # each of the column's values (`choices/1`).
+  # each of the column's values. Its projection (`AshDataTable.Kit.Projection`,
+  # a filter cell's `filter`): each control's bundle, nil where the filter
+  # has none of it.
+  attr :cell_type, :any, required: true
+  attr :takes, :atom, required: true
+  attr :yes_no, :map, required: true
+  attr :operators, :map, required: true
+  attr :choice, :map, required: true
+  attr :input, :map, required: true
+  attr :range, :list, required: true
+  attr :several, :map, required: true
+  attr :clear, :map, required: true
+  attr :error, :map, required: true
+  attr :texts, :map, required: true
+  attr :messages, :map, required: true
+  attr :kit, :atom, required: true
+
   def filter(assigns) do
-    {operator, value} = assigns.filter || {nil, nil}
-    takes = if(operator, do: Map.fetch!(assigns.column.takes, operator), else: :one)
-
-    assigns =
-      assign(assigns,
-        operator: operator,
-        value: value,
-        takes: takes,
-        clears?: assigns.applied? and not assigns.rejected?
-      )
-
     ~H"""
     <div class="flex items-center gap-1">
       <select
-        :if={@column.cell_type == :boolean}
-        id={"#{@id}-value"}
-        name={"filter[#{@column.name}][o]"}
-        form={@form}
-        aria-label={@texts.filter}
+        :if={@yes_no}
+        {@yes_no.select}
         class={["select select-xs w-auto", Parts.Editors.control_edge()]}
       >
         <option value="">{@texts.any}</option>
         <option
-          :for={{choice, said} <- Enum.zip(@column.operators, @texts.operators)}
-          value={choice}
-          selected={choice == @operator}
+          :for={option <- @yes_no.options}
+          value={option.value}
+          selected={option.chosen?}
         >
-          {said}
+          {option.label}
         </option>
       </select>
       <select
-        :if={@column.cell_type != :boolean and match?([_, _ | _], @column.operators)}
-        id={"#{@id}-operator"}
-        name={"filter[#{@column.name}][o]"}
-        form={@form}
-        aria-label={@texts.filter_operator}
+        :if={@operators}
+        {@operators.select}
         class={["select select-xs w-auto", Parts.Editors.control_edge()]}
       >
         <option
-          :for={{choice, said} <- Enum.zip(@column.operators, @texts.operators)}
-          value={choice}
-          selected={choice == @operator}
+          :for={option <- @operators.options}
+          value={option.value}
+          selected={option.chosen?}
         >
-          {said}
+          {option.label}
         </option>
       </select>
       <select
-        :if={@column.cell_type == :enum and @takes == :one}
-        id={"#{@id}-value"}
-        name={"filter[#{@column.name}][v]"}
-        form={@form}
-        aria-label={@texts.filter}
+        :if={@choice}
+        {@choice.select}
         class={["select select-xs w-auto", Parts.Editors.control_edge()]}
       >
         <option value="">{@texts.any}</option>
         <option
-          :for={{choice, label} <- @column.values}
-          value={choice}
-          selected={to_string(choice) == @value}
+          :for={option <- @choice.options}
+          value={option.value}
+          selected={option.chosen?}
         >
-          {label}
+          {option.label}
         </option>
       </select>
-      <.choices
-        :if={@takes == :many}
-        id={@id}
-        form={@form}
-        table={@table}
-        column={@column}
-        operator={@operator}
-        chosen={@value || []}
-        target={@target}
-        texts={@texts}
-      />
+      <.several :if={@several} several={@several} />
       <%!-- an operator such as "is empty" is complete without a value --%>
       <input
-        :if={@column.cell_type not in [:boolean, :enum] and @takes == :one}
-        type={Parts.Editors.input_type(@column.cell_type)}
-        step={Parts.Editors.input_step(@column.cell_type)}
-        id={"#{@id}-value"}
-        name={"filter[#{@column.name}][v]"}
-        form={@form}
-        value={@value}
+        :if={@input}
+        type={Parts.Editors.input_type(@cell_type)}
+        step={Parts.Editors.input_step(@cell_type)}
+        {@input}
         phx-debounce="blur"
-        aria-label={@texts.filter}
-        aria-invalid={@rejected? && "true"}
-        aria-describedby={@rejected? && Ids.error(@id)}
         class={["input input-xs w-32", Parts.Editors.control_edge()]}
       />
       <%!-- The two ends of a range, one above the other, each with the word
       that says which it is. They are applied as one input is: on Enter and
       when one is left. Rows that shrink, as an input beside a menu does once
       a person has made the column narrower. --%>
-      <div :if={@takes == :range} class="flex min-w-0 flex-col gap-0.5">
+      <div :if={@range} class="flex min-w-0 flex-col gap-0.5">
         <div
-          :for={
-            {end_of, suffix, word, name, typed} <- [
-              {"from", "value", @texts.range_from, @texts.filter_from, elem(@value, 0)},
-              {"to", "to", @texts.range_to, @texts.filter_to, elem(@value, 1)}
-            ]
-          }
+          :for={end_of <- @range}
           class="flex min-w-0 items-center justify-between gap-1"
         >
-          <span aria-hidden="true" class="shrink-0 text-xs font-normal">{word}</span>
+          <span aria-hidden="true" class="shrink-0 text-xs font-normal">{end_of.word}</span>
           <input
-            type={Parts.Editors.input_type(@column.cell_type)}
-            step={Parts.Editors.input_step(@column.cell_type)}
-            id={"#{@id}-#{suffix}"}
-            name={"filter[#{@column.name}][#{end_of}]"}
-            form={@form}
-            value={typed}
+            type={Parts.Editors.input_type(@cell_type)}
+            step={Parts.Editors.input_step(@cell_type)}
+            {end_of.input}
             phx-debounce="blur"
-            aria-label={name}
-            aria-invalid={
-              @rejected? && not is_nil(typed) && not State.value?(@column, typed) && "true"
-            }
-            aria-describedby={@rejected? && Ids.error(@id)}
             class={["input input-xs w-32", Parts.Editors.control_edge()]}
           />
         </div>
       </div>
       <button
-        :if={@clears?}
+        :if={@clear}
         type="button"
-        id={"#{@id}-clear"}
-        aria-label={@texts.clear_filter}
+        {@clear}
         class="btn btn-ghost btn-xs"
-        phx-click={Attrs.event(@table, "clear_filter")}
-        phx-value-column={@column.name}
-        phx-target={@target}
       >
         <span aria-hidden="true">✕</span>
       </button>
     </div>
     <%!-- in the text colour: the error colour is too faint for small text --%>
-    <p :if={@rejected?} id={Ids.error(@id)} class="mt-1 text-xs">
+    <p :if={@error} {@error} class="mt-1 text-xs">
       {@texts.invalid_filter}
     </p>
     """
@@ -180,42 +130,24 @@ defmodule AshDataTable.Parts.Filter do
   #
   # The values that apply belong to the filter row's form, as inputs that
   # are not shown, so that a change of another filter sends them with it.
-  attr :id, :string, required: true
-  attr :form, :string, required: true
-  attr :table, :string, required: true
-  attr :column, :map, required: true
-  attr :operator, :atom, required: true
-  attr :chosen, :list, required: true
-  attr :target, :any, required: true
-  attr :texts, :map, required: true
+  attr :several, :map, required: true
 
-  defp choices(assigns) do
-    labels =
-      for {value, label} <- assigns.column.values, to_string(value) in assigns.chosen, do: label
-
-    assigns = assign(assigns, says: assigns.texts.chosen, labels: labels)
-
+  defp several(assigns) do
     ~H"""
     <button
       type="button"
-      id={"#{@id}-value"}
-      aria-haspopup="dialog"
-      aria-label={"#{@texts.filter}: #{@says}"}
-      title={@labels != [] && Enum.join(@labels, ", ")}
-      {Attrs.filter_values(@table, @column, @operator, @target)}
+      {@several.button}
       class={[
         "select select-xs w-32 min-w-0 justify-start text-start",
         Parts.Editors.control_edge()
       ]}
     >
-      <span class="truncate">{@says}</span>
+      <span class="truncate">{@several.says}</span>
     </button>
     <input
-      :for={value <- @chosen}
+      :for={value <- @several.hidden}
       type="hidden"
-      name={"filter[#{@column.name}][in][]"}
-      value={value}
-      form={@form}
+      {value}
     />
     """
   end

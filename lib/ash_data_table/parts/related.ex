@@ -6,7 +6,6 @@ defmodule AshDataTable.Parts.Related do
   # `full_view` of `AshDataTable.Kit.Default`.
   use Phoenix.Component
 
-  alias AshDataTable.Attrs
   alias AshDataTable.Ids
   alias AshDataTable.Kit
   alias AshDataTable.Parts
@@ -24,28 +23,27 @@ defmodule AshDataTable.Parts.Related do
   #
   # The detail draws a line per relationship (the kit's `line/1`), from the
   # detail's item (`AshDataTable.Item`): its `lines`, in the model's order.
+  #
+  # `row` is the detail's item (`AshDataTable.Item`); `relationships` and
+  # `colspan` its projection (`AshDataTable.Kit.Projection`, `grid`'s
+  # `row`): each relationship's name, label and its line's cell's bundle.
   attr :id, :string, required: true
   attr :row, :map, required: true
-  attr :model, :map, required: true
+  attr :relationships, :list, required: true
   attr :colspan, :integer, required: true
-  attr :myself, :any, required: true
   attr :kit, :atom, required: true
 
   def detail(assigns) do
     ~H"""
     <Kit.part
-      :for={{relationship, line} <- Enum.zip(@model.relationships, @row.lines)}
+      :for={{relationship, line} <- Enum.zip(@relationships, @row.lines)}
       part={:line}
       kit={@kit}
       id={Ids.row(@id, @row.key)}
       relationship={relationship}
-      open?={line.open}
-      count={line.count}
+      line={line}
       colspan={@colspan}
       table={Ids.nested_table(Ids.row(@id, @row.key), relationship.name)}
-      myself={@myself}
-      texts={%{count: line.text}}
-      messages={%{count: line.message}}
     />
     """
   end
@@ -53,11 +51,12 @@ defmodule AshDataTable.Parts.Related do
   # One relationship's line under an expanded row, and under it, while it
   # is open, the row whose one cell the nested table is moved into. `id` is
   # the row's (`ID-row-KEY`), `table` the nested table's, whose events the
-  # line's buttons send.
+  # line's buttons send; `line` what the detail's item says of the line
+  # (`open`, `count`, and how many records it has in words, `text`).
   #
   # The line is the heading line of its nested table: the arrow that opens
   # and closes it, the relationship's name and, once the nested table has
-  # read, how many records it has (`count`); after them, while it is open,
+  # read, how many records it has; after them, while it is open,
   # the place the nested table's own heading line is moved into
   # (`Ids.line_heading/2`: its "Columns", its argument line, its create
   # button and table actions, the kit's `heading/1` drawn by the nested
@@ -67,22 +66,20 @@ defmodule AshDataTable.Parts.Related do
   # the one inset after it.
   attr :id, :string, required: true
   attr :relationship, :map, required: true
-  attr :open?, :boolean, required: true
-  attr :count, :any, required: true
+  attr :line, :map, required: true
   attr :colspan, :integer, required: true
   attr :table, :string, required: true
-  attr :myself, :any, required: true
-  attr :texts, :map, required: true
+  attr :kit, :atom, required: true
 
   def line(assigns) do
     ~H"""
-    <tr id={"#{@id}-l-#{@relationship.name}"} role="row">
+    <tr id={Ids.line(@id, @relationship.name)} role="row">
       <td
         id={Ids.line_cell(@id, @relationship.name)}
         role="cell"
         colspan={@colspan}
         aria-colindex="1"
-        {Attrs.line(@relationship)}
+        {@relationship.cell}
         class="p-0"
       >
         <%!-- What the line holds stays at the left edge of the table's
@@ -95,7 +92,7 @@ defmodule AshDataTable.Parts.Related do
           <button
             type="button"
             id={Ids.line_button(@id, @relationship.name)}
-            aria-expanded={to_string(@open?)}
+            aria-expanded={to_string(@line.open)}
             class="text-sm font-semibold"
           >
             {@relationship.label}
@@ -103,14 +100,14 @@ defmodule AshDataTable.Parts.Related do
           <%!-- How many records the nested table has, once it has read: beside
           the button, not in it, as the button names the nested grid, which
           says its number of rows itself. --%>
-          <span :if={@open? and @texts.count} class="-ms-1 text-sm text-base-content/70">
-            {@texts.count}
+          <span :if={@line.open and @line.text} class="-ms-1 text-sm text-base-content/70">
+            {@line.text}
           </span>
           <%!-- The nested table's heading line, put here by the browser (a
           portal): it takes the rest of the line, and goes under the name as a
           whole where it does not fit beside it. --%>
           <div
-            :if={@open?}
+            :if={@line.open}
             id={Ids.line_heading(@id, @relationship.name)}
             class="min-w-0 grow basis-auto"
           >
@@ -118,7 +115,7 @@ defmodule AshDataTable.Parts.Related do
         </div>
       </td>
     </tr>
-    <tr :if={@open?} id={Ids.nested_row(@id, @relationship.name)} role="row">
+    <tr :if={@line.open} id={Ids.nested_row(@id, @relationship.name)} role="row">
       <td
         id={Ids.nested_cell(@id, @relationship.name)}
         role="cell"
@@ -177,26 +174,24 @@ defmodule AshDataTable.Parts.Related do
     """
   end
 
-  # Whether a nested table has its link to the full view: the router mounts
-  # the destination's table, and the nested table has been read.
-  def full_view?(page, full_view), do: not is_nil(page) and not is_nil(full_view)
-
   # The link to the full view is the last row of a nested table's grid,
-  # after its pages: a Tab stop, followed with Enter.
-  attr :full_view, :any, required: true
-  # where the columns stand (`AshDataTable.Geometry`): the link spans them
-  attr :geometry, :map, required: true
+  # after its pages: a Tab stop, followed with Enter. Its projection
+  # (`AshDataTable.Kit.Projection`, `full_view`): its row, its cell (which
+  # spans the grid) and the link.
   attr :id, :any, required: true
-  attr :label, :any, required: true
-  attr :model, :any, required: true
+  attr :row, :map, required: true
+  attr :cell, :map, required: true
+  attr :link, :map, required: true
+  attr :texts, :map, required: true
+  attr :messages, :map, required: true
 
   def full_view(assigns) do
     ~H"""
-    <tr {Attrs.row("#{@id}-view-row")}>
-      <td {Attrs.spanning("#{@id}-view", @geometry, %{"data-view" => true})}>
+    <tr {@row}>
+      <td {@cell}>
         <.link
-          id={"#{@id}-full-view"}
-          navigate={@full_view}
+          id={@link.id}
+          navigate={@link.path}
           aria-label={@texts.full_view_of}
           class="link sticky left-4 text-sm"
         >

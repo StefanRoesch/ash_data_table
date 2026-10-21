@@ -19,7 +19,7 @@ type Action = {name: string; label: string; "destroys?": boolean; button: Bundle
 
 export type LineProps = {
   // the table's id
-  table: string
+  table_id: string
   "shown?": boolean
   "nested?": boolean
   selection: null | {
@@ -49,7 +49,7 @@ export function AshSelectionLine(props: LineProps) {
 
 // The part `SelectionLine`.
 export function SelectionLine({line}: {line: LineProps}) {
-  const {table, selection, notice, texts} = line
+  const {table_id: table, selection, notice, texts} = line
   const anchor = `--ash-data-table-more-${table}`
   const running = !!selection && selection["running?"]
 

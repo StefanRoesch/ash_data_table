@@ -10,8 +10,8 @@ defmodule DemoWeb.Support.MarkedKit do
   def cell(assigns) do
     ~H"""
     <span
-      data-kit-cell={@state}
-      data-given={if is_nil(@value) and is_nil(@text), do: "none", else: "value"}
+      data-kit-cell={@cell.state}
+      data-given={if is_nil(@cell.value) and is_nil(@cell.text), do: "none", else: "value"}
     >{super(assigns)}</span>
     """
   end

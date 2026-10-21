@@ -123,7 +123,9 @@ defmodule AshDataTable.Kit.Projection.Panel do
         secret?: secret?,
         item: Heading.item(input.cell_type),
         values: choices(input.values, value),
-        value: value,
+        # what it holds as its control holds it; nil of a value made of
+        # fields, which its `group`, `groups` or `union` hold field by field
+        value: if(group?, do: nil, else: value),
         # what the field of a multiple choice holds that is none of its
         # values, which it sends back as it came
         boxless: boxless(input, value),

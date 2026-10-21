@@ -57,15 +57,17 @@ defmodule DemoWeb.ReactKit do
   replaceable by name (`reactKit({...})`); their `Kit.Default` parts are
   not used by this kit.
 
-  What each island is given is picked here (`DemoWeb.ReactKit.Props`), as
-  plain data that goes to JSON: never a record, an Ash type or a struct of
-  the table's, and nothing a part is not given. The rows are the table's
+  It only draws: each island is given its part's projection
+  (`AshDataTable.Kit.Projection`), each key a prop of its own, so that
+  LiveView marks a prop changed only when what it is made of changed and
+  live_react sends what changed in it. One rule makes props of a
+  projection (`props/1` below): its bundles as props, as
+  `AshDataTable.Attrs.props/1` makes them. The rows are the table's
   stream, handed to the island as it is.
   """
   use AshDataTable.Kit, contract: 6
 
   alias AshDataTable.Attrs
-  alias DemoWeb.ReactKit.Props
 
   # The grid's island, and beside it what LiveView draws: the filter row's
   # form (the island's controls name it) and the sender of the grid's
@@ -74,44 +76,27 @@ defmodule DemoWeb.ReactKit do
   # message, which the hook copies into a cell.
   def grid(assigns) do
     ~H"""
-    <form :if={@geometry.header_rows == 2} {Attrs.filters(@id, @myself)}></form>
-    <div {Attrs.sender(@id)}></div>
+    <form :if={@filter_form} {@filter_form}></form>
+    <div {@sender}></div>
     <LiveReact.react
       id={"#{@id}-grid-island"}
       name="AshGrid"
       class="contents"
+      table_id={@id}
       rows={@rows}
+      nested?={@nested?}
+      skip={props(@skip)}
+      scrollbar={props(@scrollbar)}
+      grid={props(@grid)}
+      table={props(@table)}
+      head={props(@head)}
+      filters={props(@filters)}
+      row={props(@row)}
+      footer={props(@footer)}
+      editors={props(@editors)}
+      failure={props(@failure)}
       texts={@texts}
-      skip={Props.skip(@id)}
-      scrollbar={Props.scrollbar(@id)}
-      grid={Props.grid(@id, @myself, @geometry, @selecting, @choose, @texts)}
-      table={Props.table(@id, @label, @labelledby, @geometry, @page, @busy?, @running)}
-      head={Props.head(@id, @model, @state, @geometry, @selecting, @expandable?, @myself, @texts)}
-      filters={Props.filters(@id, @model, @filters, @geometry, @selecting, @expandable?, @myself)}
-      columns={Props.columns(@model, @texts)}
-      row={Props.row(@id, @model, @geometry, @selecting, @expandable?, @open, @asks?, @nested?)}
-      footer={
-        Props.footer(
-          @id,
-          @model,
-          @page,
-          @state,
-          @geometry,
-          @selecting,
-          @expandable?,
-          @pages?,
-          @row_count,
-          @label,
-          @full_view,
-          @summary,
-          @summing?,
-          @time_zone,
-          @nested?,
-          @myself
-        )
-      }
-      editors={Props.editors(@id, @model, @editors, @asks?)}
-      failure={@model.editing? or @geometry.trail == 1}
+      messages={@messages}
     />
     """
   end
@@ -123,16 +108,16 @@ defmodule DemoWeb.ReactKit do
       id={"#{@id}-heading-island"}
       name="AshHeading"
       class="contents"
-      table={@id}
+      table_id={@id}
       shown?={@shown?}
       nested?={@nested?}
-      element={Props.of(@element)}
-      title={Props.of(@title)}
-      columns={Props.of(@columns)}
-      argument_line={Props.of(@argument_line)}
+      element={props(@element)}
+      title={props(@title)}
+      columns={props(@columns)}
+      argument_line={props(@argument_line)}
       acts?={@acts?}
-      create={Props.of(@create)}
-      actions={Props.of(@actions)}
+      create={props(@create)}
+      actions={props(@actions)}
     />
     """
   end
@@ -143,12 +128,12 @@ defmodule DemoWeb.ReactKit do
       id={"#{@id}-selection-island"}
       name="AshSelectionLine"
       class="contents"
-      table={@id}
+      table_id={@id}
       shown?={@shown?}
       nested?={@nested?}
-      selection={Props.of(@selection)}
-      notice={Props.of(@notice)}
-      clear_filters={Props.of(@clear_filters)}
+      selection={props(@selection)}
+      notice={props(@notice)}
+      clear_filters={props(@clear_filters)}
       texts={@texts}
       messages={@messages}
     />
@@ -161,7 +146,7 @@ defmodule DemoWeb.ReactKit do
       id={"#{@id}-status-island"}
       name="AshStatus"
       class="contents"
-      region={Props.of(@region)}
+      region={props(@region)}
       again?={@again?}
       result={@result}
       texts={@texts}
@@ -177,11 +162,11 @@ defmodule DemoWeb.ReactKit do
       id={"#{@id}-related-island"}
       name="AshRelated"
       class="contents"
-      element={Props.of(@element)}
-      heading={Props.of(@heading)}
+      element={props(@element)}
+      heading={props(@heading)}
       record={@record}
-      create={Props.of(@create)}
-      actions={Props.of(@actions)}
+      create={props(@create)}
+      actions={props(@actions)}
       clear={@clear}
       texts={@texts}
       messages={@messages}
@@ -197,7 +182,7 @@ defmodule DemoWeb.ReactKit do
       name="AshMessage"
       class="contents"
       kind={@kind}
-      element={Props.of(@element)}
+      element={props(@element)}
       nested?={@nested?}
       text={@text}
       message={@message}
@@ -212,12 +197,12 @@ defmodule DemoWeb.ReactKit do
       name="AshPagination"
       class="contents"
       nested?={@nested?}
-      element={Props.of(@element)}
-      range={Props.of(@range)}
-      previous={Props.of(@previous)}
-      next={Props.of(@next)}
-      pages={Props.of(@pages)}
-      sizes={Props.of(@sizes)}
+      element={props(@element)}
+      range={props(@range)}
+      previous={props(@previous)}
+      next={props(@next)}
+      pages={props(@pages)}
+      sizes={props(@sizes)}
       texts={@texts}
       messages={@messages}
     />
@@ -235,9 +220,9 @@ defmodule DemoWeb.ReactKit do
       class="contents"
       asks?={@asks?}
       presentation={@presentation}
-      holder={Props.of(@holder)}
-      dialog={Props.of(@dialog)}
-      question={Props.of(@question)}
+      holder={props(@holder)}
+      dialog={props(@dialog)}
+      question={props(@question)}
       texts={@texts}
       messages={@messages}
     />
@@ -258,14 +243,14 @@ defmodule DemoWeb.ReactKit do
       open?={@open?}
       presentation={@presentation}
       destructive?={@destructive?}
-      place={Props.of(@place)}
-      frame={Props.of(@frame)}
-      form={Props.of(@form)}
-      title={Props.of(@title)}
-      errors={Props.of(@errors)}
-      cancel={Props.of(@cancel)}
-      submit={Props.of(@submit)}
-      fields={Props.of(@fields)}
+      place={props(@place)}
+      frame={props(@frame)}
+      form={props(@form)}
+      title={props(@title)}
+      errors={props(@errors)}
+      cancel={props(@cancel)}
+      submit={props(@submit)}
+      fields={props(@fields)}
       texts={@texts}
       messages={@messages}
     />
@@ -289,13 +274,13 @@ defmodule DemoWeb.ReactKit do
       class="contents"
       open?={@open?}
       presentation={@presentation}
-      place={Props.of(@place)}
-      frame={Props.of(@frame)}
-      title={Props.of(@title)}
-      error={Props.of(@error)}
-      cancel={Props.of(@cancel)}
-      none={Props.of(@none)}
-      take={Props.of(@take)}
+      place={props(@place)}
+      frame={props(@frame)}
+      title={props(@title)}
+      error={props(@error)}
+      cancel={props(@cancel)}
+      none={props(@none)}
+      take={props(@take)}
       texts={@texts}
       messages={@messages}
     />
@@ -322,4 +307,45 @@ defmodule DemoWeb.ReactKit do
   def class(:root, %{nested?: true}), do: "ash-react-table-nested"
   def class(:status, _state), do: "sr-only"
   def class(part, state), do: super(part, state)
+
+  # ---- the props rule ---------------------------------------------------
+
+  # A key of a part's projection (`AshDataTable.Kit.Projection`) as an
+  # island's prop: every bundle in it (a map of attribute names, string
+  # keys) as props (`Attrs.props/1`), without what LiveView reads of an
+  # element it draws itself (`phx-hook`, `phx-update`, `phx-mounted`: an
+  # island's element is the browser's, and the kit mounts the hooks
+  # itself); a module (a column's component) by its name; what a column's
+  # component is told of its column (its own contract,
+  # `AshDataTable.Component.Column`) as the island draws with it; the rest
+  # as it is. One rule for every part: the projection is what the part is
+  # given, the islands read the same shapes.
+  defp props(%{} = map) when not is_struct(map) and map_size(map) > 0 do
+    if Enum.all?(Map.keys(map), &is_binary/1),
+      do: map |> Map.drop(["phx-hook", "phx-update", "phx-mounted"]) |> Attrs.props(),
+      else: Map.new(map, fn {key, value} -> {key, props(value)} end)
+  end
+
+  defp props(%AshDataTable.Component.Column{} = column),
+    do: %{
+      name: column.name,
+      label: column.label,
+      min: number(column.constraints[:min]),
+      max: number(column.constraints[:max])
+    }
+
+  defp props(values) when is_list(values), do: Enum.map(values, &props/1)
+
+  defp props(value) when is_atom(value) and not is_boolean(value) and not is_nil(value) do
+    case Atom.to_string(value) do
+      "Elixir." <> name -> name
+      _atom -> value
+    end
+  end
+
+  defp props(value), do: value
+
+  defp number(%Decimal{} = number), do: Decimal.to_float(number)
+  defp number(number) when is_number(number), do: number
+  defp number(_none), do: nil
 end

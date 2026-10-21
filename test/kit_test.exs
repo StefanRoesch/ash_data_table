@@ -422,59 +422,53 @@ defmodule AshDataTable.KitTest do
     assert Map.keys(texts) == Map.keys(messages)
   end
 
-  test "the editor of a column is given what its control says, as plain data; so is the grid" do
+  test "the editor of a column is given its projection: what its control says, as plain data" do
     model = AshDataTable.Model.build(AshDataTable.Test.Resource)
-    editors = Kit.editors(model)
 
-    # every editable column whose cell has an editor in it, and no other
+    templates =
+      AshDataTable.Kit.Projection.of({:grid, :editors}, %{id: "t", model: model, asks?: true})
+
+    editors =
+      for %{editor: %{} = editor} = template <- templates, into: %{}, do: {template.name, editor}
+
+    # every editable column whose cell has an editor of the kit's in it
     assert Map.keys(editors) |> Enum.sort() ==
              for(
                column <- model.columns,
                column.editable?,
-               column.editor not in [:reference, :choices, :list, :group, :groups, :union],
+               column.editor in [:text, :number, :boolean, :date, :datetime, :enum],
                do: column.name
              )
              |> Enum.sort()
 
-    assert editors.size == %{
-             limits: %{min: "0", max: "100", step: "1"},
-             counted: nil,
-             clearable?: false
-           }
+    assert %{limits: %{min: "0", max: "100", step: "1"}, counted: nil, clearable?: false} =
+             editors.size
 
     assert editors.name.counted == %{max: 40, unit: :codepoints, trim?: true, casing: nil}
+    assert editors.name.count.element["id"] == "t-editor-name-count"
     assert editors.secret.clearable?
-
-    assert editors.tier == %{
-             limits: %{min: nil, max: nil, step: nil},
-             counted: nil,
-             clearable?: false
-           }
-
     assert Jason.decode!(Jason.encode!(editors))["size"]["limits"]["max"] == "100"
 
-    # the editor part is given the same
+    # the editor part is given its projection
     kit =
       compile("""
       defmodule AshDataTable.KitTest.Editors do
         use AshDataTable.Kit, contract: 6
 
         def editor(assigns) do
-          send(self(), {:editor, Map.take(assigns, [:limits, :counted, :clearable?])})
+          send(self(), {:editor, Map.drop(assigns, [:__changed__, :kit])})
           super(assigns)
         end
       end
       """)
 
-    for column <- model.columns,
-        Map.has_key?(editors, column.name),
-        column.editor != :component do
+    for template <- templates, template.editor do
       Phoenix.LiveViewTest.rendered_to_string(
-        Kit.editor(%{__changed__: nil, kit: kit, id: "t-editor-#{column.name}", column: column})
+        Kit.editor(%{__changed__: nil, kit: kit, editor: template})
       )
 
       assert_received {:editor, given}
-      assert given == editors[column.name]
+      assert given == template.editor
     end
   end
 

@@ -881,8 +881,6 @@ defmodule AshDataTable.Kit do
 
   use Phoenix.Component
 
-  alias AshDataTable.Edit
-  alias AshDataTable.Kit.Words
   alias AshDataTable.Model.Limits
 
   @contract 6
@@ -1089,15 +1087,16 @@ defmodule AshDataTable.Kit do
   anything else is drawn by the kit's `cell/1`, which is never given a
   value the person may not see, nor the value of a sensitive cell.
 
-      <AshDataTable.Kit.cell kit={@kit} id={cell_id} column={column} cell={@row.cells[column.name]} time_zone={@time_zone} />
+      <AshDataTable.Kit.cell kit={@kit} id={cell_id} column={column} cell={@row.cells[column.name]} />
 
-  `cell` is a cell of the row's item (`AshDataTable.Item`).
+  `column` is the column's projection (`AshDataTable.Kit.Projection`, a
+  column of `grid`'s `row`), `cell` a cell of the row's item
+  (`AshDataTable.Item`).
   """
   attr :kit, :atom, required: true
   attr :id, :string, required: true
   attr :column, :map, required: true
   attr :cell, :map, required: true
-  attr :time_zone, :string, required: true
 
   def cell(assigns) do
     ~H"""
@@ -1113,15 +1112,8 @@ defmodule AshDataTable.Kit do
       part={:cell}
       kit={@kit}
       id={@id}
-      column={@column}
-      state={@cell.state}
-      value={@cell.value}
-      text={@cell.text}
-      failure={@cell.failure}
-      time_zone={@time_zone}
-      texts={Words.texts(:cell, %{column: @column, cell: @cell})}
-      messages={Words.messages(:cell, %{column: @column, cell: @cell})}
-      locale={Words.locale()}
+      cell={@cell}
+      {@column}
     />
     """
   end
@@ -1131,72 +1123,40 @@ defmodule AshDataTable.Kit do
   `grid/1`: the column's component's where it edits, else the kit's
   `editor/1`; none for a column edited in the picker or the panel.
 
-      <template :for={column <- @model.columns} :if={column.editable?} …>
-        <AshDataTable.Kit.editor kit={@kit} id={AshDataTable.Ids.editor(@id, column.name)} column={column} />
+      <template :for={editor <- @editors} {editor.template}>
+        <AshDataTable.Kit.editor kit={@kit} editor={editor} />
       </template>
+
+  `editor` is an editor of the `grid` part's `editors`
+  (`AshDataTable.Kit.Projection`).
   """
   attr :kit, :atom, required: true
-  attr :id, :string, required: true
-  attr :column, :map, required: true
+  attr :editor, :map, required: true
 
   def editor(assigns) do
     ~H"""
     <AshDataTable.Parts.Common.dynamic_component
-      :if={@column.editor == :component}
-      module={@column.component.module}
+      :if={@editor.component}
+      module={@editor.component.module}
       function={:editor}
       value=""
-      label={@column.label}
-      column={@column.component.column}
+      label={@editor.component.label}
+      column={@editor.component.column}
       place={:grid}
-      control={AshDataTable.Attrs.component_control(@column)}
+      control={@editor.component.control}
     /><.part
-      :if={built_in?(@column.editor)}
+      :if={@editor.editor}
       part={:editor}
       kit={@kit}
-      id={@id}
-      column={@column}
-      {editing(@column)}
-      texts={Words.texts(:editor, %{column: @column})}
-      messages={Words.messages(:editor, %{column: @column})}
+      {@editor.editor}
     />
     """
   end
 
-  # the columns whose cells are edited in the cell with an editor of the
-  # kit's (the others in the picker or the panel, or with a component's)
-  @built_in [:text, :number, :boolean, :date, :datetime, :enum]
-  defp built_in?(editor), do: editor in @built_in
-
-  # What the control of a column's editor says (the `editor` part, and the
-  # grid's `editors`), as plain data: the limits of a number
-  # (`Model.Limits.of/1`), how a text with a most it can be long is counted
-  # (`Model.Limits.counted/1`), and whether a sensitive cell can be emptied
-  # (`Edit.clearable?/1`).
-  defp editing(column) do
-    %{
-      limits: Limits.of(column),
-      counted: Limits.counted(column),
-      clearable?: Edit.clearable?(column)
-    }
-  end
-
-  @doc false
-  # The grid's `editors`: by column name, of each editable column whose
-  # cell has an editor in it (the kit's or a component's), what its control
-  # says (`editing/1`).
-  def editors(model) do
-    for column <- model.columns,
-        column.editable?,
-        column.editor in [:component | @built_in],
-        into: %{},
-        do: {column.name, editing(column)}
-  end
-
   # Whether the column's component draws a cell: a value that is there and
-  # that the person may see.
+  # that the person may see. `column` is a column's projection.
   @doc false
-  def component?(%{component: %{cell?: true}}, %{state: :value, failure: nil}), do: true
+  def component?(%{component: %{module: _module}}, %{state: :value, failure: nil}), do: true
   def component?(_column, _cell), do: false
 
   @doc """

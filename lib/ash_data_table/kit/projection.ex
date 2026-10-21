@@ -19,7 +19,9 @@ defmodule AshDataTable.Kit.Projection do
     full_view: Projection.FullView,
     selection_line: Projection.SelectionLine,
     heading: Projection.Heading,
-    panel: Projection.Panel
+    panel: Projection.Panel,
+    grid: Projection.Grid,
+    root: Projection.Root
   }
 
   @doc false
@@ -135,25 +137,79 @@ defmodule AshDataTable.Kit.Projection do
       :limits,
       :values
     ],
-    list: [:element, :item, :limits, :name, :template, :rows, :texts, :messages]
+    list: [:element, :item, :limits, :name, :template, :rows, :texts, :messages],
+    header_cell: [:element, :label, :button, :mark, :resizer, :texts, :messages],
+    resizer: [:element],
+    filter_cell: [:element, :filter],
+    filter: [
+      :cell_type,
+      :takes,
+      :yes_no,
+      :operators,
+      :choice,
+      :input,
+      :range,
+      :several,
+      :clear,
+      :error,
+      :texts,
+      :messages
+    ],
+    row: [
+      :selecting,
+      :radio,
+      :expandable?,
+      :lead,
+      :columns,
+      :actions,
+      :relationships,
+      :colspan,
+      :texts,
+      :messages
+    ],
+    cell: [
+      :name,
+      :label,
+      :colindex,
+      :header?,
+      :cell_type,
+      :editor,
+      :max_lines,
+      :sensitive?,
+      :values,
+      :attrs,
+      :component,
+      :typed,
+      :texts,
+      :messages,
+      :locale
+    ],
+    actions_cell: [:colindex, :open, :buttons],
+    detail: [:relationships, :colspan],
+    line: [:relationship, :line, :colspan, :table],
+    footer: [:element, :summaries, :pager, :full_view],
+    summary_cell: [:element, :summary?, :state, :value, :text, :texts, :messages, :locale],
+    editor: [
+      :id,
+      :label,
+      :editor,
+      :required?,
+      :sensitive?,
+      :values,
+      :limits,
+      :counted,
+      :count,
+      :control,
+      :clearable?,
+      :texts,
+      :messages
+    ],
+    failure: [:text, :message]
   }
 
   @doc false
   # The parts given a projection.
-  def parts,
-    do:
-      [
-        :status,
-        :message,
-        :confirm,
-        :pagination,
-        :picker,
-        :related,
-        :selection_line,
-        :heading,
-        :panel
-      ] ++
-        Map.keys(@inner)
+  def parts, do: Map.keys(@parts) ++ Map.keys(@inner)
 
   @doc false
   # The keys of the projection of `part`.

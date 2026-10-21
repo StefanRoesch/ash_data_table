@@ -182,27 +182,42 @@ defmodule AshDataTable.KitCase do
     end
   end
 
+  # What a part is given beside its projection: every part `kit` and `id`;
+  # a part drawn per row its item, or its cell's (the stream); the panel and
+  # its fields LiveView's uploads; the root its slots; a counter and
+  # "Columns" their look where they stand (`class`).
+  @always [:kit, :id]
+  @beside %{
+    root: [:inner_block, :opened],
+    grid: [:rows],
+    row: [:row],
+    detail: [:row],
+    actions_cell: [:row],
+    cell: [:cell],
+    panel: [:uploads],
+    field: [:uploads],
+    count: [:class],
+    columns: [:class]
+  }
   @doc false
   # What a part is given of its texts and values (`AshDataTable.Kit`, "Texts
   # and values"): raises, and fails the state, where the part lacks one.
   def given!(part, assigns) do
-    if part in AshDataTable.Kit.Projection.parts(),
-      do: projected!(part, assigns),
-      else: worded!(part, assigns)
-  end
-
-  # A part given its projection (`AshDataTable.Kit.Projection`): every key
-  # of it, and wherever it shows words, its texts beside the messages they
-  # are made of.
-  defp projected!(part, assigns) do
-    missing =
-      for key <- AshDataTable.Kit.Projection.keys(part), not is_map_key(assigns, key), do: key
+    keys = AshDataTable.Kit.Projection.keys(part)
+    missing = for key <- keys, not is_map_key(assigns, key), do: key
 
     if missing != [] do
       raise ArgumentError, "the part #{inspect(part)} is given no #{inspect(missing)}"
     end
 
-    words!(part, Map.take(assigns, AshDataTable.Kit.Projection.keys(part)))
+    beside = Map.keys(assigns) -- (keys ++ [:__changed__ | Map.get(@beside, part, [])] ++ @always)
+
+    if beside != [] do
+      raise ArgumentError,
+            "the part #{inspect(part)} is given #{inspect(beside)} beside its projection"
+    end
+
+    words!(part, Map.take(assigns, keys))
     :ok
   end
 
@@ -226,31 +241,6 @@ defmodule AshDataTable.KitCase do
 
   defp words!(part, values) when is_list(values), do: Enum.each(values, &words!(part, &1))
   defp words!(_part, _value), do: :ok
-
-  # A part still given its texts beside its other assigns
-  # (`AshDataTable.Kit.Words`).
-  defp worded!(part, assigns) do
-    missing =
-      for name <- AshDataTable.Kit.Words.names(part), not is_map_key(assigns, name), do: name
-
-    if missing != [] do
-      raise ArgumentError, "the part #{inspect(part)} is given no #{inspect(missing)}"
-    end
-
-    with %{texts: texts, messages: messages} <- assigns,
-         false <- Map.keys(texts) == Map.keys(messages) do
-      raise ArgumentError,
-            "the part #{inspect(part)} is given `texts` and `messages` of other names"
-    end
-
-    for {name, message} <- Map.get(assigns, :messages, %{}) do
-      shape!(part, name, message, Map.get(assigns.texts, name))
-    end
-
-    if part in [:message, :failure], do: shape!(part, :message, assigns.message, assigns.text)
-
-    :ok
-  end
 
   # A message as `AshDataTable.Messages` documents it, and its text beside
   # it: a key of the list with exactly the values it names (a value may be
@@ -638,17 +628,18 @@ defmodule AshDataTable.KitCase do
     part_model = AshDataTable.Model.build(Resource.Part, [])
 
     full_view =
-      Phoenix.LiveViewTest.render_component(&AshDataTable.Kit.part/1, %{
-        part: :full_view,
-        kit: kit,
-        full_view: "/parts?of=Anchor",
-        geometry: AshDataTable.Geometry.of(part_model, nil, false, nil),
-        id: nested,
-        label: "Parts",
-        model: part_model,
-        texts: AshDataTable.Kit.Words.texts(:full_view, %{label: "Parts"}),
-        messages: AshDataTable.Kit.Words.messages(:full_view, %{label: "Parts"})
-      })
+      Phoenix.LiveViewTest.render_component(
+        &AshDataTable.Kit.part/1,
+        Map.merge(
+          %{part: :full_view, kit: kit, id: nested},
+          AshDataTable.Kit.Projection.of(:full_view, %{
+            id: nested,
+            full_view: "/parts?of=Anchor",
+            label: "Parts",
+            geometry: AshDataTable.Geometry.of(part_model, nil, false, nil)
+          })
+        )
+      )
 
     [{related, :related}, {"<table>#{full_view}</table>", :full_view}]
   end

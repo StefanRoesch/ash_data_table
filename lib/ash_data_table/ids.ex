@@ -27,9 +27,25 @@ defmodule AshDataTable.Ids do
   @spec cell(String.t(), atom | String.t()) :: String.t()
   def cell(row, name), do: "#{row}-c-#{name}"
 
+  @doc "The element of a record's row inside its row group: `ROW-r`."
+  @spec record(String.t()) :: String.t()
+  def record(row), do: "#{row}-r"
+
   @doc "The actions cell of a row, focus's place where a row has no column: `ROW-a`."
   @spec actions_cell(String.t()) :: String.t()
   def actions_cell(row), do: "#{row}-a"
+
+  @doc "The button of row action `name` in an actions cell `CELL`: `CELL-NAME`."
+  @spec action(String.t(), atom | String.t()) :: String.t()
+  def action(cell, name), do: "#{cell}-#{name}"
+
+  @doc "The \"Open\" button in an actions cell `CELL`: `CELL-open`."
+  @spec open(String.t()) :: String.t()
+  def open(cell), do: "#{cell}-open"
+
+  @doc "The row of the line of relationship `name` under a row: `ROW-l-NAME`."
+  @spec line(String.t(), atom | String.t()) :: String.t()
+  def line(row, name), do: "#{row}-l-#{name}"
 
   @doc "The cell of a row's selection box: `ROW-s`."
   @spec selector(String.t()) :: String.t()

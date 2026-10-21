@@ -1163,26 +1163,6 @@ defmodule AshDataTable.Attrs do
   def most_width, do: 1000
 
   @doc """
-  Whether an item of the stream (`AshDataTable.Item`) is the detail under a
-  record's row, not the row: nil, not false, where it is not.
-
-  An item spreads its own varying attributes on its row group
-  (`<tbody {item.attrs}>`): on a detail `data-detail` and `data-row`, and
-  `hidden` while it holds no line; on a record's `data-key`, what the
-  server is told of a record that is selected, where rows can be, and
-  `data-current` on the record that is chosen now, in a table to choose
-  from. The hooks take a `role=rowgroup` of the grid for a record's unless
-  it is the header (`ID-head`), the footer (`ID-foot`) or a detail. The
-  rows of the records hold what varies only: their id and `role`, the same
-  on every row, are written by the part, as every byte of a row is sent
-  again whenever the row is (with them in the bundle "Page change" sent
-  11 % more). So do the row of a record, its cells and its actions cell
-  below.
-  """
-  def detail?(%{detail: true}), do: true
-  def detail?(_item), do: nil
-
-  @doc """
   The cell of a record under a column: the attributes its column gives it
   and those of the cell of the item (`AshDataTable.Item`, its `attrs`). What
   it says about editing, for people and for the hook:
@@ -1225,19 +1205,6 @@ defmodule AshDataTable.Attrs do
   @doc "What an attribute holds of a list (as JSON) or a text (as it is)."
   def held(texts) when is_list(texts), do: Phoenix.json_library().encode!(texts)
   def held(text), do: text
-
-  @doc """
-  The actions cell of a record. What it says about an action that failed:
-  as a cell whose save failed, `data-failed` and `aria-describedby`
-  naming the action's message. `id` is the cell's id. No Tab stop itself:
-  its buttons are.
-  """
-  def actions(id, row) do
-    %{
-      "data-failed" => !!row.failure,
-      "aria-describedby" => row.failure && Ids.error(id)
-    }
-  end
 
   @doc """
   The footer row of the summaries, the last of all rows (its row index as

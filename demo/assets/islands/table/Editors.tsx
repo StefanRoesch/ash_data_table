@@ -6,41 +6,60 @@
 // content (`createPortal`, the React kit's note, Q8); the hook copies what
 // is there, and React never sees the copy.
 //
-// An editor is what the `editor` part is given (`DemoWeb.ReactKit.Props`):
-// the native control of its column's type, with the limits of a number,
-// the counter of a text with a most it can be long, the password input of
-// a sensitive column and "Clear" where it can be emptied. A column whose
-// component edits is drawn by the React component of that module
-// (`editors`, as `components` draws a column's cells), else by the control
-// of its type, with a warning in development.
+// An editor is what the `editor` part is given (its projection, an editor
+// of the grid's `editors`, `AshDataTable.Kit.Projection`): the native
+// control of its column's type, with the limits of a number, the counter
+// of a text with a most it can be long, the password input of a sensitive
+// column and "Clear" where it can be emptied. A column whose component
+// edits is drawn by the React component of that module (`editors`, as
+// `components` draws a column's cells), else by a text input, with a
+// warning in development.
 import * as React from "react"
 import {createPortal} from "react-dom"
 
-import {attrs, type Bundle} from "./props"
+import {attrs, type Bundle, type Message} from "./props"
 import {usePart} from "./parts"
 import {box, button} from "./look"
 
 export type Limits = {min: string | null; max: string | null; step: string | null}
 
+// What a column's component's editor is given: in a cell and in the panel.
 export type EditorProps = {
-  name: string
-  template: Bundle & {id: string}
-  // nil where the cell has no editor in it (the picker or the panel edits it)
-  editor: string | null
   label: string
-  required: boolean
-  sensitive: boolean
-  values: null | {value: string; label: string}[]
+  required?: boolean
   limits: Limits | null
-  counted: null | {max: number}
-  count: Bundle | false | null
-  clearable: boolean
-  control: Bundle | null
-  component: string | false
-  texts: null | {clear: string; clear_value: string}
-  // in the panel: the field's value (a cell's editor is opened empty, and
-  // the hook gives it the cell's)
+  control: Bundle & {defaultValue?: string}
+  // in the panel: the field's name and value (a cell's editor is opened
+  // empty, and the hook gives it the cell's)
+  name?: string
   value?: string
+}
+
+// The projection of the part `editor`.
+export type EditorProjection = {
+  id: string
+  label: string
+  editor: string
+  "required?": boolean
+  "sensitive?": boolean
+  values: null | {value: string; label: string}[]
+  limits: Limits
+  counted: null | {max: number}
+  count: CountProps | null
+  control: Bundle | null
+  "clearable?": boolean
+  texts: {clear: string; clear_value: string}
+  messages: Record<string, Message>
+}
+
+// An editor's template: its bundle, and its editor's projection (nil where
+// the cell has no editor in it: the picker or the panel edits it) or its
+// column's component's.
+export type EditorTemplate = {
+  name: string
+  template: Bundle
+  editor: EditorProjection | null
+  component: null | {module: string; label: string; limits: Limits; control: Bundle}
 }
 
 type EditorComponentProps = {editor: EditorProps}
@@ -56,23 +75,36 @@ export function Template({bundle, children}: {bundle: Bundle; children?: React.R
   )
 }
 
-export function Editors({table, editors, failure}: {table: string; editors: EditorProps[]; failure: boolean}) {
+export function Editors({editors, failure}: {editors: EditorTemplate[]; failure: null | {template: Bundle; text: string}}) {
   const Editor = usePart("Editor")
   const Failure = usePart("Failure")
   return (
     <>
-      {editors.map(editor => (
-        <Template key={editor.name} bundle={editor.template}>
-          {editor.editor && <Editor id={editor.template.id} editor={editor} />}
+      {editors.map(template => (
+        <Template key={template.name} bundle={template.template}>
+          {template.editor && <Editor editor={template.editor} />}
+          {template.component && <ComponentEditor component={template.component} />}
         </Template>
       ))}
       {failure && (
-        <Template bundle={{id: `${table}-failure`}}>
-          <Failure text="" />
+        <Template bundle={failure.template}>
+          <Failure text={failure.text} />
         </Template>
       )}
     </>
   )
+}
+
+// A column's component's editor in its template, by its module, else a
+// text input, with a warning in development.
+function ComponentEditor({component}: {component: NonNullable<EditorTemplate["component"]>}) {
+  const components = usePart("editors")
+  const Component = components[component.module]
+  if (Component) return <Component editor={{label: component.label, limits: component.limits, control: component.control}} />
+  if (process.env.NODE_ENV !== "production") {
+    console.warn(`ash_data_table: the React kit has no editor for ${component.module}; the cell is edited as text`)
+  }
+  return <input type="text" {...attrs(component.control)} className={CONTROL} />
 }
 
 // A control in the place of the cell's text: its size, and no edge of its
@@ -99,30 +131,20 @@ export function Count({count, className}: {count: CountProps; className?: string
 }
 
 // The part `Editor`: a column's editor, by what the column is edited with.
-export function Editor({id, editor}: {id: string; editor: EditorProps}) {
-  const components = usePart("editors")
+export function Editor({editor}: {editor: EditorProjection}) {
   const Count = usePart("Count")
-  const limits = editor.limits ?? {min: null, max: null, step: null}
-  const required = editor.required ? "true" : undefined
-
-  if (editor.editor === "component") {
-    const Component = editor.component ? components[editor.component] : null
-    if (Component) return <Component editor={editor} />
-    if (process.env.NODE_ENV !== "production") {
-      console.warn(`ash_data_table: the React kit has no editor for ${editor.component}; the cell is edited as text`)
-    }
-    return <input type="text" {...attrs(editor.control)} className={CONTROL} />
-  }
+  const limits = editor.limits
+  const required = editor["required?"] ? "true" : undefined
 
   // A sensitive column: a password input, which the hook opens empty, and
   // where the cell can be emptied "Clear" beside it.
-  if (editor.sensitive) {
-    if (!editor.clearable) return <input type="password" autoComplete="off" aria-label={editor.label} className={CONTROL} />
+  if (editor["sensitive?"]) {
+    if (!editor["clearable?"]) return <input type="password" autoComplete="off" aria-label={editor.label} className={CONTROL} />
     return (
       <div className="flex w-full min-w-24 items-center gap-2">
         <input type="password" autoComplete="off" data-control="" aria-label={editor.label} className="block h-5 w-0 min-w-12 flex-1 bg-transparent p-0 text-sm outline-none" />
-        <button type="button" data-clear="" aria-label={editor.texts?.clear_value} className={button("outline", "xs", "-my-1 shrink-0")}>
-          {editor.texts?.clear}
+        <button type="button" data-clear="" aria-label={editor.texts.clear_value} className={button("outline", "xs", "-my-1 shrink-0")}>
+          {editor.texts.clear}
         </button>
       </div>
     )
@@ -131,11 +153,11 @@ export function Editor({id, editor}: {id: string; editor: EditorProps}) {
   switch (editor.editor) {
     // text keeps its lines; with a most it can be long, its counter under it
     case "text":
-      if (!editor.counted) return <textarea rows={1} aria-label={editor.label} aria-required={required} className={TEXT}></textarea>
+      if (!editor.count) return <textarea rows={1} aria-label={editor.label} aria-required={required} className={TEXT}></textarea>
       return (
         <div>
           <textarea rows={1} {...attrs(editor.control)} className={TEXT}></textarea>
-          <Count count={{element: {...(editor.count || {}), id: `${id}-count`}, length: 0, max: editor.counted.max, "over?": false}} className="block text-end" />
+          <Count count={editor.count} className="block text-end" />
         </div>
       )
     // Enter on the cell toggles it: the box is shown while the value is saved
@@ -144,7 +166,7 @@ export function Editor({id, editor}: {id: string; editor: EditorProps}) {
     case "enum":
       return (
         <select aria-label={editor.label} aria-required={required} className="block h-5 w-full bg-transparent p-0 text-sm outline-none">
-          {!editor.required && <option value=""></option>}
+          {!editor["required?"] && <option value=""></option>}
           {(editor.values || []).map(choice => (
             <option key={choice.value} value={choice.value}>{choice.label}</option>
           ))}
@@ -154,8 +176,8 @@ export function Editor({id, editor}: {id: string; editor: EditorProps}) {
     default:
       return (
         <input
-          type={INPUT[editor.editor!] ?? "text"}
-          step={limits.step ?? STEP[editor.editor!]}
+          type={INPUT[editor.editor] ?? "text"}
+          step={limits.step ?? STEP[editor.editor]}
           min={limits.min ?? undefined}
           max={limits.max ?? undefined}
           aria-label={editor.label}

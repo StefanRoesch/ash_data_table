@@ -18,18 +18,23 @@ export type ItemCell = {
   attrs: Record<string, string | true>
 }
 
+// A column's projection (`AshDataTable.Kit.Projection`, a column of the
+// grid's `row`): what a cell of it is drawn with, the same on every row.
 export type Column = {
   name: string
   label: string
-  cell_type: string
+  colindex: number
+  "header?": boolean
+  cell_type: string | {array: string}
   editor: string | null
   max_lines: number
-  sensitive: boolean
+  "sensitive?": boolean
   values: null | {value: string; label: string}[]
   attrs: Record<string, string>
-  component: null | {module: string; min: number | null; max: number | null}
-  show_value: string | null
-  hide_value: string | null
+  component: null | {module: string; column: {min: number | null; max: number | null}}
+  // what a failed cell shows of what was typed, by what was typed
+  typed: null | Record<string, string>
+  texts: {hidden_value: string; show: string; hide: string; show_value: string | null; hide_value: string | null; not_available: string}
 }
 
 export type GridTexts = Record<string, string>
@@ -58,7 +63,8 @@ function YesNo({value, text}: {value: boolean; text: string}) {
 // empty live region the hook shows the value in, and the button that asks
 // for it. The hook writes the button's text and name; the kit never draws
 // them again (they are the column's, the same on every row).
-function Masked({column, texts}: {column: Column; texts: GridTexts}) {
+function Masked({column}: {column: Column}) {
+  const {texts} = column
   return (
     <span className="inline-flex max-w-72 items-center align-bottom">
       <span data-mask aria-hidden="true">{MASK}</span>
@@ -69,9 +75,9 @@ function Masked({column, texts}: {column: Column; texts: GridTexts}) {
         data-reveal
         data-show={texts.show}
         data-hide={texts.hide}
-        data-show-label={column.show_value}
-        data-hide-label={column.hide_value}
-        aria-label={column.show_value ?? undefined}
+        data-show-label={texts.show_value ?? undefined}
+        data-hide-label={texts.hide_value ?? undefined}
+        aria-label={texts.show_value ?? undefined}
         className={button("outline", "xs", "-my-1 ms-2 shrink-0")}
       >
         {texts.show}
@@ -87,35 +93,35 @@ export function Failure({id, text}: {id?: string; text: string}) {
 }
 
 // What a cell shows by what it holds.
-function shown(column: Column, cell: ItemCell, texts: GridTexts): React.ReactNode {
+function shown(column: Column, cell: ItemCell): React.ReactNode {
   switch (cell.state) {
     case "forbidden":
-      return <span className="sr-only" data-unseen>{texts.not_available}</span>
+      return <span className="sr-only" data-unseen>{column.texts.not_available}</span>
     case "empty":
       return null
     case "masked":
-      return <Masked column={column} texts={texts} />
+      return <Masked column={column} />
     default:
       if (typeof cell.value === "boolean") return <YesNo value={cell.value} text={cell.text ?? ""} />
       return <Paragraph column={column}>{cell.text ?? ""}</Paragraph>
   }
 }
 
-// What was typed into a cell whose save failed, as the cell would show it:
-// a yes or no with its mark, an enum's label, else as typed.
-function typed(column: Column, failure: {typed: string}, texts: GridTexts): React.ReactNode {
+// What was typed into a cell whose save failed, as the cell would show it
+// (its column's `typed`): a yes or no with its mark, an enum's label, else
+// as typed.
+function typed(column: Column, failure: {typed: string}): React.ReactNode {
+  const said = column.typed?.[failure.typed] ?? failure.typed
   if (column.editor === "boolean" && (failure.typed === "true" || failure.typed === "false")) {
-    const yes = failure.typed === "true"
-    return <YesNo value={yes} text={yes ? texts.yes : texts.no} />
+    return <YesNo value={failure.typed === "true"} text={said} />
   }
-  const choice = column.cell_type === "enum" && column.values && column.values.find(v => v.value === failure.typed)
-  return <Paragraph column={column}>{choice ? choice.label : failure.typed}</Paragraph>
+  return <Paragraph column={column}>{said}</Paragraph>
 }
 
-export type CellProps = {id: string; column: Column; cell: ItemCell; texts: GridTexts; components: Components}
+export type CellProps = {id: string; column: Column; cell: ItemCell; components: Components}
 
 // The part `Cell`: what a cell of a record holds.
-export function Cell({id, column, cell, texts, components}: CellProps) {
+export function Cell({id, column, cell, components}: CellProps) {
   const Failure = usePart("Failure")
   const {failure} = cell
   if (!failure) {
@@ -124,11 +130,11 @@ export function Cell({id, column, cell, texts, components}: CellProps) {
     if (column.component && cell.state === "value" && process.env.NODE_ENV !== "production") {
       console.warn(`ash_data_table: the React kit has no component for ${column.component.module}; the cell shows its text`)
     }
-    return <>{shown(column, cell, texts)}</>
+    return <>{shown(column, cell)}</>
   }
   return (
     <>
-      {column.sensitive ? shown(column, {...cell, state: cell.state}, texts) : typed(column, failure, texts)}
+      {column["sensitive?"] ? shown(column, cell) : typed(column, failure)}
       <Failure id={ids.error(id)} text={failure.text} />
     </>
   )
@@ -172,8 +178,8 @@ function Image({text, column}: ComponentProps) {
 // `AshDataTable.Components.Progress`: a bar from the column's minimum to
 // its maximum, with the number beside it.
 function Progress({value, text, column}: ComponentProps) {
-  const min = column.component?.min ?? 0
-  const max = column.component?.max ?? 100
+  const min = column.component?.column.min ?? 0
+  const max = column.component?.column.max ?? 100
   return (
     <span className="flex items-center gap-2">
       <progress className="ash-react-progress w-16" value={Number(value) - min} max={max - min} aria-hidden="true"></progress>
