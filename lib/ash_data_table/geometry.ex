@@ -1,11 +1,23 @@
 defmodule AshDataTable.Geometry do
   @moduledoc """
   Where a table's columns and rows stand in its grid: one value per
-  table, made by the table as its model or what it selects changes, and
-  given to the parts that place cells and rows (`grid`, `row`, `footer`,
-  `full_view` of `AshDataTable.Kit`).
+  table, made by the table as its model or what it selects changes.
 
-  Its fields are the kit contract; its functions are the table's own.
+  No part of a kit is given it (kit contract 6, ADR 0004): the
+  projections (`AshDataTable.Kit.Projection`) hold the numbers it gives,
+  each cell's `colindex`, a line's `colspan` and the bundles'
+  `aria-colindex`, `aria-rowindex`, `aria-rowcount`, `data-lead` and
+  `data-first-row`, so that no kit counts a column. The table itself uses
+  it: the live core makes it with the model (the table's `geometry`) and
+  numbers a record's row with it as rows are read, put in and taken out;
+  `AshDataTable.Kit.Projection` makes the grid's and the full view's
+  projections of it, among them through the bundles of
+  `AshDataTable.Attrs` that take it (`Attrs.grid/6`, `Attrs.table/6`,
+  `Attrs.head_row/2`, `Attrs.filter_row/2`, `Attrs.spanning/3`,
+  `Attrs.summaries/3`); `AshDataTable.KitCase` draws a full view with it.
+
+  Its fields are documented for those bundles; its functions are the
+  table's own.
 
     * `lead` - the columns before the first data column: the box that
       selects a row, where rows are selected, and after it the expander,
