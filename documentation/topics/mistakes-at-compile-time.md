@@ -68,7 +68,8 @@ table -> column -> assignee_id -> update_action defined in lib/sketch/task.ex:19
 Line one names the resource; line two is the path to the option in the
 block, with file and line; then the message.
 
-The action is the demo's own. No column of the demo's task table names it;
+The action is the demo's own: the tasks keep it to show what cannot be
+behind a column. No column of the demo's task table names it;
 the table offers it as a row action, whose panel asks for the reason
 ([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
@@ -140,7 +141,7 @@ rejected by Spark while the module compiles. That stops any build:
 Path: `table -> read_action`, `table -> paginate_with`, `table -> page_sizes`,
 or `table -> argument -> NAME` for the last row.
 
-| Message | Cause | Fix |
+| Message starts with | Cause | Fix |
 | --- | --- | --- |
 | The resource has no action named \`NAME\`. | `read_action` names an action the resource does not have. | Correct the name, or define the action. |
 | \`NAME\` is an update action, not a read action. | `read_action` names a create, update, destroy or generic action. | Name a read action. |
@@ -148,7 +149,7 @@ or `table -> argument -> NAME` for the last row.
 | The resource has no primary read action. Name the read action behind the table with \`read_action\`. | No `read_action`, and no primary read action. Reported for a resource with no `table` block as well. | Add `read_action`, or mark a read action `primary? true`. |
 | The read action \`NAME\` does not support keyset pagination. It supports: offset. | `paginate_with` names a strategy the action's `pagination` does not switch on. The message ends with what the action supports, or "It has no pagination." | Change `paginate_with`, or add `keyset?: true` (or `offset?: true`) to the action's `pagination`. |
 | The read action \`NAME\` requires the argument \`ARG\`, and a table has no input for its type (TYPE), so it could never read. … | A public argument of the read action is `allow_nil? false`, has no default, and is a map, an embedded resource, a union or an array of such. | Give the argument a default, or put the table over another read action. |
-| The read action \`NAME\` has no public argument named \`ARG\`. … | An `argument` of the block names no argument of the action, or a private one. | Correct the name, or remove the `argument`. |
+| The read action \`NAME\` has no public argument named \`ARG\`. … | An `argument` of the block names no argument of the action, or a private one. An `argument` says what an argument of the read action is called. | Correct the name, or remove the `argument`. |
 
 An argument of the read action is on the [argument line](arguments.md)
 without a declaration; an optional one without an input is left out, without
@@ -177,7 +178,7 @@ first size as written.
 
 Path: `table -> update_action`, or `table` for the last row.
 
-| Message | Cause | Fix |
+| Message starts with | Cause | Fix |
 | --- | --- | --- |
 | The resource has no action named \`NAME\`. | The table's `update_action` names no action of the resource. | Correct the name, or define the action. |
 | \`NAME\` is a destroy action, not an update action. | It names an action of another type. | Name an update action. |
@@ -212,10 +213,10 @@ name.
 | The argument \`ARG\` of \`NAME\` is asked and cannot be empty, and has no default … | `ask` of an `allow_nil? false` argument with no `default` on the `ask` or in the resource. A column never starts without a value. | Give the `ask` a `default`: a value, or a function of the page's assigns. |
 | The argument \`ARG\` of the calculation \`NAME\` cannot be asked: a table has no input for its type (TYPE). … | `ask` of a map, an embedded resource, a union, or an array of such. | Fix it with `arguments`. |
 | \`NAME\` is not a calculation. Only a calculation takes arguments. | `arguments` on an attribute, aggregate or relationship column. For `ask` it ends "Only an argument of a calculation can be asked; an argument of the read action is on the argument line without a declaration."; for `as` it reads "\`NAME\` is not a calculation, so \`as\` has no effect. …" | Remove the option. |
-| \`AS\` is a field of the resource, so the column of \`NAME\` cannot be called that. … | `as` is the name of an attribute, calculation, aggregate or relationship. | Choose another name. |
+| \`AS\` is a field of the resource, so the column of \`NAME\` cannot be called that. … | `as` is the name of an attribute, calculation, aggregate or relationship. `as` gives a column a name nothing else has. | Choose another name. |
 | Got duplicate AshDataTable.Resource.Column: NAME | Two columns of one field without `as`, or two with the same `as`. | Give the second column of a calculation its own name with `as`. |
-| \`NAME\` cannot be sorted, so \`sortable? true\` has no effect. … | `sortable? true` on a field the resource does not allow to be sorted. Under keyset pagination: "cannot be sorted with keyset pagination". `sortable?` can only switch sorting off. | Remove the option. To sort by a calculation or an aggregate, page by offset. |
-| \`NAME\` cannot be filtered, so \`filterable? true\` has no effect. … | `filterable? true` on a field no filter is offered for. `filterable?` can only switch filtering off. | Remove the option. |
+| \`NAME\` cannot be sorted, so \`sortable? true\` has no effect. … | `sortable? true` on a field the resource does not allow to be sorted. Under keyset pagination: "cannot be sorted with keyset pagination". `sortable?` can only switch sorting off. | Remove the option, or set it to `false`. To sort by a calculation or an aggregate, page by offset. |
+| \`NAME\` cannot be filtered, so \`filterable? true\` has no effect. … | `filterable? true` on a field no filter is offered for. `filterable?` can only switch filtering off. | Remove the option, or set it to `false`. |
 | \`NAME\` is a calculation. Only an attribute can be edited, so a calculation column cannot have an \`update_action\`. | `update_action` on a calculation column; the same message exists for an aggregate. | Remove the option. |
 | The resource has no action named \`ACTION\`. | The column's `update_action` names no action. The table's "not an update action" and "not public" messages apply to a column's action too. | Correct the name. |
 | The update action \`ACTION\` does not accept \`NAME\`, so it cannot save an edit of this column. | The attribute is not in the action's `accept`. | Add it to `accept`, or name an action that has it. |
@@ -226,7 +227,7 @@ name.
 | \`NAME\` is declared \`writable?: false\`, so no action can save an edit of it: … | Its own `update_action` on an attribute that is `writable?: false`. | Remove the option, or make the attribute writable. |
 | \`NAME\` can never be edited, so \`confirm\` has no effect. A column is edited through an \`update_action\`, its own or the table's, that accepts its attribute. | `confirm` on a column with no working update action: none at either level, `update_action false`, or one that does not accept the attribute or needs an argument. | Remove `confirm`, or make the column editable. |
 | \`NAME\` can never be edited, so \`confirm\` has no effect. It has the type \`TYPE\`, which a table has no editor for. | `confirm` on a type with no editor, whatever the action. For an attribute that is not writable the second sentence is "Its attribute is declared \`writable?: false\`." | Remove `confirm`. |
-| \`max_lines\` has no effect on \`NAME\`: it is shown as a number, which is always one line. … | `max_lines` of 2 or more on a column whose cells are always one line. The middle says why: "it is shown as a number" (or "a boolean", "a date", "a datetime", "an enum"); a related record's label; `sensitive?: true` (a mask and a button on one line); or a `component` that decides how cells look. `max_lines` is for text: a string, an array, a map, an embedded resource, a union, or read-only text. | Remove the option. See [Long text](columns-and-defaults.md#long-text). |
+| \`max_lines\` has no effect on \`NAME\`: it is shown as a number, which is always one line. … | `max_lines` of 2 or more on a column whose cells are always one line. The middle says why: "it is shown as a number" (or "a boolean", "a date", "a datetime", "an enum"); "it shows the label of a related record, which is always one line."; "it is declared \`sensitive?: true\`, and its cells show a mask and a button on one line."; or "its cells are shown by the component \`MODULE\`, which decides how they look." `max_lines` is for text: a string, an array, a map, an embedded resource, a union, or read-only text. | Remove the option. See [Long text](columns-and-defaults.md#long-text). |
 | invalid value for :max_lines option: expected one of 1..10, got: 11 | `max_lines` is not a whole number from 1 to 10. An error of the block itself: it stops the compile. | Give 1 to 10. |
 
 A column whose type has no editor, or whose attribute is not writable, gets
@@ -245,8 +246,8 @@ related record's label. Path as above; `NAME` is the relationship,
 | The destination of \`NAME\`, DESTINATION, has no table: it does not list \`AshDataTable.Resource\` in its extensions. … | The label comes from the destination's `label_field`. | Add the extension and a `label_field` to the destination, or show the foreign key attribute. |
 | The destination of \`NAME\`, DESTINATION, declares no \`label_field\`. … | The destination has a table without `label_field`. | Add `label_field` there. |
 | The destination of \`NAME\`, DESTINATION, has no primary read action, and the relationship names no \`read_action\`. … | The related record is read as Ash loads the relationship, which needs one of the two. | Mark a destination read action `primary? true`, or give the relationship a `read_action`. |
-| \`NAME\` shows the label of a related record, which a table does not sort by, … | `sortable? true` on a reference cell. | Remove the option. |
-| \`NAME\` shows the label of a related record, which a table does not filter by, … | `filterable? true` on a reference cell. | Remove the option. |
+| \`NAME\` shows the label of a related record, which a table does not sort by, … | `sortable? true` on a reference cell. `sortable?` can only switch sorting off. | Remove the option, or set it to `false`. |
+| \`NAME\` shows the label of a related record, which a table does not filter by, … | `filterable? true` on a reference cell. `filterable?` can only switch filtering off. | Remove the option, or set it to `false`. |
 | The update action \`ACTION\` does not accept \`KEY\`, the foreign key of \`NAME\`, and has no argument that a \`manage_relationship\` change hands to \`NAME\`, … | A reference cell is edited by choosing another record, which the column's own action takes through the foreign key (`source_attribute`) in its `accept` or through such an argument. It has neither. | Add the key to `accept`, or name an action that takes the record. |
 | The update action \`ACTION\` hands its argument \`ARG\` to \`NAME\` as a list of keys. … | The argument is an array; a cell holds one record and an edit gives one key. | Give the argument the key's type (`:uuid`), or name another action. |
 | The update action \`ACTION\` hands its argument \`ARG\` to \`NAME\`, and does not relate the record the argument names: its \`manage_relationship\` change has no \`on_lookup\` … | The change is `type: :remove`, or has its own options without `on_lookup` (`:append` and `:append_and_remove` have one). | Use `type: :append_and_remove`, or `:append`. |
@@ -294,9 +295,9 @@ reported: its `cell/1` is used, and it may edit another column.
 `use AshDataTable.Component` checks the module that uses it. These errors
 stop the build:
 
-| Message | Cause |
+| Message starts with | Cause |
 | --- | --- |
-| MODULE uses AshDataTable.Component and defines neither \`cell/1\` nor \`editor/1\`. … | Neither function. |
+| MODULE uses AshDataTable.Component and defines neither \`cell/1\` nor \`editor/1\`. … | Neither function. A component shows a cell's value (`cell/1`), edits it (`editor/1`), or both. |
 | MODULE: \`commit\` says when the editor saves, and is \`:enter\` (on Enter or on leaving the cell, the default) or \`:change\` (when the value changes). Got: :blur | `commit:` with another value. |
 | MODULE: \`commit: :change\` says when the editor saves, and the module defines no \`editor/1\`. | `commit: :change` on a component that only shows. |
 
@@ -400,7 +401,7 @@ the argument `record_argument` names.
 | --- | --- | --- |
 | The resource has no action named \`NAME\`. | An `action` or `create_action` names no action. | Correct the name, or define the action. |
 | The action \`NAME\` is not public. Only \`public?\` actions can be behind a table. | `public? false`. | Make it public, or leave it out. |
-| \`NAME\` is a create action. An \`action\` of a table is an update or a destroy action, … | An `action` is an update or destroy (run on a row's record) or generic (run on the table). | Name it with `create_action :NAME`. |
+| \`NAME\` is a create action. An \`action\` of a table is an update or a destroy action, … | An `action` names a create action. An `action` is an update or destroy action (runs on a row's record) or a generic action (runs on the table). | Name it with `create_action :NAME`. |
 | \`NAME\` is a read action. An \`action\` of a table is … | An `action` names a read action. | Remove it. |
 | Got duplicate AshDataTable.Resource.Action: NAME | The same `action` twice. Spark's, with the path `table -> NAME`. | Declare it once. |
 | The row action \`NAME\` cannot be run from a table: its input \`INPUT\` is required, and a table has no field for its type (TYPE). The action panel has fields for … | A required accepted attribute, or `allow_nil? false` argument, of a type without a field: a map without fields, an embedded resource or union a table cannot edit, a binary, several files, or an array of anything but text, numbers, booleans, dates, datetimes and choices. The panel has fields for those, arrays of them, values written as one line of text (a key), embedded resources, maps and unions made of them, and one file. `TYPE` is the Ash type (`Ash.Type.Map`, `{:array, Ash.Type.UUID}`). | Use an action that does not require the input, or leave the action out. |
@@ -414,7 +415,7 @@ the argument `record_argument` names.
 | The action \`NAME\` says \`record_argument :ARG\`, and that argument is of the type TYPE, which is not stored as the primary key \`KEY\` is (KEY_TYPE). … | The row's key is given as it is; the argument is stored differently (an integer for a UUID key, text, an array). Types stored alike (`:uuid`, `:uuid_v7`) are accepted. | Give the argument the key's type. |
 | The action \`NAME\` says \`record_argument :ARG\`, and the primary key of the resource is \`A\`, \`B\`: several attributes. … | One argument takes a row's key only for a one-attribute key. | Leave the action out, or declare it without `record_argument`, as a table action whose panel asks for the keys. |
 | The action \`NAME\` says \`record_argument :ARG\`, and the resource has no primary key: … | No primary key. | The same. |
-| The action \`NAME\` says \`page_argument :ARG\`, and has no argument named \`ARG\`. … | No such argument; an accepted attribute does not count. | Correct the name, or add the argument. |
+| The action \`NAME\` says \`page_argument :ARG\`, and has no argument named \`ARG\`. … | No such argument; an accepted attribute does not count. A page argument is an argument of the action that the page fills. | Correct the name, or add the argument. |
 | The action \`NAME\` says \`page_argument :ARG\`, and its argument \`ARG\` is not public. … | `public? false`. A page gives a private argument through `private_arguments`, without a declaration; `page_argument` is for a public one the panel is not to ask for. | Remove the `page_argument`; give the value in `private_arguments`. |
 | The action \`NAME\` says \`page_argument :ARG\`, and \`ARG\` is its \`record_argument\`, … | The argument that gets the row's key cannot be both. | Remove the `page_argument`. |
 | The action \`NAME\` says \`page_argument :ARG\` more than once. | Named twice. | Remove one. |
@@ -622,7 +623,7 @@ reads on the way.
 | --- | --- | --- | --- |
 | `table -> read_action` | The primary read action \`ACTION\` is not public, and the table names no \`read_action\`, so it would read through it. | No `read_action`, and the primary read action is `public? false`. Reported for a resource with no `table` block as well. | Make `ACTION` public, or name a public read action with `read_action`. |
 | `table -> relationship -> NAME` | \`NAME\` points to DESTINATION, whose read action \`ACTION\`, the relationship's own \`read_action\`, is not public. | A declared `relationship` whose own `read_action` is private; a nested table runs it. | Make `ACTION` public, give the relationship a public `read_action`, or do not offer `NAME`. |
-| `table -> relationship -> NAME` | \`NAME\` points to DESTINATION, whose read action \`ACTION\`, the one behind its table, is not public. | A declared `relationship` with no `read_action`, whose destination's table would read through a private action (that table has the first finding itself). | Make `ACTION` public, name a public `read_action` in DESTINATION's `table` block or on the relationship, or do not offer `NAME`. |
+| `table -> relationship -> NAME` | \`NAME\` points to DESTINATION, whose read action \`ACTION\`, the one behind its table, is not public. | A declared `relationship` with no `read_action`, whose destination's table would read through a private action (that table has the first finding itself). | Settle the destination's finding, make `ACTION` public, name a public `read_action` in DESTINATION's `table` block or on the relationship, or do not offer `NAME`. |
 | `table -> column -> NAME` | \`NAME\` points to DESTINATION, whose read action \`ACTION\`, its primary read action, is not public. The related record of a column is read as Ash loads the relationship. | A reference cell whose relationship names no `read_action`, to a destination with a private primary read action; the read action of the destination's table does not matter. Where the relationship names a private action, the message says "the relationship's own \`read_action\`". | Make `ACTION` public, give the relationship a public `read_action`, or remove the column. |
 | `table -> relationship -> NAME` | \`NAME\` is read through the join resource RESOURCE, whose read action \`ACTION\`, its primary read action, is not public. | A declared many-to-many. Ash reads the join resource through the join relationship's `read_action`, else its primary read action, and its policies decide which records are related. Where the join relationship names a private action, the message says "the \`read_action\` of the join relationship \`JOIN\`". | Make `ACTION` public, give the join relationship `JOIN` a public `read_action`, or do not offer `NAME`. |
 | `table -> relationship -> NAME` | \`NAME\` is read through RESOURCE, a resource on its \`through\` path, whose read action \`ACTION\`, the one Ash reads it through there, is not public. | A declared relationship `through` others; Ash reads every resource on the path through its primary read action. | Make `ACTION` public, or do not offer `NAME`. |
@@ -697,7 +698,7 @@ Not reported, on purpose:
 | An attribute whose embedded resource is cast through a private action of that resource | Nothing, for the same reason: Ash runs it while casting the value, whoever gave it. See [Maps and embedded resources](maps-and-embedded-resources.md#what-ash-does-with-the-value). |
 | A file argument without an `upload` | Its upload has LiveView's own limits. |
 | A row action with a file argument, offered for the selected rows | Every selected record gets the same file. See [Files](files.md#on-the-selected-rows). |
-| A private action no table would run (no column, relationship or option leads to it) | Nothing. |
+| A private action no table would run (no column, relationship or option leads to it) | Nothing. A resource may have as many as it likes. |
 | `exposes_protected_field? true` on a column that exposes nothing | Nothing. |
 | An action, or the create action, with an optional input of a type without a field | The input is left out of the panel. |
 | A row action that accepts attributes that may all be empty | Its button opens the action panel. |

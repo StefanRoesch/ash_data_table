@@ -322,10 +322,14 @@ as the person**, with the relationship as a load carrying the query above:
 sort, filters and page. The read action is the relationship's own
 `read_action` if it has one, else the destination table's; either must be
 `public?`. No total is asked for while a filter is set on a column the person
-sees on some records only. The other differences (the relationship's own
-`sort` first, pages only where Ash can page the relationship, records read
-bare) are in
-[Nested tables](nested-tables.md#how-a-nested-table-is-read-and-why).
+sees on some records only.
+
+The parent record is read through the read action of the table that shows
+it. With no sort chosen by the person, the relationship's own `sort` comes
+first. There are pages only where Ash can page the relationship; a single
+related record has no sort, no filters and no pages. The records are read
+bare, and everything the columns show besides attributes is loaded onto them
+afterwards. See [Nested tables](nested-tables.md).
 
 ## Loading, empty and failed reads
 

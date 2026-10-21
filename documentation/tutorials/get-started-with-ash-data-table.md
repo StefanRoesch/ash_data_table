@@ -319,10 +319,13 @@ Every option of the two extensions is in the DSL reference:
 
 ## Edge cases
 
-- **The installer without Igniter, a path dependency, no app layout:** see
-  [Installation](../topics/installation.md#edge-cases). For a path
-  dependency the installer writes the dependency's path as it finds it; the
-  demo's line is `@source "../../../lib";`.
+- **The installer without Igniter, no app layout:** see
+  [Installation](../topics/installation.md#edge-cases). **A path
+  dependency:** the Tailwind source is the checkout's `lib` directory, seen
+  from `assets/css`, not a directory under `deps`
+  ([Installation](../topics/installation.md#by-hand)); the installer writes
+  the dependency's path as it finds it, and the demo's line is
+  `@source "../../../lib";`.
 - **No primary read action:** no table until the block names one with
   `read_action`. The compiler reports it: see
   [Mistakes at compile time](../topics/mistakes-at-compile-time.md).

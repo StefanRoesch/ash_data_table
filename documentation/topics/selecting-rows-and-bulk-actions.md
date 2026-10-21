@@ -32,8 +32,8 @@ end
 ```
 
 **Try it:** `/tasks` as Ada Admin. Tick three boxes: the line above the
-grid reads "3 selected", with "Clear selection", "Archive", "Reassign",
-"Set progress", "Destroy" and "Set labels". "Archive" asks "Run “Archive”
+grid reads "3 selected", with "Clear selection", "Archive", "Reassign" and
+"More", whose menu holds "Set progress", "Destroy" and "Set labels". "Archive" asks "Run “Archive”
 on 3 records?". Confirm: the three rows read "Archived", nothing is
 selected, and above the grid: "Archive: 3 done."
 
@@ -193,8 +193,9 @@ end
 | --- | --- | --- |
 | `bulk?` | `true`, for an action that can run on several rows | Whether the action is offered for the selected rows. It can only switch off. |
 
-**Try it:** `/projects` as Ada Admin: each row has "Set status" and
-"Destroy"; with two rows selected the line has "Set status" alone.
+**Try it:** `/projects` as Ada Admin: each row has "Set status", "Set
+budget", "Destroy" and "Assign open tasks"; with two rows selected the line
+has "Set status", "Set budget" and "Assign open tasks", and no "Destroy".
 
 ### Actions that cannot run on several rows
 

@@ -287,7 +287,7 @@ See [Mistakes at compile time](mistakes-at-compile-time.md#sensitive-fields).
   sensitive argument, which holds nothing between two runs.
 - **Editing a sensitive date, choice, yes or no, or list in place.**
 - **Editing a value made of fields that has a sensitive input.**
-- **Showing every value of a column at once**, or for a set time.
+- **Showing every value of a column at once**, or showing one value for a set time.
 - **A record of who asked for which value.** A resource that needs one
   writes it in its own read action.
 - **A setting that switches the mask off for a column.** Take `sensitive?`

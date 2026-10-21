@@ -134,7 +134,7 @@ has the id `task_board`, with parameters like `task_board[sort]=title`.
 `ash_data_table "/tasks", Demo.Tracker.Task, id: "tasks"` sets another id: lower-case
 letters, digits, `_` and `-`, starting with a letter; anything else raises
 when the router is compiled. The id also prefixes every DOM id of the table,
-so changing it breaks both saved links and your tests' selectors.
+so changing it changes both saved links and your tests' selectors.
 
 ## What is ignored
 

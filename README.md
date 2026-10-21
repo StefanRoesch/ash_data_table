@@ -51,6 +51,20 @@ pick other ports: `DEMO_PORT=4500 POSTGRES_PORT=5500 docker compose
 `.env.example`). Or Docker isn't running. The first build needs internet
 (Hex and npm).
 
+### In your own app
+
+<!-- sketch -->
+```sh
+mix igniter.install ash_data_table@github:StefanRoesch/ash_data_table
+```
+
+This adds the dependency and sets up the formatter, config, JS hooks and
+Tailwind source; you then add the extension to a resource and one router
+line. Details, and the way by hand: [Installation](documentation/topics/installation.md).
+The installer is tested (`test/mix/tasks/ash_data_table.install_test.exs`)
+but not polished: check the diff it shows before accepting it. It expects a
+fresh Phoenix 1.8 app.
+
 ## Ten minutes in the demo
 
 The demo is a small issue tracker: projects, tasks, comments, labels, people.
@@ -76,8 +90,9 @@ The demo is a small issue tracker: projects, tasks, comments, labels, people.
 
    ![On /tasks/board, switching from Ada Admin to Vera Viewer: the Assignee column and the Archive buttons go](docs/images/acting-as.gif)
 
-6. Open `/tasks` in a second, private window as another person and change a
-   title: the other window follows (**live updates**).
+6. **`/named`:** two tables of the comments in one window, the default and
+   the compact one. Change a comment's text in the first: the row changes in
+   the second (**live updates**). It works across windows and persons too.
 7. Switch the language to **Deutsch**.
 8. Put the mouse away and use only **Tab**, Enter, Space and Escape.
 9. **`/specimens`:** one attribute of every Ash type, with nothing declared
@@ -88,7 +103,7 @@ The demo is a small issue tracker: projects, tasks, comments, labels, people.
     cards above follow. The page and the table talk through events and
     commands.
 
-Every page and what it shows:
+More pages and what each shows:
 [demo/README.md](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/README.md).
 
 ## What I'd like to know

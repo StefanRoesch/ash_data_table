@@ -629,12 +629,12 @@ person can **never** run (`Ash.can/3`, once per action):
 
 | Demo page | Row actions | Create |
 | --- | --- | --- |
-| `/projects` | "Set status" for admins and members, "Destroy" for admins | "New project" for admins |
+| `/projects` | "Set status" and "Set budget" for admins and members, "Destroy" and "Assign open tasks" for admins | "New project" for admins |
 | `/comments` | "Destroy" for admins and members; a member's is refused on others' comments | "New comment" for admins and members |
 | `/labels` | "Destroy" for admins | "New label" for admins |
 | `/task_labels` | "Remove" for admins and members | "New task label" for admins and members |
 
-So Max Member has one action button on `/projects` and no actions column on
+So Max Member has two action buttons on `/projects` and no actions column on
 `/labels`.
 
 ## The keyboard

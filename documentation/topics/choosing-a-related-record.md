@@ -449,8 +449,8 @@ check is pending: see
   shows "Not available" and is still edited: what decides is whether they see
   the key.
 - **A new read of the table closes its picker**, as it closes its panel: a
-  sort, filter or page change of the picker's table (from the page, where the
-  picker is in the page) and a read the server starts.
+  sort, filter or page change of the table the picker belongs to (from the
+  page, where the picker is in the page) and a read the server starts.
 - **The destination's read is refused while the page is open.** The picker
   opens and says "These records are not available.", or "You are not allowed
   to see these records." where the destination's table says
@@ -472,7 +472,8 @@ check is pending: see
 - **Expecting to type a name.** The picker has no search box of its own; the
   filter row of its table is the search: Shift+Tab from the rows, or a click.
 - **Expecting Space to choose, or a second click to deselect.** Space and a
-  click select; see [Choosing](#choosing). "None" chooses no record.
+  click select; "Choose", Enter or a double click chooses (see
+  [Choosing](#choosing)). "None" chooses no record.
 - **A panel field that is still a typed key**, or **a field called "Task ID"
   that opens a picker**: see [In the action panel](#in-the-action-panel).
 - **Expecting a picker for a relationship with a `filter`.** It does not open

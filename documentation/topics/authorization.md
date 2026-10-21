@@ -205,7 +205,7 @@ resources forbid everything, the "closed" pages answer "not found", the
 | An update action is allowed on **some records only** | Cells look editable. On a refused record, saving says "You are not allowed to change this." | `/tasks` as Max Member, on a task not his. |
 | **No row action** is ever allowed on several rows | No boxes to select rows, no button line above the grid. | `/tasks` as Vera Viewer. |
 | A row action is allowed on **some selected records only** | It runs on those and reports the others: "Archive: 2 done, 1 not done.", "You are not allowed to do this. (1)". The others stay selected. | `/tasks` as Max Member, with a task selected that is not his. |
-| A **row action** is **never** allowed | No button for it. If that is every row action, no "Actions" column. | `/tasks` as Vera Viewer; `/projects` as Max Member: "Set status", no "Destroy". |
+| A **row action** is **never** allowed | No button for it. If that is every row action, no "Actions" column. | `/tasks` as Vera Viewer; `/projects` as Max Member: "Set status" and "Set budget", no "Destroy" or "Assign open tasks". |
 | A row action is allowed on **some records only** | The button is on every row. On a refused record the row's actions cell, or the action panel, says "You are not allowed to do this." | `/tasks` as Max Member: "Archive" on a task not his. |
 | The **create action** is **never** allowed | No create button. | `/tasks` as Vera Viewer; `/projects` and `/labels` as Max Member. |
 | A **table action** is **never** allowed | No button for it, on the line of the table's name or of a nested table. | `/labels` as Max Member: "Count unused", no "Recolour" or "Remove unused". |
@@ -282,9 +282,12 @@ question:
 - A reference cell is edited by choosing from the destination's own table,
   read as the person
   ([Choosing a related record](choosing-a-related-record.md#who-may-choose-what)).
-  An argument an action hands to a relationship is chosen the same way, for
-  every key not related already; a related record the person may not read
-  is neither shown nor taken away. Whether the relationship may change is
+  The chosen record is read again by its key, as the person, before
+  anything is saved, so a key reaches no record the picker would not show
+  them. An argument an action hands to a relationship is given the same
+  way: every key not related already is read as the person before the
+  action runs, and a related record the person may not read is neither
+  shown nor taken away. Whether the relationship may change is
   for the action and the policies of what it relates through
   ([Relationships an action manages](managing-relationships.md#who-may-choose-what)).
 

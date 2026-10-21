@@ -286,8 +286,9 @@ does not offer it:
 
 So an array column has an empty filter-row cell, and `filterable? true` on it
 is reported as on any column without a filter. A resource that should be
-searchable by its tags can offer a read action with an argument and its own
-filter; a table does not show such arguments yet.
+searchable by its tags can offer a read action with an array argument and
+its own filter; the table gives that argument an input per value on its
+[argument line](arguments.md), as `/deadlines` does with "Tags".
 
 ## Values that are not valid
 
@@ -349,6 +350,7 @@ Text is always valid. A choice is valid when it is one of the column's values.
 
 No search across columns, no filter builder with OR, no array filter, no "is
 any of" for typed text or numbers, no filter by a related record ("Assignee
-is Ada or Max"), and no filters from a read action's arguments. Search,
+is Ada or Max"), and no filter-row filters from a read action's arguments
+(those are on the [argument line](arguments.md)). Search,
 facets and a filter builder are expected from a separate extension. See the
 [specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

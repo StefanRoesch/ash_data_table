@@ -92,7 +92,8 @@ the resource, or of a public belongs-to relationship, which makes a
 task's `id`, `project_id` and other public attributes are not shown because
 the block does not name them.
 
-A resource has one table; the block is the same wherever it is shown.
+A table's block is the same wherever that table is shown. A resource can
+have more tables beside its default one: see [Named tables](named-tables.md).
 
 ## `label`
 
@@ -643,13 +644,12 @@ narrow window, nothing does.
 
 ## Not in the first version
 
-No reference cell for a has-one, no label that is a calculation, no choosing
-another related record in a reference cell, no dedicated cells for maps and
-embedded resources, no locale-aware formatting, no column widths in the
-`table` block, no remembering of the widths a person set or of the columns
-they hid, no option to forbid hiding a column or to start with one hidden,
-no header row that stays at the top of the window while the page scrolls
-down, no choosing which columns stay in view, and one table per resource. A
+No reference cell for a has-one, no label that is a calculation, no
+locale-aware formatting, no column widths in the `table` block, no
+remembering of the widths a person set or of the columns they hid, no option
+to forbid hiding a column or to start with one hidden, no header row that
+stays at the top of the window while the page scrolls down, and no choosing
+which columns stay in view. A
 column's own look and editor are built: see
 [Custom components](custom-components.md). Later slices are listed in the
 [specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

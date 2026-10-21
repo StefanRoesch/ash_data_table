@@ -349,8 +349,9 @@ draws is the author's:
   is hidden from screen readers (`aria-hidden="true"`), like the shipped
   bar and the unit of the demo's hours.
 
-The demo's browser tests hold the three shipped components to this, in the
-light and the dark theme and in forced colours
+The demo's browser tests hold three of the shipped components (the badge,
+the bar and the slider; the demo uses no image column) to this, in the light
+and the dark theme and in forced colours
 ([`demo/e2e/contrast.spec.ts`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/e2e/contrast.spec.ts)
 and
 [`demo/e2e/components.spec.ts`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/e2e/components.spec.ts)).

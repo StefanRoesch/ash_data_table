@@ -476,7 +476,7 @@ The default kit keeps the nesting readable:
   an expander wide. Each deeper level adds its own line and inset, in the
   same colour.
 - **A title per relationship**: its arrow opens and closes that nested
-  table; once read, it says how many records there are (where known: the
+  table; while open and once read, it says how many records there are (where known: the
   read action counts, or there is one page). While open, the title is the
   nested table's heading line, as above a table on the page: after name
   and count, its "Columns" and argument-line inputs, and at the far end its
@@ -733,7 +733,8 @@ in a nested table for each of its rows.
 
 ## Not in the first version
 
-No counts on the relationship lines, no creating under a many-to-many, a
+No count on a closed relationship line (the count shows only while the line
+is open, once its nested table has read), no creating under a many-to-many, a
 has-one or a belongs-to (an existing record is linked by a row action: see
 [Relationships an action manages](managing-relationships.md)), no sorting
 or filtering by a reference cell, no label that is a calculation, no link

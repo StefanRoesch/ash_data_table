@@ -277,15 +277,16 @@ through an action that **requires** an argument, the day they are due by.
   all the same.
 - A row expands into its comments.
 
-Try, once "Due by" has a day:
+Try:
 
 - Give a day; tick "Include done?"; "Add value" beside "Tags", type `api`,
   Enter. Empty "Due by" again.
 - Change a row's "Due on" to a day after it. The row stays; press Enter on it
   again and change something else: "This record is no longer available.", as
   the action no longer returns it.
-- Enter on an "Assignee" cell opens the picker on that person. Choose
-  another: the cell shows the new name. "None" takes the assignee away. The
+- With a day given, Enter on an "Assignee" cell opens the picker on that
+  person. Choose another: the cell shows the new name. "None" takes the
+  assignee away. No update action of `Deadline` accepts `assignee_id`. The
   action takes `argument :assignee, :uuid` and
   `manage_relationship(:assignee, type: :append_and_remove)`.
 - As **Max Member**, on a task neither assigned to him nor reported by him:
@@ -474,7 +475,7 @@ new due date, without the page being read again.
 | `due_on`, `completed_at` | a date, a datetime | `update` |
 | `tags` | an array of text, in the side panel: Enter, a double click or a typed key opens it with one field per tag, each with a button that takes it away, and "Add value" under them. "Save" saves the list; Escape and "Cancel" give it up, and focus is back on the cell | `update`, with the whole list. At most five tags, of two to twenty characters each |
 | `checks` | an array of enum values, as multiple choice, in the side panel: a box per value, Space ticks, Tab goes from box to box, "Save" saves | `update`, with the ticked values |
-| `project` | a related record, chosen in the picker | `update`, with `project_id` alone, after its `confirm`: "Move this task to another project?". A task must have a project: the picker has no "None" |
+| `project` | a related record, chosen in the picker: Enter opens the projects' own table in a dialog at the right edge; a row is selected and "Choose" takes it | `update`, with `project_id` alone, after its `confirm`: "Move this task to another project?". A task must have a project: the picker has no "None" |
 | `assignee` | a related record, chosen in the picker from the people's table | `update`, with `assignee_id` alone. "None" takes the assignee off |
 | `reporter` ("Reported by") | read-only | no update action accepts `reporter_id` |
 | `external_ref` | read-only | `update` accepts it; the column says `update_action false` |
@@ -648,7 +649,7 @@ What each actor has:
 | Actor | Row actions | Create |
 | --- | --- | --- |
 | admin | every button on every table, and each runs | every "New …" button |
-| member | on `/tasks` and `/comments` the buttons are on every row, and a record not theirs refuses when the action runs; "Set status" and no "Destroy" on `/projects`; "Remove" on `/task_labels`; no actions column on `/labels` | "New task", "New comment" and "New task label"; no "New project" and no "New label" |
+| member | on `/tasks` and `/comments` the buttons are on every row, and a record not theirs refuses when the action runs; "Set status" and "Set budget", and no "Destroy" and no "Assign open tasks", on `/projects`; "Remove" on `/task_labels`; no actions column on `/labels` | "New task", "New comment" and "New task label"; no "New project" and no "New label" |
 | viewer | no actions column on any table | no create button |
 | outsider | as the member, on Globex's records | as the member; the records are Globex's |
 | nobody | none | none |
@@ -726,7 +727,7 @@ action that runs on several rows: the table's row actions, unless one says
 | Table | For the selected rows | Kept to one row |
 | --- | --- | --- |
 | `/tasks` | "Archive", "Reassign", "Set progress", "Destroy", "Set labels" | |
-| `/projects` | "Set status" | "Destroy" (`bulk? false`) |
+| `/projects` | "Set status", "Set budget", "Assign open tasks" | "Destroy" (`bulk? false`) |
 | `/comments` | "Destroy" | |
 | `/labels` | "Destroy" | "Copy" (`bulk? false`: a name can be given to one label only) |
 | `/task_labels` | "Remove", which asks here though not in a row | |
@@ -802,7 +803,8 @@ filters, pages and editing. Nothing of it is in the URL.
 | `/task_labels` | Task, Label, from a row with a key of two attributes | nothing; `max_depth 1`: the nested task has no expanders |
 
 `User` has a table and no page: it is seen nested (assignee or reporter of a
-task, author of a comment) and in the picker. Its block says `max_depth 0`,
+task, author of a comment) and in the picker, where a task's assignee is
+chosen from it. Its block says `max_depth 0`,
 so a person's row never expands, though their assigned and reported tasks
 would be offered. Its last column, "Assigned hours", adds up the estimates of
 a person's tasks, which a field policy protects; the aggregate has a field
@@ -876,7 +878,7 @@ The tasks and the comments have `live? true` in their `table` blocks and
 in two windows, one private, as Ada Admin and as Max Member. Change a title
 as Ada: Max sees it without a reload. Create a task as Ada: Max's table says
 "There are new or changed records." and offers "Read again". `/named` shows
-the same between two tables in one window. Projects and labels announce
+the same between two tables of the comments in one window. Projects and labels announce
 nothing; their tables stay as read.
 
 ### Sensitive values
@@ -1139,15 +1141,16 @@ through them as each actor. Resources made for tests only are in
 
 ## Browser tests
 
-`demo/e2e` holds the tests that need a real browser: the keyboard, focus
-after a patch, the editors and the dialog, what each actor's page contains,
-and axe-core on every table in every state. Playwright and
-`@axe-core/playwright`, in headless Chromium.
+`demo/e2e` holds the tests that need a real browser: the keyboard and the Tab
+order, focus after a patch, the editors, the panel and the picker, what each
+actor's page contains, the React kit, contrast in both themes and forced
+colours, and axe-core on every table in every state. Playwright and
+`@axe-core/playwright`, in headless Chromium. Each spec file in `demo/e2e/`
+says at its top what it tests; the helpers are in `e2e/support`.
 
 Node is a tool for developing `ash_data_table` here: the library puts no npm
-package into a host app. The demo's own npm packages are those of its React
-islands; the browser tests' global setup installs them with the rest of the
-assets (`mix assets.setup`, `npm install`), so a run builds the islands too.
+package into a host app. The browser tests' global setup also installs the
+demo's own npm packages, those of its React islands (`mix assets.setup`).
 
 ```sh
 docker compose up -d postgres   # in the repository root, if it is not running
@@ -1158,156 +1161,24 @@ npm run browsers                # once: Playwright's Chromium
 npm test
 ```
 
-`npm test` does everything else by itself, in a Mix environment of its own,
-`e2e` (`config/e2e.exs`): compiled once into `_build/e2e`, without code
-reloading or watchers. A dev server on 4478 and `demo_dev` are not touched.
-The first run compiles the demo for that environment, which takes a few
-minutes.
-
-Every test runs in a database transaction of its own, rolled back when it
-ends, so every test starts from the seed and none changes what another reads.
-So all files run side by side, in any order, spread over the workers. Each
-Playwright worker has a server and a database to itself
-(`e2e/support/server.ts` says why not one server for all):
-
-- Before the first worker, the demo is compiled, its assets built, and one
-  database, **`demo_e2e_template`**, created, migrated and filled with the
-  standard seed.
-- A worker starts its own server from that build (`e2e/server/worker.exs`;
-  nothing is compiled then): worker 0 on port **4480** with database
-  **`demo_e2e_0`**, worker 1 on 4481 with `demo_e2e_1`, and so on. The
-  database is made anew as a copy of the template (`CREATE DATABASE …
-  TEMPLATE …`), so every worker has the same records with the same ids.
-- A worker stops its server when done. A server also ends by itself when its
-  worker is gone, however that went, and one found on a worker's port from
-  an earlier run is stopped first. The servers' warnings and errors go to
-  `e2e/.servers/<port>.log`: cleared when a run starts and appended to within
-  it, so a server that replaces a worker's keeps what the one before said.
-
-`E2E_WORKERS` sets the number of workers; the default is half the machine's
-threads. A worker takes about 0.7 GB (a BEAM of 0.2 GB and a Chromium of
-0.45 GB) and one database connection per test. `E2E_WORKERS=1 npm test` runs
-the tests one after the other. `E2E_FIRST_PORT` moves the ports, and
-`E2E_NAME` puts a name into the databases' (`demo_e2e_NAME_0`), for a second
-working copy that runs its tests at the same time.
-
-A failed test leaves a screenshot of the page. No trace is recorded:
-recording costs about a third of a run. To see a failed test's steps, run it
-again with a trace, `npm test -- editing.spec.ts:765 --trace on`, and open it
-with `npx playwright show-trace …`.
-
-While writing tests, `./server.sh` in a second terminal keeps one server
-running, on port **4479** with database **`demo_e2e`**, and
-`npm run test:server` runs against it, one test at a time, each in its own
-transaction as well, with nothing started or stopped
-(`npm run test:server -- editing`; it sets
-`E2E_BASE_URL=http://127.0.0.1:4479`). `npx playwright test editing` and
-`npm run test:ui` start their own servers as `npm test` does;
-`npm run report` shows the HTML report of the last run.
-
-| File | What it covers |
-| --- | --- |
-| `tab_order.spec.ts` | the Tab order of `/tasks`: heading line, selection line, "Skip table", the page's box and the sort buttons, the filters, each row left to right (box, expander, editable cells, "Show all", actions) past every read-only cell, footer, pagination, and back with Shift+Tab; nested tables two levels deep and several open at once; the viewer's rows; "Skip table" of a table, a nested table and the picker's table; the header before a row created at the top; focus after a sort, after the rows were replaced and after a page change; that a walk sends nothing; axe with nested tables open, in both themes |
-| `sorting.spec.ts` | the cycle by a header's sort button, by click and Enter, focus staying on it, `aria-sort`, what cannot be sorted, the sort in the URL |
-| `pagination.spec.ts` | offset, keyset and no pages; the page in the URL, reload, a shared link, the back button; focus staying on the control used, and where it goes when that control is disabled or gone |
-| `filtering.spec.ts` | every kind of filter and operator; Tab through a filter's controls; Enter, leaving and choosing; Escape, focus staying in the input; clearing, and focus then; what is read out; a value that is none; filters in the URL |
-| `filter_values.spec.ts` | filters with more than one value: "is any of" and "is none of" by mouse and keyboard (the button opening the side panel with a box per value, "Apply" as the only thing that filters, Escape), "between" for a date and a number with one and both ends, the URL after each, a reload, "Clear filters", a narrow column, axe in both themes with the panel open |
-| `editing.spec.ts` | starting, giving up and saving an edit in every editor; the question before saving; a failed save; a save that returns while another cell is typed in; a record that is gone |
-| `authorization.spec.ts` | `/tasks` as each of the five actors; the member's hidden cells and refused save; the viewer; switching; refused reads |
-| `tables.spec.ts` | that each mounted table opens and works, with what makes it different |
-| `task_labels.spec.ts` | the table with a primary key of two attributes: order, sorting, paging, the filter and editing of its note, on the row meant |
-| `dashboard.spec.ts` | two tables in one LiveView: each with its own sort, filters and page, none in the URL; Tab from one into the other, each with its own "Skip table"; editing; a table whose read is refused |
-| `planner.spec.ts` | the sprint planner: reached from the header, its cards as regions under headings; ticked rows in the card, a saved estimate that changes it, the feed as a polite live region, "Clear selection"; the member's unknown estimate; axe |
-| `locale.spec.ts` | the language switcher: the tables in German (labels, operators, singular and plural counts, the messages of failed saves and reads), and back in English |
-| `nesting.spec.ts` | the expander and the lines by pointer and keyboard, focus staying on their buttons; Tab along a row, into a nested table after its line's button and out to the row's next line, at every depth; a nested table's "Skip table"; that a walk sends nothing and opening sends one event; focus after a nested table's own sort, filter and page, after a line or row is closed, and after a save in the row around it; editing and filtering in a nested table; three levels and the limit; fifty tables open on one page |
-| `full_view.spec.ts` | the link to the full view, by pointer and keyboard, and where it is absent; the page it leads to: its heading, the limit in the address through sort, filter, page and a reload, the way back to all records, editing and expanding under the limit; the back button; the page as member, viewer and outsider; axe |
-| `picker.spec.ts` | which reference cells open the picker, by Enter and a double click; the dialog, its heading and table, focus on the row of the record chosen now; the radio group of its rows (one stop, the browser's keys), selecting sending nothing but what is selected; "Choose" unusable while nothing is selected; Tab within the dialog; its own filters and sort; Space and "Choose", Enter on a row, a double click, a click on a row, "None", Escape and Cancel, and focus afterwards; a column's question on top of it; a choice the action refuses, on the cell; a row naming no record the person may read; in a nested table; from the action panel, on top of it, for a row action, a create and an action on the selected rows; a narrow window; German; axe in both themes |
-| `relationships.spec.ts` | relationships an action manages: "Set labels" of `/tasks`, its panel listing the task's labels in a named group, each with a button that takes it out, and focus then; the picker for several on top of the panel, a box per row, the task's labels selected and counted, a click and Space on a row, Enter and a double click that choose nothing, "Choose" taking what is selected, a filter that keeps the selection, Escape; "Run", and the same on the selected rows; the member's refusal in the panel; a row naming no label the person may read; "Assignee" of `/deadlines`, edited through an argument, with "None"; German; axe in both themes |
-| `references.spec.ts` | reference cells: what they show against the related record, Tab stops where edited, nothing to sort or filter, nothing to edit where no action accepts their key, kept by a row through a save, in a nested table, and as the viewer, who has none for people |
-| `selection.spec.ts` | the boxes by pointer and keyboard (Space on each), ranges with Shift and a click, the page's box and its mixed state; every change of the selection sent to the server, which draws the line above the grid, and a Tab walk sending nothing; the selection through a sort, a page and a filter change; "all that match"; the line above the grid and what is read out; an action running on what the server holds as selected; the question, the panel of an action with inputs, and the result, as admin and as member, whose refused rows stay selected; focus afterwards; a nested table's own selection; the height of a row with a box; axe with rows selected, the question open and a result, in both themes |
-| `actions.spec.ts` | row actions and row create: the actions cell's buttons by pointer and Tab; the question before a destroy; focus after an update, a destroy and a create; a failed actions cell; the action panel as a modal dialog, every kind of field, errors at fields and above them, the question on top of it; the create button and the new row; create on a relationship line, in the full view and in the dashboard; the look at 1500, 900 and 390 px |
-| `table_actions.spec.ts` | table actions on `/labels`: their buttons on the line of the table's name, as Tab stops before the grid, and what each actor has; an action that runs at once, by pointer and keyboard, what the table says and reads out, focus staying on its button; one that asks first, with Cancel and Confirm; one with arguments, its panel opened from the keyboard, the action's message at a field, focus back on the button; a generic action in a row, whose panel asks for what the row does not give; the buttons on a nested table's line, by keyboard, the nested table's own dialog and panel; axe in both themes |
-| `action_references.spec.ts` | arguments whose records are chosen in the picker because the block names their resource (`reference`): "Merge" on `/labels`, with one key and a list of keys, by pointer and keyboard, what "Run" does with them, and a key put into the field by hand; "Assign open tasks" in the rows of `/projects`, also on the selected rows; German; axe in both themes |
-| `counter.spec.ts` | the counter of a text with a `max_length`: in a cell's editor (following what is typed and sending nothing, the editor's description and no live region, under the text, the row growing while the editor is open and the column as wide as before), counting as Ash counts (codepoints, trimmed, line breaks, with what Ash then takes and refuses), past the most; at the values of an array of text in the side panel, on an action panel field, where the server's answer does not set it back, and on the argument line, also after Back; axe in both themes |
-| `sensitive.spec.ts` | "Budget" of `/projects`: the mask, showing and hiding a value, what is not in the page and not sent, the hidden editor; "Clear" in the editor (Tab to it and back, Enter, Space and a click, a column's question first) and in the panel of "Set budget" ("Will be cleared.", "Keep", "Run"); who has the column; German; axe in both themes |
-| `arrays.spec.ts` | the array columns of `/tasks`: plain-text cells, no sort or filter; the side panel each opens with its one field, by Enter, a double click and a typed key, focus back on the cell when it closes; the list of an array of text (a named control per value, adding and taking away by keyboard and pointer, focus then, Tab through its controls) and the multiple choice of an array of enum values (Space, Tab, a letter on the cell that ticks nothing); "Save" saving once and Escape giving everything up; a refused save, at the field; a value that is none of the choices; the member's refusal; both as fields of "New task"; both in a nested table; the list of an array of numbers on `/specimens`; axe with each panel open and in the dark theme |
-| `maps.spec.ts` | values made of fields: one-line plain-text cells, no sort or filter; a project's client in the side panel, opened by Enter and a double click, focus in its first field and back on the cell when it closes; its groups, the address as a group in the group, a group marked by nothing but its label; saving from the keyboard; what the embedded resources refuse, at their fields, other entries kept; taking a value away and adding it again, and focus then; a project without a client; "Save" without a change; the milestones' list of groups (adding, typing, taking away by keyboard, the last and only value, a refused value); the map "Repeats", its column's question on "Save" and only for a change; both in "New project" and "New task"; the member's refusal in the panel; axe with the panel open, with errors and with an array's list, in both themes |
-| `unions.spec.ts` | the union of `/specimens`: its cell the plain text of its value, no sort or filter; the side panel by Enter and a double click, focus on the kind; another kind putting its fields in place of the others; saving by keyboard alone, a kind made of fields, and no kind; what a refused save says at the value and at a kind's field, with axe in both themes; German |
-| `files.spec.ts` | "Import" on `/labels`: its panel's file input, labelled, required and limited, as the keyboard's first stop, with axe in both themes; a file sent and read on "Run", and the progress bar; what the action says of a file at the field, the input empty again; a file the upload refuses, too large or of another kind, said as it is chosen and read out; German |
-| `components.spec.ts` | the components of `/tasks`: the slider by keyboard (its own keys; a step saved by Enter or leaving) and pointer (nothing sent while dragged, one save on letting go, the number following, the slider staying open); Escape after a save; a failed save through it; a column's question before a save; the demo's own component, saving on Enter or leaving; the slider as an action panel field; row height with and without components; components in a nested table |
-| `arguments.spec.ts` | the argument line: its inputs as labelled Tab stops before the grid; typing sends nothing, Enter and leaving apply; the argument in the URL, reload, Back and Forward; a column's asked argument, its column sorted and filtered with it; a value Ash refuses, at its input, rows left as they are; `/deadlines` asking for its day in place of rows; a box and a list from the keyboard; the grid not moving; a nested table's line and a picker's; axe in both themes |
-| `hiding.spec.ts` | hiding columns: the "Columns" button and its list (the browser's popover, under its button, inside a narrow window, following its button as the page scrolls), a box hiding and showing its column; no box for the label column and the columns of the boxes, expanders and actions; a table without a label column keeping one column; Escape, a click elsewhere, focus moving on; the keyboard through the list; Tab passing over a hidden column; hidden columns outliving a sort, filter, page, save, expanded row and a patch with no row, shown again after a reload; a hidden column filtered or sorted by, said on the button and at its box, and "Clear filters"; widths kept while hidden; an editor, a shown sensitive value and a failed cell's message in a hidden column; a nested table, a picker's table and the two tables of `/dashboard`, each on its own; nothing sent; German; axe in both themes |
-| `resizing.spec.ts` | column widths: dragging a handle narrower and wider, no other column moving and the handle staying under the pointer; a drag and a click on it not sorting; a double click back to the width before; narrowest and widest; a narrow column cut off on one line, rows as high as before; the handle pointer-only and no stop; each column's width field in "Columns" (typing, its own Up and Down, narrowest and widest on leaving) and "Reset widths"; right-to-left; widths outliving a sort, filter, page, save and expanded row, gone after a reload and after leaving the page; a nested table, a picker's table and the two tables of `/dashboard`, each on its own; nothing sent; German; axe in both themes |
-| `scrolling.spec.ts` | every table scrolls sideways in its own area: a nested table as wide as what is seen of the table around it, at depth 1 and 2 and in another window size; Shift and the wheel; the scrollbar at the window's bottom edge; the label column staying with `sticky_label?`, nothing staying without it; focus the keyboard moves seen whole; what floats over a scrolled table; axe in both themes |
-| `named_tables.spec.ts` | the compact comments and the task board as pages, each under its own id with its state in the URL; editing a board cell and choosing its assignee in the picker, which shows the people's default table; the compact comments nested under a board task, their link to the full view on the same table's page, the board named as parent, the limit through a sort and a reload, and the way back; the short labels, mounted nowhere, without a link; `/tasks` still nesting the default tables; two comment tables on one page, each with its own ids, stops, sort and page in the one URL; axe in both themes |
-| `long_text.spec.ts` | `max_lines 3` showing three lines of a comment with its line breaks and cutting the rest, a row as high as its cell, a narrower column giving more lines; "Show all" in every cell that cuts its text off, read-only too, a Tab stop named after its column, the button or Shift+Enter showing the whole text in the row and cutting it off again, Escape; not for a cell that shows everything; a narrow column, a one-line cell; a save on its way with `max_lines` (`/e2e/held`); in a nested table; a live update of the row; not while a cell is edited; none for a sensitive cell, masked or shown, or a field the person may not see; axe in both themes and forced colours |
-| `a11y-tables.spec.ts`, `a11y-editing.spec.ts`, `a11y-nesting.spec.ts`, `a11y-actions.spec.ts` | axe-core, every rule, on every table in every state, split into four files that run side by side: the tables, the dashboard with its two tables, German, each actor and the states of reading; the states of editing, the components of `/tasks` (at rest, a slider open, a failed one, in the panels) and what a person may not see; nested tables open at every depth; row actions and the action panel |
-| `zones.spec.ts` | a browser in Europe/Berlin: a time typed into a cell shown back as typed and stored as the instant it is (seen from a browser in UTC), a "between" filter on a datetime meaning the times there and a URL keeping them as typed; axe in both themes |
-| `contrast.spec.ts` | what axe does not judge, measured from the browser's computed colours, in both themes: the focus ring of every kind of cell; the ring and "!" of a failed cell, moving nothing, and both rings on a failed cell with focus; the text of a saving cell and of a reading table; the muted text of header and filters; input edges, and invalid ones; a badge's label and edge, a progress bar's filled part against its track, and a slider's track, filled part and thumb, read from the painted pixels. In forced colours: the focus ring, the failed cell, the expander's triangle, the current page, the dialog's and panel's edges, and a badge, a bar and a slider still drawn |
-| `footer.spec.ts` | the footer summaries of `/tasks`: each number under its column, over what the filters match; no Tab stop in it; hidden with its column; after a save; a nested table's own; the member's dash; axe in both themes |
-| `live_updates.spec.ts` | a row the admin changes on the member's page without a reload, a cell the member is editing keeping what was typed, a nested table that keeps following, a deleted row, a new task announced with "Read again"; an action panel open while its row changes; the two tables of `/named`; axe in both themes |
-| `page_size.spec.ts` | "Rows per page": the menu by mouse and keyboard, the first page, the range and the URL, by offset on `/tasks` and keyset on `/comments`; a nested table and the dashboard, nothing in the URL; axe in both themes |
-| `validation.spec.ts` | what an input says of its limits before saving: `min`, `max` and `step` of a number in a cell, a panel field and the argument line; a value past them sent and refused by Ash; text with no browser limit |
-| `attached.spec.ts` | tables attached to a LiveView (`AshDataTable.attach/4`, `/e2e/attached`): the page's own stream and button beside them; state in the URL or kept by the table; a save, nested tables two levels deep, the picker, a file; attached again as another person; detached with a nested table open |
-| `portals.spec.ts` | nested tables drawn through `<.portal>` into a stream's rows: three levels down and back up, one hook per grid, a row put again under an open nested table, and every way a nested or picker's table leaves the page (a live delete, a page change, a sort, a filter, another person, Cancel, a choice) |
-| `open.spec.ts` | "Open" offered by the page (`/e2e/opened`): the keyboard reaches it first in the actions cell, and Enter tells the page the row |
-| `controlled.spec.ts` | controlled mode: the page draws a row action's panel and runs it through the table (`/e2e/controlled`); a column's and a nested table's questions and the picker drawn by the page (`/e2e/controlled/kit`) |
-| `kit.spec.ts` | a kit of one's own (`/e2e/kit`, the demo's kit of `div`s): the action panel, the picker and the question in the page or over it, and mixed; focus, Escape, Cancel and Tab; one question at a time; the grid of `div`s; axe |
-| `kit_check.spec.ts` | the kit check in the browser (`/e2e/kit/states`, the table `AshDataTable.KitCase` draws, with the kit the request asks for): each of `KitCase`'s twenty states in each of its four presentations, reached by the table's controls, and what the browser drew checked by `KitCase.problems/4` (`/e2e/kit/check`); LiveView's client debug on, and no development check of the hooks' or the React kit's on the console |
-| `markers.spec.ts` | the grid's hook finding the table's elements by their markers alone (`/e2e/markers`, a grid with no `table`, `tr` or `td`): the Tab order past read-only cells and over a nested table, editing, selecting with the boxes, widths by handle and width field, "Show all" and its name, a nested table, a hidden column; a missing question running nothing; the development check naming on the console what a part lacks while the client debug is on |
-| `sandbox.spec.ts` | that every test runs in its own transaction: two tests changing one title side by side, each seeing its own, and nothing left of a write once its transaction ends |
-
-How they are built (`e2e/support`):
-
-- **Actors.** The setup project (`actors.setup.ts`) becomes each of the five
-  actors once, through the actor switcher, and keeps the session cookie.
-  Every worker's server takes it: they share one secret, and the seed gives
-  the people the same ids in every database. A file or test says who it is
-  with `test.use({ actor: "member" })`; the admin is the default.
-- **Data.** The tests run on the standard seed, whose records, ids and
-  values are the same in every VM, so tests name them (`support/data.ts`).
-  What a test changes, it changes in its own transaction: the fixture
-  `sandbox` (`support/server.ts`) starts one with `POST /sandbox` (the plug
-  `Phoenix.Ecto.SQL.Sandbox` in the endpoint, `config :demo, sql_sandbox:
-  true`), the test's browser sends its metadata as its user agent, so every
-  request and LiveView of that browser works in it (`e2e/server/sandbox.ex`),
-  and `DELETE /sandbox` rolls it back when the test ends. Nothing is seeded
-  again.
-- **Pages and routes of the tests.** `e2e/server` holds what exists in the
-  `e2e` environment only, mounted by `config :demo, e2e_routes: true`: what a
-  test's page sent its LiveViews (`/e2e/recorder`, `/e2e/recorded`), a route
-  that deletes a task behind an open table's back, two that make the
-  comments' reads fail and work again, one that lets the held saves of
-  `/e2e/held` go, and pages: a table given another actor while open
-  (`/e2e/switch`), nested tables that take files (`/e2e/imports`), tables
-  attached to a LiveView (`/e2e/attached`), "Open" (`/e2e/opened`),
-  controlled mode (`/e2e/controlled`, `/e2e/controlled/kit`), a grid of
-  `div`s carrying the markers (`/e2e/markers`), the demo's kit of `div`s
-  (`/e2e/kit`), the kit check's states and check (`/e2e/kit/states`,
-  `/e2e/kit/check`, and the parts' table `/e2e/kit/parts`), and `/tasks` with
-  its action panel, picker and question in the page (`/e2e/inline/tasks`,
-  `presentation: [panel: :inline, picker: :inline, confirm: :inline]`).
-- **Language.** A test chooses German through the language switcher
-  (`support/locale.ts`); the choice is in the session cookie, which every
-  test has to itself.
-- **The table.** `support/table.ts` is the one place that knows the ids of
-  the library's markup and how to wait for a read or a save (`aria-busy`).
-  Tests find controls by role and name, as a person would, and cells by id.
-- **Contrast.** `support/contrast.ts` gives the colour a text, outline or
-  border has on screen (painted over everything behind it), the colours at
-  points of a picture of an element, for what no computed style tells (the
-  filled part of a bar or slider), and the WCAG contrast ratio of two
-  colours.
-- **axe.** `support/a11y.ts` runs every rule axe has by default on the whole
-  document. axe runs in the page and hands back the violations alone, in
-  full; listing the ten thousand nodes that passed and carrying them out of
-  the page took five seconds a check and more on `/tasks`.
-- **Console.** Every test fails if the browser reported an error it did not
-  expect.
-
-A test marked `test.fail()` describes a known defect not yet fixed: it passes
-while the defect is there and fails when it is gone, which is when to remove
-the mark. No test is marked at present.
+- `npm test` does the rest by itself in a Mix environment of its own, `e2e`
+  (`config/e2e.exs`, compiled into `_build/e2e`; the first run takes a few
+  minutes). A dev server on 4478 and `demo_dev` are not touched.
+- Every test runs in a database transaction of its own, rolled back when it
+  ends, so the files run side by side in any order. Each Playwright worker has
+  its own server and database, copied from `demo_e2e_template`: worker 0 on
+  port **4480** with `demo_e2e_0`, worker 1 on 4481, and so on. The servers'
+  warnings and errors go to `e2e/.servers/<port>.log`.
+- `E2E_WORKERS` sets the number of workers (default: half the machine's
+  threads; about 0.7 GB each). `E2E_FIRST_PORT` moves the ports, and
+  `E2E_NAME` puts a name into the databases', for a second working copy.
+- A failed test leaves a screenshot. For its steps, run it again with
+  `npm test -- editing.spec.ts:765 --trace on` and open the trace with
+  `npx playwright show-trace …`.
+- While writing tests, `./server.sh` keeps one server on port **4479** with
+  `demo_e2e`, and `npm run test:server -- editing` runs against it.
+  `npm run test:ui` starts its own servers; `npm run report` shows the last
+  run's report.
 
 ## Performance
 

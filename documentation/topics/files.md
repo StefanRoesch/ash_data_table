@@ -199,8 +199,10 @@ other, unless it says `bulk? false`. Its panel asks for the file once, and
 opens it again and reads it from the start.
 
 The run on the selected rows goes on beside the page, longer than LiveView
-keeps an uploaded file. So the table copies the file for the run and takes
-the copy away when the run is done, or when the page is closed.
+keeps an uploaded file. So the table copies the file for the run and hands
+the copy to the run, which takes it away when it ends, whether the page is
+still open or not. Closing the page does not stop a run that has started. If
+the page closes before the run has taken the copy, the run does not start.
 
 ## Mistakes the compiler reports
 

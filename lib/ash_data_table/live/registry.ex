@@ -179,8 +179,9 @@ defmodule AshDataTable.Live.Registry do
 
   @doc """
   Closes the table `id`, which is not the one on the page: its listener
-  stopped, its tasks cancelled, the copies of a run's files removed, its
-  uploads cancelled and given up (an upload whose file is on its way when
+  stopped, its tasks left to finish their query with their answer dropped
+  (`finishing/1`, `current?/2`), a run on the selection keeping its own
+  copies of its files, its uploads cancelled and given up (an upload whose file is on its way when
   the table closes stays allowed: LiveView drops its entry once the upload
   has stopped, and a table of the same id takes the name again), its
   stream emptied and its name back in the pool, its request ended (the

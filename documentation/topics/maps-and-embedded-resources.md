@@ -509,7 +509,7 @@ translated once, for a column and a client's field alike.
   resource read-only. A single union is a field like any other: see
   [Unions](unions.md).
 - **Calculations of an embedded resource.**
-- **A filter or a sort by a field of the value.**
+- **A filter by a field of the value**, and a sort.
 - **Editing a value that has a `sensitive?` input**, and a "Show" button for
   a sensitive field inside a value. The field is masked on the line.
 - **Reordering the values of an array.** A value is added at the end.
