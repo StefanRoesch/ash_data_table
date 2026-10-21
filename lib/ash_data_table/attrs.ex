@@ -29,12 +29,20 @@ defmodule AshDataTable.Attrs do
     },
     %{
       name: "clear_filter",
-      by: :kit,
+      by: :bundle,
+      bundle: "clear_filter/3",
       payload: "`{column}`",
       reply: "none",
       example: %{"column" => "title"}
     },
-    %{name: "clear_filters", by: :kit, payload: "`{}`", reply: "none", example: %{}},
+    %{
+      name: "clear_filters",
+      by: :bundle,
+      bundle: "clear_filters/2",
+      payload: "`{}`",
+      reply: "none",
+      example: %{}
+    },
     %{
       name: "filter_values",
       by: :bundle,
@@ -45,14 +53,16 @@ defmodule AshDataTable.Attrs do
     },
     %{
       name: "page",
-      by: :kit,
+      by: :bundle,
+      bundle: "page/3",
       payload: "`{to}`: a page number, `previous` or `next`",
       reply: "none",
       example: %{"to" => "2"}
     },
     %{
       name: "page_size",
-      by: :kit,
+      by: :bundle,
+      bundle: "page_size/2",
       payload: "`{size}`",
       reply: "none",
       example: %{"size" => "50"}
@@ -67,14 +77,16 @@ defmodule AshDataTable.Attrs do
     },
     %{
       name: "argument_add",
-      by: :kit,
+      by: :bundle,
+      bundle: "argument_add/3",
       payload: "`{argument}`",
       reply: "none",
       example: %{"argument" => "tags"}
     },
     %{
       name: "argument_remove",
-      by: :kit,
+      by: :bundle,
+      bundle: "argument_remove/4",
       payload: "`{argument, at}`",
       reply: "none",
       example: %{"argument" => "tags", "at" => "0"}
@@ -195,14 +207,16 @@ defmodule AshDataTable.Attrs do
     %{name: "bulk_seen", by: :hook, payload: "`{}`", reply: "none", example: %{}},
     %{
       name: "panel_validate",
-      by: :kit,
+      by: :bundle,
+      bundle: "panel_form/3",
       payload: "the form `ID-panel-form` (`panel`)",
       reply: "none",
       example: %{"panel" => %{}}
     },
     %{
       name: "panel_submit",
-      by: :kit,
+      by: :bundle,
+      bundle: "panel_form/3",
       payload: "the form `ID-panel-form` (`panel`)",
       reply: "none",
       example: %{"panel" => %{}}
@@ -242,7 +256,8 @@ defmodule AshDataTable.Attrs do
     %{name: "panel_cancel", by: :hook, payload: "`{}`", reply: "none", example: %{}},
     %{
       name: "pick_input",
-      by: :kit,
+      by: :bundle,
+      bundle: "pick_input/3",
       payload: "`{input}`",
       reply: "none (opens the picker)",
       example: %{"input" => "owner"}
@@ -264,7 +279,14 @@ defmodule AshDataTable.Attrs do
       reply: "none",
       example: %{"row" => "1"}
     },
-    %{name: "read_again", by: :kit, payload: "`{}`", reply: "none", example: %{}}
+    %{
+      name: "read_again",
+      by: :bundle,
+      bundle: "read_again/2",
+      payload: "`{}`",
+      reply: "none",
+      example: %{}
+    }
   ]
 
   # What the server tells the hooks (`push_event`), each with `table`.
@@ -1424,6 +1446,88 @@ defmodule AshDataTable.Attrs do
   end
 
   @doc """
+  The button that clears one column's filter (`clear_filter` with the
+  column's name). `table` is the table's id.
+  """
+  def clear_filter(table, column, target) do
+    %{
+      "phx-click" => event(table, "clear_filter"),
+      "phx-value-column" => column.name,
+      "phx-target" => target
+    }
+  end
+
+  @doc """
+  "Clear filters" (`clear_filters`): it goes away with the filters, so
+  focus is sent on to the first control of the filter row.
+  """
+  def clear_filters(id, target) do
+    %{
+      "id" => "#{id}-clear-filters",
+      "phx-click" =>
+        event(id, "clear_filters")
+        |> JS.push(target: target)
+        |> JS.focus_first(to: "#" <> Ids.filter_row(id))
+    }
+  end
+
+  @doc """
+  "Read again", beside the notice of changes (`read_again`): it goes away
+  with the notice, so focus is sent on to the table's first Tab stop.
+  """
+  def read_again(id, target) do
+    %{
+      "id" => "#{id}-read-again",
+      "phx-click" =>
+        event(id, "read_again") |> JS.push(target: target) |> JS.focus_first(to: "##{id}-table")
+    }
+  end
+
+  @doc """
+  A button of the pagination (`page`): `to` is a page number, `"previous"`
+  or `"next"`.
+  """
+  def page(id, to, target) do
+    %{"phx-click" => event(id, "page"), "phx-value-to" => to, "phx-target" => target}
+  end
+
+  @doc """
+  The form of "Rows per page" (`page_size`, its menu named `size`).
+  """
+  def page_size(id, target) do
+    %{
+      "id" => "#{id}-page-size-form",
+      "phx-change" => event(id, "page_size"),
+      "phx-target" => target
+    }
+  end
+
+  @doc """
+  The button of an argument given value by value that adds a value
+  (`argument_add`, with what the argument is called in the page's ids).
+  """
+  def argument_add(table, named, target) do
+    %{
+      "phx-click" => event(table, "argument_add"),
+      "phx-value-argument" => named,
+      "phx-target" => target
+    }
+  end
+
+  @doc """
+  The button that takes the value at `at` (from 0) of such an argument
+  away (`argument_remove`).
+  """
+  def argument_remove(table, named, at, target) do
+    %{
+      "phx-click" => event(table, "argument_remove"),
+      "phx-value-argument" => named,
+      "phx-value-at" => at,
+      "phx-target" => target
+    }
+  end
+
+  @doc """
   The "Columns" button: it opens and closes the list of the columns, the
   browser's popover (`popovertarget`), and says what the hook writes on it
   of the hidden columns: what it is called (`data-text`, `columns_name`:
@@ -1645,6 +1749,35 @@ defmodule AshDataTable.Attrs do
       "data-several" => several?,
       "aria-labelledby" => "#{id}-picker-title"
     })
+  end
+
+  @doc """
+  The form of the action panel (`panel_validate` as it changes,
+  `panel_submit` as it is sent): `method` the form's HTTP method.
+  `novalidate`, for the reason given at the argument line: the limits on a
+  field describe, and the action judges.
+  """
+  def panel_form(id, method, target) do
+    %{
+      "id" => "#{id}-panel-form",
+      "method" => method,
+      "phx-change" => event(id, "panel_validate"),
+      "phx-submit" => event(id, "panel_submit"),
+      "phx-target" => target,
+      "novalidate" => true
+    }
+  end
+
+  @doc """
+  The button of a field given by choosing records that opens the picker
+  (`pick_input`, with the field's name).
+  """
+  def pick_input(table, name, target) do
+    %{
+      "phx-click" => event(table, "pick_input"),
+      "phx-value-input" => name,
+      "phx-target" => target
+    }
   end
 
   @doc """
