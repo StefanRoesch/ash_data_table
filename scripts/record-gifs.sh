@@ -7,8 +7,9 @@
 # What it does, so that nothing else on the machine is touched:
 #
 #   1. Exports the committed HEAD into a temporary directory and starts the
-#      demo there with `docker compose --profile demo up --build`, the way the
-#      README says, as a compose project of its own (`ash_data_table_gifs`),
+#      demo there with `docker compose --profile demo up --build` (built
+#      from HEAD, not the ready image), as a compose project of its own
+#      (`ash_data_table_gifs`),
 #      its own Postgres volume, the demo on GIFS_PORT (4490) and Postgres on
 #      GIFS_PG_PORT (5490). A fresh standard seed, so the clips always show
 #      the same rows.
@@ -31,7 +32,7 @@ OUT="$ROOT/docs/images"
 WORK="$(mktemp -d)"
 
 compose() {
-  DEMO_PORT="$PORT" POSTGRES_PORT="$PG_PORT" \
+  DEMO_IMAGE="ash_data_table-demo:gifs" DEMO_PORT="$PORT" POSTGRES_PORT="$PG_PORT" \
     docker compose -p "$PROJECT" -f "$WORK/src/docker-compose.yml" --profile demo "$@"
 }
 
