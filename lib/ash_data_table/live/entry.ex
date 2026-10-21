@@ -9,6 +9,13 @@ defmodule AshDataTable.Live.Entry do
   # and derived in its `update/2`; the comments are theirs. A nested table
   # and a picker's table are told theirs by the table they are in
   # (`AshDataTable.Live.Core.Nesting.reconcile/1`).
+  #
+  # Flat on purpose (#56): one value per table, put field by field
+  # (`Core.put/2`) and compared field by field by LiveView's change
+  # tracking, so a part is drawn again only when a field it is given
+  # changed. Measured in stage 9d on /tasks (`demo/perf/baseline.mjs`, the
+  # callbacks' time): `panel_validate` 0.65 ms, opening a panel 8.1 ms, a
+  # cell save 23.9 ms, most of it the record read again and the action.
 
   alias AshDataTable.State
 
