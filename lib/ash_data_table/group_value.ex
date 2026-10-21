@@ -452,6 +452,22 @@ defmodule AshDataTable.GroupValue do
   # ---- through a value ----------------------------------------------------
 
   @doc """
+  What Ash is given for what the control of `field` holds, a wall time
+  typed in `zone` being the instant it is there; and where among it a wall
+  time was typed that the zone does not have. `field` is a column, an input
+  of the panel or a field of a map cell; `held` what its control sent, as
+  `taken/3` gives it: text, a list of texts, a map of the fields of a map
+  cell, a list of those, or a union's kind and value. The time rule on each
+  plain value in it is `AshDataTable.Zone.given_one/3`'s.
+  """
+  @spec given(map, term, Zone.t()) :: {term, [list]}
+  def given(field, held, zone), do: walk(field, held, &Zone.given_one(&1, &2, zone))
+
+  @doc "The places of `given/3` alone: where a wall time was typed that `zone` does not have."
+  @spec gaps(map, term, Zone.t()) :: [list]
+  def gaps(field, held, zone), do: field |> given(held, zone) |> elem(1)
+
+  @doc """
   Goes through `held`, what the action is given of `field` (`taken/3`'s
   shape), to each plain value in it: `fun` is given that value's field
   and the value, and answers the value and a list of places (each a path

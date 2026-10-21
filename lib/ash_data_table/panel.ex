@@ -1143,7 +1143,7 @@ defmodule AshDataTable.Panel do
   instant it is in `zone`, the time zone of the page; and `given`, what the
   table gives the action itself, which nothing from the browser replaces.
   A datetime the zone does not have is text the action does not take
-  (`AshDataTable.Zone.given/3`), and the panel says why at its field
+  (`AshDataTable.GroupValue.given/3`), and the panel says why at its field
   (`gaps/3`).
   """
   @spec values([Model.Input.t()], map) :: map
@@ -1159,7 +1159,7 @@ defmodule AshDataTable.Panel do
         given?(input, params, name),
         into: %{} do
       {value, _gaps} =
-        AshDataTable.Zone.given(input, GroupValue.taken(input, params[name], zone), zone)
+        GroupValue.given(input, GroupValue.taken(input, params[name], zone), zone)
 
       {name, value}
     end
@@ -1181,7 +1181,7 @@ defmodule AshDataTable.Panel do
     for input <- inputs,
         name = Atom.to_string(input.name),
         given?(input, params, name),
-        path <- AshDataTable.Zone.gaps(input, GroupValue.taken(input, params[name], zone), zone),
+        path <- GroupValue.gaps(input, GroupValue.taken(input, params[name], zone), zone),
         into: %{} do
       # at the field of the value, as an error of Ash's about it is; one of
       # the values of an array of datetimes is at the array's field

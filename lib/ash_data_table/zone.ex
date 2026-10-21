@@ -11,12 +11,13 @@ defmodule AshDataTable.Zone do
   #
   # What a person types into the control of such a datetime is a wall time
   # in the zone, as the control shows it. It is given to Ash as the UTC
-  # instant it is (`given/3`), written with a `Z`, so that Ash casts it as
-  # it casts any value from outside. A wall time that is there twice, when
+  # instant it is (`given_one/3`, which `AshDataTable.GroupValue.given/3`
+  # asks for each plain value of what a control holds), written with a
+  # `Z`, so that Ash casts it as it casts any value from outside. A wall time that is there twice, when
   # the clocks go back, is the earlier of the two instants; one that is not
   # there at all, when the clocks go forward, is no value: for a write it is
-  # refused at its field (`gaps/3`), and what Ash would be given for it is
-  # text that Ash does not take, so that it never stores another instant.
+  # refused at its field (`AshDataTable.GroupValue.gaps/3`), and what Ash
+  # would be given for it is text that Ash does not take, so that it never stores another instant.
   # A filter or an argument of a read takes the first instant after the gap
   # (`read/3`). Text that is no wall time (one with an offset of its own,
   # or anything else) goes to Ash as it was typed.
@@ -113,37 +114,37 @@ defmodule AshDataTable.Zone do
   def zoned?(_other), do: false
 
   @doc """
-  What Ash is given for what the control of a field holds, a wall time typed
-  in `zone` being the instant it is there; and where among it a wall time
-  was typed that the zone does not have. `field` is a column, an input of
-  the panel, a field of a map cell or an argument; `held` what its control
-  sent, as `AshDataTable.GroupValue.taken/3` gives it: text, a list of texts, a map
-  of the fields of a map cell, a list of those, or a union's kind and value.
+  What Ash is given for one plain value a control of `field` holds (`held`,
+  a text): a wall time of an instant's type, typed in `zone`, as the
+  instant it is there; one the zone does not have as text that no datetime
+  type of Ash takes, so that nothing is stored for it, with the place `[]`
+  (the value itself); anything else as it was typed. `field` is a column,
+  an input of the panel or a field of a map cell.
+  `AshDataTable.GroupValue.given/3` goes through a value made of fields, a
+  list or a union with it, to each plain value in it: this module knows
+  nothing of how such a value is held.
   """
-  @spec given(map, term, t) :: {term, [path]}
-  def given(_field, held, @utc), do: {held, []}
-  def given(field, held, zone), do: walk(field, held, zone, :write)
-
-  @doc "The places of `given/3` alone: where a wall time was typed that `zone` does not have."
-  @spec gaps(map, term, t) :: [path]
-  def gaps(field, held, zone), do: field |> given(held, zone) |> elem(1)
+  @spec given_one(map, term, t) :: {term, [path]}
+  def given_one(_field, held, @utc), do: {held, []}
+  def given_one(field, held, zone), do: wall(field, held, zone, :write)
 
   @doc """
   What a read is given for the text of a filter or of an argument of the
-  read action: a wall time in `zone` as the instant it is, and one the zone
-  does not have as the first instant after it. Anything else as it was
-  typed.
+  read action, or for each text of a list of them: a wall time in `zone` as
+  the instant it is, and one the zone does not have as the first instant
+  after it. Anything else as it was typed. A filter and an argument hold a
+  text or a list of texts, never a value made of fields.
   """
   @spec read(map, term, t) :: term
   def read(_field, held, @utc), do: held
-  def read(field, held, zone), do: field |> walk(held, zone, :read) |> elem(0)
 
-  # Through a value made of fields, a list or a union to each value in it
-  # (`AshDataTable.GroupValue.walk/3`), and the time rule on each: a wall
-  # time of an instant's type is the instant it is in `zone`.
-  defp walk(field, held, zone, use),
-    do: AshDataTable.GroupValue.walk(field, held, &wall(&1, &2, zone, use))
+  def read(%{cell_type: {:array, item}} = field, held, zone) when is_list(held),
+    do: Enum.map(held, &read(%{field | cell_type: item}, &1, zone))
 
+  def read(field, held, zone), do: field |> wall(held, zone, :read) |> elem(0)
+
+  # The time rule on one value: a wall time of an instant's type is the
+  # instant it is in `zone`.
   defp wall(%{cell_type: :datetime} = field, held, zone, use) when is_binary(held) do
     if zoned?(field.type), do: one(held, zone, use), else: {held, []}
   end

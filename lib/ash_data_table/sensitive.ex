@@ -39,6 +39,15 @@ defmodule AshDataTable.Sensitive do
   end
 
   @doc """
+  What is shown in place of a sensitive value that is there: the same for
+  every value. A `:masked` cell holds no value; this is what the part
+  draws, what a cell's text and a control hold of a `Masked`, and what an
+  error says in place of one.
+  """
+  @spec mask() :: String.t()
+  def mask, do: "••••••"
+
+  @doc """
   A record as a table keeps it for a row: with every sensitive value in it
   replaced by a `Masked`. That is every attribute, calculation and aggregate
   its resource declares `sensitive?`, a calculation loaded under another

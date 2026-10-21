@@ -123,7 +123,7 @@ defmodule AshDataTable.MessagesTest do
     assert {:ash, _text, [match: masked, range: masked, count: 2]} =
              AshDataTable.Errors.ash(error, true)
 
-    assert masked == AshDataTable.Present.mask()
+    assert masked == AshDataTable.Sensitive.mask()
   end
 
   test "each text once: a message and the words it says are one, given and said" do

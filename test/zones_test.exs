@@ -16,6 +16,7 @@ defmodule AshDataTable.ZonesTest do
   import Phoenix.LiveViewTest, only: [render_component: 2]
 
   alias AshDataTable.Format
+  alias AshDataTable.GroupValue
   alias AshDataTable.Model
   alias AshDataTable.Panel
   alias AshDataTable.Query
@@ -218,20 +219,20 @@ defmodule AshDataTable.ZonesTest do
     end
 
     test "of a field: only an instant is converted, in arrays and in values of named fields" do
-      assert Zone.given(field(:at, :utc_datetime), "2026-07-15T14:00", @berlin) ==
+      assert GroupValue.given(field(:at, :utc_datetime), "2026-07-15T14:00", @berlin) ==
                {"2026-07-15T12:00:00Z", []}
 
-      assert Zone.given(field(:at, :datetime), "2026-07-15T14:00", @berlin) ==
+      assert GroupValue.given(field(:at, :datetime), "2026-07-15T14:00", @berlin) ==
                {"2026-07-15T12:00:00Z", []}
 
-      assert Zone.given(field(:at, :utc_datetime_usec), "2026-07-15T14:00", @berlin) ==
+      assert GroupValue.given(field(:at, :utc_datetime_usec), "2026-07-15T14:00", @berlin) ==
                {"2026-07-15T12:00:00Z", []}
 
       # a naive datetime has no zone, and text is text
-      assert Zone.given(field(:at, :naive_datetime), "2026-07-15T14:00", @berlin) ==
+      assert GroupValue.given(field(:at, :naive_datetime), "2026-07-15T14:00", @berlin) ==
                {"2026-07-15T14:00", []}
 
-      assert Zone.given(field(:at, :string, :text), "2026-07-15T14:00", @berlin) ==
+      assert GroupValue.given(field(:at, :string, :text), "2026-07-15T14:00", @berlin) ==
                {"2026-07-15T14:00", []}
 
       many = %{
@@ -240,7 +241,7 @@ defmodule AshDataTable.ZonesTest do
         type: {{:array, :utc_datetime}, []}
       }
 
-      assert Zone.given(many, ["2026-07-15T14:00", "2026-03-29T02:30"], @berlin) ==
+      assert GroupValue.given(many, ["2026-07-15T14:00", "2026-03-29T02:30"], @berlin) ==
                {["2026-07-15T12:00:00Z", "Europe/Berlin 2026-03-29T02:30"], [[1]]}
 
       visit = %{
@@ -250,7 +251,7 @@ defmodule AshDataTable.ZonesTest do
         fields: [field(:at, :utc_datetime), field(:note, :string, :text)]
       }
 
-      assert Zone.given(
+      assert GroupValue.given(
                visit,
                [
                  %{"at" => "2026-07-15T14:00", "note" => "2026-07-15T14:00"},
@@ -265,12 +266,38 @@ defmodule AshDataTable.ZonesTest do
     end
 
     test "in UTC is given as typed, as before there were zones" do
-      assert Zone.given(field(:at, :utc_datetime), "2026-03-29T02:30", "Etc/UTC") ==
+      assert GroupValue.given(field(:at, :utc_datetime), "2026-03-29T02:30", "Etc/UTC") ==
                {"2026-03-29T02:30", []}
     end
 
+    test "of one plain value: the zone's rule alone, which GroupValue.given/3 walks a value with" do
+      assert Zone.given_one(field(:at, :utc_datetime), "2026-07-15T14:00", @berlin) ==
+               {"2026-07-15T12:00:00Z", []}
+
+      assert Zone.given_one(field(:at, :utc_datetime), "2026-03-29T02:30", @berlin) ==
+               {"Europe/Berlin 2026-03-29T02:30", [[]]}
+
+      assert Zone.given_one(field(:at, :utc_datetime), "2026-03-29T02:30", "Etc/UTC") ==
+               {"2026-03-29T02:30", []}
+    end
+
+    test "read: a filter's or an argument's text, or each of a list of them; a gap as the first instant after it" do
+      many = %{name: :at, cell_type: {:array, :datetime}, type: {{:array, :utc_datetime}, []}}
+
+      assert Zone.read(field(:at, :utc_datetime), "2026-07-15T14:00", @berlin) ==
+               "2026-07-15T12:00:00Z"
+
+      assert Zone.read(many, ["2026-07-15T14:00", "2026-03-29T02:30"], @berlin) ==
+               ["2026-07-15T12:00:00Z", "2026-03-29T01:00:00Z"]
+
+      assert Zone.read(field(:at, :string, :text), "2026-07-15T14:00", @berlin) ==
+               "2026-07-15T14:00"
+
+      assert Zone.read(many, ["2026-07-15T14:00"], "Etc/UTC") == ["2026-07-15T14:00"]
+    end
+
     test "that does not exist is text no datetime of Ash takes: nothing is stored for it" do
-      {given, [[]]} = Zone.given(field(:at, :utc_datetime), "2026-03-29T02:30", @berlin)
+      {given, [[]]} = GroupValue.given(field(:at, :utc_datetime), "2026-03-29T02:30", @berlin)
       assert {:error, _message} = Ash.Type.cast_input(:utc_datetime, given, [])
     end
 

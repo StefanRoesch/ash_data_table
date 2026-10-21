@@ -19,7 +19,6 @@ defmodule AshDataTable.Format do
 
   alias AshDataTable.Model
   alias AshDataTable.Model.Column
-  alias AshDataTable.Present
   alias AshDataTable.Sensitive
   alias AshDataTable.Text
   alias AshDataTable.Zone
@@ -53,7 +52,7 @@ defmodule AshDataTable.Format do
   def format(_column, %Ash.ForbiddenField{}, _zone), do: ""
   def format(_column, %Ash.NotLoaded{}, _zone), do: ""
   # what a table keeps in place of a sensitive value: never the value
-  def format(_column, %Sensitive.Masked{}, _zone), do: Present.mask()
+  def format(_column, %Sensitive.Masked{}, _zone), do: Sensitive.mask()
 
   def format(%{cell_type: :text}, value, _zone), do: to_string(value)
 
@@ -222,7 +221,7 @@ defmodule AshDataTable.Format do
   defp shown(%{sensitive?: true} = inner, held, zone) do
     case Sensitive.masked(held) do
       %Ash.ForbiddenField{} -> format(inner, held, zone)
-      %Sensitive.Masked{} -> Present.mask()
+      %Sensitive.Masked{} -> Sensitive.mask()
       _nothing -> ""
     end
   end

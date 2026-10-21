@@ -180,7 +180,7 @@ defmodule AshDataTable.SensitiveTest do
     end
 
     test "is shown as the mask wherever a table formats it, the same for every value" do
-      assert AshDataTable.Present.mask() == "••••••"
+      assert AshDataTable.Sensitive.mask() == "••••••"
       assert Format.format(column(:token), %Masked{}) == "••••••"
       assert Format.format(column(:pin), %Masked{}) == "••••••"
     end
@@ -367,7 +367,7 @@ defmodule AshDataTable.SensitiveTest do
       assert {:error, _record, message} =
                Edit.save(model(), column(:token), key, "taken-secret", actor: @admin)
 
-      assert message == {:ash, "%{value} is taken", [value: AshDataTable.Present.mask()]}
+      assert message == {:ash, "%{value} is taken", [value: AshDataTable.Sensitive.mask()]}
       refute inspect(message) =~ "secret"
       assert AshDataTable.Text.say(message) == "•••••• is taken"
 
@@ -517,7 +517,7 @@ defmodule AshDataTable.SensitiveTest do
       errors = Panel.errors(form, model(), rotate.inputs)
 
       assert errors[:passphrase] == [
-               {:ash, "%{value} is not the passphrase", [value: AshDataTable.Present.mask()]}
+               {:ash, "%{value} is not the passphrase", [value: AshDataTable.Sensitive.mask()]}
              ]
 
       refute inspect(errors) =~ "SECRET"

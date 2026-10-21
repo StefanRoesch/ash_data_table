@@ -235,7 +235,9 @@ defmodule AshDataTable.ItemTest do
     test "draws nothing of a column whose component only edits, nor of one without" do
       edits = %{@drawn | component: %{@drawn.component | cell?: false, editor?: true}}
       assert %{component: false} = drawn(%Present.Cell{state: :value, value: 3}, edits)
-      assert %{component: false} = drawn(%Present.Cell{state: :value, value: 3}, %{@drawn | component: nil})
+
+      assert %{component: false} =
+               drawn(%Present.Cell{state: :value, value: 3}, %{@drawn | component: nil})
     end
   end
 

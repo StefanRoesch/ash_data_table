@@ -14,13 +14,13 @@ defmodule AshDataTable.Edit do
 
   alias AshDataTable.Act
   alias AshDataTable.Errors
+  alias AshDataTable.GroupValue
   alias AshDataTable.Model
   alias AshDataTable.Model.Column
   alias AshDataTable.Pick
   alias AshDataTable.Query
   alias AshDataTable.Record
   alias AshDataTable.Typed
-  alias AshDataTable.Zone
 
   @typedoc """
   What became of a save:
@@ -330,11 +330,11 @@ defmodule AshDataTable.Edit do
           unchanged?(column, typed, value, model.time_zone) ->
             unchanged(model, record, opts)
 
-          Zone.gaps(column, typed, model.time_zone) != [] ->
+          GroupValue.gaps(column, typed, model.time_zone) != [] ->
             failed(model, record, {:text, :no_such_time, zone: model.time_zone}, opts)
 
           true ->
-            {typed, []} = Zone.given(column, typed, model.time_zone)
+            {typed, []} = GroupValue.given(column, typed, model.time_zone)
             submit(model, column, record, typed, opts)
         end
     end

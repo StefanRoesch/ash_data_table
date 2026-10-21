@@ -13,7 +13,7 @@ defmodule AshDataTable.Parts.Grid do
   alias AshDataTable.Kit
   alias AshDataTable.Parts
   alias AshDataTable.Parts.Common
-  alias AshDataTable.Present
+  alias AshDataTable.Sensitive
 
   # The handle at the end of a column's header, with which a person makes
   # the column wider or narrower: dragged with the pointer, for the pointer
@@ -679,7 +679,7 @@ defmodule AshDataTable.Parts.Grid do
     {:safe,
      [
        ~s(<span class="inline-flex max-w-72 items-center align-bottom"><span data-mask aria-hidden="true">),
-       Present.mask(),
+       Sensitive.mask(),
        ~s(</span><span data-masked class="sr-only">),
        escape(texts.hidden_value),
        ~s(</span><span data-secret aria-live="polite" class="min-w-0 truncate"></span>),

@@ -20,7 +20,7 @@ defmodule AshDataTable.Errors do
   # drawing side makes the words, in the LiveView's process.
 
   alias AshDataTable.Model
-  alias AshDataTable.Present
+  alias AshDataTable.Sensitive
 
   @typedoc """
   What the data layer says to a person, as a term: a text of the table's own
@@ -55,7 +55,7 @@ defmodule AshDataTable.Errors do
   atom is kept as the text it is said as (`inspect/1`).
 
   The message of a `sensitive?` field keeps none of its values: each is
-  what is shown in place of a sensitive value (`AshDataTable.Present.mask/0`),
+  what is shown in place of a sensitive value (`AshDataTable.Sensitive.mask/0`),
   as a variable may hold what was typed (`%{value}`). Only a whole number
   `count` stays, which chooses the plural form.
   """
@@ -69,7 +69,7 @@ defmodule AshDataTable.Errors do
           to_string(name) in named or to_string(name) == "count",
           do:
             {name,
-             if(sensitive? and not count?(name, value), do: Present.mask(), else: plain(value))}
+             if(sensitive? and not count?(name, value), do: Sensitive.mask(), else: plain(value))}
 
     {:ash, message, kept}
   end
