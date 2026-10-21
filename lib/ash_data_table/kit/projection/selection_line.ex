@@ -10,49 +10,51 @@ defmodule AshDataTable.Kit.Projection.SelectionLine do
   @doc false
   def keys, do: [:shown?, :nested?, :selection, :notice, :clear_filters, :texts, :messages]
 
+  # Each key of its own inputs (`key/2`): `selected` how many rows are
+  # selected, `total` the page's total, `filtered?` whether a filter is set,
   @doc false
-  def of(%{id: id, page: page, selected: count, all?: all?, state: state} = given) do
-    any? = all? or count > 0
-    filtered? = state.filters != %{}
-    total = page && page.total
+  # whether anything is on the line: rows are selected, a filter is set, or
+  # the notice shows
+  def key(:shown?, %{notice?: notice?, filtered?: filtered?, selecting: selecting} = given),
+    do: notice? or filtered? or (selecting == :multi and any?(given))
 
-    words =
-      Said.words(
-        select_all:
-          if(total, do: Said.t(:select_all, count: total), else: Said.t(:select_all_uncounted)),
-        selected_rows: Said.t(:selected_rows),
-        # what is selected, said in the live region: nil for nothing
-        selected:
-          cond do
-            all? and total -> Said.t(:all_selected, count: total)
-            all? -> Said.t(:all_selected_uncounted)
-            count > 0 -> Said.t(:selected, count: count)
-            true -> nil
-          end,
-        clear_selection: Said.t(:clear_selection),
-        more_actions: Said.t(:more_actions),
-        clear_filters: Said.t(:clear_filters),
-        changed_records: Said.t(:changed_records),
-        read_again: Said.t(:read_again)
-      )
+  def key(:nested?, %{nested?: nested?}), do: nested?
 
-    Map.merge(
-      %{
-        # whether anything is on the line: rows are selected, a filter is
-        # set, or the notice shows
-        shown?: given.notice? or filtered? or (given.selecting == :multi and any?),
-        nested?: given.nested?,
-        selection: if(given.selecting == :multi, do: selection(id, given, any?, words.texts)),
-        notice:
-          if(given.notice?,
-            do: %{
-              element: %{"id" => "#{id}-notice"},
-              read_again: Attrs.read_again(id, given.myself)
-            }
-          ),
-        clear_filters: if(filtered?, do: Attrs.clear_filters(id, given.myself))
-      },
-      words
+  def key(:selection, %{id: id, selecting: selecting} = given) do
+    if selecting == :multi, do: selection(id, given, any?(given), words(given).texts)
+  end
+
+  def key(:notice, %{id: id, notice?: notice?, myself: myself}) do
+    if notice? do
+      %{element: %{"id" => "#{id}-notice"}, read_again: Attrs.read_again(id, myself)}
+    end
+  end
+
+  def key(:clear_filters, %{id: id, filtered?: filtered?, myself: myself}),
+    do: if(filtered?, do: Attrs.clear_filters(id, myself))
+
+  def key(words, given) when words in [:texts, :messages], do: Map.fetch!(words(given), words)
+
+  defp any?(%{all?: all?, selected: count}), do: all? or count > 0
+
+  defp words(%{total: total, selected: count, all?: all?}) do
+    Said.words(
+      select_all:
+        if(total, do: Said.t(:select_all, count: total), else: Said.t(:select_all_uncounted)),
+      selected_rows: Said.t(:selected_rows),
+      # what is selected, said in the live region: nil for nothing
+      selected:
+        cond do
+          all? and total -> Said.t(:all_selected, count: total)
+          all? -> Said.t(:all_selected_uncounted)
+          count > 0 -> Said.t(:selected, count: count)
+          true -> nil
+        end,
+      clear_selection: Said.t(:clear_selection),
+      more_actions: Said.t(:more_actions),
+      clear_filters: Said.t(:clear_filters),
+      changed_records: Said.t(:changed_records),
+      read_again: Said.t(:read_again)
     )
   end
 

@@ -60,14 +60,9 @@ defmodule AshDataTable.AttrsTest do
         heading: false,
         label: "T",
         model: model,
-        offered: [],
-        page: nil,
-        related: nil,
         nested?: false,
-        myself: nil,
-        state: %AshDataTable.State{},
-        lines: %{},
-        refused: %{}
+        filters: %{},
+        sort: []
       })
 
     assert {columns.least, columns.most} == {Attrs.least_width(), Attrs.most_width()}

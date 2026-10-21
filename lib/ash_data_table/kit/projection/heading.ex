@@ -17,46 +17,59 @@ defmodule AshDataTable.Kit.Projection.Heading do
   def keys,
     do: [:shown?, :nested?, :element, :title, :columns, :argument_line, :acts?, :create, :actions]
 
+  # Each key of its own inputs (`key/2`): `heading` is what the page asks
+  # of the table's name (a level, true, or false), `lines` what the
+  # argument line was sent, `refused` what Ash refused of it; `page?`
+  # whether there are rows; `filters` and `sort` those of the state.
   @doc false
-  # `heading` is what the page asks of the table's name (a level, true, or
-  # false), `lines` what the argument line was sent, `refused` what Ash
-  # refused of it.
-  def of(%{id: id, model: model, page: page, offered: offered, related: related} = given) do
-    nested? = given.nested?
-    acts? = !!page and (!!model.create or offered != []) and is_nil(related)
-    columns? = length(model.columns) > 1 and hideable(model) != []
+  def key(:shown?, %{nested?: nested?, heading: heading, model: model} = given),
+    do:
+      nested? or !!heading or columns?(model) or model.arguments != [] or
+        key(:acts?, given)
 
-    %{
-      shown?: nested? or !!given.heading or columns? or model.arguments != [] or acts?,
-      nested?: nested?,
-      element: %{"id" => "#{id}-header"},
-      # the table's name (`title`): not a nested table's, which its line names; a
-      # heading of `level` (nil for a plain element)
-      title:
-        if(given.heading && not nested?,
-          do: %{
-            element: %{"id" => "#{id}-name"},
-            level: if(is_integer(given.heading), do: given.heading),
-            text: given.label
-          }
-        ),
-      columns: if(columns?, do: columns(id, model, given.state, given.label, nested?)),
-      argument_line:
-        if(model.arguments != [],
-          do: %{
-            form: Attrs.arguments(id, given.myself),
-            nested?: nested?,
-            arguments: arguments(id, model, given.lines, given.state, given.refused, given.myself)
-          }
-        ),
-      # create and the table actions, at the far end: beside rows only, and
-      # not of a table limited to related records, which offers them above
-      # its grid
-      acts?: acts?,
-      create: if(acts?, do: Related.acts(id, model.create, given.myself)),
-      actions: if(acts?, do: Related.table_actions(id, offered, given.myself), else: [])
-    }
+  def key(:nested?, %{nested?: nested?}), do: nested?
+
+  def key(:element, %{id: id}), do: %{"id" => "#{id}-header"}
+
+  # the table's name: not a nested table's, which its line names; a heading
+  # of `level` (nil for a plain element)
+  def key(:title, %{id: id, heading: heading, nested?: nested?, label: label}) do
+    if heading && not nested? do
+      %{
+        element: %{"id" => "#{id}-name"},
+        level: if(is_integer(heading), do: heading),
+        text: label
+      }
+    end
   end
+
+  def key(:columns, %{id: id, model: model, filters: filters, sort: sort} = given) do
+    if columns?(model),
+      do: columns(id, model, %{filters: filters, sort: sort}, given.label, given.nested?)
+  end
+
+  def key(:argument_line, %{id: id, model: model, myself: myself} = given) do
+    if model.arguments != [] do
+      %{
+        form: Attrs.arguments(id, myself),
+        nested?: given.nested?,
+        arguments: arguments(id, model, given.lines, given.state, given.refused, myself)
+      }
+    end
+  end
+
+  # create and the table actions, at the far end: beside rows only, and not
+  # of a table limited to related records, which offers them above its grid
+  def key(:acts?, %{page?: page?, model: model, offered: offered, related?: related?}),
+    do: page? and (!!model.create or offered != []) and not related?
+
+  def key(:create, %{id: id, model: model, myself: myself} = given),
+    do: if(key(:acts?, given), do: Related.acts(id, model.create, myself))
+
+  def key(:actions, %{id: id, offered: offered, myself: myself} = given),
+    do: if(key(:acts?, given), do: Related.table_actions(id, offered, myself), else: [])
+
+  defp columns?(model), do: length(model.columns) > 1 and hideable(model) != []
 
   # The columns a person can hide: every column but the label column.
   defp hideable(%{label_column: nil} = model), do: model.columns

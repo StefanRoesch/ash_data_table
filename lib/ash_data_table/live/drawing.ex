@@ -125,24 +125,79 @@ defmodule AshDataTable.Live.Drawing do
 
   defp heading(assigns) do
     ~H"""
-    <.whole
+    <Kit.part
       part={:heading}
       kit={@kit}
       id={@entry.id}
-      inputs={%{
-        id: @entry.id,
-        heading: @heading,
-        label: @entry.label,
-        model: @entry.model,
-        offered: @entry.offered,
-        page: @entry.page,
-        related: @entry.related,
-        nested?: @entry.nested?,
-        myself: @myself,
-        state: @entry.state,
-        lines: @entry.lines,
-        refused: @entry.refused
-      }}
+      shown?={
+        Projection.of({:heading, :shown?}, %{
+          nested?: @entry.nested?,
+          heading: @heading,
+          model: @entry.model,
+          page?: not is_nil(@entry.page),
+          offered: @entry.offered,
+          related?: not is_nil(@entry.related)
+        })
+      }
+      nested?={Projection.of({:heading, :nested?}, %{nested?: @entry.nested?})}
+      element={Projection.of({:heading, :element}, %{id: @entry.id})}
+      title={
+        Projection.of({:heading, :title}, %{
+          id: @entry.id,
+          heading: @heading,
+          nested?: @entry.nested?,
+          label: @entry.label
+        })
+      }
+      columns={
+        Projection.of({:heading, :columns}, %{
+          id: @entry.id,
+          model: @entry.model,
+          filters: @entry.state.filters,
+          sort: @entry.state.sort,
+          label: @entry.label,
+          nested?: @entry.nested?
+        })
+      }
+      argument_line={
+        Projection.of({:heading, :argument_line}, %{
+          id: @entry.id,
+          model: @entry.model,
+          myself: @myself,
+          nested?: @entry.nested?,
+          lines: @entry.lines,
+          state: @entry.state,
+          refused: @entry.refused
+        })
+      }
+      acts?={
+        Projection.of({:heading, :acts?}, %{
+          page?: not is_nil(@entry.page),
+          model: @entry.model,
+          offered: @entry.offered,
+          related?: not is_nil(@entry.related)
+        })
+      }
+      create={
+        Projection.of({:heading, :create}, %{
+          id: @entry.id,
+          myself: @myself,
+          page?: not is_nil(@entry.page),
+          model: @entry.model,
+          offered: @entry.offered,
+          related?: not is_nil(@entry.related)
+        })
+      }
+      actions={
+        Projection.of({:heading, :actions}, %{
+          id: @entry.id,
+          myself: @myself,
+          page?: not is_nil(@entry.page),
+          model: @entry.model,
+          offered: @entry.offered,
+          related?: not is_nil(@entry.related)
+        })
+      }
     />
     """
   end
@@ -246,44 +301,89 @@ defmodule AshDataTable.Live.Drawing do
         part={:related}
         kit={@options.kit}
         id={@entry.id}
-        inputs={%{
-          id: @entry.id,
-          via: @entry.related.via,
-          title: @entry.related_title,
-          parent:
-            Routes.table(
-              @router,
-              @entry.related.via.source,
-              @entry.related.via.source_table,
-              @entry.authorize_given
-            ),
-          clear: Url.path(@options.url, @entry.id, %{}),
-          page: @entry.page,
-          create: @entry.model.create,
-          offered: @entry.offered,
-          target: @myself
-        }}
+        inputs={
+          %{
+            id: @entry.id,
+            via: @entry.related.via,
+            title: @entry.related_title,
+            parent:
+              Routes.table(
+                @router,
+                @entry.related.via.source,
+                @entry.related.via.source_table,
+                @entry.authorize_given
+              ),
+            clear: Url.path(@options.url, @entry.id, %{}),
+            page: @entry.page,
+            create: @entry.model.create,
+            offered: @entry.offered,
+            target: @myself
+          }
+        }
       />
-      <.whole
+      <Kit.part
         part={:selection_line}
         kit={@options.kit}
         id={@entry.id}
-        inputs={%{
-          id: @entry.id,
-          bulk: @entry.bulk,
-          choose: @entry.choose,
-          myself: @myself,
-          nested?: @entry.nested?,
-          notice?: @entry.notice?,
-          page: @entry.page,
-          row_count: @entry.row_count,
-          running: @entry.running && @entry.running.action,
-          selecting: @entry.selecting,
-          selected: length(@entry.selected),
-          all?: @entry.all?,
-          whole_page?: Selection.whole_page?(@entry),
-          state: @entry.state
-        }}
+        shown?={
+          Projection.of({:selection_line, :shown?}, %{
+            notice?: @entry.notice?,
+            filtered?: @entry.state.filters != %{},
+            selecting: @entry.selecting,
+            all?: @entry.all?,
+            selected: length(@entry.selected)
+          })
+        }
+        nested?={Projection.of({:selection_line, :nested?}, %{nested?: @entry.nested?})}
+        selection={
+          Projection.of({:selection_line, :selection}, %{
+            id: @entry.id,
+            selecting: @entry.selecting,
+            all?: @entry.all?,
+            selected: length(@entry.selected),
+            total: @entry.page && @entry.page.total,
+            bulk: @entry.bulk,
+            running: @entry.running && @entry.running.action,
+            whole_page?:
+              Selection.whole_page?(%{
+                all?: @entry.all?,
+                rows: @entry.rows,
+                selected: @entry.selected,
+                model: @entry.model
+              }),
+            choose: @entry.choose,
+            page: @entry.page,
+            row_count: @entry.row_count
+          })
+        }
+        notice={
+          Projection.of({:selection_line, :notice}, %{
+            id: @entry.id,
+            notice?: @entry.notice?,
+            myself: @myself
+          })
+        }
+        clear_filters={
+          Projection.of({:selection_line, :clear_filters}, %{
+            id: @entry.id,
+            filtered?: @entry.state.filters != %{},
+            myself: @myself
+          })
+        }
+        texts={
+          Projection.of({:selection_line, :texts}, %{
+            total: @entry.page && @entry.page.total,
+            selected: length(@entry.selected),
+            all?: @entry.all?
+          })
+        }
+        messages={
+          Projection.of({:selection_line, :messages}, %{
+            total: @entry.page && @entry.page.total,
+            selected: length(@entry.selected),
+            all?: @entry.all?
+          })
+        }
       />
       <Kit.part
         part={:status}
@@ -542,20 +642,22 @@ defmodule AshDataTable.Live.Drawing do
       kit={@kit}
       id={@id}
       uploads={uploads(files(@id, @held, @drawn?, @uploads))}
-      inputs={%{
-        id: @id,
-        panel: open_panel(@id, @held, @drawn?, @uploads),
-        files: files(@id, @held, @drawn?, @uploads),
-        target: @myself,
-        presentation: @presentation
-      }}
+      inputs={
+        %{
+          id: @id,
+          panel: open_panel(@id, @held, @drawn?, @uploads),
+          files: files(@id, @held, @drawn?, @uploads),
+          target: @myself,
+          presentation: @presentation
+        }
+      }
     />
     """
   end
 
-  # A part whose projection is made whole (`Projection.of/2`: the heading
-  # line, the line of a table of related records, the selection line, the
-  # panel; parts whose keys change together): made once of the `inputs`
+  # A part whose projection is made whole (`Projection.of/2`: the line of
+  # a table of related records and the panel, parts whose keys change
+  # together): made once of the `inputs`
   # it is given, and handed on an attribute per key. LiveView draws it
   # again when an input changes (what the `inputs` attribute reads), and
   # the part keeps LiveView's change tracking: given its projection as a
@@ -567,27 +669,6 @@ defmodule AshDataTable.Live.Drawing do
   attr :id, :string, required: true
   attr :inputs, :map, required: true
   attr :uploads, :map, default: nil
-
-  defp whole(%{part: :heading} = assigns) do
-    assigns = assign(assigns, :projection, Projection.of(:heading, assigns.inputs))
-
-    ~H"""
-    <Kit.part
-      part={:heading}
-      kit={@kit}
-      id={@id}
-      shown?={@projection.shown?}
-      nested?={@projection.nested?}
-      element={@projection.element}
-      title={@projection.title}
-      columns={@projection.columns}
-      argument_line={@projection.argument_line}
-      acts?={@projection.acts?}
-      create={@projection.create}
-      actions={@projection.actions}
-    />
-    """
-  end
 
   defp whole(%{part: :related} = assigns) do
     assigns = assign(assigns, :projection, Projection.of(:related, assigns.inputs))
@@ -603,25 +684,6 @@ defmodule AshDataTable.Live.Drawing do
       create={@projection.create}
       actions={@projection.actions}
       clear={@projection.clear}
-      texts={@projection.texts}
-      messages={@projection.messages}
-    />
-    """
-  end
-
-  defp whole(%{part: :selection_line} = assigns) do
-    assigns = assign(assigns, :projection, Projection.of(:selection_line, assigns.inputs))
-
-    ~H"""
-    <Kit.part
-      part={:selection_line}
-      kit={@kit}
-      id={@id}
-      shown?={@projection.shown?}
-      nested?={@projection.nested?}
-      selection={@projection.selection}
-      notice={@projection.notice}
-      clear_filters={@projection.clear_filters}
       texts={@projection.texts}
       messages={@projection.messages}
     />
