@@ -64,12 +64,29 @@ see [Installation](../documentation/topics/installation.md).
 ### Without Elixir on the host
 
 ```sh
-docker compose --profile demo up --build
+docker compose --profile demo up            # the ready image from ghcr.io
+docker compose --profile demo up --build    # or built from this checkout
 ```
 
-builds the demo in dev mode, creates and seeds its own database
+runs the demo in dev mode, creates and seeds its own database
 (`demo_docker`) and serves it on http://localhost:4478. Plain
 `docker compose up -d` starts Postgres only.
+
+The ready image is `ghcr.io/stefanroesch/ash_data_table-demo` (`latest` and
+the commit SHA), a throwaway snapshot of `main`, not a release: it may be
+overwritten or deleted at any time. `up` pulls it only when it is missing;
+`docker compose --profile demo pull` fetches a newer one, and `--build`
+replaces it locally with your own build. `DEMO_IMAGE` names another image.
+The Dockerfile caches the Hex and npm dependencies in layers of their own,
+so a rebuild after a code change skips them.
+
+`scripts/publish-demo-image.sh` builds the image for linux/amd64 and
+linux/arm64 from the committed HEAD and checks that it answers on a port of
+4490-4493; only with `--push` does it publish it (after a
+`docker login ghcr.io` of your own; the script stores no token). Nothing
+secret is in the image: the database settings come from the environment at
+start, and the dev `secret_key_base` is the one committed in
+`config/dev.exs`.
 
 ### Settings
 

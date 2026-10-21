@@ -25,12 +25,13 @@ You need Git and Docker.
 ```sh
 git clone https://github.com/StefanRoesch/ash_data_table.git
 cd ash_data_table
-docker compose --profile demo up --build
+docker compose --profile demo up
 ```
 
-The first build takes a few minutes. Then open **http://localhost:4478**
-and pick a person under **"Acting as"** at the top right, for example
-**Ada Admin**.
+This pulls a ready demo image (a snapshot of `main`). To build it from your
+checkout instead, for example after changing code, add `--build`; the first
+build takes a few minutes. Then open **http://localhost:4478** and pick a
+person under **"Acting as"** at the top right, for example **Ada Admin**.
 
 <details>
 <summary>With Elixir instead of Docker for the app</summary>
@@ -47,9 +48,9 @@ mix phx.server                  # http://localhost:4478
 
 **If it doesn't start:** port 4478 or 5477 is taken. Stop what uses it, or
 pick other ports: `DEMO_PORT=4500 POSTGRES_PORT=5500 docker compose
---profile demo up --build` (with Elixir: `PORT` and `POSTGRES_PORT`, see
-`.env.example`). Or Docker isn't running. The first build needs internet
-(Hex and npm).
+--profile demo up` (with Elixir: `PORT` and `POSTGRES_PORT`, see
+`.env.example`). Or Docker isn't running. The pull and the first build need
+internet (the build: Hex and npm).
 
 ### In your own app
 
