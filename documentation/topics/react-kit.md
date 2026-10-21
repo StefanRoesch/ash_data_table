@@ -1,23 +1,23 @@
 # A kit drawn in React
 
 A kit (see [Kits](kits.md)) can draw its parts in the browser with a client
-framework instead of HEEx. The demo has one: `DemoWeb.ReactKit`, which draws
-every part of a table with React and [shadcn/ui](https://ui.shadcn.com), on
-the table's own hooks, through [live_react](https://hex.pm/packages/live_react)
-2.0. The library itself stays free of npm: the React kit lives in the demo
+framework instead of HEEx. The demo's `DemoWeb.ReactKit` draws every part of
+a table with React and [shadcn/ui](https://ui.shadcn.com), on the table's own
+hooks, through [live_react](https://hex.pm/packages/live_react) 2.0. The
+library stays npm-free: the React kit lives in the demo
 (`demo/lib/demo_web/react_kit.ex`, `demo/assets/islands/table/`), and this
-guide is its recipe and the contracts it is built on. The demo shows it at
+guide is its recipe and the contracts it builds on. The demo shows it at
 `/react/tasks`.
 
-The rows stay a LiveView stream and the server holds none of them; every
-write still goes through the table's checks. What changes is who draws:
-each part of the kit is an island, a React component that live_react gives
-the part's values as props.
+The rows stay a LiveView stream, the server holds none of them, and every
+write still goes through the table's checks. Only the drawing changes: each
+part of the kit is an island, a React component that live_react gives the
+part's values as props.
 
 ## The recipe
 
-live_react renders a component in the browser only (no server rendering,
-so no Node at runtime):
+live_react renders a component in the browser only (no server rendering, so
+no Node at runtime):
 
 <!-- source: demo/mix.exs -->
 ```elixir
@@ -44,9 +44,9 @@ env: %{
 }
 ```
 
-The LiveSocket is given the kit's islands through the kit's own wrapper of
-live_react's hook (`reactKitHooks`, which commits each update at once and
-destroys the table's hooks in an island as the island goes):
+The LiveSocket gets the kit's islands through the kit's own wrapper of
+live_react's hook, `reactKitHooks`, which commits each update at once and
+destroys the table's hooks in an island as the island goes:
 
 <!-- source: demo/assets/js/app.js -->
 ```javascript
@@ -62,8 +62,7 @@ import {reactKitHooks} from "../islands/table"
   },
 ```
 
-A table is drawn with the kit as with any other, here attached to a
-LiveView:
+A table uses the kit like any other, here attached to a LiveView:
 
 <!-- source: demo/lib/demo_web/live/react_tasks_live.ex -->
 ```elixir
@@ -76,9 +75,9 @@ LiveView:
   time_zone: socket.assigns.time_zone
 ```
 
-The kit is a kit of contract 6. Each part it draws is an island, given
-the part's projection (`AshDataTable.Kit.Projection`), each key a prop of
-its own, its bundles as props (one rule, `props/1` of the kit):
+The kit is of contract 6. Each part it draws is an island, given the part's
+projection (`AshDataTable.Kit.Projection`) with each key as its own prop, and
+its bundles as props through one rule, the kit's `props/1`:
 
 <!-- source: demo/lib/demo_web/react_kit.ex -->
 ```elixir
@@ -102,55 +101,56 @@ end
 
 ## The contracts it draws on
 
-Everything the React kit does rests on contracts of the library, each
-documented in a moduledoc or a JS file of the package and checked by a test:
+Everything the React kit does rests on library contracts, each documented in
+a moduledoc or a JS file of the package and checked by a test:
 
 - **The stream's items** (`AshDataTable.Item`): plain maps whose cells hold
-  their finished, translated text. The `grid` part hands `rows` (the
-  stream) to its island as it is.
-- **What each part is given** (`AshDataTable.Kit.Projection`, ADR 0004):
-  its projection, finished plain data, every text said (`texts`,
-  `messages`), every bundle and every number in it, and the projections of
-  the parts inside it: the islands read the same shapes as the HEEx kit's
-  parts, and compute nothing (a counter's `length` too, which the hook
-  counts again as a person types).
-- **The bundles** (`AshDataTable.Attrs`): `Attrs.props/1` turns a bundle
-  into text props (`true` as `""`, nil and false left out); the JS half maps
-  the names React wants (`class` to `className`, …). A kit never renders a
+  their finished, translated text. The `grid` part hands `rows` (the stream)
+  to its island unchanged.
+- **What each part is given** (`AshDataTable.Kit.Projection`, ADR 0004): its
+  projection, finished plain data with every text (`texts`, `messages`),
+  every bundle and every number, plus the projections of the parts inside
+  it. The islands read the same shapes as the HEEx kit's parts and compute
+  nothing (not even a counter's `length`, which the hook recounts as a
+  person types).
+- **The bundles** (`AshDataTable.Attrs`): `Attrs.props/1` turns a bundle into
+  text props (`true` as `""`, nil and false left out); the JS half maps the
+  names React wants (`class` to `className`, …). A kit never renders a
   bundle's `phx-hook`: it mounts the hook itself.
-- **The events** (`Attrs`, "Events"): every event is sent through a
-  bundle (`phx-click`, a form's `phx-change` and `phx-submit`); LiveView
-  hears them from its root, and runs a JS command one holds ("Read again"
-  and "Clear filters" send focus on).
+- **The events** (`Attrs`, "Events"): every event goes through a bundle
+  (`phx-click`, a form's `phx-change` and `phx-submit`); LiveView hears them
+  from its root and runs a JS command one holds ("Read again" and "Clear
+  filters" send focus on).
 - **The hooks, mounted by the kit** (`assets/js/mount.js`): `mountGrid`,
   `mountPanel`, `mountPicker` and `mountPagination`, each
   `(el, transport, options) -> {beforeUpdate, updated, destroy}`, and
   `liveViewTransport` of the hook functions live_react gives an island.
   `options.onEdit` tells the kit which cell is being edited.
-- **What the hooks own** (`assets/js/owned.js`): the attributes and
-  contents they write after the kit drew an element, which a kit renders
-  never, once, or only as the table gives them.
+- **What the hooks own** (`assets/js/owned.js`): the attributes and contents
+  they write after the kit drew an element, which a kit renders never, once,
+  or only as the table gives them.
 - **The ids** (`AshDataTable.Ids`, mirrored by `assets/js/ids.js`).
 - **The geometry** (`AshDataTable.Geometry`, mirrored by
-  `assets/js/geometry.js`): where the columns and rows stand, which the
-  hooks count with; the islands are given each cell's place in its
-  projection (`colindex`) and count nothing.
-- **The places what opens is moved into**: a nested table, its heading
-  line, the picker's table, a picker a field opened and the question's copy
-  are moved by LiveView (`Phoenix.Component.portal/1`) into a place a part
-  draws, in the patch that opens them. A kit that draws in the browser draws
-  after that patch, so it draws every place ahead: the places of the lines
-  of an expanded row, and the `panel` and `picker` parts closed, with their
-  places in them (the table draws both always, given nil while closed).
-- **The sender** (`Attrs.sender/1`): drawn as markup of the LiveView's,
-  outside every island, so that LiveView mounts its hook and locks it while
-  a grid's event is out, never the grid.
+  `assets/js/geometry.js`): where columns and rows stand, which the hooks
+  count with; the islands get each cell's place in its projection
+  (`colindex`) and count nothing.
+- **The places what opens is moved into**: LiveView
+  (`Phoenix.Component.portal/1`) moves a nested table, its heading line, the
+  picker's table, a picker a field opened and the question's copy into a
+  place a part draws, in the patch that opens them. A kit that draws in the
+  browser draws after that patch, so it draws every place ahead: the places
+  of an expanded row's lines, and the `panel` and `picker` parts closed, with
+  their places in them (the table always draws both, given nil while
+  closed).
+- **The sender** (`Attrs.sender/1`): drawn as LiveView markup, outside every
+  island, so LiveView mounts its hook and locks it while a grid's event is
+  out, never the grid.
 
 ## Customizing
 
 Every part an island draws is a React component taken by name, the island's
-own outer part too. A host replaces one with its own, as a kit of its own
-replaces a part of the default kit:
+own outer part too. A host replaces one with its own, as a kit replaces a
+part of the default kit:
 
 <!-- sketch -->
 ```javascript
@@ -160,31 +160,33 @@ import {MyCell} from "./my_cell"
 export default reactKit({Cell: MyCell})
 ```
 
-The columns' components are found by the module a column names
-(`components`, `editors`); a column without one shows its text and says so
-on the console in development. On the server side a part is a function of
-the kit's module, as in any kit: a kit of one's own draws a part as an
-island of its own, or in HEEx, and the others as the React kit does.
+Columns' components are found by the module a column names (`components`,
+`editors`); a column without one shows its text and logs that to the console
+in development. On the server a part is a function of the kit's module, as in
+any kit: your own kit draws a part as its own island or in HEEx, and the
+others as the React kit does.
 
 ## Testing it
 
 `AshDataTable.KitCase` checks a kit that draws in the browser with
 `client: true`: every part's texts and messages, and that no page holds the
-test resource's sensitive value, which is that no prop and no item was given
-it (live_react writes them into the page's HTML):
+test resource's sensitive value, meaning no prop and no item got it
+(live_react writes them into the page's HTML):
 
 <!-- source: demo/test/demo_web/kits/react_kit_case_test.exs -->
 ```elixir
 use AshDataTable.KitCase, kit: DemoWeb.ReactKit, endpoint: DemoWeb.Endpoint, client: true
 ```
 
-The markers, ids, element kinds and Tab stops are checked on what the
-browser drew: `AshDataTable.KitCase.problems/4` over a page's HTML, for a
-state and a presentation. A page of your tests' own seeds the state with
-`AshDataTable.KitCase.given/4` (the records, in a tenant of their own),
-attaches the table of `AshDataTable.Test.Resource` (id `"kit"`) in that
-tenant with your kit, and `AshDataTable.KitCase.clean/1`s the tenant as it
-ends:
+Markers, ids, element kinds and Tab stops are checked on what the browser
+drew: `AshDataTable.KitCase.problems/4` over a page's HTML, for a state and a
+presentation. A page of your own tests:
+
+1. seeds the state with `AshDataTable.KitCase.given/4` (the records, in a
+   tenant of their own);
+2. attaches the table of `AshDataTable.Test.Resource` (id `"kit"`) in that
+   tenant with your kit;
+3. cleans the tenant with `AshDataTable.KitCase.clean/1` as it ends.
 
 <!-- source: demo/e2e/server/kit_states_live.ex -->
 ```elixir
@@ -198,19 +200,19 @@ second time with every table drawn by the React kit (the Playwright project
 
 ## Edge cases
 
-- **The panel and the picker are drawn always.** Closed, they draw only
-  their element and its place; the table's panel and picker hooks are
-  mounted as they open and destroyed as they close.
+- **The panel and the picker are always drawn.** Closed, they draw only their
+  element and its place; the table's panel and picker hooks are mounted as
+  they open and destroyed as they close.
 - **A file field.** LiveView tracks files only through its own file input.
-  The React kit draws it beside the island, out of sight and in the panel's
-  form (`form=`), and its visible file control hands it the files a person
-  chooses with `uploadTo` (LiveView's documented hook function, which
-  live_react gives an island).
-- **A cell the hook holds** (being edited, or busy while its save is on
-  its way) is drawn as it was until the hook gives it back: React never
-  draws into children the hook replaced.
-- **Controlled mode** works as with any kit: what the host draws itself
-  the table does not draw.
+  The React kit draws it beside the island, hidden and in the panel's form
+  (`form=`); its visible file control hands it the chosen files with
+  `uploadTo` (LiveView's documented hook function, which live_react gives an
+  island).
+- **A cell the hook holds** (being edited, or busy while its save is on its
+  way) stays as it was until the hook gives it back: React never draws into
+  children the hook replaced.
+- **Controlled mode** works as with any kit: the table does not draw what the
+  host draws itself.
 
 ## Things people trip over
 
@@ -219,20 +221,20 @@ second time with every table drawn by the React kit (the Playwright project
   `assets/islands/`.
 - **daisyUI's `--border` is a width, shadcn's a colour**: the demo renames
   shadcn's variables `--sh-*`, set only under the class `shadcn`. A Radix
-  primitive that portals its content to `document.body` leaves that scope:
-  its portalled element carries the class itself.
-- **Commits that come later.** React draws an update when it gets to it;
-  the kit's hook commits each of live_react's updates at once
-  (`flushSync`), so that two patches in a row are both drawn.
-- **A form's controls are uncontrolled**: what is typed is the browser's,
-  and what the server gives is set where it changes, unless the person is in
-  the control, as LiveView patches a form.
+  primitive that portals its content to `document.body` leaves that scope,
+  so its portalled element carries the class itself.
+- **Late commits.** React draws an update when it gets to it; the kit's hook
+  commits each live_react update at once (`flushSync`), so two patches in a
+  row are both drawn.
+- **A form's controls are uncontrolled**: what is typed belongs to the
+  browser, and a value from the server is set where it changes unless the
+  person is in the control, as LiveView patches a form.
 - **React's development build** checks and renders twice (StrictMode): the
-  table's hooks take being mounted, destroyed and mounted again. Measure
+  table's hooks survive being mounted, destroyed and mounted again. Measure
   with the production build.
 
 ## Not in the first version
 
 The React kit is the demo's, not a package: there is no npm package of it,
-and the library ships no kit of its own for another UI technology. See the
+and the library ships no kit for another UI technology. See the
 [specification](https://github.com/StefanRoesch/ash_data_table/issues/21).
