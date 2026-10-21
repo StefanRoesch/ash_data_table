@@ -321,69 +321,49 @@ defmodule AshDataTable.Live.Drawing do
           }
         }
       />
+      <%!-- The selection line made whole, of every input of its keys, and
+        given key by key out of a comprehension of one: LiveView compares
+        each key with what it was (as it does a comprehension's variables)
+        and the part sends again only what changed of a key, the count and
+        not the buttons of the actions. --%>
       <Kit.part
+        :for={
+          line <- [
+            Projection.of(:selection_line, %{
+              id: @entry.id,
+              notice?: @entry.notice?,
+              filtered?: @entry.state.filters != %{},
+              selecting: @entry.selecting,
+              all?: @entry.all?,
+              selected: length(@entry.selected),
+              total: @entry.page && @entry.page.total,
+              bulk: @entry.bulk,
+              running: @entry.running && @entry.running.action,
+              whole_page?:
+                Selection.whole_page?(%{
+                  all?: @entry.all?,
+                  rows: @entry.rows,
+                  selected: @entry.selected,
+                  model: @entry.model
+                }),
+              choose: @entry.choose,
+              page: @entry.page,
+              row_count: @entry.row_count,
+              nested?: @entry.nested?,
+              myself: @myself
+            })
+          ]
+        }
         part={:selection_line}
         kit={@options.kit}
         id={@entry.id}
-        shown?={
-          Projection.of({:selection_line, :shown?}, %{
-            notice?: @entry.notice?,
-            filtered?: @entry.state.filters != %{},
-            selecting: @entry.selecting,
-            all?: @entry.all?,
-            selected: length(@entry.selected)
-          })
-        }
-        nested?={Projection.of({:selection_line, :nested?}, %{nested?: @entry.nested?})}
-        selection={
-          Projection.of({:selection_line, :selection}, %{
-            id: @entry.id,
-            selecting: @entry.selecting,
-            all?: @entry.all?,
-            selected: length(@entry.selected),
-            total: @entry.page && @entry.page.total,
-            bulk: @entry.bulk,
-            running: @entry.running && @entry.running.action,
-            whole_page?:
-              Selection.whole_page?(%{
-                all?: @entry.all?,
-                rows: @entry.rows,
-                selected: @entry.selected,
-                model: @entry.model
-              }),
-            choose: @entry.choose,
-            page: @entry.page,
-            row_count: @entry.row_count
-          })
-        }
-        notice={
-          Projection.of({:selection_line, :notice}, %{
-            id: @entry.id,
-            notice?: @entry.notice?,
-            myself: @myself
-          })
-        }
-        clear_filters={
-          Projection.of({:selection_line, :clear_filters}, %{
-            id: @entry.id,
-            filtered?: @entry.state.filters != %{},
-            myself: @myself
-          })
-        }
-        texts={
-          Projection.of({:selection_line, :texts}, %{
-            total: @entry.page && @entry.page.total,
-            selected: length(@entry.selected),
-            all?: @entry.all?
-          })
-        }
-        messages={
-          Projection.of({:selection_line, :messages}, %{
-            total: @entry.page && @entry.page.total,
-            selected: length(@entry.selected),
-            all?: @entry.all?
-          })
-        }
+        shown?={line.shown?}
+        nested?={line.nested?}
+        selection={line.selection}
+        notice={line.notice}
+        clear_filters={line.clear_filters}
+        texts={line.texts}
+        messages={line.messages}
       />
       <Kit.part
         part={:status}

@@ -124,11 +124,20 @@ defmodule AshDataTable.Parts.Summary do
         {@summaries.expander}
       >
       </td>
+      <%!-- key by key, not spread: LiveView compares each cell with what
+        it was and sends again only what changed of it --%>
       <Kit.part
         :for={cell <- @summaries.cells}
         part={:summary_cell}
         kit={@kit}
-        {cell}
+        element={cell.element}
+        summary?={cell.summary?}
+        state={cell.state}
+        value={cell.value}
+        text={cell.text}
+        texts={cell.texts}
+        messages={cell.messages}
+        locale={cell.locale}
       />
       <td
         :if={@summaries.actions}

@@ -851,12 +851,17 @@ defmodule AshDataTable.Parts.Grid do
               row={row}
               {@row}
             /></tbody>
+        <%!-- key by key, not spread: LiveView then sends again only what
+          changed of it, a summary's number and not every cell's bundle --%>
         <Kit.part
           :if={@footer}
           part={:footer}
           kit={@kit}
           id={@id}
-          {@footer}
+          element={@footer.element}
+          summaries={@footer.summaries}
+          pager={@footer.pager}
+          full_view={@footer.full_view}
         />
       </table>
       <%!-- One editor per editable column. The hook opens a copy of it in the
