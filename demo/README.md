@@ -399,7 +399,8 @@ own (`DemoWeb.ReactTasksLive`).
 - Every part an island draws is replaceable by name
   (`reactKit({Cell: …})`, `assets/islands/table/parts.tsx`). Only the root,
   an element that draws nothing to be seen, is the default kit's.
-- `DemoWeb.ReactKit.Props` picks what each island is given, plain data only
+- Each island is given its part's projection (`AshDataTable.Kit.Projection`),
+  a prop per key, made props by one rule in `DemoWeb.ReactKit`, plain data only
   (`test/demo_web/react_kit_test.exs` encodes it to JSON;
   `test/demo_web/kits/react_kit_case_test.exs` runs `AshDataTable.KitCase`
   with `client: true` over it). The islands are in `assets/islands/table/`,
