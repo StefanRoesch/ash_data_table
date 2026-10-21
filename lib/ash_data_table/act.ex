@@ -22,9 +22,10 @@ defmodule AshDataTable.Act do
   # map cell, a union, a sensitive input, a file, a key of a related record,
   # the fields asked to be emptied), are the panel's
   # (`AshDataTable.Panel.values/4`, `unchosen/4`, `cleared/4`): this module
-  # asks it where it runs an action with what a form sent, and keeps every
-  # call of AshPhoenix and Ash. A key from the browser is a claim like any
-  # other: one that names nothing the person could have chosen runs nothing.
+  # is given what they make (`AshDataTable.Operation` asks them, after the
+  # record is read again) and keeps every call of AshPhoenix and Ash. A key
+  # from the browser is a claim like any other: one that names nothing the
+  # person could have chosen runs nothing.
   #
   # A generic action is given no record: it is run through the same form
   # (`AshPhoenix.Form.for_action/3`, which builds an `Ash.ActionInput` and
@@ -40,7 +41,6 @@ defmodule AshDataTable.Act do
   alias AshDataTable.Errors
   alias AshDataTable.Model
   alias AshDataTable.Model.Action
-  alias AshDataTable.Panel
   alias AshDataTable.Pick
   alias AshDataTable.Query
   alias AshDataTable.Record
@@ -70,13 +70,16 @@ defmodule AshDataTable.Act do
   @doc """
   Runs a row action straight away, without inputs, on the record with the
   primary key `key`. Takes the options of `AshDataTable.Query.read/3` that say
-  who is asking.
+  who is asking. `params` is what a generic action is given of its inputs
+  where nothing was typed (`AshDataTable.Panel.values/3` of `%{}`), beside
+  the row's key; an update or a destroy is given none.
   """
-  @spec run(Model.t(), Action.t(), map, keyword) :: result
-  def run(%Model{} = model, %Action{type: :action} = action, key, opts) when is_map(key) do
+  @spec run(Model.t(), Action.t(), map, map, keyword) :: result
+  def run(%Model{} = model, %Action{type: :action} = action, key, params, opts)
+      when is_map(key) do
     case Record.fetch(model, key, opts) do
       {:ok, record} ->
-        case run_generic(model, action, given(action, key), opts) do
+        case run_generic(model, action, Map.merge(params, given(action, key)), opts) do
           {:done, value} ->
             {:done, value}
 
@@ -92,7 +95,7 @@ defmodule AshDataTable.Act do
     end
   end
 
-  def run(%Model{} = model, %Action{} = action, key, opts) when is_map(key) do
+  def run(%Model{} = model, %Action{} = action, key, _params, opts) when is_map(key) do
     given = from_page(action, opts)
 
     case Record.fetch(model, key, opts) do
@@ -205,18 +208,18 @@ defmodule AshDataTable.Act do
   def given(%Action{}, _key), do: %{}
 
   @doc """
-  Runs a generic action straight away, with `given` as its arguments: what
-  the table gives itself, and for an action that runs on several records
-  what its panel held.
+  Runs a generic action straight away, with `params` as its arguments: what
+  the table gives itself, and what its inputs give where nothing was typed
+  (`AshDataTable.Panel.values/3` of `%{}`); and what the page gives it.
 
   Returns `{:done, value}` with what the action returned (nil when it
   returns nothing), or `{:error, message}` with what it said.
   """
   @spec run_generic(Model.t(), Action.t(), map, keyword) ::
           {:done, term} | {:error, Errors.message()}
-  def run_generic(%Model{} = model, %Action{type: :action} = action, given, opts)
-      when is_map(given) do
-    case submit_generic(model, action, %{}, given, "action", opts) do
+  def run_generic(%Model{} = model, %Action{type: :action} = action, params, opts)
+      when is_map(params) do
+    case submit_generic(model, action, params, "action", opts) do
       {:done, value} -> {:done, value}
       {:error, %AshPhoenix.Form{} = form} -> {:error, Errors.joined(messages(form, model))}
       {:error, nil, message} -> {:error, message}
@@ -224,40 +227,26 @@ defmodule AshDataTable.Act do
   end
 
   @doc """
-  Runs a generic action with the inputs a person gave in its panel, and
-  with `given`, what the table itself gives it.
+  Runs a generic action with `params`, what it is given: what a panel's
+  form gives it (`AshDataTable.Panel.values/4`, with what the table gives
+  itself), and what the page gives it (`from_page/2`). The keys a panel
+  holds were looked up before (`AshDataTable.Panel.unchosen/4`).
 
-  Returns `{:done, value}`, `{:error, form}` with the action's errors,
-  `{:unchosen, inputs}` as `submit_row/6` does (`opts` are then those of
-  `AshDataTable.Panel.unchosen/4`), or
+  Returns `{:done, value}`, `{:error, form}` with the action's errors, or
   `{:error, nil, message}` for a failure that is not of the action's
   saying: Ash raises what goes wrong inside a generic action, where it
   returns it for the others. That is for whoever runs the application, in
   the log.
   """
-  @spec submit_generic(Model.t(), Action.t(), map, map, String.t(), keyword) ::
-          {:done, term}
-          | {:error, form}
-          | {:unchosen, [Model.Input.t()]}
-          | {:error, nil, Errors.message()}
-  def submit_generic(%Model{} = model, %Action{type: :action} = action, params, given, id, opts) do
-    # an argument whose records are chosen (`reference` in the block) holds
-    # keys, and a key from the browser is a claim, as for any other action
-    case Panel.unchosen(action.inputs, params, nil, opts) do
-      [] ->
-        form = open_generic(model, action, id, opts)
-        given = Map.merge(given, from_page(action, opts))
+  @spec submit_generic(Model.t(), Action.t(), map, String.t(), keyword) ::
+          {:done, term} | {:error, form} | {:error, nil, Errors.message()}
+  def submit_generic(%Model{} = model, %Action{type: :action} = action, params, id, opts) do
+    form = open_generic(model, action, id, opts)
 
-        case AshPhoenix.Form.submit(form,
-               params: Panel.values(action.inputs, params, given, model.time_zone)
-             ) do
-          :ok -> {:done, nil}
-          {:ok, value} -> {:done, value}
-          {:error, form} -> {:error, form}
-        end
-
-      unchosen ->
-        {:unchosen, unchosen}
+    case AshPhoenix.Form.submit(form, params: Map.merge(params, from_page(action, opts))) do
+      :ok -> {:done, nil}
+      {:ok, value} -> {:done, value}
+      {:error, form} -> {:error, form}
     end
   rescue
     error ->
@@ -327,93 +316,40 @@ defmodule AshDataTable.Act do
   def validate(form, params), do: AshPhoenix.Form.validate(form, params)
 
   @doc """
-  Runs a row action with the inputs a person gave in its panel. The record
-  is read again, as the person; the values are taken for the inputs they
-  have on the record as it is now.
+  Runs an update or a destroy on `record`, read again as the person just
+  before, with `params`, what it is given: what a panel's form gives it for
+  the inputs the person has on the record as it is now
+  (`AshDataTable.Panel.values/4`, with the files and the fields asked to
+  be emptied), and what the page gives it (`from_page/2`).
 
-  Returns what `run/4` returns, but for an action that did not run:
-  `{:error, form}`, the form with the action's errors, or
-  `{:unchosen, inputs}`, the inputs whose value names a record the person
-  could not have chosen (`AshDataTable.Panel.unchosen/4`).
-
-  `opts` are those of `AshDataTable.Panel.unchosen/4`, and `:files`: the files the panel's
-  uploads hold, by the name of the argument each is for. They are the
-  table's to give, as what it gives itself. And `:cleared`: the names of
-  the inputs a person asked to empty, which an update action is given
-  without a value where they can be (`AshDataTable.Panel.cleared/4`).
+  Returns what `run/5` returns, but for an action that did not run:
+  `{:error, form}`, the form with the action's errors.
   """
-  @spec submit_row(Model.t(), Action.t(), map, map, String.t(), keyword) ::
-          {:ok, Ash.Resource.record()}
-          | {:done, term}
-          | :destroyed
-          | :gone
-          | {:error, form}
-          | {:unchosen, [Model.Input.t()]}
-          | {:error, nil, Errors.message()}
-  def submit_row(%Model{} = model, %Action{type: :action} = action, key, params, id, opts) do
-    given = Map.merge(files(opts), given(action, key))
-
-    case Record.fetch(model, key, opts) do
-      {:ok, _record} -> submit_generic(model, action, params, given, id, opts)
-      :error -> {:error, nil, {:text, :record_gone, []}}
-    end
-  end
-
-  def submit_row(%Model{} = model, %Action{} = action, key, params, id, opts) do
-    case Record.fetch(model, key, opts) do
-      {:ok, record} ->
-        inputs = inputs(action, record)
-
-        case Panel.unchosen(inputs, params, record, opts) do
-          [] ->
-            given =
-              files(opts)
-              |> Map.merge(Panel.cleared(action, inputs, record, Keyword.get(opts, :cleared, [])))
-              |> Map.merge(from_page(action, opts))
-
-            submit(
-              model,
-              form(record, action, id, opts),
-              Panel.values(inputs, params, given, model.time_zone),
-              opts
-            )
-
-          unchosen ->
-            {:unchosen, unchosen}
-        end
-
-      :error ->
-        {:error, nil, {:text, :record_gone, []}}
-    end
+  @spec submit_on(Model.t(), Action.t(), Ash.Resource.record(), map, String.t(), keyword) ::
+          {:ok, Ash.Resource.record()} | :destroyed | :gone | {:error, form}
+  def submit_on(%Model{} = model, %Action{} = action, record, params, id, opts) do
+    submit(
+      model,
+      form(record, action, id, opts),
+      Map.merge(params, from_page(action, opts)),
+      opts
+    )
   end
 
   @doc """
-  Runs the table's create action with the inputs a person gave in its
-  panel. `given` is what the table itself gives the action: the field that
-  joins a record created in a nested table to its row.
+  Runs the table's create action with `params`, what a panel's form gives
+  it (`AshDataTable.Panel.values/4`), with what the table gives the action
+  itself: its files, and the field that joins a record created in a nested
+  table to its row.
 
   Returns `{:ok, record}` with everything the table's columns show loaded,
-  `:gone` when the record was created and is not this person's to read,
-  `{:error, form}`, or `{:unchosen, inputs}` as `submit_row/6` does.
+  `:gone` when the record was created and is not this person's to read, or
+  `{:error, form}`.
   """
-  @spec submit_create(Model.t(), Action.t(), map, map, String.t(), keyword) ::
-          {:ok, Ash.Resource.record()} | :gone | {:error, form} | {:unchosen, [Model.Input.t()]}
-  def submit_create(%Model{} = model, %Action{type: :create} = action, params, given, id, opts) do
-    case Panel.unchosen(action.inputs, params, nil, opts) do
-      [] ->
-        submit(
-          model,
-          open_create(model, action, id, opts),
-          Panel.values(action.inputs, params, given, model.time_zone),
-          opts
-        )
-
-      unchosen ->
-        {:unchosen, unchosen}
-    end
-  end
-
-  defp files(opts), do: Keyword.get(opts, :files, %{})
+  @spec submit_create(Model.t(), Action.t(), map, String.t(), keyword) ::
+          {:ok, Ash.Resource.record()} | :gone | {:error, form}
+  def submit_create(%Model{} = model, %Action{type: :create} = action, params, id, opts),
+    do: submit(model, open_create(model, action, id, opts), params, opts)
 
   @doc """
   The records that are related now, by input, for the inputs among `inputs`

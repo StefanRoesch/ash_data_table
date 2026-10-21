@@ -7,14 +7,15 @@ defmodule AshDataTable.UnionsTest do
   use ExUnit.Case, async: false
 
   alias AshDataTable.Act
-  alias AshDataTable.Edit
   alias AshDataTable.Format
   alias AshDataTable.GroupValue
   alias AshDataTable.Model
   alias AshDataTable.Model.Field
+  alias AshDataTable.Operation.{Failure, Outcome}
   alias AshDataTable.Panel
   alias AshDataTable.Resource.Embedding
   alias AshDataTable.Test.Unions
+  alias AshDataTable.Test.Submitting
   alias AshDataTable.Test.Unions.{Card, Holder, Odd, Once, Place, Transfer}
 
   defp model, do: Model.build(Unions)
@@ -265,13 +266,13 @@ defmodule AshDataTable.UnionsTest do
       %{key: %{id: record.id}}
     end
 
+    # the save of the cell from its panel (`Operation.submit/1`), and the
+    # record it saved
     defp put(name, key, sent) do
-      column = column(name)
-      input = Model.input(model(), column)
-
-      Edit.put(model(), column, input, key, %{Atom.to_string(name) => sent}, "panel",
-        authorize?: false
-      )
+      case Submitting.cell(model(), name, key, %{Atom.to_string(name) => sent}, authorize?: false) do
+        {:ok, %Outcome{record: record}} -> {:ok, record}
+        {:error, %Failure{form: %AshPhoenix.Form{} = form}} -> {:error, form}
+      end
     end
 
     defp chosen(kind, value), do: %{"_union_type" => kind, "_of" => kind, "_union_value" => value}

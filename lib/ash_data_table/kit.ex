@@ -613,8 +613,9 @@ defmodule AshDataTable.Kit do
   ### `AshDataTable.Present.Panel`
 
     * `title`, `submit`, `question` - messages (`question` nil for none)
-    * `kind` - `:cell`, `:row`, `:create`, `:table`, `:bulk`, or `:filter`
-      (the panel of a filter for several values, which runs no action)
+    * `ask` - `"changed"` where the question is asked only when something
+      changed (the panel of a cell: a list, a map cell, a union), else nil;
+      what `Attrs.panel/5` writes as `data-ask`
     * `destructive?` - whether its action destroys the record
     * `errors` - what the action said of none of the fields, or nil
     * `method` - its form's HTTP method
@@ -874,7 +875,8 @@ defmodule AshDataTable.Kit do
   `Attrs.spanning/3` and `Attrs.summaries/3` take the geometry, as the
   new `Attrs.head_row/2` and `Attrs.filter_row/2` (the header rows) do, and
   `Attrs.colcount/3` and `Attrs.filter_row?/1` are gone (its `colcount`,
-  its `header_rows`).
+  its `header_rows`). Stage 9d: `AshDataTable.Present.Panel` has `ask`
+  (`"changed"` or nil, the panel's `data-ask`) in place of `kind`.
   """
 
   use Phoenix.Component
@@ -1586,7 +1588,9 @@ defmodule AshDataTable.Kit do
         "and acting?, label_column and editing? as fields of model, summarised? as the " <>
         "geometry's summary?, Attrs.head_row/2 and Attrs.filter_row/2, Attrs.table/6 " <>
         "in place of Attrs.table/8, and Attrs.grid/6, Attrs.spanning/3 and Attrs.summaries/3 " <>
-        "the geometry; Attrs.colcount/3 and Attrs.filter_row?/1 are gone (colcount, header_rows)"
+        "the geometry; Attrs.colcount/3 and Attrs.filter_row?/1 are gone (colcount, header_rows); " <>
+        "and AshDataTable.Present.Panel has ask (\"changed\" or nil, the panel's data-ask) in " <>
+        "place of kind"
 
   defp changed(_contract), do: "."
 

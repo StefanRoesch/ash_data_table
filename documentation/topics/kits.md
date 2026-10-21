@@ -550,7 +550,9 @@ changed.
   `Attrs.table/6` (in place of `/8`), `Attrs.grid/6`, `Attrs.spanning/3` and
   `Attrs.summaries/3` take the geometry, and `Attrs.colcount/3` and
   `Attrs.filter_row?/1` are gone: a grid of your own reads `colcount` and
-  `header_rows`.
+  `header_rows`. The panel (`AshDataTable.Present.Panel`) says `ask`
+  (`"changed"` or nil, what `Attrs.panel/5` writes as `data-ask`) in place
+  of `kind`.
 
 ## Not in the first version
 

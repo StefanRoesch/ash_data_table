@@ -74,7 +74,8 @@ defmodule Demo.Support.Files.Scan do
   out.
 
   The upload of `file` is limited by the block; those of the other
-  arguments have LiveView's own limits.
+  arguments have LiveView's own limits. `notes` is a map cell, edited in
+  the side panel (`note`), the one cell the table edits.
   """
   use Ash.Resource,
     domain: Demo.Support.Files,
@@ -85,6 +86,7 @@ defmodule Demo.Support.Files.Scan do
 
   table do
     label_field :title
+    update_action :note
 
     column :title
     column :content
@@ -92,6 +94,7 @@ defmodule Demo.Support.Files.Scan do
     column :file_name
     column :file_type
     column :size
+    column :notes
 
     action :attach
     action :pair
@@ -133,6 +136,11 @@ defmodule Demo.Support.Files.Scan do
       argument :rear, :file
       change {Read, argument: :front, into: :content}
       change {Read, argument: :rear, into: :back}
+    end
+
+    update :note do
+      require_atomic? false
+      accept [:notes]
     end
 
     update :annotate do
@@ -186,6 +194,10 @@ defmodule Demo.Support.Files.Scan do
     attribute :file_type, :string, public?: true
     attribute :size, :integer, public?: true
     attribute :path, :string
+
+    attribute :notes, :map,
+      public?: true,
+      constraints: [fields: [line: [type: :string]]]
   end
 end
 

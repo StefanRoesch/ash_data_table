@@ -14,12 +14,14 @@ defmodule AshDataTable.ManagingTest do
   alias AshDataTable.Act
   alias AshDataTable.Edit
   alias AshDataTable.Model
+  alias AshDataTable.Operation.{Failure, Outcome}
   alias AshDataTable.Panel
   alias AshDataTable.Pick
   alias AshDataTable.Resource.Managing
   alias AshDataTable.Resource.Referencing
   alias AshDataTable.Test.Managing.{Note, Person, Seal, Tag, Ticket, TicketSeal, TicketTag}
   alias AshDataTable.Test.Picking.{Port, Zone}
+  alias AshDataTable.Test.Submitting
 
   @admin [actor: %{role: :admin}, authorize_given: nil]
   @member [actor: %{role: :member}, authorize_given: nil]
@@ -449,13 +451,12 @@ defmodule AshDataTable.ManagingTest do
          %{bug: bug, urgent: urgent, model: model} do
       ticket = ticket(%{}, tags: [bug])
 
-      assert {:ok, %Ticket{}} =
-               Act.submit_row(
+      assert {:ok, %Outcome{record: %Ticket{}}} =
+               Submitting.row(
                  model,
                  row_action(:set_tags),
                  key(ticket),
                  %{"tags" => ["", urgent.id]},
-                 "panel",
                  @admin
                )
 
@@ -465,13 +466,12 @@ defmodule AshDataTable.ManagingTest do
     test "takes every one away with an empty list", %{bug: bug, model: model} do
       ticket = ticket(%{}, tags: [bug])
 
-      assert {:ok, %Ticket{}} =
-               Act.submit_row(
+      assert {:ok, %Outcome{record: %Ticket{}}} =
+               Submitting.row(
                  model,
                  row_action(:set_tags),
                  key(ticket),
                  %{"tags" => [""]},
-                 "panel",
                  @admin
                )
 
@@ -485,25 +485,23 @@ defmodule AshDataTable.ManagingTest do
     } do
       ticket = ticket(%{}, tags: [bug])
 
-      assert {:ok, %Ticket{}} =
-               Act.submit_row(
+      assert {:ok, %Outcome{record: %Ticket{}}} =
+               Submitting.row(
                  model,
                  row_action(:add_tags),
                  key(ticket),
                  %{"add" => ["", urgent.id]},
-                 "panel",
                  @admin
                )
 
       assert names(ticket, :tags) == ["Bug", "Urgent"]
 
-      assert {:ok, %Ticket{}} =
-               Act.submit_row(
+      assert {:ok, %Outcome{record: %Ticket{}}} =
+               Submitting.row(
                  model,
                  row_action(:drop_tags),
                  key(ticket),
                  %{"drop" => ["", bug.id]},
-                 "panel",
                  @admin
                )
 
@@ -521,13 +519,12 @@ defmodule AshDataTable.ManagingTest do
       assert %{notes: notes} = Act.related(row_action(:keep_notes).inputs, ticket, @admin)
       assert notes |> Enum.map(& &1.body) |> Enum.sort() == ["Drop", "Keep"]
 
-      assert {:ok, %Ticket{}} =
-               Act.submit_row(
+      assert {:ok, %Outcome{record: %Ticket{}}} =
+               Submitting.row(
                  model,
                  row_action(:keep_notes),
                  key(ticket),
                  %{"notes" => ["", keep.id]},
-                 "panel",
                  @admin
                )
 
@@ -540,15 +537,8 @@ defmodule AshDataTable.ManagingTest do
       drop = row_action(:drop_tags)
 
       # a tag the ticket does not carry: Ash looks for it among the related ones
-      assert {:error, %AshPhoenix.Form{} = form} =
-               Act.submit_row(
-                 model,
-                 drop,
-                 key(ticket),
-                 %{"drop" => ["", urgent.id]},
-                 "panel",
-                 @admin
-               )
+      assert {:error, %Failure{form: %AshPhoenix.Form{} = form}} =
+               Submitting.row(model, drop, key(ticket), %{"drop" => ["", urgent.id]}, @admin)
 
       # under the argument, though Ash names the relationship
       assert Panel.errors(form, model, drop.inputs) ==
@@ -566,8 +556,8 @@ defmodule AshDataTable.ManagingTest do
       stumble = row_action(:stumble)
 
       errors = fn over ->
-        {:error, %AshPhoenix.Form{} = form} =
-          Act.submit_row(model, stumble, key(ticket), %{"over" => over}, "panel", @admin)
+        {:error, %Failure{form: %AshPhoenix.Form{} = form}} =
+          Submitting.row(model, stumble, key(ticket), %{"over" => over}, @admin)
 
         Panel.errors(form, model, stumble.inputs)
       end
@@ -584,13 +574,12 @@ defmodule AshDataTable.ManagingTest do
       old = tag("Old", %{retired?: true})
       ticket = ticket(%{}, tags: [bug])
 
-      assert {:unchosen, [%{name: :tags}]} =
-               Act.submit_row(
+      assert {:error, %Failure{unchosen: [%{name: :tags}]}} =
+               Submitting.row(
                  model,
                  row_action(:set_tags),
                  key(ticket),
                  %{"tags" => ["", bug.id, old.id]},
-                 "panel",
                  @admin
                )
 
@@ -605,13 +594,12 @@ defmodule AshDataTable.ManagingTest do
       # a member is shown no secret seal, and sends none
       assert Act.related(row_action(:set_seals).inputs, ticket, @member) == %{seals: []}
 
-      assert {:ok, %Ticket{}} =
-               Act.submit_row(
+      assert {:ok, %Outcome{record: %Ticket{}}} =
+               Submitting.row(
                  model,
                  row_action(:set_seals),
                  key(ticket),
                  %{"seals" => [""]},
-                 "panel",
                  @member
                )
 
@@ -623,25 +611,21 @@ defmodule AshDataTable.ManagingTest do
       ada = person("Ada")
       old = tag("Old", %{retired?: true})
 
-      assert {:unchosen, [%{name: :tags}]} =
-               Act.submit_create(
+      assert {:error, %Failure{unchosen: [%{name: :tags}]}} =
+               Submitting.create(
                  model,
                  model.create,
                  %{"title" => "New", "author" => ada.id, "tags" => ["", old.id]},
-                 %{},
-                 "panel",
                  @admin
                )
 
       assert Ash.read!(Ticket, authorize?: false) == []
 
-      assert {:ok, %Ticket{} = ticket} =
-               Act.submit_create(
+      assert {:ok, %Outcome{record: %Ticket{} = ticket}} =
+               Submitting.create(
                  model,
                  model.create,
                  %{"title" => "New", "author" => ada.id, "tags" => ["", bug.id]},
-                 %{},
-                 "panel",
                  @admin
                )
 

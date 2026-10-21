@@ -35,7 +35,12 @@ defmodule AshDataTable.ArchitectureTest do
       through the module of its topic (`Live.Core.answer/4`), and what a
       panel's run hands on goes the same way (`Live.Core.run/2`). Every
       topic is called through `Live.Core`, which they all ask for the
-      table; the check is of the edges among the four;
+      table; the check is of the edges among the four. `requests.ex` has
+      no edge to any topic module;
+    * `act.ex`, `edit.ex` and `present.ex` have no edge to `panel.ex`: the
+      panel builds its forms through `Act` and `Edit` and makes what a
+      part draws of it (`Panel.shown/2`), and `Operation` gives `Act` and
+      `Edit` what it makes of a form, one way (stage 9d);
     * no file of 2a names LiveView, `Phoenix.Component`, `Phoenix.HTML`,
       `Phoenix.PubSub`, Gettext or a module of the words, which xref cannot see, also not
       inside a multi-alias (`alias AshDataTable.{Format, Text}`). A router
@@ -198,6 +203,24 @@ defmodule AshDataTable.ArchitectureTest do
 
     among = Enum.map(~w(panel cells bulk requests), &"#{@lib}/live/core/#{&1}.ex")
 
+    # what asks the panel, and what it asks: one way (9d fix-up)
+    to_panel =
+      for from <- Enum.map(~w(act.ex edit.ex present.ex), &"#{@lib}/#{&1}"),
+          is_map_key(Map.get(graph, from, %{}), @lib <> "/panel.ex"),
+          do: "#{from} -> #{@lib}/panel.ex"
+
+    # controlled mode calls no topic (9d): an answer is an intent
+    topics =
+      Enum.map(
+        ~w(panel cells bulk picker reading url nesting selection updates),
+        &"#{@lib}/live/core/#{&1}.ex"
+      )
+
+    from_requests =
+      for to <- topics,
+          is_map_key(Map.get(graph, @lib <> "/live/core/requests.ex", %{}), to),
+          do: "#{@lib}/live/core/requests.ex -> #{to}"
+
     panel =
       for cycle <-
             graph
@@ -214,6 +237,8 @@ defmodule AshDataTable.ArchitectureTest do
       {"cycles across parts or with a compile edge Spark does not need (5.4)", cycles},
       {"the bundles in a cycle (9c)", bundles},
       {"the panel's adapter, Cells, Bulk and Requests in a cycle (9d)", panel},
+      {"Act, Edit or Present calling the panel (9d)", to_panel},
+      {"Requests calling a topic of the live core (9d)", from_requests},
       {"2a naming LiveView, PubSub, Gettext or the words (5.5)", data_layer_mentions()},
       {"reads from Ash outside Query, Record, Pick and Bulk (S1)", reads()}
     ])

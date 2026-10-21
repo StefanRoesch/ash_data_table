@@ -3,7 +3,9 @@ defmodule AshDataTable.ModelTest do
   use ExUnit.Case, async: true
 
   alias AshDataTable.Model
+  alias AshDataTable.Operation.{Failure, Outcome}
   alias AshDataTable.Panel
+  alias AshDataTable.Test.Submitting
 
   defp column_names(model), do: Enum.map(model.columns, & &1.name)
 
@@ -2735,14 +2737,13 @@ defmodule AshDataTable.ModelTest do
 
       # what is no input of the panel is not given, whatever was sent: a
       # private argument, and a name the action does not know
-      assert Act.submit_generic(
-               model,
-               greet,
-               %{"to" => "World", "audit" => "typed", "unheard_of" => "typed"},
-               %{},
-               "panel",
-               @opts
-             ) == {:done, "Hello World"}
+      assert {:ok, %Outcome{value: "Hello World"}} =
+               Submitting.table(
+                 model,
+                 greet,
+                 %{"to" => "World", "audit" => "typed", "unheard_of" => "typed"},
+                 @opts
+               )
     end
 
     test "says what the action said when it did not run", %{model: model} do
@@ -2766,15 +2767,15 @@ defmodule AshDataTable.ModelTest do
     test "puts the action's errors at the fields of its panel", %{model: model} do
       refuse = table_action(model, :refuse)
 
-      assert {:error, %AshPhoenix.Form{} = form} =
-               Act.submit_generic(model, refuse, %{"amount" => "3"}, %{}, "panel", @opts)
+      assert {:error, %Failure{form: %AshPhoenix.Form{} = form}} =
+               Submitting.table(model, refuse, %{"amount" => "3"}, @opts)
 
       assert Panel.errors(form, model, refuse.inputs) == %{
                amount: [{:ash, "is more than there is", []}]
              }
 
-      assert {:error, %AshPhoenix.Form{} = form} =
-               Act.submit_generic(model, refuse, %{"amount" => ""}, %{}, "panel", @opts)
+      assert {:error, %Failure{form: %AshPhoenix.Form{} = form}} =
+               Submitting.table(model, refuse, %{"amount" => ""}, @opts)
 
       assert Panel.errors(form, model, refuse.inputs) == %{amount: [{:ash, "is required", []}]}
     end
@@ -2795,15 +2796,15 @@ defmodule AshDataTable.ModelTest do
          %{model: model} do
       one = record("One")
 
-      assert Act.run(model, table_action(model, :copy), %{id: one.id}, @opts) == {:done, nil}
+      assert Act.run(model, table_action(model, :copy), %{id: one.id}, %{}, @opts) == {:done, nil}
       assert titles() == ["Copy of One", "One"]
 
-      assert Act.run(model, table_action(model, :stamp), %{id: one.id}, @opts) ==
+      assert Act.run(model, table_action(model, :stamp), %{id: one.id}, %{}, @opts) ==
                {:done, "stamped One"}
     end
 
     test "a row action on a record that is gone runs nothing", %{model: model} do
-      assert Act.run(model, table_action(model, :copy), %{id: Ash.UUID.generate()}, @opts) ==
+      assert Act.run(model, table_action(model, :copy), %{id: Ash.UUID.generate()}, %{}, @opts) ==
                {:error, nil, {:text, :record_gone, []}}
 
       assert titles() == []
@@ -2814,7 +2815,7 @@ defmodule AshDataTable.ModelTest do
       two = record("Two", true)
 
       assert {:error, %TableActing{title: "Two"}, {:ash, "is finished", []}} =
-               Act.run(model, table_action(model, :stamp), %{id: two.id}, @opts)
+               Act.run(model, table_action(model, :stamp), %{id: two.id}, %{}, @opts)
     end
 
     test "a row action whose policy refuses this row says so", %{model: model} do
@@ -2822,9 +2823,10 @@ defmodule AshDataTable.ModelTest do
       guard = table_action(model, :guard)
 
       assert {:error, %TableActing{}, {:text, :action_not_allowed, []}} =
-               Act.run(model, guard, %{id: one.id}, actor: %{keys: []})
+               Act.run(model, guard, %{id: one.id}, %{}, actor: %{keys: []})
 
-      assert Act.run(model, guard, %{id: one.id}, actor: %{keys: [one.id]}) == {:done, "guarded"}
+      assert Act.run(model, guard, %{id: one.id}, %{}, actor: %{keys: [one.id]}) ==
+               {:done, "guarded"}
     end
 
     test "the key a panel's form sends for the row's argument is not taken: the row's own is given",
@@ -2837,31 +2839,31 @@ defmodule AshDataTable.ModelTest do
       assert Act.given(table_action(model, :count), %{id: one.id}) == %{}
       assert Act.given(table_action(model, :finish), %{id: one.id}) == %{}
 
-      assert Act.submit_row(
-               model,
-               rename,
-               %{id: one.id},
-               %{"title" => "Uno", "record_id" => two.id},
-               "panel",
-               @opts
-             ) == {:done, "Uno"}
+      assert {:ok, %Outcome{value: "Uno"}} =
+               Submitting.row(
+                 model,
+                 rename,
+                 %{id: one.id},
+                 %{"title" => "Uno", "record_id" => two.id},
+                 @opts
+               )
 
       assert titles() == ["Two", "Uno"]
 
-      assert {:error, %AshPhoenix.Form{} = form} =
-               Act.submit_row(model, rename, %{id: one.id}, %{"title" => "ab"}, "panel", @opts)
+      assert {:error, %Failure{form: %AshPhoenix.Form{} = form}} =
+               Submitting.row(model, rename, %{id: one.id}, %{"title" => "ab"}, @opts)
 
       assert Panel.errors(form, model, rename.inputs) ==
                %{title: [{:ash, "length must be greater than or equal to %{min}", [min: 3]}]}
 
-      assert Act.submit_row(
-               model,
-               rename,
-               %{id: Ash.UUID.generate()},
-               %{"title" => "Nobody"},
-               "panel",
-               @opts
-             ) == {:error, nil, {:text, :record_gone, []}}
+      assert {:error, %Failure{message: {:text, :record_gone, []}}} =
+               Submitting.row(
+                 model,
+                 rename,
+                 %{id: Ash.UUID.generate()},
+                 %{"title" => "Nobody"},
+                 @opts
+               )
     end
 
     test "on the selected rows, runs once per record a person may read, with the inputs given once",

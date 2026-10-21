@@ -16,12 +16,14 @@ defmodule AshDataTable.PageValuesTest do
   alias AshDataTable.Model
   alias AshDataTable.Operation
   alias AshDataTable.Operation.Input
+  alias AshDataTable.Operation.Outcome
   alias AshDataTable.Pick
   alias AshDataTable.Query
   alias AshDataTable.Request
   alias AshDataTable.State
   alias AshDataTable.Test.Given.Note
   alias AshDataTable.Test.Given.Remark
+  alias AshDataTable.Test.Submitting
 
   @page %{
     context: %{shared: %{project: 7}},
@@ -132,8 +134,8 @@ defmodule AshDataTable.PageValuesTest do
     end
 
     test "a create", %{model: model} do
-      assert {:ok, %Note{title: "Three"}} =
-               Act.submit_create(model, model.create, %{"title" => "Three"}, %{}, "c", @opts)
+      assert {:ok, %Outcome{record: %Note{title: "Three"}}} =
+               Submitting.create(model, model.create, %{"title" => "Three"}, @opts)
 
       assert [{Note, :create, context, %{secret: "s3"}}] = writes()
       assert context.shared == %{project: 7}
@@ -166,7 +168,7 @@ defmodule AshDataTable.PageValuesTest do
       note: note
     } do
       assert {:ok, %Note{assignee: "ann"}} =
-               Act.run(model, action(model, :assign), %{id: note.id}, @opts)
+               Act.run(model, action(model, :assign), %{id: note.id}, %{}, @opts)
 
       assert [{Note, :assign, context, %{to: "ann", secret: "s3"}}] = writes()
       assert context.shared == %{project: 7}
@@ -205,7 +207,7 @@ defmodule AshDataTable.PageValuesTest do
       opts = [authorize?: false, page_values: %{@page | page_arguments: %{}}]
 
       assert_raise ArgumentError, ~r/`assign`.*`to`.*page_arguments/, fn ->
-        Act.run(model, action(model, :assign), %{id: note.id}, opts)
+        Act.run(model, action(model, :assign), %{id: note.id}, %{}, opts)
       end
 
       assert_raise ArgumentError, ~r/`tally`.*`by`.*page_arguments/, fn ->

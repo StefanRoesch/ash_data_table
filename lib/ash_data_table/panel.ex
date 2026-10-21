@@ -33,8 +33,8 @@ defmodule AshDataTable.Panel do
   # value made of fields travels in the form through
   # `AshDataTable.GroupValue`.
   #
-  # Nothing of it is drawn as it is: a part is given what
-  # `AshDataTable.Present.panel/2` makes of it.
+  # Nothing of it is drawn as it is: a part is given what `shown/2` makes
+  # of it (`AshDataTable.Present.Panel`).
 
   alias AshDataTable.Act
   alias AshDataTable.Edit
@@ -42,6 +42,7 @@ defmodule AshDataTable.Panel do
   alias AshDataTable.GroupValue
   alias AshDataTable.Model
   alias AshDataTable.Pick
+  alias AshDataTable.Present
   alias AshDataTable.Typed
 
   # Besides `kind` and `for`:
@@ -840,6 +841,59 @@ defmodule AshDataTable.Panel do
     {kind, action && action.name, row(panel), column(panel)}
   end
 
+  @doc """
+  What a part draws of the open panel (`AshDataTable.Present.Panel`, with
+  an `AshDataTable.Present.Field` per input): its texts, whether its
+  question is asked only when something changed (`asks/1`), what each field
+  shows (`field/3`), what is said of none of them. `upload_errors` is what
+  the live layer says at each file field, by name. Nothing sensitive is in
+  it: a sensitive field holds what was typed into it in this panel, else
+  nothing; a chosen record is called by its label, scrubbed.
+  """
+  @spec shown(t, map) :: Present.Panel.t()
+  def shown(%__MODULE__{} = panel, upload_errors \\ %{}) do
+    %Present.Panel{
+      title: panel.title,
+      ask: asks(panel),
+      question: panel.question,
+      submit: panel.submit,
+      method: method(panel),
+      destructive?: destructive?(panel),
+      errors: panel.errors[nil],
+      fields:
+        for input <- panel.inputs do
+          shown = field(panel, input, upload_errors)
+
+          %Present.Field{
+            name: input.name,
+            path: [Atom.to_string(input.name)],
+            form_name: shown.form_name,
+            input: input,
+            value: shown.value,
+            errors: shown.errors,
+            places: shown.places,
+            chosen: panel.chosen[input.name],
+            clear: shown.clear
+          }
+        end,
+      inside: %{
+        errors: panel.errors,
+        touched: panel.touched,
+        submitted?: panel.submitted?,
+        time_zone: panel.time_zone
+      }
+    }
+  end
+
+  @doc """
+  Whether the panel's question is asked only when something changed: of
+  the panel of a cell (a list, a map cell, a union), `"changed"`; else nil,
+  asked whenever its button is used.
+  """
+  @spec asks(t) :: String.t() | nil
+  def asks(%__MODULE__{kind: :cell}), do: "changed"
+  def asks(%__MODULE__{}), do: nil
+
   @doc "Whether the panel's action destroys the record."
   @spec destructive?(t) :: boolean
   def destructive?(%__MODULE__{} = panel), do: match?(%{type: :destroy}, action(panel))
@@ -850,7 +904,7 @@ defmodule AshDataTable.Panel do
   def method(%__MODULE__{form: form}), do: form.method
 
   @doc """
-  What a field of the panel shows (`AshDataTable.Present.panel/2`): the
+  What a field of the panel shows (`shown/2`): the
   name of its control (`form_name`), what the control holds (`value`), the
   errors shown at it and the places of the values of an array they are
   about, and for a sensitive field that can be emptied `clear`

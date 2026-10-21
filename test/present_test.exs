@@ -102,7 +102,7 @@ defmodule AshDataTable.PresentTest do
 
     test "holds no sensitive value of the record: a sensitive field is empty", %{key: key} do
       for name <- [:rotate, :reissue] do
-        panel = Present.panel(opened(key, name, %{}))
+        panel = Panel.shown(opened(key, name, %{}))
 
         refute seen(panel) =~ @secrets
         refute seen(panel) =~ "AshPhoenix.Form"
@@ -115,7 +115,7 @@ defmodule AshDataTable.PresentTest do
 
     test "a sensitive field holds what was typed into it in this panel", %{key: key} do
       panel =
-        Present.panel(
+        Panel.shown(
           opened(key, :rotate, %{
             typed: %{"passphrase" => "typed-pass", "note" => "a note"},
             cleared: MapSet.new([:token]),
@@ -129,7 +129,7 @@ defmodule AshDataTable.PresentTest do
       assert fields.token.value == ""
       assert fields.token.clear == :asked
       assert fields.passphrase.form_name == "panel[passphrase]"
-      assert %Present.Panel{kind: :row, method: "put"} = panel
+      assert %Present.Panel{ask: nil, method: "put"} = panel
       assert {:text, :action_on, [action: _label, record: "Main"]} = panel.title
     end
 
@@ -138,13 +138,13 @@ defmodule AshDataTable.PresentTest do
     } do
       errors = %{nil => ["Not now."], passphrase: ["is required"]}
 
-      before = Present.panel(opened(key, :rotate, %{errors: errors}))
+      before = Panel.shown(opened(key, :rotate, %{errors: errors}))
       fields = Map.new(before.fields, &{&1.name, &1})
       assert fields.passphrase.errors == []
       assert before.errors == ["Not now."]
 
       used =
-        Present.panel(opened(key, :rotate, %{errors: errors, used: MapSet.new(["passphrase"])}))
+        Panel.shown(opened(key, :rotate, %{errors: errors, used: MapSet.new(["passphrase"])}))
 
       assert Enum.find(used.fields, &(&1.name == :passphrase)).errors == ["is required"]
     end

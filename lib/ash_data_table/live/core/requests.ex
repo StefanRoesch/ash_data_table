@@ -38,7 +38,7 @@ defmodule AshDataTable.Live.Core.Requests do
   # Every table the table on the page shows is controlled as it is: a
   # nested table holds requests of its own, at once with its parent's
   # (`AshDataTable.requests/1` lists them). An answer finds the table that
-  # holds its `ref` (`answer/4`). A request ends, `:request_ended`, when it
+  # holds its `ref` (`holder/3`). A request ends, `:request_ended`, when it
   # is answered, given up, taken over by another, or when its table closes
   # (its row collapsed, or the nested table went with its parent's rows).
   # A picker's table opens nothing (`Model`'s chooser), so holds nothing.

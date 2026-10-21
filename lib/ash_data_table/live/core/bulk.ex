@@ -215,7 +215,7 @@ defmodule AshDataTable.Live.Core.Bulk do
     do: {:text, :bulk_confirm, count: count, question: question}
 
   # The panel of an action that is to run on the selected rows
-  # (`AshDataTable.Core.Panel.open/4`), which asks its question before it runs.
+  # (`AshDataTable.Live.Core.Panel.open/4`), which asks its question before it runs.
   defp open_bulk(socket, action, selection, question) do
     count = selected(selection, Core.table(socket).entry)
 

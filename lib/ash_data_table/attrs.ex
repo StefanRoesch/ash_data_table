@@ -657,7 +657,7 @@ defmodule AshDataTable.Attrs do
   # person, and the panel's one input is the column's attribute, shown as
   # the field of an array, as a group of the value's fields (`group/1`), or
   # as one group per value of an array (`groups/1`). "Save" runs the
-  # column's update action with that one input (`AshDataTable.Edit.put/7`,
+  # column's update action with that one input (`AshDataTable.Edit.put/6`,
   # through `AshDataTable.Operation.submit/1`); what the action says about a
   # field, or a value of an array, is shown at that field, and the panel
   # stays open. Closed, it gives the focus back to the cell.
@@ -1623,7 +1623,7 @@ defmodule AshDataTable.Attrs do
       "phx-target" => target,
       "data-table" => id,
       "data-question" => question,
-      "data-ask" => panel.kind == :cell && "changed",
+      "data-ask" => panel.ask,
       "data-destructive" => panel.destructive?,
       "aria-labelledby" => "#{id}-panel-title"
     })

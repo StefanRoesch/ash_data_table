@@ -577,7 +577,7 @@ defmodule AshDataTable.KitTest do
     end
 
     panel = %AshDataTable.Present.Panel{
-      kind: :create,
+      ask: nil,
       method: "post",
       fields: [
         field.(:name, "Anchor"),

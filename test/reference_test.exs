@@ -10,11 +10,12 @@ defmodule AshDataTable.ReferenceTest do
 
   import Spark.Test
 
-  alias AshDataTable.Act
   alias AshDataTable.Bulk
   alias AshDataTable.Model
+  alias AshDataTable.Operation.{Failure, Outcome}
   alias AshDataTable.Panel
   alias AshDataTable.Test.Referring.{Job, Member}
+  alias AshDataTable.Test.Submitting
 
   @admin [actor: %{role: :admin}, authorize_given: nil]
   @member [actor: %{role: :member}, authorize_given: nil]
@@ -132,26 +133,24 @@ defmodule AshDataTable.ReferenceTest do
     test "runs an update action with the record that was chosen", %{ada: ada, away: away} do
       job = job("Paint")
 
-      assert {:ok, %Job{}} =
-               Act.submit_row(
+      assert {:ok, %Outcome{record: %Job{}}} =
+               Submitting.row(
                  model(),
                  row_action(:give),
                  %{id: job.id},
                  %{"to_id" => ada.id},
-                 "p",
                  @admin
                )
 
       assert stored(job).owner_id == ada.id
 
       # and nothing with a key of a record that could not have been chosen
-      assert {:unchosen, [%{name: :to_id}]} =
-               Act.submit_row(
+      assert {:error, %Failure{unchosen: [%{name: :to_id}]}} =
+               Submitting.row(
                  model(),
                  row_action(:give),
                  %{id: job.id},
                  %{"to_id" => away.id},
-                 "p",
                  @member
                )
 
@@ -161,25 +160,23 @@ defmodule AshDataTable.ReferenceTest do
     test "runs an update action with several chosen records", %{ada: ada, away: away} do
       job = job("Paint")
 
-      assert {:ok, %Job{}} =
-               Act.submit_row(
+      assert {:ok, %Outcome{record: %Job{}}} =
+               Submitting.row(
                  model(),
                  row_action(:staff),
                  %{id: job.id},
                  %{"helper_ids" => ["", ada.id, away.id]},
-                 "p",
                  @admin
                )
 
       assert stored(job).helper_ids == [ada.id, away.id]
 
-      assert {:unchosen, [%{name: :helper_ids}]} =
-               Act.submit_row(
+      assert {:error, %Failure{unchosen: [%{name: :helper_ids}]}} =
+               Submitting.row(
                  model(),
                  row_action(:staff),
                  %{id: job.id},
                  %{"helper_ids" => ["", away.id]},
-                 "p",
                  @member
                )
 
@@ -190,27 +187,13 @@ defmodule AshDataTable.ReferenceTest do
          %{ada: ada, away: away} do
       job = job("Paint")
 
-      assert {:unchosen, [%{name: :to_id}]} =
-               Act.submit_generic(
-                 model(),
-                 table_action(:give_all),
-                 %{"to_id" => away.id},
-                 %{},
-                 "p",
-                 @member
-               )
+      assert {:error, %Failure{unchosen: [%{name: :to_id}]}} =
+               Submitting.table(model(), table_action(:give_all), %{"to_id" => away.id}, @member)
 
       assert stored(job).owner_id == nil
 
-      assert {:done, 1} =
-               Act.submit_generic(
-                 model(),
-                 table_action(:give_all),
-                 %{"to_id" => ada.id},
-                 %{},
-                 "p",
-                 @member
-               )
+      assert {:ok, %Outcome{value: 1}} =
+               Submitting.table(model(), table_action(:give_all), %{"to_id" => ada.id}, @member)
 
       assert stored(job).owner_id == ada.id
     end
@@ -220,28 +203,20 @@ defmodule AshDataTable.ReferenceTest do
       job = job("Paint")
       hand_over = row_action(:hand_over)
 
-      assert {:unchosen, [%{name: :to_id}]} =
-               Act.submit_row(
-                 model(),
-                 hand_over,
-                 %{id: job.id},
-                 %{"to_id" => away.id},
-                 "p",
-                 @member
-               )
+      assert {:error, %Failure{unchosen: [%{name: :to_id}]}} =
+               Submitting.row(model(), hand_over, %{id: job.id}, %{"to_id" => away.id}, @member)
 
       assert stored(job).owner_id == nil
 
       # a key for the row that the form sends is not taken
       other = job("Other")
 
-      assert {:done, nil} =
-               Act.submit_row(
+      assert {:ok, %Outcome{value: nil}} =
+               Submitting.row(
                  model(),
                  hand_over,
                  %{id: job.id},
                  %{"to_id" => ada.id, "job_id" => other.id},
-                 "p",
                  @member
                )
 
@@ -252,13 +227,12 @@ defmodule AshDataTable.ReferenceTest do
     test "runs a destroy action", %{ada: ada} do
       job = job("Paint")
 
-      assert :destroyed =
-               Act.submit_row(
+      assert {:ok, %Outcome{gone?: true}} =
+               Submitting.row(
                  model(),
                  row_action(:close),
                  %{id: job.id},
                  %{"for_id" => ada.id},
-                 "p",
                  @admin
                )
 

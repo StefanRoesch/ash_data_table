@@ -6,13 +6,14 @@ defmodule AshDataTable.FilesTest do
   """
   use ExUnit.Case, async: false
 
-  alias AshDataTable.Act
   alias AshDataTable.Bulk
   alias AshDataTable.Model
+  alias AshDataTable.Operation.{Failure, Outcome}
   alias AshDataTable.Panel
   alias AshDataTable.Resource.Acting
   alias AshDataTable.Resource.Uploading
   alias AshDataTable.Test.Files
+  alias AshDataTable.Test.Submitting
 
   defp model, do: Model.build(Files)
   defp action(name), do: Enum.find(model().actions ++ model().table_actions, &(&1.name == name))
@@ -112,13 +113,8 @@ defmodule AshDataTable.FilesTest do
                %{"title" => "x"}
 
       # the action runs without one, and says so
-      assert {:error, %AshPhoenix.Form{} = form} =
-               Act.submit_row(
-                 model(),
-                 action(:attach),
-                 key,
-                 %{"file" => "/etc/hostname"},
-                 "panel",
+      assert {:error, %Failure{form: %AshPhoenix.Form{} = form}} =
+               Submitting.row(model(), action(:attach), key, %{"file" => "/etc/hostname"},
                  authorize?: false
                )
 
@@ -128,8 +124,8 @@ defmodule AshDataTable.FilesTest do
     end
 
     test "to an action on a record, as what Ash takes for a file from a web request", %{key: key} do
-      assert {:ok, record} =
-               Act.submit_row(model(), action(:attach), key, %{"title" => "Page one"}, "panel",
+      assert {:ok, %Outcome{record: record}} =
+               Submitting.row(model(), action(:attach), key, %{"title" => "Page one"},
                  authorize?: false,
                  files: %{"file" => file("hello", "notes.txt")}
                )
@@ -144,34 +140,26 @@ defmodule AshDataTable.FilesTest do
     end
 
     test "to a generic action in a row, beside the row's key", %{key: key} do
-      assert {:done, 5} =
-               Act.submit_row(model(), action(:measure), key, %{}, "panel",
+      assert {:ok, %Outcome{value: 5}} =
+               Submitting.row(model(), action(:measure), key, %{},
                  authorize?: false,
                  files: %{"against" => file("12345")}
                )
     end
 
     test "to a table action, as what the table gives itself" do
-      assert {:done, "pages.csv: a,b"} =
-               Act.submit_generic(
-                 model(),
-                 action(:ingest),
-                 %{},
-                 %{"file" => file("a,b", "pages.csv")},
-                 "panel",
-                 authorize?: false
+      assert {:ok, %Outcome{value: "pages.csv: a,b"}} =
+               Submitting.table(model(), action(:ingest), %{},
+                 authorize?: false,
+                 files: %{"file" => file("a,b", "pages.csv")}
                )
     end
 
     test "to the create action" do
-      assert {:ok, %{title: "New", content: "fresh"}} =
-               Act.submit_create(
-                 model(),
-                 model().create,
-                 %{"title" => "New"},
-                 %{"file" => file("fresh")},
-                 "panel",
-                 authorize?: false
+      assert {:ok, %Outcome{record: %{title: "New", content: "fresh"}}} =
+               Submitting.create(model(), model().create, %{"title" => "New"},
+                 authorize?: false,
+                 files: %{"file" => file("fresh")}
                )
     end
 

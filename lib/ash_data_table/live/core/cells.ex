@@ -78,7 +78,7 @@ defmodule AshDataTable.Live.Core.Cells do
   # edited in the side panel (an array, a map cell, a union): the row by the
   # key in its DOM id, and the column. The side panel opens with the
   # column's field, as a form of the column's update action
-  # (`AshDataTable.Core.Panel.open/4`); nothing is saved. The record is read
+  # (`AshDataTable.Live.Core.Panel.open/4`); nothing is saved. The record is read
   # first, as the person.
   def on({:edit, key, name}, socket) do
     %{model: model, rows: rows} = Core.table(socket).entry
@@ -117,13 +117,13 @@ defmodule AshDataTable.Live.Core.Cells do
     end
   end
 
-  # Sent by the hook when a person presses Escape on a button of a row's
-  # actions cell that shows the message of an action that failed: the
-  # message is given up.
   # The host's Confirm of a column's question (controlled mode): the save
   # or "Clear" runs, as it would have from the hook.
   def on({:confirmed, intent}, socket), do: write(intent, socket)
 
+  # Sent by the hook when a person presses Escape on a button of a row's
+  # actions cell that shows the message of an action that failed: the
+  # message is given up.
   def on({:dismiss, key}, socket) do
     case Core.table(socket).entry.failed[key] do
       %{action: message} when not is_nil(message) ->

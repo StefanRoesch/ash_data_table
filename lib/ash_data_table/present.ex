@@ -2,10 +2,12 @@ defmodule AshDataTable.Present do
   @moduledoc false
   # What a part draws, made of what the core holds
   # (docs/architecture/target.md 4.3). The core keeps keys and the
-  # panel's form; this turns them into the rows of the stream, the fields of
-  # the action panel and the picker, and a part draws from these and from
-  # nothing else: it is never given a record, an `AshPhoenix.Form` or a
-  # changeset.
+  # panel's form; this turns them into the rows of the stream and the
+  # picker, and defines what the action panel is drawn from
+  # (`Present.Panel`, `Present.Field`), which the panel makes of itself
+  # (`AshDataTable.Panel.shown/2`, stage 9d: what a field shows is the
+  # panel's). A part draws from these and from nothing else: it is never
+  # given a record, an `AshPhoenix.Form` or a changeset.
   #
   # Values, not texts: the words are made beside the drawing, in the
   # LiveView's process (`AshDataTable.Kit.Words`, and for the rows of the
@@ -79,8 +81,10 @@ defmodule AshDataTable.Present do
     #
     #   * `title`, `submit` (the text of its button) and `question` (asked
     #     before it runs, nil for none) as the core made them;
-    #   * `kind` (`:cell`, `:row`, `:create`, `:table`, `:bulk`) and
-    #     `destructive?`, whether its action destroys the record;
+    #   * `ask` - `"changed"` where its question is asked only when
+    #     something changed (the panel of a cell: a list, a map cell, a
+    #     union), else nil; and `destructive?`, whether its action destroys
+    #     the record;
     #   * `errors` what the action said that is about none of the fields,
     #     nil for nothing;
     #   * `method` the HTTP method of its form, as `AshPhoenix.Form` says it;
@@ -90,7 +94,7 @@ defmodule AshDataTable.Present do
     #     in (`touched`), whether "Run" was used, and the page's zone.
     defstruct [
       :title,
-      :kind,
+      :ask,
       :question,
       :submit,
       :method,
@@ -239,47 +243,6 @@ defmodule AshDataTable.Present do
        do: not Embedding.hidden?(value)
 
   defp editable?(column, _value, _record), do: column.editable?
-
-  @doc """
-  The open action panel (`AshDataTable.Panel`). `upload_errors` is what the
-  live layer says of the file fields, by name: the texts shown at each.
-  What each field shows is the panel's to say (`AshDataTable.Panel.field/3`).
-  """
-  @spec panel(AshDataTable.Panel.t(), map) :: Panel.t()
-  def panel(%AshDataTable.Panel{} = panel, upload_errors \\ %{}) do
-    %Panel{
-      title: panel.title,
-      kind: panel.kind,
-      question: panel.question,
-      submit: panel.submit,
-      method: AshDataTable.Panel.method(panel),
-      destructive?: AshDataTable.Panel.destructive?(panel),
-      errors: panel.errors[nil],
-      fields: Enum.map(panel.inputs, &field(panel, &1, upload_errors)),
-      inside: %{
-        errors: panel.errors,
-        touched: panel.touched,
-        submitted?: panel.submitted?,
-        time_zone: panel.time_zone
-      }
-    }
-  end
-
-  defp field(panel, input, upload_errors) do
-    shown = AshDataTable.Panel.field(panel, input, upload_errors)
-
-    %Field{
-      name: input.name,
-      path: [Atom.to_string(input.name)],
-      form_name: shown.form_name,
-      input: input,
-      value: shown.value,
-      errors: shown.errors,
-      places: shown.places,
-      chosen: panel.chosen[input.name],
-      clear: shown.clear
-    }
-  end
 
   @doc "The open picker."
   @spec picker(map) :: Picker.t()

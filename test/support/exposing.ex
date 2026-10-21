@@ -193,3 +193,47 @@ defmodule AshDataTable.Test.Exposing.League do
     defaults [:read]
   end
 end
+
+defmodule AshDataTable.Test.Exposing.Kept do
+  @moduledoc """
+  A record whose tags an admin alone sees: a field policy protects an
+  array, a cell edited in the side panel (`AshDataTable.Panel`).
+  """
+  use Ash.Resource,
+    domain: AshDataTable.Test.Domain,
+    data_layer: Ash.DataLayer.Ets,
+    authorizers: [Ash.Policy.Authorizer],
+    extensions: [AshDataTable.Resource]
+
+  attributes do
+    uuid_primary_key :id
+    attribute :name, :string, public?: true
+    attribute :tags, {:array, :string}, public?: true
+  end
+
+  actions do
+    defaults [:read, create: [:name, :tags], update: [:name, :tags]]
+  end
+
+  policies do
+    policy always() do
+      authorize_if always()
+    end
+  end
+
+  field_policies do
+    field_policy :tags do
+      authorize_if actor_attribute_equals(:role, :admin)
+    end
+
+    field_policy :* do
+      authorize_if always()
+    end
+  end
+
+  table do
+    update_action :update
+    column :name
+    column :tags
+  end
+end

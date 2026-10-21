@@ -212,7 +212,7 @@ defmodule AshDataTable.Event do
   end
 
   def request(%{kind: :panel, ref: ref}, %{panel: %AshDataTable.Panel{} = panel} = held) do
-    shown = AshDataTable.Present.panel(panel)
+    shown = AshDataTable.Panel.shown(panel)
     action = AshDataTable.Panel.action(panel)
 
     held

@@ -21,6 +21,7 @@ defmodule AshDataTable.PanelTest do
   alias AshDataTable.Panel
   alias AshDataTable.Present
   alias AshDataTable.Test.Acting
+  alias AshDataTable.Test.Exposing.Kept
   alias AshDataTable.Test.Given.Note
   alias AshDataTable.Test.Resource
   alias AshDataTable.Test.Sensitive, as: Vault
@@ -72,7 +73,7 @@ defmodule AshDataTable.PanelTest do
       assert panel.clearable == [:token]
       # a sensitive field holds nothing of the record
       assert Panel.held(panel, input(panel, :token)) == ""
-      refute seen(Present.panel(panel)) =~ @secrets
+      refute seen(Panel.shown(panel)) =~ @secrets
     end
 
     test "is called nothing but its action where the record is called nothing", context do
@@ -232,6 +233,26 @@ defmodule AshDataTable.PanelTest do
       assert Panel.outcome(panel, saved) == {:closed, {:saved, "k1", elem(saved, 1)}}
     end
 
+    test "says at an array's field which of its values the action's errors are about", context do
+      {:ok, panel} = cell(context, :tags)
+      panel = Panel.validate(panel, context.model, %{"tags" => ["", "ok", "far-too-long"]})
+
+      assert [_ | _] = panel.errors[:tags]
+      assert panel.places == %{tags: [1]}
+      # shown once the field was used, with its places
+      assert %{places: [1]} = Panel.field(panel, input(panel, :tags), %{})
+    end
+
+    test "is refused for a cell whose value the person may not see on its record" do
+      on_exit(fn -> AshDataTable.Test.Ets.stop([Kept]) end)
+      record = Ash.Seed.seed!(Kept, %{name: "One", tags: ["a"]})
+      model = Model.build(Kept)
+      for = %{key: "k1", pk: %{id: record.id}, column: column(model, :tags)}
+
+      assert Panel.open(:cell, for, model, opts(actor: %{role: :member})) == :refused
+      assert {:ok, %Panel{kind: :cell}} = Panel.open(:cell, for, model, opts(actor: @admin))
+    end
+
     test "says what is not saved as a cell says it", context do
       {:ok, panel} = cell(context, :place)
       failed = Panel.failed(panel, context.model, nil, nil)
@@ -381,7 +402,7 @@ defmodule AshDataTable.PanelTest do
       panel = Panel.validate(panel, model, %{"tier" => ["", "low", "high"]})
       assert panel.values == ["low", "high"]
 
-      assert %Present.Panel{kind: :filter, method: "post", question: nil} = Present.panel(panel)
+      assert %Present.Panel{ask: nil, method: "post", question: nil} = Panel.shown(panel)
 
       assert Panel.submitted(panel, %{"tier" => ["", "high"]}) ==
                {:filter, %{column: :tier, operator: operator, values: ["high"]}}

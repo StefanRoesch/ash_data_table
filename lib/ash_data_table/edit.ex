@@ -16,7 +16,6 @@ defmodule AshDataTable.Edit do
   alias AshDataTable.Errors
   alias AshDataTable.Model
   alias AshDataTable.Model.Column
-  alias AshDataTable.Panel
   alias AshDataTable.Pick
   alias AshDataTable.Query
   alias AshDataTable.Record
@@ -247,57 +246,47 @@ defmodule AshDataTable.Edit do
 
   @doc """
   Saves what the side panel's form sent for a cell edited there, as the
-  value of `column` on the record with the primary key `key`: the column's
-  update action, with the column's attribute as its one input, given as
-  the list of its values (an array), a map of its fields (a list of them
-  for an array of maps), or for a union as its kind and that kind's value.
-  `input` is the column as the panel's one input
-  (`AshDataTable.Model.input/2`), and `id` the id of the form.
+  value of `column` on `record`, read again as the person just before: the
+  column's update action, with the column's attribute as its one input,
+  given as the list of its values (an array), a map of its fields (a list
+  of them for an array of maps), or for a union as its kind and that kind's
+  value. `given` is what the panel's form gives the action
+  (`AshDataTable.Panel.values/3`), or `:unchanged` where it sent what the
+  record holds already (`AshDataTable.Panel.unchanged?/4`), for which
+  nothing is called; `id` is the id of the form.
 
-  Returns `{:ok, record}` when it was saved, and when what was sent is what
-  the record holds, for which nothing is called; `{:error, form}`, the form
-  with the action's errors; and `{:error, nil, message}` when the record
-  can no longer be read by this person, or the value is not theirs to
-  change.
+  Returns `{:ok, record}` when it was saved, and when nothing changed;
+  `{:error, form}`, the form with the action's errors; and `{:error, nil,
+  message}` when the record can no longer be read by this person, or the
+  value is not theirs to change.
   """
-  @spec put(Model.t(), Column.t(), Model.Input.t(), map, map, String.t(), keyword) ::
+  @spec put(Model.t(), Column.t(), Ash.Resource.record(), map | :unchanged, String.t(), keyword) ::
           {:ok, Ash.Resource.record()}
           | {:error, AshPhoenix.Form.t()}
           | {:error, nil, Errors.message()}
-  def put(%Model{} = model, %Column{editable?: true} = column, input, key, params, id, opts)
-      when is_map(key) and is_map(params) do
-    name = Atom.to_string(column.name)
+  def put(%Model{} = model, %Column{editable?: true} = column, %_{} = record, given, id, opts) do
+    cond do
+      AshDataTable.Resource.Embedding.hidden?(Map.get(record, column.name)) ->
+        {:error, nil, {:text, :edit_not_allowed, []}}
 
-    case Record.fetch(model, key, opts) do
-      {:ok, record} ->
-        value = Map.get(record, column.name)
+      # A value that is the one the cell already holds calls nothing.
+      given == :unchanged ->
+        unchanged(model, record, opts)
 
-        cond do
-          AshDataTable.Resource.Embedding.hidden?(value) ->
-            {:error, nil, {:text, :edit_not_allowed, []}}
-
-          # A value that is the one the cell already holds calls nothing.
-          Panel.unchanged?(input, params[name], value, model.time_zone) ->
-            unchanged(model, record, opts)
-
-          true ->
-            model
-            |> form(record, column, id, opts)
-            |> AshPhoenix.Form.submit(params: Panel.values([input], params, model.time_zone))
-            |> case do
-              {:ok, saved} ->
-                case Record.load(model, saved, opts) do
-                  {:ok, saved} -> {:ok, saved}
-                  :error -> {:error, nil, {:text, :record_gone, []}}
-                end
-
-              {:error, form} ->
-                {:error, form}
+      true ->
+        model
+        |> form(record, column, id, opts)
+        |> AshPhoenix.Form.submit(params: given)
+        |> case do
+          {:ok, saved} ->
+            case Record.load(model, saved, opts) do
+              {:ok, saved} -> {:ok, saved}
+              :error -> {:error, nil, {:text, :record_gone, []}}
             end
-        end
 
-      :error ->
-        {:error, nil, {:text, :record_gone, []}}
+          {:error, form} ->
+            {:error, form}
+        end
     end
   end
 
@@ -317,7 +306,7 @@ defmodule AshDataTable.Edit do
   # a reference cell has no editor that holds a text: see `refer/5`
   def typed?(%Column{kind: :reference}, _typed), do: false
   # nor has an array, a map cell or a union, which are edited in the side
-  # panel: see `put/7`
+  # panel: see `put/6`
   def typed?(%Column{cell_type: {:array, _item}}, _typed), do: false
   def typed?(%Column{cell_type: cell_type}, _typed) when cell_type in [:map, :union], do: false
   def typed?(%Column{}, typed), do: is_binary(typed)

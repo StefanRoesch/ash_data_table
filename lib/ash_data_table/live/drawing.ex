@@ -608,12 +608,12 @@ defmodule AshDataTable.Live.Drawing do
   defp in_panel?(options),
     do: presentation(options, :panel) == :modal and presentation(options, :picker) == :inline
 
-  # What `Present.panel/2` gives of the open panel the table draws (`held`,
+  # What `AshDataTable.Panel.shown/2` gives of the open panel the table draws (`held`,
   # the entry's), nil for none: closed, or the host draws it (controlled
   # mode).
   defp open_panel(id, held, controlled, uploads) do
     if held != nil and not hosted?(controlled, :panel),
-      do: Present.panel(held, Files.files_said(%{id: id, panel: held}, uploads))
+      do: AshDataTable.Panel.shown(held, Files.files_said(%{id: id, panel: held}, uploads))
   end
 
   # What `Present.picker/1` gives of the open picker the table draws, nil

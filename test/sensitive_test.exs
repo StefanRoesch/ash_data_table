@@ -11,10 +11,10 @@ defmodule AshDataTable.SensitiveTest do
   import AshDataTable.Test.Sensitive.Vaults, only: [vault: 0, vault: 1]
   import Spark.Test
 
-  alias AshDataTable.Act
   alias AshDataTable.Edit
   alias AshDataTable.Format
   alias AshDataTable.Model
+  alias AshDataTable.Operation.{Failure, Outcome}
   alias AshDataTable.Panel
   alias AshDataTable.Resource.Embedding
   alias AshDataTable.Sensitive
@@ -22,6 +22,7 @@ defmodule AshDataTable.SensitiveTest do
   alias AshDataTable.State
   alias AshDataTable.Test.Sensitive, as: Vault
   alias AshDataTable.Test.Sensitive.{Login, Owner, Shown}
+  alias AshDataTable.Test.Submitting
 
   @admin %{role: :admin}
   @member %{role: :member}
@@ -467,8 +468,9 @@ defmodule AshDataTable.SensitiveTest do
       %{key: %{id: record.id}, record: record}
     end
 
+    # what the panel's button runs (`Operation.submit/1`)
     defp run(action, key, params, more) do
-      Act.submit_row(model(), action, key, params, "panel", [actor: @admin] ++ more)
+      Submitting.row(model(), action, key, params, [actor: @admin] ++ more)
     end
 
     test "is offered for the sensitive attributes an update action takes empty, where the record holds a value",
@@ -509,7 +511,7 @@ defmodule AshDataTable.SensitiveTest do
     } do
       rotate = action(:rotate)
 
-      assert {:error, form} =
+      assert {:error, %Failure{form: form}} =
                run(rotate, key, %{"passphrase" => "wrong-SECRET", "note" => "n"}, [])
 
       errors = Panel.errors(form, model(), rotate.inputs)
@@ -522,7 +524,7 @@ defmodule AshDataTable.SensitiveTest do
     end
 
     test "gives the action the attribute without a value, when it was asked for", %{key: key} do
-      assert {:ok, saved} =
+      assert {:ok, %Outcome{record: saved}} =
                run(action(:rotate), key, %{"token" => "", "passphrase" => "open"},
                  cleared: [:token]
                )
@@ -532,12 +534,12 @@ defmodule AshDataTable.SensitiveTest do
     end
 
     test "an untouched empty field still changes nothing", %{key: key} do
-      assert {:ok, _saved} =
+      assert {:ok, %Outcome{}} =
                run(action(:rotate), key, %{"token" => "", "passphrase" => "open"}, [])
 
       assert stored(key).token == "tok-123"
 
-      assert {:ok, _saved} =
+      assert {:ok, %Outcome{}} =
                run(action(:rotate), key, %{"token" => "", "passphrase" => "open"}, cleared: [])
 
       assert stored(key).token == "tok-123"
@@ -550,19 +552,21 @@ defmodule AshDataTable.SensitiveTest do
             %{"cleared" => "token"},
             %{"token" => ""}
           ] do
-        assert {:ok, _saved} = run(action(:rotate), key, Map.put(sent, "passphrase", "open"), [])
+        assert {:ok, %Outcome{}} =
+                 run(action(:rotate), key, Map.put(sent, "passphrase", "open"), [])
+
         assert stored(key).token == "tok-123"
       end
     end
 
     test "empties only what can be emptied, whatever was asked for", %{key: key} do
       # an attribute the action requires, a field of another action, a name of nothing
-      assert {:ok, _saved} =
+      assert {:ok, %Outcome{}} =
                run(action(:reissue), key, %{"token" => ""}, cleared: [:token, :name, :bogus])
 
       assert stored(key).token == "tok-123"
 
-      assert {:ok, _saved} =
+      assert {:ok, %Outcome{}} =
                run(action(:rotate), key, %{"passphrase" => "open"},
                  cleared: [:passphrase, :pin, :name]
                )
@@ -575,7 +579,7 @@ defmodule AshDataTable.SensitiveTest do
       pinned = Ash.Seed.seed!(Vault, %{name: "pinned", pin: 1, token: "t"})
       reissue = action(:reissue)
 
-      assert {:error, form} =
+      assert {:error, %Failure{form: form}} =
                run(reissue, %{id: pinned.id}, %{"token" => "t2"}, cleared: [:pin])
 
       assert Panel.errors(form, model(), reissue.inputs) == %{

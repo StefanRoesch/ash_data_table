@@ -106,6 +106,27 @@ defmodule DemoWeb.Tables.AttachTest do
     assert assigns(view).uploads |> Map.keys() |> Enum.filter(&is_binary/1) == ["scan-file-file"]
   end
 
+  # stage 9d: every panel opens through the uploads (`Core.Files.allowed/2`)
+  test "a file chosen in a panel that was cancelled is given up as a cell's panel opens",
+       %{conn: conn, scan: scan} do
+    {:ok, view, _html} = live(conn, "/support/attached")
+    entries = fn -> assigns(view).uploads["scan-file-file"].entries end
+
+    act(view, "scan", scan.id, "attach")
+
+    view
+    |> file_input("[id='scan-panel-form']", "scan-file-file", [
+      %{name: "notes.txt", content: "hello", type: "text/plain"}
+    ])
+    |> render_upload("notes.txt")
+
+    cancel_panel(view, "scan")
+    assert [%{client_name: "notes.txt", cancelled?: false}] = entries.()
+
+    assert panel(edit(view, "scan", scan.id, "notes"), "scan")
+    assert entries.() == []
+  end
+
   test "an event for a nested table that is closed is answered, and the page lives",
        %{conn: conn, plain: plain} do
     {:ok, view, _html} = live(conn, "/support/attached")

@@ -255,7 +255,12 @@ defmodule AshDataTable.Operation do
          %{} = row <- input.rows[key],
          :cont <- asked(input, :row, action, key: row.pk) do
       input.model
-      |> Act.run(action, row.pk, opts(input))
+      |> Act.run(
+        action,
+        row.pk,
+        Panel.values(action.inputs, %{}, input.model.time_zone),
+        opts(input)
+      )
       |> ran()
       |> event(&Event.ran(input.model, action, row.pk, Act.from_page(action, opts(input)), &1))
     else
@@ -268,7 +273,11 @@ defmodule AshDataTable.Operation do
          true <- event == :table_run or is_nil(action.confirm),
          :cont <- asked(input, :table, action) do
       input.model
-      |> Act.run_generic(action, %{}, opts(input))
+      |> Act.run_generic(
+        action,
+        Panel.values(action.inputs, %{}, input.model.time_zone),
+        opts(input)
+      )
       |> ran()
       |> event(&Event.ran(input.model, action, nil, Act.from_page(action, opts(input)), &1))
     else
@@ -295,7 +304,7 @@ defmodule AshDataTable.Operation do
          %{} = row <- input.rows[key],
          :cont <- asked(input, :panel_cell, column, row) do
       input.with_files.(fn _files ->
-        case Edit.put(input.model, column, field, row.pk, held.params, held.form.id, opts(input)) do
+        case put(input.model, column, field, row.pk, held, opts(input)) do
           {:ok, record} ->
             event(
               {:ok, %Outcome{record: record}},
@@ -318,10 +327,8 @@ defmodule AshDataTable.Operation do
     with %{} = row <- input.rows[key],
          :cont <- asked(input, :row, action, key: row.pk) do
       input.with_files.(fn files ->
-        opts = [files: files, cleared: held.cleared] ++ chooser(input, held)
-
         input.model
-        |> Act.submit_row(action, row.pk, held.params, held.form.id, opts)
+        |> on_record(action, row.pk, held, files, chooser(input, held))
         |> ran()
         |> event(&Event.ran(input.model, action, row.pk, given(input, action, held, files), &1))
       end)
@@ -334,8 +341,16 @@ defmodule AshDataTable.Operation do
     with %Model.Action{} = action <- table_action(input, Atom.to_string(action.name)),
          :cont <- asked(input, :table, action) do
       input.with_files.(fn files ->
-        input.model
-        |> Act.submit_generic(action, held.params, files, held.form.id, chooser(input, held))
+        opts = chooser(input, held)
+
+        case Panel.unchosen(action.inputs, held.params, nil, opts) do
+          [] ->
+            given = Panel.values(action.inputs, held.params, files, input.model.time_zone)
+            Act.submit_generic(input.model, action, given, held.form.id, opts)
+
+          unchosen ->
+            {:unchosen, unchosen}
+        end
         |> ran()
         |> event(&Event.ran(input.model, action, nil, given(input, action, held, files), &1))
       end)
@@ -353,14 +368,23 @@ defmodule AshDataTable.Operation do
         input.with_files.(fn files ->
           case link(input, action) do
             {:ok, given} ->
-              input.model
-              |> Act.submit_create(
-                action,
-                held.params,
-                Map.merge(files, given),
-                held.form.id,
-                chooser(input, held)
-              )
+              opts = chooser(input, held)
+
+              case Panel.unchosen(action.inputs, held.params, nil, opts) do
+                [] ->
+                  values =
+                    Panel.values(
+                      action.inputs,
+                      held.params,
+                      Map.merge(files, given),
+                      input.model.time_zone
+                    )
+
+                  Act.submit_create(input.model, action, values, held.form.id, opts)
+
+                unchosen ->
+                  {:unchosen, unchosen}
+              end
               |> created(given)
               |> event(
                 &Event.ran(input.model, action, nil, given(input, action, held, files), &1)
@@ -407,6 +431,77 @@ defmodule AshDataTable.Operation do
   end
 
   def submit(%Input{}), do: :refused
+
+  # The save of a map cell: the record read again as the person, and what
+  # the panel's form gives the column's update action, unless it sent what
+  # the record holds already (`Panel.unchanged?/4`, nothing is called). A
+  # value hidden from the person is refused by `Edit.put/6`, whatever it is
+  # given.
+  defp put(model, column, field, pk, held, opts) do
+    case Record.fetch(model, pk, opts) do
+      {:ok, record} ->
+        value = Map.get(record, column.name)
+        sent = held.params[Atom.to_string(column.name)]
+
+        given =
+          cond do
+            AshDataTable.Resource.Embedding.hidden?(value) -> %{}
+            Panel.unchanged?(field, sent, value, model.time_zone) -> :unchanged
+            true -> Panel.values([field], held.params, model.time_zone)
+          end
+
+        Edit.put(model, column, record, given, held.form.id, opts)
+
+      :error ->
+        {:error, nil, @gone}
+    end
+  end
+
+  # A row action from its panel. The record is read again, as the person,
+  # once; the values are taken for the inputs they have on the record as it
+  # is now, and a key of a related record that was put into a field is
+  # looked up through the picker's read action (`Panel.unchosen/4`). A
+  # generic action is given no record: it is given the row's key, and its
+  # record has to be there. The files are the table's to give, as what it
+  # gives itself, and so are the fields asked to be emptied
+  # (`Panel.cleared/4`).
+  defp on_record(model, %Model.Action{type: :action} = action, pk, held, files, opts) do
+    case Record.fetch(model, pk, opts) do
+      {:ok, _record} ->
+        case Panel.unchosen(action.inputs, held.params, nil, opts) do
+          [] ->
+            given = Map.merge(files, Act.given(action, pk))
+            values = Panel.values(action.inputs, held.params, given, model.time_zone)
+            Act.submit_generic(model, action, values, held.form.id, opts)
+
+          unchosen ->
+            {:unchosen, unchosen}
+        end
+
+      :error ->
+        {:error, nil, @gone}
+    end
+  end
+
+  defp on_record(model, action, pk, held, files, opts) do
+    case Record.fetch(model, pk, opts) do
+      {:ok, record} ->
+        inputs = Act.inputs(action, record)
+
+        case Panel.unchosen(inputs, held.params, record, opts) do
+          [] ->
+            given = Map.merge(files, Panel.cleared(action, inputs, record, held.cleared))
+            values = Panel.values(inputs, held.params, given, model.time_zone)
+            Act.submit_on(model, action, record, values, held.form.id, opts)
+
+          unchosen ->
+            {:unchosen, unchosen}
+        end
+
+      :error ->
+        {:error, nil, @gone}
+    end
+  end
 
   @doc """
   Runs an action without a panel on a selection, once the person has

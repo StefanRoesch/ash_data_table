@@ -19,9 +19,9 @@ defmodule AshDataTable.Parts.Panel do
   # `AshPhoenix.Form` of the action, which the table keeps while the panel
   # is open: what is typed is given to the action as it is typed, and the
   # action's errors are shown at their fields. What is drawn is what
-  # `AshDataTable.Present.panel/2` gives of it (`panel`): never the form.
+  # `AshDataTable.Panel.shown/2` gives of it (`panel`): never the form.
   attr :id, :string, required: true
-  # what `AshDataTable.Present.panel/2` gives of the open panel, nil while
+  # what `AshDataTable.Panel.shown/2` gives of the open panel, nil while
   # it is closed: then nothing is drawn
   attr :panel, :any, required: true
   # the assigns of each field's `field` part (`AshDataTable.Kit.fields/3`)
