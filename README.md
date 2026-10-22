@@ -18,6 +18,42 @@ reading, sorting, filtering and paging through the read action, editing a cell
 through the update action, row and table actions, related records as nested
 tables. Ash's policies decide who sees and changes what.
 
+For example the demo's deadlines, a small table of its own:
+
+<!-- source: demo/lib/demo/tracker/deadline.ex -->
+```elixir
+defmodule Demo.Tracker.Deadline do
+  # ...
+  use Ash.Resource,
+    # ...
+    extensions: [AshDataTable.Resource],
+    # ...
+
+  table do
+    # ...
+    read_action :due
+    # ...
+    update_action :reschedule
+    label_field :title
+
+    column :title
+    column :status
+    column :due_on
+    # ...
+  end
+
+  # ...
+end
+```
+
+<!-- source: demo/lib/demo_web/router.ex -->
+```elixir
+ash_data_table "/deadlines", Demo.Tracker.Deadline
+```
+
+That is all of it: no HEEx, and the resource's policies decide who sees and
+edits what.
+
 ## Try it
 
 You need Git, Docker (for Postgres), Elixir 1.18+ and Node 20+.
