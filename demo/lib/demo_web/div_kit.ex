@@ -256,13 +256,17 @@ defmodule DemoWeb.DivKit do
         <Kit.part :for={cell <- @summaries.cells} part={:summary_cell} kit={@kit} {cell} />
         <div :if={@summaries.actions} {@summaries.actions} class="table-cell"></div>
       </div>
-      <div :if={@pager} {@pager.row} class="table-row">
-        <div {@pager.cell} class="table-cell px-2 py-1">
-          <Kit.part part={:pagination} kit={@kit} id={@id} {@pager.pagination} />
-        </div>
-      </div>
-      <Kit.part :if={@full_view} part={:full_view} kit={@kit} id={@id} {@full_view} />
     </div>
+    <%!-- A nested table's pages and its link to the full view span the grid,
+    which a `div` laid out as a table cell cannot: it would stand in the first
+    column and widen it. They are rows of the table all the same, laid out as
+    its captions at the bottom, in this order, each as wide as the table. --%>
+    <div :if={@pager} {@pager.row} class="table-caption caption-bottom">
+      <div {@pager.cell} class="px-2 py-1">
+        <Kit.part part={:pagination} kit={@kit} id={@id} {@pager.pagination} />
+      </div>
+    </div>
+    <Kit.part :if={@full_view} part={:full_view} kit={@kit} id={@id} {@full_view} />
     """
   end
 
@@ -276,11 +280,12 @@ defmodule DemoWeb.DivKit do
     """
   end
 
-  # The link to a nested table's full view, as the last row of its grid.
+  # The link to a nested table's full view, as the last row of its grid: a
+  # caption at the bottom, as wide as the table (`footer/1`).
   def full_view(assigns) do
     ~H"""
-    <div {@row} class="table-row">
-      <div {@cell} class="table-cell px-2 py-1">
+    <div {@row} class="table-caption caption-bottom">
+      <div {@cell} class="px-2 py-1">
         <.link id={@link.id} navigate={@link.path} aria-label={@texts.full_view_of} class="link">
           {@texts.full_view}
         </.link>
