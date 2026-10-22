@@ -324,13 +324,7 @@ defmodule DemoWeb.ReactKit do
       else: Map.new(map, fn {key, value} -> {key, props(value)} end)
   end
 
-  defp props(%AshDataTable.Component.Column{} = column),
-    do: %{
-      name: column.name,
-      label: column.label,
-      min: number(column.constraints[:min]),
-      max: number(column.constraints[:max])
-    }
+  defp props(%AshDataTable.Component.Column{} = column), do: LiveReact.Encoder.encode(column, [])
 
   defp props(values) when is_list(values), do: Enum.map(values, &props/1)
 
@@ -352,7 +346,4 @@ defmodule DemoWeb.ReactKit do
              is_atom(value) or is_struct(value, Phoenix.LiveView.JS))
       end)
 
-  defp number(%Decimal{} = number), do: Decimal.to_float(number)
-  defp number(number) when is_number(number), do: number
-  defp number(_none), do: nil
 end
