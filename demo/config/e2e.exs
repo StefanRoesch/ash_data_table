@@ -47,8 +47,13 @@ config :demo, sql_sandbox: true
 config :demo, DemoWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}],
   check_origin: false,
+  # No key in the repository: the one SECRET_KEY_BASE names, which the
+  # browser tests set once per run for all their servers, as the session
+  # cookies of the actors are kept and taken by every worker's server
+  # (`prepare` in e2e/support/server.ts); else a random one as the
+  # config loads, which lasts as long as the server (`./server.sh`).
   secret_key_base:
-    "e2eE2Ee2eE2Ek3m5uUu0vV3v6mXl3n2bq8m1q0oJrYt0Qd1mJmM7lV7r8nq2wQyH3c9T0aE2eE2eE2eE2"
+    System.get_env("SECRET_KEY_BASE") || Base.encode64(:crypto.strong_rand_bytes(48))
 
 # Mounts the routes of `e2e/server` (see the router).
 config :demo, e2e_routes: true

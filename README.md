@@ -54,6 +54,53 @@ ash_data_table "/deadlines", Demo.Tracker.Deadline
 That is all of it: no HEEx, and the resource's policies decide who sees and
 edits what.
 
+### A table in your own LiveView
+
+**The tag**, the simplest way: for a table that is one part of a page of
+yours, as on the demo's dashboard.
+
+<!-- source: demo/lib/demo_web/live/dashboard_live.ex -->
+```heex
+<AshDataTable.table
+  id="dashboard-projects"
+  resource={Demo.Tracker.Project}
+  heading={2}
+  actor={@current_user}
+  tenant={@current_tenant}
+  time_zone={@time_zone}
+/>
+```
+
+**`AshDataTable.attach/4` in `mount`**: for a page that hears the table's
+events and gives it commands, as the demo's sprint planner does.
+
+<!-- source: demo/lib/demo_web/live/planner_live.ex -->
+```elixir
+def mount(_params, _session, socket) do
+  {:ok,
+   socket
+   # ...
+   |> AshDataTable.attach(:tasks, Task,
+     # ...
+     notify: [:selection_changed, :row_saved, :row_created, :row_destroyed, :bulk_ran],
+     # ...
+   )}
+end
+# ...
+def handle_event("clear_selection", _params, socket),
+  do: {:noreply, AshDataTable.clear_selection(socket, :tasks)}
+# ...
+def handle_info({:ash_data_table, id, {event, %{table: id} = details}}, socket),
+  do: {:noreply, heard(socket, event, details)}
+```
+
+<!-- source: demo/lib/demo_web/live/planner_live.ex -->
+```heex
+<AshDataTable.attached table={@tasks} streams={@streams} uploads={assigns[:uploads]} />
+```
+
+More, and which way to choose: [Layout and embedding](documentation/topics/layout-and-embedding.md).
+
 ## Try it
 
 You need Git, Docker (for Postgres), Elixir 1.18+ and Node 20+.

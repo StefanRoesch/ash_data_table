@@ -67,6 +67,43 @@ The demo's LiveView socket compresses its frames (`compress: true` in
 `lib/demo_web/endpoint.ex`), which the library's installer leaves to the host:
 see [Installation](../documentation/topics/installation.md).
 
+### Content-Security-Policy
+
+Every page (the `browser` pipeline of `lib/demo_web/router.ex`, in all
+environments, the browser tests' and the performance pages' too) is sent
+this policy:
+
+```text
+default-src 'self'; script-src 'self'; style-src 'self';
+style-src-attr 'unsafe-inline'; img-src 'self' data:; connect-src 'self';
+object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'
+```
+
+- **No inline script**: the page's JavaScript is `assets/js/app.js` alone.
+  The theme toggle and the header's two switchers are in
+  `assets/js/page.js`, by data attributes (`data-return-to-current`,
+  `data-submit-on-change`), with no `onsubmit` or `onchange`. The stored
+  theme is put on the page once `app.js` runs (`defer`): a page in a theme
+  other than the system's may show the system's for a moment as it loads.
+- **No inline style element**: the look of the browser tests' page
+  `/e2e/markers` is in `assets/css/e2e_markers.css`.
+- **`style-src-attr 'unsafe-inline'`**, and only for `style` attributes:
+  the table's markup carries a few (the anchor of the "Columns" list and
+  of the selection's "More" menu, the heights a table is given as custom
+  properties), and the grid's hook writes the second scrollbar's place as
+  one. What the hooks and the React islands set through `element.style`
+  and the hooks' own style sheets (`adoptedStyleSheets`, the column widths,
+  `--ash-data-table-view`) need no allowance.
+- **`img-src data:`** for the icons: heroicons and daisyUI draw them as
+  `data:` SVG in the style sheet.
+- **`connect-src 'self'`** covers LiveView's websocket (`ws:`/`wss:` of the
+  same host and port, CSP Level 3) and its long-poll fallback.
+- A file a table action returns is saved through a `blob:` link that is
+  clicked, not put into the page: a download, which the policy does not
+  govern.
+- In development, Tidewave rewrites the policy for what it adds to the
+  page.
+
 ### Settings
 
 `.env.example` at the repository root lists the variables. Compose reads them

@@ -3,13 +3,30 @@ defmodule DemoWeb.Router do
 
   import AshDataTable.Router
 
+  # The pages' Content-Security-Policy (demo/README.md, "Content-Security-
+  # Policy"): scripts, styles, images, fonts and connections from the
+  # demo's own origin only, so no inline script, no inline event handler
+  # and no inline style element. `connect-src 'self'` covers LiveView's
+  # websocket (`ws:`/`wss:` of the same host and port, CSP Level 3) and
+  # its long-poll fallback. Two allowances: `img-src data:` for the icons
+  # (heroicons and daisyUI draw them as `data:` SVG in the style sheet),
+  # and `style-src-attr 'unsafe-inline'` for the `style` attributes the
+  # table's markup carries and its hooks write (the anchors of the
+  # columns list and the selection's menu, the heights a table is given,
+  # the scrollbar's place); no `<style>` element and no script is allowed
+  # by it. One literal string, as Sobelow reads it (`Config.CSP`).
+  @secure_browser_headers %{
+    "content-security-policy" =>
+      "default-src 'self'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+  }
+
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
     plug :fetch_live_flash
     plug :put_root_layout, html: {DemoWeb.Layouts, :root}
     plug :protect_from_forgery
-    plug :put_secure_browser_headers
+    plug :put_secure_browser_headers, @secure_browser_headers
     # Assigns current_user and current_tenant from the actor switcher's session.
     plug DemoWeb.Actor
     # Puts the language switcher's locale into the process.
@@ -338,7 +355,14 @@ defmodule DemoWeb.Router do
   # `assets/js/ids.js`; and /tasks with what opens in the page.
   if Application.compile_env(:demo, :e2e_routes, false) do
     # what the page of a test sent its LiveViews, by the page's session
-    # (`DemoWeb.E2E.Recorder`)
+    # (`DemoWeb.E2E.Recorder`). JSON only, with the session and no CSRF
+    # token: the session is what ties the test's page to what it recorded
+    # (`POST /e2e/recorder` names the test in it, and the page's LiveViews
+    # read it), and the tests call these routes with Playwright's request
+    # context, which shares the page's cookies but has no token to send.
+    # The browser-test build only (`:e2e_routes`), so Sobelow's
+    # `Config.CSRF` is skipped here.
+    # sobelow_skip ["Config.CSRF"]
     pipeline :e2e_session do
       plug :accepts, ["json"]
       plug :fetch_session

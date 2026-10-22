@@ -4,6 +4,8 @@
 @import "tailwindcss" source(none);
 /* the look of the demo's React kit, by the table's markers (DemoWeb.ReactKit) */
 @import "./react_kit.css";
+/* the grid's look on the browser tests' page /e2e/markers, only there */
+@import "./e2e_markers.css";
 @source "../css";
 @source "../js";
 /* The React islands (TSX), whose classes are shadcn/ui's */

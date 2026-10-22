@@ -25,8 +25,10 @@ config :demo, Demo.Repo,
 config :demo, DemoWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}],
   check_origin: false,
-  secret_key_base:
-    "pErFpErFpErFk3m5uUu0vV3v6mXl3n2bq8m1q0oJrYt0Qd1mJmM7lV7r8nq2wQyH3c9T0aE2eE2eE2eE"
+  # No key in the repository: a random one as the config loads, which
+  # lasts as long as the server. The scripts log in anew in a new browser
+  # context on every server they start (`perf/measure.mjs`).
+  secret_key_base: Base.encode64(:crypto.strong_rand_bytes(48))
 
 # Mounts the routes of `perf/server` (see the router), and names its domain.
 config :demo,

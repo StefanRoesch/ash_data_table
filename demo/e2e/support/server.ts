@@ -1,5 +1,6 @@
 import { spawn, spawnSync, type ChildProcess } from "node:child_process"
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
+import { randomBytes } from "node:crypto"
 import { connect } from "node:net"
 import os from "node:os"
 import path from "node:path"
@@ -89,6 +90,11 @@ const env = {
  */
 export function prepare(): void {
   if (EXTERNAL) return
+
+  // One secret for every worker's server of this run (config/e2e.exs), as
+  // they all take the actors' session cookies the setup kept. Set here, in
+  // the global setup, it reaches the workers' environment.
+  process.env.SECRET_KEY_BASE ??= randomBytes(48).toString("base64")
 
   mkdirSync(STATE, { recursive: true })
   // the servers' logs of an earlier run; within this run they only grow

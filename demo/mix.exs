@@ -12,7 +12,7 @@ defmodule Demo.MixProject do
       deps: deps(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader],
-      dialyzer: [plt_add_apps: [:mix, :ex_unit]],
+      dialyzer: [plt_add_apps: [:mix, :ex_unit], ignore_warnings: ".dialyzer_ignore.exs"],
       # `mix test --cover` reports the coverage; no threshold fails it yet.
       test_coverage: [summary: [threshold: 0]],
       consolidate_protocols: Mix.env() != :dev

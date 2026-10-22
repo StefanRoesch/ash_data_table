@@ -32,6 +32,8 @@ import {MountedGrid} from "./mounted_grid.js"
 import islands from "../islands"
 import {reactKitHooks} from "../islands/table"
 import topbar from "../vendor/topbar"
+// the theme toggle and the switchers of the root layout's header
+import "./page.js"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {

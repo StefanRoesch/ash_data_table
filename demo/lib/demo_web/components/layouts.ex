@@ -125,13 +125,14 @@ defmodule DemoWeb.Layouts do
 
     ~H"""
     <%!-- The root layout is not re-rendered on live navigation, so the form
-    takes the current URL when it is submitted. --%>
+    takes the current URL when it is submitted (`data-return-to-current`,
+    assets/js/page.js). --%>
     <form
       id="actor-switcher"
       action={~p"/actor"}
       method="post"
       class="flex items-center gap-2"
-      onsubmit="this.return_to.value = location.pathname + location.search"
+      data-return-to-current
     >
       <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
       <input type="hidden" name="return_to" value={@return_to || "/"} />
@@ -140,7 +141,7 @@ defmodule DemoWeb.Layouts do
         id="actor-switcher-select"
         name="actor"
         class="select select-sm w-auto"
-        onchange="this.form.requestSubmit()"
+        data-submit-on-change
       >
         <option
           :for={actor <- @actors}
@@ -177,7 +178,7 @@ defmodule DemoWeb.Layouts do
       action={~p"/locale"}
       method="post"
       class="flex items-center gap-2"
-      onsubmit="this.return_to.value = location.pathname + location.search"
+      data-return-to-current
     >
       <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
       <input type="hidden" name="return_to" value={@return_to || "/"} />
@@ -186,7 +187,7 @@ defmodule DemoWeb.Layouts do
         id="locale-switcher-select"
         name="locale"
         class="select select-sm w-auto"
-        onchange="this.form.requestSubmit()"
+        data-submit-on-change
       >
         <option
           :for={{locale, name} <- @locales}
