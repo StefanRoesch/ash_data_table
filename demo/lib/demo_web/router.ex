@@ -355,7 +355,14 @@ defmodule DemoWeb.Router do
   # `assets/js/ids.js`; and /tasks with what opens in the page.
   if Application.compile_env(:demo, :e2e_routes, false) do
     # what the page of a test sent its LiveViews, by the page's session
-    # (`DemoWeb.E2E.Recorder`)
+    # (`DemoWeb.E2E.Recorder`). JSON only, with the session and no CSRF
+    # token: the session is what ties the test's page to what it recorded
+    # (`POST /e2e/recorder` names the test in it, and the page's LiveViews
+    # read it), and the tests call these routes with Playwright's request
+    # context, which shares the page's cookies but has no token to send.
+    # The browser-test build only (`:e2e_routes`), so Sobelow's
+    # `Config.CSRF` is skipped here.
+    # sobelow_skip ["Config.CSRF"]
     pipeline :e2e_session do
       plug :accepts, ["json"]
       plug :fetch_session
