@@ -1173,8 +1173,8 @@ export class Table {
 /**
  * How many rules the tables of a page have written for the widths of columns
  * and for hidden columns, in the style sheets their hooks own. Every grid has
- * one such sheet from the start, for what its hook says of scrolling
- * sideways; a width or a hidden column is a rule in a second one.
+ * `SHEETS_PER_GRID` such sheets from the start; a width or a hidden column is
+ * a rule in one more.
  */
 export async function columnRules(page: Page): Promise<number> {
   return page.evaluate(
@@ -1184,6 +1184,13 @@ export async function columnRules(page: Page): Promise<number> {
         .filter((rule) => /max-width|display: none/.test(rule.cssText)).length,
   )
 }
+
+/**
+ * The style sheets a grid's hook owns from the start: the anchors of its
+ * menus, by the elements' ids (`grid/index.js`), and what it says of
+ * scrolling sideways (`grid/scrolling.js`).
+ */
+export const SHEETS_PER_GRID = 2
 
 /** How many style sheets the hooks of a page own, and how many grids the page has. */
 export async function ownedSheets(page: Page): Promise<{ sheets: number; grids: number }> {

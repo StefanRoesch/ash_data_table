@@ -2,7 +2,7 @@ import type { Locator, Page } from "@playwright/test"
 import { expectNoAxeViolations } from "./support/a11y"
 import { SEED } from "./support/data"
 import { expect, test } from "./support/fixtures"
-import { ownedSheets, Table } from "./support/table"
+import { ownedSheets, SHEETS_PER_GRID, Table } from "./support/table"
 
 // Scrolling sideways: every table in an area of its own, a nested table as
 // wide as what is seen of the table around it, the scrollbar at the bottom
@@ -303,7 +303,7 @@ test.describe("the scrollbar at the bottom edge of the window", () => {
     await projects.line(MOBILE_APP, "tasks").click()
     await expect(nested.scrollbar).toHaveCount(0)
     // and what its hook had written
-    await expect.poll(() => ownedSheets(page)).toEqual({ sheets: 1, grids: 1 })
+    await expect.poll(() => ownedSheets(page)).toEqual({ sheets: SHEETS_PER_GRID, grids: 1 })
     await expect(page.locator("[data-scrollbar]:visible")).toHaveCount(
       (await projects.area()).all > (await projects.area()).seen &&
         (await box(projects.hookRoot)).bottom > 600

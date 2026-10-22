@@ -3,7 +3,7 @@ import { expectNoAxeViolations } from "./support/a11y"
 import { MAPS, SEED } from "./support/data"
 import { expect, test } from "./support/fixtures"
 import { switchLocale } from "./support/locale"
-import { Table, columnRules, ownedSheets } from "./support/table"
+import { Table, columnRules, ownedSheets, SHEETS_PER_GRID } from "./support/table"
 import { params } from "./support/url"
 
 // A person hides columns of a table and shows them again: "Columns" above
@@ -505,9 +505,8 @@ test.describe("what is hidden outlives what the server sends", () => {
     await expect(tasks.columnsButton).toHaveAccessibleName("Columns")
     await tasks.openColumns()
     for (const column of HIDEABLE) await expect(tasks.columnBox(column)).toBeChecked()
-    // one sheet per grid, for what its hook says of scrolling sideways, and
-    // none for widths or hidden columns
-    expect(await ownedSheets(page)).toEqual({ sheets: 1, grids: 1 })
+    // the sheets every grid has, and none for widths or hidden columns
+    expect(await ownedSheets(page)).toEqual({ sheets: SHEETS_PER_GRID, grids: 1 })
     expect(await columnRules(page)).toBe(0)
     expect(await page.evaluate(() => Object.keys(localStorage).filter((key) => key !== "phx:theme"))).toEqual([])
     expect(await page.evaluate(() => sessionStorage.length)).toBe(0)
@@ -521,9 +520,8 @@ test.describe("what is hidden outlives what the server sends", () => {
 
     await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Labels" }).click()
     await new Table(page, "label", "/labels").ready()
-    // one sheet per grid, for what its hook says of scrolling sideways, and
-    // none for widths or hidden columns
-    expect(await ownedSheets(page)).toEqual({ sheets: 1, grids: 1 })
+    // the sheets every grid has, and none for widths or hidden columns
+    expect(await ownedSheets(page)).toEqual({ sheets: SHEETS_PER_GRID, grids: 1 })
     expect(await columnRules(page)).toBe(0)
     await page.goBack()
     await tasks.ready()

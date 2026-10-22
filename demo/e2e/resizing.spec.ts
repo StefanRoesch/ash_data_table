@@ -2,7 +2,7 @@ import { expectNoAxeViolations } from "./support/a11y"
 import { SEED } from "./support/data"
 import { expect, test } from "./support/fixtures"
 import { switchLocale } from "./support/locale"
-import { Table, columnRules, ownedSheets } from "./support/table"
+import { Table, columnRules, ownedSheets, SHEETS_PER_GRID } from "./support/table"
 import { params } from "./support/url"
 
 // Spec section 17, slice 12: a person changes a column's width by dragging
@@ -390,9 +390,8 @@ test.describe("the widths outlive what the server sends", () => {
     await page.reload()
     await tasks.ready()
     expect(await tasks.widths()).toEqual(before)
-    // one sheet per grid, for what its hook says of scrolling sideways, and
-    // none for widths or hidden columns
-    expect(await ownedSheets(page)).toEqual({ sheets: 1, grids: 1 })
+    // the sheets every grid has, and none for widths or hidden columns
+    expect(await ownedSheets(page)).toEqual({ sheets: SHEETS_PER_GRID, grids: 1 })
     expect(await columnRules(page)).toBe(0)
   })
 
@@ -404,9 +403,8 @@ test.describe("the widths outlive what the server sends", () => {
     await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Labels" }).click()
     await new Table(page, "label", "/labels").ready()
     // the rules went with the table
-    // one sheet per grid, for what its hook says of scrolling sideways, and
-    // none for widths or hidden columns
-    expect(await ownedSheets(page)).toEqual({ sheets: 1, grids: 1 })
+    // the sheets every grid has, and none for widths or hidden columns
+    expect(await ownedSheets(page)).toEqual({ sheets: SHEETS_PER_GRID, grids: 1 })
     expect(await columnRules(page)).toBe(0)
     await page.goBack()
     await tasks.ready()

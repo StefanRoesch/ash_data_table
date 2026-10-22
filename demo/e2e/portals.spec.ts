@@ -2,7 +2,7 @@ import type { Browser, Page } from "@playwright/test"
 import { storageStateOf, type Actor } from "./support/actors"
 import { SEED } from "./support/data"
 import { expect, test } from "./support/fixtures"
-import { ownedSheets, Table } from "./support/table"
+import { ownedSheets, SHEETS_PER_GRID, Table } from "./support/table"
 
 // Nested tables drawn by the table on the page and moved into their rows by
 // LiveView's `<.portal>`: the cell of a row of a
@@ -138,19 +138,19 @@ test.describe("the portal of a nested table", () => {
     expect(await portals(page)).toEqual({ portals: 1, loose: 0 })
   })
 
-  test("a teleported grid's hook mounts once: one style sheet per grid, also when its row is put again", async ({
+  test("a teleported grid's hook mounts once: its style sheets once per grid, also when its row is put again", async ({
     browser,
     page,
     tasks,
   }) => {
     await tasks.open()
     const before = await ownedSheets(page)
-    expect(before.sheets).toBe(before.grids)
+    expect(before.sheets).toBe(before.grids * SHEETS_PER_GRID)
 
     await tasks.openLine(FIRST, "comments")
     const opened = await ownedSheets(page)
     expect(opened.grids).toBe(before.grids + 1)
-    expect(opened.sheets).toBe(opened.grids)
+    expect(opened.sheets).toBe(opened.grids * SHEETS_PER_GRID)
 
     // the row is put again by another person's change
     const other = await another(browser, page, "admin")
