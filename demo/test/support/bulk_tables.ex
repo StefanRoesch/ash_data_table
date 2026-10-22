@@ -130,7 +130,7 @@ defmodule Demo.Support.Bulk.Crate do
       end
     end
 
-    # waits over every crate while a test holds it back (`Demo.Support.Gate`),
+    # waits over every crate while a test holds it back (`Demo.Support.Barrier`),
     # so that the test can look at the table while it runs
     update :weigh do
       accept []
@@ -138,7 +138,7 @@ defmodule Demo.Support.Bulk.Crate do
 
       change fn changeset, _context ->
         Ash.Changeset.before_action(changeset, fn changeset ->
-          :ok = Demo.Support.Gate.pass(:weigh)
+          :ok = Demo.Support.Barrier.pass(:weigh)
           changeset
         end)
       end

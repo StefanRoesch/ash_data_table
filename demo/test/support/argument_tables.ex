@@ -230,10 +230,10 @@ defmodule Demo.Support.Asked.Stock do
       pagination offset?: true, countable: true, default_limit: 2, required?: false
       prepare build(sort: [name: :asc])
 
-      # waits while a test holds the reads back (`Demo.Support.Gate`)
+      # waits while a test holds the reads back (`Demo.Support.Barrier`)
       prepare fn query, _context ->
         Ash.Query.before_action(query, fn query ->
-          :ok = Demo.Support.Gate.pass(:stock_reads)
+          :ok = Demo.Support.Barrier.pass(:stock_reads)
           query
         end)
       end

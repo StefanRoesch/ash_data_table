@@ -68,7 +68,7 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
       {:ok, view, _html} = live(conn, "/support/stocks")
       assert column(argue(view, "stock", a: %{"at_least" => "1"}), "stock", "name") != []
 
-      Demo.Support.Gate.shut(:stock_reads)
+      Demo.Support.Barrier.shut(:stock_reads)
 
       # a read starts, and is held back
       html =
@@ -89,7 +89,7 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
 
       {html, log} =
         ExUnit.CaptureLog.with_log(fn ->
-          Demo.Support.Gate.open(:stock_reads)
+          Demo.Support.Barrier.open(:stock_reads)
           render_async(view)
         end)
 

@@ -494,7 +494,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
 
       on_exit(fn -> Demo.Support.Ets.stop(Crate) end)
       # `weigh` waits over every crate until a test lets it go
-      Demo.Support.Gate.shut(:weigh)
+      Demo.Support.Barrier.shut(:weigh)
 
       {:ok, view, _html} = live(conn, "/support/crates")
       %{view: view, crates: crates}
@@ -516,7 +516,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
       html = view |> element("#crate-sort-title") |> render_click()
       assert column(html, "crate", "title") == ["Crate 01", "Crate 02"]
 
-      Demo.Support.Gate.open(:weigh)
+      Demo.Support.Barrier.open(:weigh)
       html = ran(view)
       assert bulk_result(html, "crate") == %{summary: "Weigh: 1 done.", failures: []}
       assert attribute(html, "#crate-table", "aria-busy") == []
@@ -561,7 +561,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
       select(view, "crate", [second.id])
       forge(view, "crate", "bulk_run", %{"action" => "seal", "selection" => token})
 
-      Demo.Support.Gate.open(:weigh)
+      Demo.Support.Barrier.open(:weigh)
       html = ran(view)
 
       # what it says is what the first one came to, and nothing was sealed
