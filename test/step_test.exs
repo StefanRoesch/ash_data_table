@@ -70,6 +70,9 @@ defmodule AshDataTable.StepTest do
     |> Table.put(fields)
   end
 
+  # the same, on a page that asked to be told every event (`notify: true`)
+  defp told, do: table(Resource, notify: true)
+
   defp step(table, intent, context \\ @context), do: Core.step(table, intent, context)
 
   # the read beside the process, as the step asks for it
@@ -79,7 +82,7 @@ defmodule AshDataTable.StepTest do
   describe "what is selected (Selection)" do
     test "the rows the hook names are selected, and the host is told it changed" do
       key = Ash.UUID.generate()
-      {table, effects, nil} = step(table(), {:select, {:rows, [key, key]}})
+      {table, effects, nil} = step(told(), {:select, {:rows, [key, key]}})
 
       assert %{selected: [^key], all?: false} = table.entry.selection
       # the hook said it: it is not told back
@@ -91,18 +94,19 @@ defmodule AshDataTable.StepTest do
     end
 
     test "every record that matches" do
-      {table, effects, nil} = step(table(), {:select, :all})
+      {table, effects, nil} = step(told(), {:select, :all})
 
       assert %{selected: [], all?: true} = table.entry.selection
       assert [{:tell, "t", {:selection_changed, %{all?: true}}}] = effects
     end
 
     test "a picker's table tells the host nothing" do
-      assert {_table, [], nil} = step(table(Resource, choose: :one), {:select, {:rows, ["k"]}})
+      assert {_table, [], nil} =
+               step(table(Resource, choose: :one, notify: true), {:select, {:rows, ["k"]}})
     end
 
     test "the host's clear: the hook is told, and the host" do
-      {table, _effects, nil} = step(table(), {:select, {:rows, ["k"]}})
+      {table, _effects, nil} = step(told(), {:select, {:rows, ["k"]}})
       {table, effects, nil} = step(table, :clear_selection)
 
       assert table.entry.selection.selected == []
@@ -115,7 +119,7 @@ defmodule AshDataTable.StepTest do
     end
 
     test "a selection made under other filters is given up after the callback (:tidy)" do
-      {table, _effects, nil} = step(table(), {:select, {:rows, ["k"]}})
+      {table, _effects, nil} = step(told(), {:select, {:rows, ["k"]}})
       {table, [], nil} = step(table, :tidy)
       table = Table.put(table, state: %State{filters: %{name: {:eq, "x"}}})
 
