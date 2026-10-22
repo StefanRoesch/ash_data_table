@@ -487,6 +487,42 @@ above the scroll area of the table it is in, outside it.
 task's comments, and scroll inside the projects or the tasks: only the rows
 move.
 
+## Content-Security-Policy
+
+A table needs no inline script: its JavaScript is the hooks your
+`app.js` bundles, and it puts no `<script>` or `<style>` element and no
+inline event handler (`onclick=`) into the page. A file an action returns
+is saved through a `blob:` link that is clicked and never put into the
+page: a download, which the policy does not govern. So a strict policy
+works, with one allowance for styles:
+
+<!-- sketch -->
+```text
+default-src 'self'; script-src 'self'; style-src 'self';
+style-src-attr 'unsafe-inline'; img-src 'self' data:; connect-src 'self'
+```
+
+- **`style-src-attr 'unsafe-inline'`**: the markup carries a few `style`
+  attributes, and LiveView patches them in: the anchors of the "Columns"
+  list and of the selection's "More" menu (`anchor-name`,
+  `position-anchor`), the `height` and `nested_height` a table is given
+  (as custom properties), and `display: contents` around an embedded
+  table. The grid's hook writes the second scrollbar's place as one. It
+  allows `style` attributes only, no `<style>` element. What the hooks set
+  through `element.style`, and their own style sheets (the column widths,
+  the hidden columns, `--ash-data-table-view`, through
+  `document.adoptedStyleSheets`), need nothing.
+- **`connect-src 'self'`** covers LiveView's websocket (`ws:`/`wss:` of
+  the same host and port, CSP Level 3); name the host with `ws:`/`wss:` if
+  the socket is elsewhere.
+- **`img-src`**: add the sites of the pictures that
+  `AshDataTable.Components.Image` shows from `https://` addresses.
+  `data:` is for your own style sheet's icons (heroicons, daisyUI), not
+  the table's.
+
+**Try it:** the demo sends this policy on every page; see
+[its README](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/README.md#content-security-policy).
+
 ## What a refused read does
 
 A mounted table whose read the resource refuses outright makes its page

@@ -3,13 +3,30 @@ defmodule DemoWeb.Router do
 
   import AshDataTable.Router
 
+  # The pages' Content-Security-Policy (demo/README.md, "Content-Security-
+  # Policy"): scripts, styles, images, fonts and connections from the
+  # demo's own origin only, so no inline script, no inline event handler
+  # and no inline style element. `connect-src 'self'` covers LiveView's
+  # websocket (`ws:`/`wss:` of the same host and port, CSP Level 3) and
+  # its long-poll fallback. Two allowances: `img-src data:` for the icons
+  # (heroicons and daisyUI draw them as `data:` SVG in the style sheet),
+  # and `style-src-attr 'unsafe-inline'` for the `style` attributes the
+  # table's markup carries and its hooks write (the anchors of the
+  # columns list and the selection's menu, the heights a table is given,
+  # the scrollbar's place); no `<style>` element and no script is allowed
+  # by it. One literal string, as Sobelow reads it (`Config.CSP`).
+  @secure_browser_headers %{
+    "content-security-policy" =>
+      "default-src 'self'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+  }
+
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
     plug :fetch_live_flash
     plug :put_root_layout, html: {DemoWeb.Layouts, :root}
     plug :protect_from_forgery
-    plug :put_secure_browser_headers
+    plug :put_secure_browser_headers, @secure_browser_headers
     # Assigns current_user and current_tenant from the actor switcher's session.
     plug DemoWeb.Actor
     # Puts the language switcher's locale into the process.

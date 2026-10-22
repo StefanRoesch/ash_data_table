@@ -107,22 +107,10 @@ defmodule DemoWeb.E2E.MarkersLive do
     ~H"""
     <Layouts.app flash={@flash}>
       <h1 class="text-2xl font-semibold">Markers</h1>
-      <%!-- The grid's look, as a kit would give it: of no weight
-      (`:where`), so that the hook's own rules (widths, hidden columns)
-      come first, as they do over the classes of the table's own look. --%>
-      <style>
-        :where(#kit [role=table]) { display: table; border-collapse: collapse }
-        :where(#kit [role=rowgroup]) { display: table-row-group }
-        :where(#kit-head, #kit-row-a-t-parts-head) { display: table-header-group }
-        :where(#kit [role=row]) { display: table-row }
-        :where(#kit [role=cell], #kit [role=columnheader]) { display: table-cell; padding: 2px 8px; border: 1px solid; position: relative }
-        :where(#kit [data-lines] > [data-paragraph]) { margin: 0; max-width: 16rem; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden }
-        :where(#kit [role=cell]:has(> [data-whole][aria-expanded=true]) > [data-paragraph]) { display: block; -webkit-line-clamp: unset }
-        :where(#kit [data-whole])::before { content: attr(data-whole) }
-        :where(#kit [data-resize]) { position: absolute; top: 0; bottom: 0; right: 0; width: 8px; cursor: col-resize }
-        :where(#kit-grid) { overflow-x: auto }
-      </style>
-      <div id="kit">
+      <%!-- The grid's look, as a kit would give it, is in a style sheet
+      (`assets/css/e2e_markers.css`, by `data-e2e-markers`): the page's
+      Content-Security-Policy takes no inline style element. --%>
+      <div id="kit" data-e2e-markers>
         <div id="kit-columns-control">
           <button
             type="button"
