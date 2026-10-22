@@ -119,10 +119,11 @@ test("geometry.js counts the columns and rows as AshDataTable.Geometry does, and
   const onSecond = await compare(tasks, "/tasks, page 2")
   expect(onSecond.first, "the second page's rows go on from the first's").toBeGreaterThan(onFirst.first)
 
-  // /comments: keyset pages, nothing before the data columns
+  // /comments: keyset pages; before the data columns the boxes (a comment
+  // is deleted on several rows) and the expanders (its task, its author)
   const comments = new Table(page, "comment", "/comments")
   await comments.open()
-  expect((await compare(comments, "/comments")).lead).toBe(0)
+  expect((await compare(comments, "/comments")).lead).toBe(2)
 
   // a nested table: the tasks of a project
   const projects = new Table(page, "project", "/projects")
