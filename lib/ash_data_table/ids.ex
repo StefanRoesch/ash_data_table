@@ -169,8 +169,8 @@ defmodule AshDataTable.Ids do
 
   @doc """
   A field of the action panel, by the way to it: its name, and inside a
-  value made of fields the segments on the way, which
-  `AshDataTable.GroupValue.at/2` and `inside/2` make (`[:place]`,
+  value made of fields the segments on the way, as the panel names a
+  field inside a group (`[:place]`,
   `["stops", "0", "f", "city"]`): `ID-panel-f-NAME-…`.
   """
   @spec field(String.t(), [atom | String.t() | integer]) :: String.t()

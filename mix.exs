@@ -31,8 +31,8 @@ defmodule AshDataTable.MixProject do
       source_url: @source_url,
       aliases: aliases(),
       dialyzer: [plt_add_apps: [:mix, :ex_unit], ignore_warnings: ".dialyzer_ignore.exs"],
-      # `mix test --cover` reports the coverage; no threshold fails it yet.
-      test_coverage: [summary: [threshold: 0]],
+      # `mix test --cover` fails below the coverage of the release (77.15 %).
+      test_coverage: [summary: [threshold: 77]],
       docs: &docs/0
     ]
   end
