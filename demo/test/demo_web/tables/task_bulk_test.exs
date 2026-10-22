@@ -120,7 +120,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
       assert attribute(html, "#task-select-head", "aria-colindex") == ["1"]
       assert attribute(html, box(task.id), "aria-label") == ["Select row"]
       assert attribute(html, "#task-grid", "data-select") == ["multi"]
-      assert selection(html).buttons == ["Export CSV"]
+      assert attribute(html, "[id='task-selection'] [data-bulk]", "data-bulk") == ["export_csv"]
       # the boxes, the expanders and the sixteen columns a viewer has; no actions
       assert attribute(html, "#task-table", "aria-colcount") == ["21"]
       assert attribute(html, "[id='task-row-#{task.id}-e']", "aria-colindex") == ["2"]
