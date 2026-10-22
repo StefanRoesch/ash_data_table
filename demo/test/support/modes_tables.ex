@@ -7,7 +7,8 @@ defmodule DemoWeb.Support.ModesLive do
   does (under the `"prefix"` of its live session), and places that table
   with what the page gives it: the same id,
   label, heading 1, reader, time zone, state in the URL, and the same
-  layout around it, given its assigns as the page gives them.
+  layout around it, given its assigns as the page gives them (with
+  `current_path`).
   """
   use Phoenix.LiveView
 
@@ -23,6 +24,7 @@ defmodule DemoWeb.Support.ModesLive do
         route: route,
         page_title: label,
         url: nil,
+        current_path: nil,
         page_assigns: Map.drop(socket.assigns, [:flash, :live_action]),
         layout_assigns: layout_assigns(route, socket.assigns)
       )
@@ -54,12 +56,27 @@ defmodule DemoWeb.Support.ModesLive do
   end
 
   @impl true
-  def handle_params(_params, url, socket), do: {:noreply, assign(socket, url: url)}
+  def handle_params(_params, url, socket),
+    do: {:noreply, assign(socket, url: url, current_path: current_path(url))}
+
+  # The path and query of the page's URL, for the layout, as the page gives
+  # it (`current_path`): anew with every patch.
+  defp current_path(url) do
+    case URI.parse(url) do
+      %URI{path: path, query: nil} -> path
+      %URI{path: path, query: query} -> path <> "?" <> query
+    end
+  end
 
   @impl true
   def render(assigns) do
     ~H"""
-    <.in_layout layout={layout(@route)} flash={@flash} given={@layout_assigns}>
+    <.in_layout
+      layout={layout(@route)}
+      flash={@flash}
+      current_path={@current_path}
+      given={@layout_assigns}
+    >
       <div id={"#{@route.id}-page"}>
         <AshDataTable.table
           :if={@live_action == :embedded}

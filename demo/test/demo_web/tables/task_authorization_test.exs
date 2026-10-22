@@ -82,6 +82,10 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
   defp stored(task), do: Ash.get!(Task, task.id, authorize?: false)
   defp titles(html), do: column(html, "task", "title")
 
+  # the markup of the table alone, without the page's layout around it
+  defp table_html(html),
+    do: html |> LazyHTML.from_document() |> LazyHTML.query("#task") |> LazyHTML.to_html()
+
   describe "a field the person can never see" do
     setup do
       world = world(tasks: 0, other_tasks: 0)
@@ -225,9 +229,11 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
           assert attribute(html, "#task-table [aria-sort]:not([aria-sort=none])", "id") == [],
                  query
 
-          # no filter is shown as set
+          # no filter is shown as set, and the table says nothing of the
+          # value (the layout's link to the same table in React carries the
+          # page's own query, as the person typed it)
           assert attribute(html, "#task-clear-filters", "id") == [], query
-          refute html =~ "EXT-", query
+          refute table_html(html) =~ "EXT-", query
         end
       end
     end

@@ -177,8 +177,11 @@ defmodule DemoWeb.Tables.DomainSettingsTest do
       {:ok, _view, html} =
         conn |> with_assigns(reader: @ada) |> live("/support/framed/guarded-notes")
 
-      # `current_scope` is always there, nil when the socket has none
-      assert attribute(html, "#frame", "data-assigns") == ["current_scope flash reader"]
+      # `current_scope` is always there, nil when the socket has none, and
+      # `current_path`, the page's path and query
+      assert attribute(html, "#frame", "data-assigns") == [
+               "current_path current_scope flash reader"
+             ]
     end
 
     test "is given the conventional assigns too, when the socket has them", %{conn: conn} do
@@ -188,7 +191,7 @@ defmodule DemoWeb.Tables.DomainSettingsTest do
         |> live("/support/framed/guarded-notes")
 
       assert attribute(html, "#frame", "data-assigns") == [
-               "current_scope current_user flash reader"
+               "current_path current_scope current_user flash reader"
              ]
     end
 
@@ -203,12 +206,12 @@ defmodule DemoWeb.Tables.DomainSettingsTest do
         |> live("/support/framed/memos")
 
       assert attribute(html, "#frame", "data-assigns") == [
-               "current_scope current_tenant current_user flash"
+               "current_path current_scope current_tenant current_user flash"
              ]
 
       {:ok, _view, html} = conn |> with_assigns(%{}) |> live("/support/framed/memos")
 
-      assert attribute(html, "#frame", "data-assigns") == ["current_scope flash"]
+      assert attribute(html, "#frame", "data-assigns") == ["current_path current_scope flash"]
     end
   end
 
