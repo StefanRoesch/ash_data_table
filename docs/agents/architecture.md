@@ -56,7 +56,7 @@ A table reaches a page in three ways, all on one core and one drawing: the route
 - `Live.Core` (`live/core.ex`): the adapter on the socket and `step/3`, `(table, intent, context) -> {table, effects, reply}`.
 - `live/core/*.ex`, one topic each, over the table, no socket: `Told`, `Reading`, `Url`, `Nesting`, `Updates`, `Cells`, `Picker`, `Panel`, `Bulk`, `Selection`, `Files`, `Notify`.
 - `Core.Opener` (`live/core/opener.ex`) with `Opener.Table` and `Opener.Host`: who draws a question, panel or picker (the table, or the page in controlled mode).
-- `AshDataTable.Table` (`live/table.ex`): the one value a table is held in; opaque. `Live.Entry` (`live/entry.ex`): one table's fields, grouped by topic (`arguments`, `selection`, `updates`, `footer`). `Live.Registry` (`live/registry.ex`): the tables of one `Table`.
+- `AshDataTable.Table` (`live/table.ex`): the one value a table is held in; opaque. `Live.Entry` (`live/entry.ex`): one table's fields, grouped by topic (`told`, `nesting`, `reading`, `arguments`, `filter`, `status`, `relation`, `opens`, `selection`, `updates`, `footer`; the rest flat), put by name (`Entry.put/3`, `Table.put/2`), read where they live (`entry.reading.page`). `Live.Registry` (`live/registry.ex`): the tables of one `Table`.
 - `Live.Hooks` (`live/hooks.ex`): a table attached to a LiveView. `Listener` (`live/listener.ex`): hears live updates, in batches.
 
 ### 3 UI and 3w words
@@ -92,8 +92,8 @@ Every change keeps these; part 2a is where they live.
 1. **DSL option**: in `resource/table.ex` (`@options`), `domain.ex`, or the entity in `resource.ex` and its struct. Then `mix spark.formatter` and `mix spark.cheat_sheets`.
 2. **Diagnostic**: the rule and its `message/1` in the topic module; raised by that topic's verifier; listed in `documentation/topics/mistakes-at-compile-time.md`.
 3. **Model**: into `Model` or a struct; what depends on the person in `for_actor/2`.
-4. **Core**: a field of `Live.Entry` (in its topic's group, if it has one); an event in `Intent` and `@events` of `attrs.ex`; a `step` clause in its topic; socket work as an effect.
-5. **Drawing**: what a part draws in its `Kit.Projection` key and moduledoc; markup in `Parts.*`; a new part is a `Kit` callback with its default in `Kit.Default`. Every kit (Default, the demo's DivKit and ReactKit) behaves the same; nested tables as top tables.
+4. **Core**: a field of `Live.Entry` (in its topic's group, if it has one; at most 31 top-level fields, Credo's `StructFieldAmount`); an event in `Intent` and `@events` of `attrs.ex`; a `step` clause in its topic; socket work as an effect.
+5. **Drawing**: what a part draws in its `Kit.Projection` key and moduledoc, given field by field (`@entry.reading.page`, never a whole group, so LiveView's change tracking marks it changed only with that field); markup in `Parts.*`; a new part is a `Kit` callback with its default in `Kit.Default`. Every kit (Default, the demo's DivKit and ReactKit) behaves the same; nested tables as top tables.
 6. **Texts**: the key in `messages.ex`; the data layer says `{:text, key, bindings}`; `mix gettext.extract`; German in `demo/priv/gettext/de/`.
 7. **Demo**: resources in `demo/lib/demo/`, routes in `demo/lib/demo_web/router.ex`, test-only tables in `demo/test/support/*_tables.ex`; a new page in `demo/README.md`.
 8. **Tests**: root `test/` (model, 2a, `step_test.exs` per topic, `KitCase`); `demo/test/demo_web/tables/` through `DemoWeb.TablePage`; markup snapshots (`MIX_SNAPSHOT_UPDATE=1`); browser specs in `demo/e2e/` with the `Table` helper (Tab only, never a sleep).

@@ -153,7 +153,8 @@ defmodule AshDataTable.Live.Core.Url do
   def go(table, state) when table.entry.state == state, do: table
 
   def go(table, state) when is_binary(table.options.url) do
-    %{options: %{url: url}, entry: %{id: id, related: related, model: model}} = table
+    %{options: %{url: url}, entry: %{id: id, relation: %{related: related}, model: model}} =
+      table
 
     # what the table is limited to stays, whatever else changes
     limit =

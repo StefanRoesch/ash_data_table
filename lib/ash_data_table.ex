@@ -990,14 +990,14 @@ defmodule AshDataTable do
   @spec status(AshDataTable.Table.t() | nil) :: map | nil
   def status(nil), do: nil
 
-  def status(%AshDataTable.Table{entry: entry}) do
+  def status(%AshDataTable.Table{entry: %{reading: reading} = entry}) do
     %{
       id: entry.id,
       state: AshDataTable.State.to_params(entry.state, entry.model),
-      count: entry.row_count,
-      total: entry.page && entry.page.total,
-      loading?: entry.busy? or entry.loading?,
-      error: entry.error && AshDataTable.Text.say(entry.error),
+      count: reading.row_count,
+      total: reading.page && reading.page.total,
+      loading?: reading.busy? or reading.loading?,
+      error: reading.error && AshDataTable.Text.say(reading.error),
       selected:
         for(
           row <- entry.selection.selected,
@@ -1048,7 +1048,7 @@ defmodule AshDataTable do
     """
   end
 
-  def attached(%{table: %{entry: %{gone?: true}}} = assigns) do
+  def attached(%{table: %{entry: %{reading: %{gone?: true}}}} = assigns) do
     ~H"""
     <div id={@table.entry.id} hidden></div>
     """

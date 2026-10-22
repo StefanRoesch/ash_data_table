@@ -10,7 +10,7 @@ defmodule AshDataTable.Live.Core.Opener do
   #     a question was asked by the hook before its event came, or the
   #     topic has the hook ask it;
   #   * `Opener.Host` - the page draws it (controlled mode): the table
-  #     holds a request for the host (`entry.request`, this adapter's only),
+  #     holds a request for the host (`entry.opens.request`, this adapter's only),
   #     tells the page, and runs the host's answer as the intent it stands
   #     for.
   #

@@ -23,7 +23,7 @@ defmodule AshDataTable.Live.Core.Nesting do
   # full view. A table with its state in the URL finds it there, and is then
   # read as a nested table is: through the parent, read again as the person.
   # Any other table is not limited.
-  def relate(%Table{entry: %{nested?: true, via: via, parent_key: key}} = table) do
+  def relate(%Table{entry: %{nesting: %{nested?: true, via: via, parent_key: key}}} = table) do
     # on a page that is mounted as this table was told to authorize
     Table.put(table,
       full_view:
@@ -32,7 +32,7 @@ defmodule AshDataTable.Live.Core.Nesting do
           table.context.endpoint,
           via,
           key,
-          table.entry.authorize_given
+          table.entry.told.authorize_given
         )
     )
   end
@@ -55,7 +55,7 @@ defmodule AshDataTable.Live.Core.Nesting do
         # as the table around a nested one says for it: what this table was
         # told, else what the parent's own domain says
         parent_authorize? =
-          case table.entry.authorize_given do
+          case table.entry.told.authorize_given do
             nil -> AshDataTable.Domain.Info.authorize?(via.source)
             authorize? -> authorize?
           end
@@ -85,7 +85,14 @@ defmodule AshDataTable.Live.Core.Nesting do
   #
   # A table to choose from is built for the read action it is told.
   def built(%Table{} = table) do
-    %{resource: resource, table: named, via: via, choose: choose, live_given: live} = table.entry
+    %{
+      resource: resource,
+      table: named,
+      nesting: %{via: via},
+      choose: choose,
+      told: %{live_given: live}
+    } = table.entry
+
     read_action = choose && choose.read_action
     key = {resource, named, via, read_action, live}
 
@@ -119,7 +126,7 @@ defmodule AshDataTable.Live.Core.Nesting do
   # expanders: this is where the depth limit holds against an event that the
   # table never offered.
   def step({:expand, key}, table) do
-    %{rows: rows, open: open, expandable?: expandable?} = table.entry
+    %{rows: rows, nesting: %{open: open}, expandable?: expandable?} = table.entry
 
     if expandable? and is_map_key(rows, key) do
       open = if is_map_key(open, key), do: Map.delete(open, key), else: Map.put(open, key, [])
@@ -137,7 +144,7 @@ defmodule AshDataTable.Live.Core.Nesting do
   # Only a line that is on the page can be used: of an expanded row of the
   # page, and for a relationship this person is offered.
   def step({:toggle, key, name}, table) do
-    %{model: model, open: open, expandable?: expandable?} = table.entry
+    %{model: model, nesting: %{open: open}, expandable?: expandable?} = table.entry
 
     with true <- expandable?,
          lines when is_list(lines) <- open[key],
@@ -160,7 +167,8 @@ defmodule AshDataTable.Live.Core.Nesting do
   # one page. Its line says it; the row's detail is put into the stream
   # again where that changed (in `tidy/1`, after the nested table's read).
   def counted(%Table{} = table) do
-    %{entry: %{id: id, open: open, rows: rows, counts: counts}, entries: entries} = table
+    %{entry: %{id: id, nesting: %{open: open, counts: counts}, rows: rows}, entries: entries} =
+      table
 
     now =
       for {key, lines} <- open, is_map_key(rows, key), into: %{} do
@@ -184,9 +192,10 @@ defmodule AshDataTable.Live.Core.Nesting do
     end
   end
 
-  defp count(%{gone?: false, page: %{total: total}}) when is_integer(total), do: total
+  defp count(%{reading: %{gone?: false, page: %{total: total}}}) when is_integer(total),
+    do: total
 
-  defp count(%{gone?: false, page: %{previous: nil, next: nil}, row_count: count}),
+  defp count(%{reading: %{gone?: false, page: %{previous: nil, next: nil}, row_count: count}}),
     do: count
 
   defp count(_entry), do: nil
@@ -199,11 +208,11 @@ defmodule AshDataTable.Live.Core.Nesting do
       scope: table.caller.scope,
       actor: table.caller.actor,
       tenant: table.caller.tenant,
-      authorize?: table.entry.authorize_given,
+      authorize?: table.entry.told.authorize_given,
       page_assigns: table.options.page_assigns,
       time_zone: table.caller.time_zone,
       path: table.entry.path,
-      live?: passed_on(table.entry.live_given)
+      live?: passed_on(table.entry.told.live_given)
     }
   end
 
@@ -223,15 +232,15 @@ defmodule AshDataTable.Live.Core.Nesting do
       scope: table.caller.scope,
       actor: table.caller.actor,
       tenant: table.caller.tenant,
-      authorize?: table.entry.authorize_given,
+      authorize?: table.entry.told.authorize_given,
       parent_authorize?: table.entry.authorize?,
       parent_arguments: table.entry.model.read_arguments,
       page_assigns: table.options.page_assigns,
       time_zone: table.caller.time_zone,
-      depth: table.entry.depth + 1,
-      depth_limit: table.entry.depth_limit,
+      depth: table.entry.nesting.depth + 1,
+      depth_limit: table.entry.nesting.depth_limit,
       path: table.entry.path,
-      live?: passed_on(table.entry.live_given)
+      live?: passed_on(table.entry.told.live_given)
     }
   end
 
@@ -262,7 +271,7 @@ defmodule AshDataTable.Live.Core.Nesting do
                                                        {table, children} ->
         table =
           case table.entries do
-            %{^child => %{given: ^given}} ->
+            %{^child => %{nesting: %{given: ^given}}} ->
               table
 
             %{^child => _told_otherwise} ->
@@ -293,9 +302,9 @@ defmodule AshDataTable.Live.Core.Nesting do
   # The table of an open picker: the destination's, told that it is one to
   # choose from (`choose`), how many rows are selected at a time, and what
   # is chosen now.
-  defp chooser(_table, %{picker: nil}), do: []
+  defp chooser(_table, %{opens: %{picker: nil}}), do: []
 
-  defp chooser(table, %{id: id, picker: picker} = entry) do
+  defp chooser(table, %{id: id, opens: %{picker: picker}} = entry) do
     # a picker the host draws (controlled mode) has no table of the table's
     if AshDataTable.Live.Core.Opener.draws?(table.options, :picker),
       do: chooser(table, id, picker, entry),
@@ -327,7 +336,7 @@ defmodule AshDataTable.Live.Core.Nesting do
 
   defp nested(table, %{id: id} = entry) do
     case entry do
-      %{expandable?: true, model: model, rows: rows, open: open} when open != %{} ->
+      %{expandable?: true, model: model, rows: rows, nesting: %{open: open}} when open != %{} ->
         reader = nested_reader(%{table | entry: entry})
         first = List.first(model.columns)
 

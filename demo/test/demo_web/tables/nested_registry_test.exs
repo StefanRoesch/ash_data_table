@@ -90,14 +90,14 @@ defmodule DemoWeb.Tables.NestedRegistryTest do
       parent = Enum.at(entry.path, -2)
       assert parent == "task" or Map.has_key?(entries, parent)
 
-      if entry.target do
-        assert Map.fetch(where, entry.target) == {:ok, parent},
-               "the cell of #{id}, #{entry.target}, is not a line of #{parent} on the page"
+      if entry.nesting.target do
+        assert Map.fetch(where, entry.nesting.target) == {:ok, parent},
+               "the cell of #{id}, #{entry.nesting.target}, is not a line of #{parent} on the page"
 
         assert Map.fetch(where, id) == {:ok, parent}
       else
         holder = if parent == "task", do: top, else: entries[parent]
-        assert holder.picker, "#{id} is a picker's table, and #{parent} has no picker open"
+        assert holder.opens.picker, "#{id} is a picker's table, and #{parent} has no picker open"
       end
     end
 

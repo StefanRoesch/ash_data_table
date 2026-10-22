@@ -299,7 +299,7 @@ defmodule AshDataTable.Live.Page do
         |> attached()
         |> AshDataTable.Live.Hooks.told_url(url)
 
-      if socket.assigns.table.entry.gone?, do: raise(AshDataTable.NotFoundError)
+      if socket.assigns.table.entry.reading.gone?, do: raise(AshDataTable.NotFoundError)
 
       {:noreply, socket}
     end

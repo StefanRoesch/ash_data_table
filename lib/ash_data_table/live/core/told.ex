@@ -86,7 +86,7 @@ defmodule AshDataTable.Live.Core.Told do
 
     {built, table} =
       table
-      |> Table.put(nested?: table.entry.depth > 0)
+      |> Table.put(nested?: table.entry.nesting.depth > 0)
       |> Nesting.relate()
       |> Nesting.built()
 
@@ -118,14 +118,16 @@ defmodule AshDataTable.Live.Core.Told do
 
     # How deep a person can expand is said by the table on the page, for
     # everything beneath it.
-    depth_limit = table.entry.depth_limit || model.max_depth
+    depth_limit = table.entry.nesting.depth_limit || model.max_depth
 
-    expandable? = expandable?(model, table.entry.depth, depth_limit)
-    selecting = selecting(table.entry.select, model)
+    expandable? = expandable?(model, table.entry.nesting.depth, depth_limit)
+    selecting = selecting(table.entry.told.select, model)
 
     table
     |> Table.put(model: model, state: state)
-    |> Table.put(pending: awaited(table.entry.pending, table.entry.state.filters, state.filters))
+    |> Table.put(
+      pending: awaited(table.entry.filter.pending, table.entry.state.filters, state.filters)
+    )
     |> Table.put(missing: missing, refused: refused)
     |> Table.put(lines: lines(table.entry.arguments.lines, model, state, refused))
     # the table actions are offered once the table has read, as create is
@@ -336,19 +338,19 @@ defmodule AshDataTable.Live.Core.Told do
   # are put back closed and its picker goes, and the tables under them close
   # in this update (`tidy`), before they start a read for the new person
   # that their closing would cut off (target 6a). The table reads again.
-  defp asker(%{entry: %{read: nil}} = table, _assigns), do: table
+  defp asker(%{entry: %{reading: %{read: nil}}} = table, _assigns), do: table
 
   defp asker(%{caller: caller, entry: entry} = table, assigns) do
     asking = fn assigns ->
       {Map.get(assigns, :scope, caller.scope), Map.get(assigns, :actor, caller.actor),
        Map.get(assigns, :tenant, caller.tenant),
-       Map.get(assigns, :authorize?, entry.authorize_given)}
+       Map.get(assigns, :authorize?, entry.told.authorize_given)}
     end
 
     if asking.(assigns) == asking.(%{}) do
       table
     else
-      %{open: open, rows: rows} = entry
+      %{nesting: %{open: open}, rows: rows} = entry
 
       open
       |> Map.keys()

@@ -13,6 +13,7 @@ defmodule AshDataTable.Live.Registry do
   # socket is changed through the table's effects (`Live.Core.effect/2`).
 
   alias AshDataTable.Live.Core
+  alias AshDataTable.Live.Entry
   alias AshDataTable.Table
 
   # ---- one entry at a time --------------------------------------------
@@ -198,13 +199,12 @@ defmodule AshDataTable.Live.Registry do
     {stream, %{entries: entries} = table} = take_stream(table)
     {target, heading} = place || {nil, nil}
 
-    entry = %{
-      AshDataTable.Live.Entry.new()
-      | id: id,
-        target: target,
-        heading_target: heading,
-        stream: stream
-    }
+    entry =
+      Entry.new()
+      |> Entry.put(:id, id)
+      |> Entry.put(:target, target)
+      |> Entry.put(:heading_target, heading)
+      |> Entry.put(:stream, stream)
 
     %{table | entries: Map.put(entries, id, entry)}
   end
@@ -267,7 +267,7 @@ defmodule AshDataTable.Live.Registry do
   def portals(%{entries: entries}) do
     entries
     |> Map.values()
-    |> Enum.filter(& &1.target)
+    |> Enum.filter(& &1.nesting.target)
     |> Enum.sort_by(& &1.opened)
   end
 end

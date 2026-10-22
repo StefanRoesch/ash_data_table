@@ -70,7 +70,7 @@ defmodule AshDataTable.Live.Core.Files do
   # chosen in another table's open panel is that panel's.
   defp drop_files(%{entry: %{uploads: []}} = table), do: table
 
-  defp drop_files(%{entry: %{panel: panel, uploads: names}} = table),
+  defp drop_files(%{entry: %{opens: %{panel: panel}, uploads: names}} = table),
     do: Core.effect(table, {:uploads, {:drop, names, Panel.spent(panel)}})
 
   # Whether a panel's action can run with the files of its uploads: `:ok`;
@@ -216,8 +216,8 @@ defmodule AshDataTable.Live.Core.Files do
   end
 
   # What is said at each file field of the panel, by name (`said_of/4`).
-  def files_said(entry, uploads),
-    do: Map.new(panel_files(entry, uploads), fn {name, %{errors: errors}} -> {name, errors} end)
+  def files_said(held, uploads),
+    do: Map.new(panel_files(held, uploads), fn {name, %{errors: errors}} -> {name, errors} end)
 
   # What is read out of a field when the panel stays open: for a file, what
   # is shown at its field; for the rest, what the action said.

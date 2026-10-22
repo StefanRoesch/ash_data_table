@@ -493,7 +493,7 @@ defmodule AshDataTable.Live.Core do
   # The panel and the picker, as what draws them is told (the panel
   # first: a picker the host draws comes before it).
   defp opened(table) do
-    %{panel: panel, picker: picker} = table.entry
+    %{panel: panel, picker: picker} = table.entry.opens
     table |> Opener.opened(:panel, panel) |> Opener.opened(:picker, picker)
   end
 
@@ -536,7 +536,7 @@ defmodule AshDataTable.Live.Core do
 
   @doc "Puts a text into the live region, to be read out."
   def say(%Table{} = table, text),
-    do: Table.put(table, announcement: text, announcements: table.entry.announcements + 1)
+    do: Table.put(table, announcement: text, announcements: table.entry.status.announcements + 1)
 
   @doc """
   Tells the host `event` of the table, where the page asked for it
@@ -691,10 +691,10 @@ defmodule AshDataTable.Live.Core do
     entry = table.entry
 
     parent =
-      if entry.parent_key,
+      if entry.nesting.parent_key,
         do: %{
-          key: entry.parent_key,
-          authorize?: entry.parent_authorize?,
+          key: entry.nesting.parent_key,
+          authorize?: entry.nesting.parent_authorize?,
           arguments: entry.arguments.parent_arguments
         }
 
@@ -710,7 +710,7 @@ defmodule AshDataTable.Live.Core do
         picking: Picker.picking(table),
         rows: entry.rows,
         selection: if(entry.selection.all?, do: :all, else: {:rows, entry.selection.selected}),
-        read?: match?(%Query.Page{}, entry.page),
+        read?: match?(%Query.Page{}, entry.reading.page),
         offered: %{
           table: entry.offered,
           bulk: if(entry.selection.running, do: [], else: entry.selection.bulk)

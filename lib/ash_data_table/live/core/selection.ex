@@ -93,7 +93,9 @@ defmodule AshDataTable.Live.Core.Selection do
   # filters, the arguments, and the record the table is limited to. Not the
   # sort, nor the page: a selection outlives its page.
   def scoped(%Table{} = table) do
-    %{state: state, related: related, choose: choose, selection: selection} = table.entry
+    %{state: state, relation: %{related: related}, choose: choose, selection: selection} =
+      table.entry
+
     %{selected_under: held} = selection
 
     scope =
@@ -124,8 +126,12 @@ defmodule AshDataTable.Live.Core.Selection do
   values. `{:error, message}` where the read fails.
   """
   def records(%Table{} = table) do
-    %{model: model, selection: %{selected: rows, all?: all?}, state: state, parent_key: parent} =
-      table.entry
+    %{
+      model: model,
+      selection: %{selected: rows, all?: all?},
+      state: state,
+      nesting: %{parent_key: parent}
+    } = table.entry
 
     opts = Reading.read_opts(table)
 

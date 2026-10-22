@@ -3,7 +3,7 @@ defmodule AshDataTable.Live.Core.Opener.Host do
   # The page draws what the table opens (controlled mode, the adapter of
   # `AshDataTable.Live.Core.Opener` for a kind the table was attached
   # `controlled:` with). A table holds a request in place of what it would
-  # draw (`entry.request`, with a `ref` of its own; no other module reads
+  # draw (`entry.opens.request`, with a `ref` of its own; no other module reads
   # or writes it), tells the page (`:requested`), and the host answers
   # with commands, each of which goes the way the person's own answer
   # would: through `AshDataTable.Operation`, with its checks, the veto and
@@ -95,7 +95,7 @@ defmodule AshDataTable.Live.Core.Opener.Host do
         kind: :confirm
       })
 
-    {:held, %{held: true, ref: table.entry.request.ref}, table}
+    {:held, %{held: true, ref: table.entry.opens.request.ref}, table}
   end
 
   # What a question is made for: a cell's by its row and column, so that
@@ -111,7 +111,7 @@ defmodule AshDataTable.Live.Core.Opener.Host do
   # place: cancelled, as the person's Cancel would (the panel's adapter
   # closes the panel, and the picker over it).
   defp yield(table) do
-    case table.entry.request do
+    case table.entry.opens.request do
       %{kind: :panel} -> cancel(table, :panel_cancel)
       %{kind: :picker} -> cancel(table, :picker_cancel)
       _confirm_or_none -> table
@@ -133,7 +133,7 @@ defmodule AshDataTable.Live.Core.Opener.Host do
   """
   @impl true
   def opened(table, kind, value) do
-    %{request: request, picker: picker} = table.entry
+    %{request: request, picker: picker} = table.entry.opens
     made_for = made_for(kind, value)
 
     case request do
@@ -155,7 +155,7 @@ defmodule AshDataTable.Live.Core.Opener.Host do
   """
   @impl true
   def closed(table, kind) do
-    case table.entry.request do
+    case table.entry.opens.request do
       %{kind: ^kind} -> table |> let_go() |> done()
       _other_or_none -> table
     end
@@ -171,7 +171,7 @@ defmodule AshDataTable.Live.Core.Opener.Host do
 
   # The request is held no more: the host is told it (`:request_ended`).
   defp done(table) do
-    case table.entry.request do
+    case table.entry.opens.request do
       %{ref: ref, kind: kind} ->
         table
         |> Table.put(request: nil)
@@ -185,7 +185,7 @@ defmodule AshDataTable.Live.Core.Opener.Host do
   # The question of a cell that a new request takes the place of, or that
   # is given up: the hook puts the cell back.
   defp let_go(table) do
-    case table.entry.request do
+    case table.entry.opens.request do
       %{kind: :confirm, for: {kind, key, name}, ref: ref} when kind in [:save, :clear, :refer] ->
         answered(table, ref, key, name, %{ok: false})
 
@@ -224,7 +224,7 @@ defmodule AshDataTable.Live.Core.Opener.Host do
   """
   @impl true
   def answer(table, ref, {kinds, fun}) do
-    with %{ref: ^ref, kind: kind} = request <- table.entry.request,
+    with %{ref: ^ref, kind: kind} = request <- table.entry.opens.request,
          true <- kinds == :any or kind in kinds do
       {intent, table} = fun.(table, request)
       {:ok, intent, table}
@@ -298,12 +298,12 @@ defmodule AshDataTable.Live.Core.Opener.Host do
     |> Enum.flat_map(&List.wrap(projection(&1)))
   end
 
-  defp projection(%{request: request} = entry) do
+  defp projection(%{opens: %{request: request} = opens} = entry) do
     held = %{
       table: entry.id,
       path: entry.path,
-      panel: entry.panel,
-      picker: entry.picker,
+      panel: opens.panel,
+      picker: opens.picker,
       key: request && row_key(request, entry)
     }
 
@@ -320,14 +320,14 @@ defmodule AshDataTable.Live.Core.Opener.Host do
   # panel and a cell's picker name the row by the key of its DOM id.
   defp row_key(%{kind: :confirm, key: key}, _entry), do: key
 
-  defp row_key(%{kind: :panel}, %{panel: %Panel{} = panel, rows: rows}) do
+  defp row_key(%{kind: :panel}, %{opens: %{panel: %Panel{} = panel}, rows: rows}) do
     case Panel.row(panel) do
       nil -> nil
       key -> get_in(rows, [key, :pk])
     end
   end
 
-  defp row_key(%{kind: :picker}, %{picker: %{for: {:cell, key, _name}}, rows: rows}),
+  defp row_key(%{kind: :picker}, %{opens: %{picker: %{for: {:cell, key, _name}}}, rows: rows}),
     do: get_in(rows, [key, :pk])
 
   defp row_key(_request, _entry), do: nil
@@ -335,7 +335,7 @@ defmodule AshDataTable.Live.Core.Opener.Host do
   # The uploads of the open panel's file fields, by the name of each: the
   # page hands its files to them.
   defp uploads(entry) do
-    for input <- Panel.file_inputs(entry.panel),
+    for input <- Panel.file_inputs(entry.opens.panel),
         into: %{},
         do: {Atom.to_string(input.name), Files.upload_name(entry.id, input)}
   end

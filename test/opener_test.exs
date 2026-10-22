@@ -87,7 +87,7 @@ defmodule AshDataTable.OpenerTest do
 
   defp panel(name), do: %Panel{kind: :row, for: %{key: "1", action: action(name)}}
 
-  defp request(table), do: table.entry.request
+  defp request(table), do: table.entry.opens.request
 
   defp cell(table, column, typed),
     do:
@@ -229,12 +229,12 @@ defmodule AshDataTable.OpenerTest do
       :table ->
         # the table draws both: the panel stays, nothing is held
         assert {:run, table} = asked
-        assert %Panel{} = table.entry.panel
+        assert %Panel{} = table.entry.opens.panel
 
       :host ->
         # the panel held ends, cancelled as the person's Cancel would
         assert {:held, %{ref: ref}, table} = asked
-        assert table.entry.panel == nil
+        assert table.entry.opens.panel == nil
         assert %{kind: :confirm, ref: ^ref, key: nil} = request(table)
 
         assert [
@@ -289,20 +289,20 @@ defmodule AshDataTable.OpenerTest do
       end)
 
     %{entry: top, entries: %{"t-n" => nested}} = table
-    assert top.request == nil
+    assert top.opens.request == nil
 
     case adapter do
       :table ->
         # nothing is held, so no answer finds anything: the tables are as
         # they were
-        assert nested.request == nil
+        assert nested.opens.request == nil
         assert {^table, nil} = Core.run({:answer, "r0", :any, &Host.cancelled/2}, table)
         assert told(table) == []
 
       :host ->
-        assert %{kind: :confirm, ref: ref} = nested.request
+        assert %{kind: :confirm, ref: ref} = nested.opens.request
         {table, nil} = Core.run({:answer, ref, :any, &Host.cancelled/2}, table)
-        assert table.entries["t-n"].request == nil
+        assert table.entries["t-n"].opens.request == nil
     end
   end
 

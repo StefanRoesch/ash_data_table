@@ -65,8 +65,12 @@ defmodule AshDataTable.Live.Core.Reading do
   # once, and several that are opened together read side by side. Until its
   # first rows are there it says that it is loading.
   def read(%Table{} = table) do
-    %{model: model, state: state, parent_key: key, arguments: %{parent_arguments: arguments}} =
-      table.entry
+    %{
+      model: model,
+      state: state,
+      nesting: %{parent_key: key},
+      arguments: %{parent_arguments: arguments}
+    } = table.entry
 
     opts = Core.reader(table)
 
@@ -80,7 +84,10 @@ defmodule AshDataTable.Live.Core.Reading do
       case model.via do
         %Relationship{} ->
           opts =
-            [parent_authorize?: table.entry.parent_authorize?, parent_arguments: arguments] ++
+            [
+              parent_authorize?: table.entry.nesting.parent_authorize?,
+              parent_arguments: arguments
+            ] ++
               opts
 
           fn -> Query.read_related(model, state, key, opts) end
@@ -92,27 +99,27 @@ defmodule AshDataTable.Live.Core.Reading do
     # with every read the summaries are asked for again (`summarise/1`): in
     # any case when the table reads again as it is, else when what they are
     # of has changed
-    due = if table.entry.read == :again, do: :force, else: :changed
+    due = if table.entry.reading.read == :again, do: :force, else: :changed
 
     cond do
-      read == table.entry.read ->
+      read == table.entry.reading.read ->
         table
 
       # an argument the read action requires is empty: it is not run
       table.entry.arguments.missing != [] ->
-        first_or_later = if is_nil(table.entry.read), do: :first, else: :later
+        first_or_later = if is_nil(table.entry.reading.read), do: :first, else: :later
         table |> Table.put(read: read) |> due(due) |> unfilled(first_or_later)
 
-      table.entry.read == :again ->
+      table.entry.reading.read == :again ->
         table |> Table.put(read: read, busy?: true) |> due(due) |> task(:read, fetch)
 
-      table.entry.nested? ->
+      table.entry.nesting.nested? ->
         table
-        |> Table.put(read: read, busy?: true, loading?: is_nil(table.entry.read))
+        |> Table.put(read: read, busy?: true, loading?: is_nil(table.entry.reading.read))
         |> due(due)
         |> task(:read, fetch)
 
-      is_nil(table.entry.read) ->
+      is_nil(table.entry.reading.read) ->
         table |> Table.put(read: read) |> due(due) |> show(fetch.(), :first)
 
       true ->
@@ -156,7 +163,8 @@ defmodule AshDataTable.Live.Core.Reading do
     do: Table.put(table, summary_due: nil, summary: nil, summing?: false, summed: nil)
 
   def summarise(table) do
-    %{model: model, state: state, parent_key: parent, footer: %{summary_due: due}} = table.entry
+    %{model: model, state: state, nesting: %{parent_key: parent}, footer: %{summary_due: due}} =
+      table.entry
 
     opts = read_opts(table)
     of = {model, %{state | sort: nil}, Keyword.delete(opts, :page_values), parent}
@@ -200,7 +208,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # table, how the row it belongs to is read.
   def read_opts(%Table{entry: entry} = table) do
     [
-      parent_authorize?: entry.parent_authorize?,
+      parent_authorize?: entry.nesting.parent_authorize?,
       parent_arguments: entry.arguments.parent_arguments
     ] ++ Core.reader(table)
   end
@@ -253,7 +261,7 @@ defmodule AshDataTable.Live.Core.Reading do
   end
 
   def step({:clear_filter, name}, table) do
-    %{state: state, pending: pending} = table.entry
+    %{state: state, filter: %{pending: pending}} = table.entry
     cleared = State.clear_filter(state, name)
 
     # the other columns keep the controls they show
@@ -274,7 +282,10 @@ defmodule AshDataTable.Live.Core.Reading do
      |> Url.refilter(state), nil}
   end
 
-  def step({:page, to}, table), do: {Url.go(table, target(table.entry, to)), nil}
+  def step({:page, to}, table) do
+    %{state: state, model: model, reading: %{page: page}} = table.entry
+    {Url.go(table, target(state, model, page, to)), nil}
+  end
 
   # Sent by the "Rows per page" menu: the size as text. It is a claim: only
   # a size the table offers is taken (`AshDataTable.State.resize/3`), and
@@ -361,7 +372,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # is mounted, or a `:later` one.
   defp show(table, result, read) do
     table = shown(table, result, read)
-    %{model: model, state: state, row_count: count, error: error} = table.entry
+    %{model: model, state: state, reading: %{row_count: count, error: error}} = table.entry
 
     event =
       case result do
@@ -443,7 +454,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # destination's table is declared with `on_forbidden :message`, and no more
   # than that the records are not available otherwise. Never "No records".
   defp shown(table, {:error, refusal}, _read)
-       when table.entry.nested? and
+       when table.entry.nesting.nested? and
               (refusal == :forbidden or is_struct(refusal, Ash.Error.Forbidden)),
        do: refused(table)
 
@@ -548,7 +559,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # is under an expanded row. `lines` are the names of its open lines, nil
   # while the row is not expanded; the counts of its open nested tables are
   # the entry's, where they are known. No record is needed for it.
-  def detail(%Table{entry: %{id: id, model: model, counts: counts}}, key, lines),
+  def detail(%Table{entry: %{id: id, model: model, nesting: %{counts: counts}}}, key, lines),
     do: Item.detail(model, id, key, lines, Map.get(counts, key, %{}))
 
   # Puts a row of the page into the stream again, in its place: with the
@@ -556,7 +567,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # edits of the row that have failed. Its detail is another item and stays
   # as it is: what is open under the row stays open.
   def put_row(table, key, record) do
-    %{id: id, model: model, rows: rows, failed: failed, open: open} = table.entry
+    %{id: id, model: model, rows: rows, failed: failed, nesting: %{open: open}} = table.entry
     names = names(model, record, key)
     # in a table to choose from: whether this is the record chosen now
     current? = current?(table.entry.choose, model, record)
@@ -587,7 +598,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # reads nothing for it; one that is no longer rendered is gone, with its
   # state.
   def put_detail(table, key) do
-    item = detail(table, key, table.entry.open[key])
+    item = detail(table, key, table.entry.nesting.open[key])
     Core.effect(table, {:stream, {:insert, table.entry.stream, item, []}})
   end
 
@@ -621,7 +632,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # action, and for a nested table through its parent. A record that does
   # not come back is no row of the page any more.
   def put_read(table, key) do
-    %{model: model, parent_key: parent, rows: rows} = table.entry
+    %{model: model, nesting: %{parent_key: parent}, rows: rows} = table.entry
 
     case rows do
       %{^key => %{pk: pk}} ->
@@ -643,7 +654,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # again. A row that is gone is selected no longer: the hook, which alone
   # knows what is selected, is told (`Selection.gone/2`).
   def remove_row(table, key) do
-    %{id: id, rows: rows, page: page, stream: stream} = table.entry
+    %{id: id, rows: rows, reading: %{page: page}, stream: stream} = table.entry
     %{rowindex: removed, pk: pk} = rows[key]
 
     rows =
@@ -657,7 +668,7 @@ defmodule AshDataTable.Live.Core.Reading do
       table
       |> Table.put(rows: rows, row_count: map_size(rows))
       |> Table.put(failed: Map.delete(table.entry.failed, key))
-      |> Table.put(open: Map.delete(table.entry.open, key))
+      |> Table.put(open: Map.delete(table.entry.nesting.open, key))
       |> Table.put(leaving: MapSet.delete(table.entry.updates.leaving, key))
       |> Table.put(page: %{page | total: page.total && max(page.total - 1, 0)})
       |> Core.effect({:stream, {:delete, stream, Ids.row(id, key)}})
@@ -678,7 +689,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # on this record. Taken from the record as it was read for them, and from
   # nothing else: a record that was not read has no name here.
   defp related_title(
-         %{entry: %{related: %{via: via}}} = table,
+         %{entry: %{relation: %{related: %{via: via}}}} = table,
          %Query.Page{parent: %_{} = parent}
        ),
        do:
@@ -713,7 +724,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # After a filter change, the result is put into the live region: the count
   # when the read action counts, under either pagination strategy, else
   # only that the rows have changed.
-  defp announce(table, page) when table.entry.announce? do
+  defp announce(table, page) when table.entry.status.announce? do
     text =
       case page.total do
         nil -> {:text, :results_updated, []}
@@ -779,7 +790,7 @@ defmodule AshDataTable.Live.Core.Reading do
   (`AshDataTable.State.filter_column/4`).
   """
   def filtered(%Table{} = table, %{column: column, operator: operator, values: values}) do
-    %{state: state, model: model, pending: pending} = table.entry
+    %{state: state, model: model, filter: %{pending: pending}} = table.entry
     name = Atom.to_string(column)
     entry = %{"o" => Atom.to_string(operator), "in" => values}
     filtered = State.filter_column(state, model, name, entry)
@@ -796,19 +807,18 @@ defmodule AshDataTable.Live.Core.Reading do
     table |> Table.put(pending: pending) |> Url.refilter(filtered)
   end
 
-  defp target(%{page: %{previous: %State{} = state}}, "previous"), do: state
+  defp target(_state, _model, %{previous: %State{} = state}, "previous"), do: state
 
-  defp target(%{page: %{next: %State{} = state}}, "next"), do: state
+  defp target(_state, _model, %{next: %State{} = state}, "next"), do: state
 
-  defp target(%{state: state, model: %{pagination: %{strategy: :offset}}} = assigns, to) do
+  defp target(state, %{pagination: %{strategy: :offset}}, page, to) do
     with {number, ""} when number > 0 <- Integer.parse(to),
-         true <-
-           is_nil(assigns.page) or is_nil(assigns.page.pages) or number <= assigns.page.pages do
+         true <- is_nil(page) or is_nil(page.pages) or number <= page.pages do
       State.to_page(state, number)
     else
       _ -> state
     end
   end
 
-  defp target(%{state: state}, _to), do: state
+  defp target(state, _model, _page, _to), do: state
 end

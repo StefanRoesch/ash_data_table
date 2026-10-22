@@ -74,8 +74,8 @@ defmodule AshDataTable.Live.Core.Panel do
   # Sent by the panel's form as the person types: what its fields hold
   # (`Panel.validate/3`); nothing runs. What LiveView does not take of its
   # files is read out (`refused_files/1`).
-  def step({:panel_validate, typed}, table) when is_map(table.entry.panel) do
-    %{panel: panel, model: model} = table.entry
+  def step({:panel_validate, typed}, table) when is_map(table.entry.opens.panel) do
+    %{opens: %{panel: panel}, model: model} = table.entry
     {table |> put(Panel.validate(panel, model, typed)) |> refused_files(), nil}
   end
 
@@ -87,8 +87,8 @@ defmodule AshDataTable.Live.Core.Panel do
   # sent under. The panel is rendered again with the group, or without it.
   # The panel's hook is told where focus goes (`ash_data_table:focus`).
   def step({event, path}, table)
-      when event in [:panel_add, :panel_remove] and is_map(table.entry.panel) do
-    %{id: id, model: model, panel: panel} = table.entry
+      when event in [:panel_add, :panel_remove] and is_map(table.entry.opens.panel) do
+    %{id: id, model: model, opens: %{panel: panel}} = table.entry
     change = if event == :panel_add, do: :add, else: :remove
 
     case Panel.change(panel, model, path, change) do
@@ -103,8 +103,8 @@ defmodule AshDataTable.Live.Core.Panel do
   # "Clear", and "Keep", which takes it back (`Panel.clear/2`). Focus goes
   # back to the button (`ash_data_table:focus`), which a patch that changes
   # what stands before it takes off.
-  def step({:panel_clear, name}, table) when is_map(table.entry.panel) do
-    %{id: id, panel: panel} = table.entry
+  def step({:panel_clear, name}, table) when is_map(table.entry.opens.panel) do
+    %{id: id, opens: %{panel: panel}} = table.entry
 
     case Panel.clear(panel, name) do
       {:ok, panel, _input} ->
@@ -187,8 +187,8 @@ defmodule AshDataTable.Live.Core.Panel do
   # above); a filter's panel filters (`Reading.filtered/2`). A wall time
   # that the page's zone does not have runs nothing: the panel says so at
   # its field (`Panel.gaps/3`).
-  def step({:panel_submit, typed}, table) when is_map(table.entry.panel) do
-    case Panel.submitted(table.entry.panel, typed) do
+  def step({:panel_submit, typed}, table) when is_map(table.entry.opens.panel) do
+    case Panel.submitted(table.entry.opens.panel, typed) do
       {:filter, filter} -> {table |> close() |> Reading.filtered(filter), nil}
       {:ok, panel} -> {filed(table, panel, typed), nil}
       {:gaps, panel} -> {failed(table, panel, nil), nil}
@@ -341,7 +341,7 @@ defmodule AshDataTable.Live.Core.Panel do
   # step's `context` holds), read out when it changes: a file is refused
   # as it is chosen, without the panel's button having been used.
   defp refused_files(table) do
-    %{id: id, panel: panel} = table.entry
+    %{id: id, opens: %{panel: panel}} = table.entry
 
     case Files.refused(table.context.uploads, id, panel) do
       refused when refused == panel.refused_files -> table
@@ -426,8 +426,14 @@ defmodule AshDataTable.Live.Core.Panel do
   # one more: this record is there for certain, though a new read may not
   # find it on this page, or under these filters at all.
   defp add_row(table, record) do
-    %{id: id, model: model, rows: rows, page: page, geometry: geometry, stream: stream} =
-      table.entry
+    %{
+      id: id,
+      model: model,
+      rows: rows,
+      reading: %{page: page},
+      geometry: geometry,
+      stream: stream
+    } = table.entry
 
     key = Reading.row_key(model, record, map_size(rows))
 
@@ -479,7 +485,7 @@ defmodule AshDataTable.Live.Core.Panel do
   # the fields, and above them what is about no field of the panel. All of
   # it is read out (`Panel.said/2`).
   defp failed(table, panel, message) do
-    %{id: id, model: model, panel: open} = table.entry
+    %{id: id, model: model, opens: %{panel: open}} = table.entry
     uploads = table.context.uploads
 
     # What the action said of a file is kept with the entry it was said of,

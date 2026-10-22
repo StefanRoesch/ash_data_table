@@ -97,10 +97,11 @@ defmodule AshDataTable.Live.Core.Updates do
   def follow(table) when table.entry.updates.waiting == [] and table.entry.updates.held == [],
     do: table
 
-  def follow(table) when table.entry.busy? or not is_nil(table.entry.selection.running),
+  def follow(table) when table.entry.reading.busy? or not is_nil(table.entry.selection.running),
     do: table
 
-  def follow(table) when is_nil(table.entry.page), do: Table.put(table, waiting: [], held: [])
+  def follow(table) when is_nil(table.entry.reading.page),
+    do: Table.put(table, waiting: [], held: [])
 
   def follow(table) do
     %{model: model, rows: rows, updates: %{waiting: waiting, held: held}} = table.entry
@@ -132,7 +133,9 @@ defmodule AshDataTable.Live.Core.Updates do
   # action panel or the picker of this table is open for, and every row
   # under which a panel or a picker is open, in a table at whatever depth
   # below it (by `path`, in the registry).
-  defp working(%{entry: %{id: id, open: open, panel: panel, picker: picker}, entries: entries}) do
+  defp working(%{entry: entry, entries: entries}) do
+    %{id: id, nesting: %{open: open}, opens: %{panel: panel, picker: picker}} = entry
+
     of_panel =
       case panel && AshDataTable.Panel.row(panel) do
         key when is_binary(key) -> [key]
@@ -150,7 +153,10 @@ defmodule AshDataTable.Live.Core.Updates do
           into: %{},
           do:
             {other,
-             %{path: entry.path, open?: not is_nil(entry.panel) or not is_nil(entry.picker)}}
+             %{
+               path: entry.path,
+               open?: not is_nil(entry.opens.panel) or not is_nil(entry.opens.picker)
+             }}
 
     under =
       for {other, %{open?: true, path: path}} <- shown,
@@ -170,7 +176,7 @@ defmodule AshDataTable.Live.Core.Updates do
   defp refresh(table, []), do: table
 
   defp refresh(table, keys) do
-    %{model: model, parent_key: parent} = table.entry
+    %{model: model, nesting: %{parent_key: parent}} = table.entry
 
     case Query.rows(model, parent, keys, Reading.read_opts(table)) do
       {:ok, records} ->
@@ -224,10 +230,10 @@ defmodule AshDataTable.Live.Core.Updates do
 
   defp notice(table, _keys) when table.entry.updates.notice?, do: table
 
-  defp notice(table, _keys) when table.entry.busy?, do: table
+  defp notice(table, _keys) when table.entry.reading.busy?, do: table
 
   defp notice(table, keys) do
-    %{model: model, state: state, parent_key: parent} = table.entry
+    %{model: model, state: state, nesting: %{parent_key: parent}} = table.entry
 
     if Query.any?(model, state, parent, keys, Reading.read_opts(table)),
       do: table |> Table.put(notice?: true) |> Core.say({:text, :changed_records, []}),

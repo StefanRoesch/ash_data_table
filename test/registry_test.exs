@@ -103,10 +103,10 @@ defmodule AshDataTable.RegistryTest do
   defp assert_targets(table) do
     %{entry: top, entries: entries} = table
 
-    for {_id, %{path: path, target: target}} <- entries do
+    for {_id, %{path: path, nesting: %{target: target}}} <- entries do
       parent = if Enum.at(path, -2) == top.id, do: top, else: entries[Enum.at(path, -2)]
 
-      assert Enum.any?(parent.open, fn {key, lines} ->
+      assert Enum.any?(parent.nesting.open, fn {key, lines} ->
                is_map_key(parent.rows, key) and
                  Enum.any?(lines, &(target == "#{parent.id}-row-#{key}-n-#{&1}-c"))
              end)
@@ -159,16 +159,20 @@ defmodule AshDataTable.RegistryTest do
   end
 
   test "the portals come in the order the tables opened: parents first, a new one last" do
-    [a, b, c, p] = for id <- ~w(a b c p), do: %{Entry.new() | id: id}
+    [a, b, c, p] =
+      for {id, path, target} <- [
+            {"a", ["t", "a"], "y"},
+            {"b", ["t", "a", "b"], "x"},
+            {"c", ["t", "c"], "z"},
+            {"p", ["t", "p"], nil}
+          ],
+          do:
+            Entry.new()
+            |> Entry.put(:id, id)
+            |> Entry.put(:path, path)
+            |> Entry.put(:target, target)
 
-    table = %Table{
-      entries: %{
-        "b" => %{b | path: ["t", "a", "b"], target: "x"},
-        "a" => %{a | path: ["t", "a"], target: "y"},
-        "c" => %{c | path: ["t", "c"], target: "z"},
-        "p" => %{p | path: ["t", "p"], target: nil}
-      }
-    }
+    table = %Table{entries: %{"b" => b, "a" => a, "c" => c, "p" => p}}
 
     # a opened before b, the table it is in; c opened after both and comes
     # last, so that no portal before it moves

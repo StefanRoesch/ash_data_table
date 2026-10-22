@@ -48,8 +48,10 @@ defmodule AshDataTable.Live.Drawing do
       options={@table.options}
       time_zone={@table.caller.time_zone}
       rows={rows(@streams, @table.entry)}
-      chooser={chooser(@table.entries, @table.entry.id, @table.entry.picker)}
-      chooser_rows={rows(@streams, chooser(@table.entries, @table.entry.id, @table.entry.picker))}
+      chooser={chooser(@table.entries, @table.entry.id, @table.entry.opens.picker)}
+      chooser_rows={
+        rows(@streams, chooser(@table.entries, @table.entry.id, @table.entry.opens.picker))
+      }
       myself={@table.options.target}
       uploads={@uploads}
       router={@table.options.router}
@@ -78,11 +80,15 @@ defmodule AshDataTable.Live.Drawing do
 
   defp nested(assigns) do
     ~H"""
-    <.portal id={"#{@entry.id}-portal"} target={"[id='#{@entry.target}']"} class={@placed.class}>
-      <div data-ash-data-table-portal={@entry.target}>
+    <.portal
+      id={"#{@entry.id}-portal"}
+      target={"[id='#{@entry.nesting.target}']"}
+      class={@placed.class}
+    >
+      <div data-ash-data-table-portal={@entry.nesting.target}>
         <div data-ash-data-table-view>
           <.body
-            :if={!@entry.gone?}
+            :if={!@entry.reading.gone?}
             entry={@entry}
             options={@placed.options}
             time_zone={@placed.time_zone}
@@ -93,19 +99,19 @@ defmodule AshDataTable.Live.Drawing do
             uploads={@uploads}
             router={@placed.router}
           />
-          <div :if={@entry.gone?} id={@entry.id} hidden></div>
+          <div :if={@entry.reading.gone?} id={@entry.id} hidden></div>
         </div>
       </div>
     </.portal>
     <.portal
-      :if={@entry.heading_target}
+      :if={@entry.nesting.heading_target}
       id={"#{@entry.id}-heading-portal"}
-      target={"[id='#{@entry.heading_target}']"}
+      target={"[id='#{@entry.nesting.heading_target}']"}
       class={@placed.class}
     >
-      <div data-ash-data-table-portal={@entry.heading_target}>
+      <div data-ash-data-table-portal={@entry.nesting.heading_target}>
         <.heading
-          :if={!@entry.gone?}
+          :if={!@entry.reading.gone?}
           entry={@entry}
           kit={@placed.options.kit}
           myself={@placed.myself}
@@ -130,21 +136,21 @@ defmodule AshDataTable.Live.Drawing do
           %{
             shown?:
               Projection.of({:heading, :shown?}, %{
-                nested?: @entry.nested?,
+                nested?: @entry.nesting.nested?,
                 heading: @heading,
                 model: @entry.model,
-                page?: not is_nil(@entry.page),
+                page?: not is_nil(@entry.reading.page),
                 offered: @entry.offered,
-                related?: not is_nil(@entry.related)
+                related?: not is_nil(@entry.relation.related)
               }),
-            nested?: Projection.of({:heading, :nested?}, %{nested?: @entry.nested?}),
+            nested?: Projection.of({:heading, :nested?}, %{nested?: @entry.nesting.nested?}),
             element: Projection.of({:heading, :element}, %{id: @entry.id}),
             title:
               Projection.of({:heading, :title}, %{
                 id: @entry.id,
                 heading: @heading,
-                nested?: @entry.nested?,
-                label: @entry.label
+                nested?: @entry.nesting.nested?,
+                label: @entry.told.label
               }),
             columns:
               Projection.of({:heading, :columns}, %{
@@ -152,43 +158,43 @@ defmodule AshDataTable.Live.Drawing do
                 model: @entry.model,
                 filters: @entry.state.filters,
                 sort: @entry.state.sort,
-                label: @entry.label,
-                nested?: @entry.nested?
+                label: @entry.told.label,
+                nested?: @entry.nesting.nested?
               }),
             argument_line:
               Projection.of({:heading, :argument_line}, %{
                 id: @entry.id,
                 model: @entry.model,
                 myself: @myself,
-                nested?: @entry.nested?,
+                nested?: @entry.nesting.nested?,
                 lines: @entry.arguments.lines,
                 state: @entry.state,
                 refused: @entry.arguments.refused
               }),
             acts?:
               Projection.of({:heading, :acts?}, %{
-                page?: not is_nil(@entry.page),
+                page?: not is_nil(@entry.reading.page),
                 model: @entry.model,
                 offered: @entry.offered,
-                related?: not is_nil(@entry.related)
+                related?: not is_nil(@entry.relation.related)
               }),
             create:
               Projection.of({:heading, :create}, %{
                 id: @entry.id,
                 myself: @myself,
-                page?: not is_nil(@entry.page),
+                page?: not is_nil(@entry.reading.page),
                 model: @entry.model,
                 offered: @entry.offered,
-                related?: not is_nil(@entry.related)
+                related?: not is_nil(@entry.relation.related)
               }),
             actions:
               Projection.of({:heading, :actions}, %{
                 id: @entry.id,
                 myself: @myself,
-                page?: not is_nil(@entry.page),
+                page?: not is_nil(@entry.reading.page),
                 model: @entry.model,
                 offered: @entry.offered,
-                related?: not is_nil(@entry.related)
+                related?: not is_nil(@entry.relation.related)
               })
           }
         ]
@@ -212,18 +218,19 @@ defmodule AshDataTable.Live.Drawing do
   # The uploads of the panel's file fields. A function component sees only
   # what it is given, and LiveView's uploads are not the table's to assign
   # a page that draws a table whose panel takes a file must give them.
-  defp files!(entry, nil) do
-    if AshDataTable.Panel.file_inputs(entry.panel) != [] do
+  # `held` is the table's id with its open panel (`%{id: id, panel: panel}`).
+  defp files!(held, nil) do
+    if AshDataTable.Panel.file_inputs(held.panel) != [] do
       raise ArgumentError,
-            "the action panel of the table #{inspect(entry.id)} takes a file, and " <>
+            "the action panel of the table #{inspect(held.id)} takes a file, and " <>
               "AshDataTable.attached/1 was given no uploads: pass " <>
               "`uploads={assigns[:uploads]}` to `AshDataTable.attached`."
     end
 
-    Files.panel_files(entry, nil)
+    Files.panel_files(held, nil)
   end
 
-  defp files!(entry, uploads), do: Files.panel_files(entry, uploads)
+  defp files!(held, uploads), do: Files.panel_files(held, uploads)
 
   # The nested tables, parents first, each with the items of its stream and
   # what it is placed with (`placed`): a portal is rendered again only when
@@ -242,7 +249,7 @@ defmodule AshDataTable.Live.Drawing do
     class = table.options.kit.class(:portal, %{})
 
     for entry <- Registry.portals(table) do
-      chooser = chooser(table.entries, entry.id, entry.picker)
+      chooser = chooser(table.entries, entry.id, entry.opens.picker)
 
       {entry, streams[entry.stream],
        %{
@@ -290,38 +297,38 @@ defmodule AshDataTable.Live.Drawing do
       part={:root}
       kit={@options.kit}
       id={@entry.id}
-      element={Projection.of({:root, :element}, %{id: @entry.id, page: @entry.page})}
+      element={Projection.of({:root, :element}, %{id: @entry.id, page: @entry.reading.page})}
       skip_target={Projection.of({:root, :skip_target}, %{id: @entry.id})}
       nested?={Projection.of({:root, :nested?}, %{nested?: length(@entry.path) > 1})}
       look={Projection.of({:root, :look}, %{look: Kit.look(@options.kit, @options.look)})}
     >
       <%!-- a nested table's heading line is on its line (`nested/1`) --%>
       <.heading
-        :if={not @entry.nested?}
+        :if={not @entry.nesting.nested?}
         entry={@entry}
         kit={@options.kit}
         myself={@myself}
         heading={@options.heading}
       />
       <.whole
-        :if={@entry.related}
+        :if={@entry.relation.related}
         part={:related}
         kit={@options.kit}
         id={@entry.id}
         inputs={
           %{
             id: @entry.id,
-            via: @entry.related.via,
-            title: @entry.related_title,
+            via: @entry.relation.related.via,
+            title: @entry.relation.related_title,
             parent:
               Routes.table(
                 @router,
-                @entry.related.via.source,
-                @entry.related.via.source_table,
-                @entry.authorize_given
+                @entry.relation.related.via.source,
+                @entry.relation.related.via.source_table,
+                @entry.told.authorize_given
               ),
             clear: Url.path(@options.url, @entry.id, %{}),
-            page: @entry.page,
+            page: @entry.reading.page,
             create: @entry.model.create,
             offered: @entry.offered,
             target: @myself
@@ -343,7 +350,7 @@ defmodule AshDataTable.Live.Drawing do
               selecting: @entry.selection.selecting,
               all?: @entry.selection.all?,
               selected: length(@entry.selection.selected),
-              total: @entry.page && @entry.page.total,
+              total: @entry.reading.page && @entry.reading.page.total,
               bulk: @entry.selection.bulk,
               running: @entry.selection.running && @entry.selection.running.action,
               whole_page?:
@@ -354,9 +361,9 @@ defmodule AshDataTable.Live.Drawing do
                   model: @entry.model
                 }),
               choose: @entry.choose,
-              page: @entry.page,
-              row_count: @entry.row_count,
-              nested?: @entry.nested?,
+              page: @entry.reading.page,
+              row_count: @entry.reading.row_count,
+              nested?: @entry.nesting.nested?,
               myself: @myself
             })
           ]
@@ -377,17 +384,18 @@ defmodule AshDataTable.Live.Drawing do
           projection <- [
             %{
               region: Projection.of({:status, :region}, %{id: @entry.id}),
-              again?: Projection.of({:status, :again?}, %{announcements: @entry.announcements}),
+              again?:
+                Projection.of({:status, :again?}, %{announcements: @entry.status.announcements}),
               result:
                 Projection.of({:status, :result}, %{id: @entry.id, result: @entry.selection.result}),
               texts:
                 Projection.of({:status, :texts}, %{
-                  announcement: @entry.announcement,
+                  announcement: @entry.status.announcement,
                   result: @entry.selection.result
                 }),
               messages:
                 Projection.of({:status, :messages}, %{
-                  announcement: @entry.announcement,
+                  announcement: @entry.status.announcement,
                   result: @entry.selection.result
                 })
             }
@@ -406,7 +414,7 @@ defmodule AshDataTable.Live.Drawing do
         :for={
           projection <- [
             %{
-              nested?: Projection.of({:grid, :nested?}, %{nested?: @entry.nested?}),
+              nested?: Projection.of({:grid, :nested?}, %{nested?: @entry.nesting.nested?}),
               sender: Projection.of({:grid, :sender}, %{id: @entry.id}),
               skip: Projection.of({:grid, :skip}, %{id: @entry.id}),
               scrollbar: Projection.of({:grid, :scrollbar}, %{id: @entry.id}),
@@ -427,11 +435,11 @@ defmodule AshDataTable.Live.Drawing do
               table:
                 Projection.of({:grid, :table}, %{
                   id: @entry.id,
-                  label: @entry.label,
-                  labelledby: @entry.labelledby,
+                  label: @entry.told.label,
+                  labelledby: @entry.told.labelledby,
                   geometry: @entry.geometry,
-                  page: @entry.page,
-                  busy?: @entry.busy?,
+                  page: @entry.reading.page,
+                  busy?: @entry.reading.busy?,
                   running: @entry.selection.running && @entry.selection.running.action
                 }),
               head:
@@ -452,8 +460,8 @@ defmodule AshDataTable.Live.Drawing do
                   selecting: @entry.selection.selecting,
                   expandable?: @entry.expandable?,
                   myself: @myself,
-                  rejected: @entry.rejected,
-                  pending: @entry.pending,
+                  rejected: @entry.filter.rejected,
+                  pending: @entry.filter.pending,
                   state: @entry.state
                 }),
               row:
@@ -470,18 +478,18 @@ defmodule AshDataTable.Live.Drawing do
                 Projection.of({:grid, :footer}, %{
                   id: @entry.id,
                   model: @entry.model,
-                  page: @entry.page,
+                  page: @entry.reading.page,
                   state: @entry.state,
                   geometry: @entry.geometry,
                   selecting: @entry.selection.selecting,
                   expandable?: @entry.expandable?,
-                  row_count: @entry.row_count,
-                  label: @entry.label,
-                  full_view: @entry.full_view,
+                  row_count: @entry.reading.row_count,
+                  label: @entry.told.label,
+                  full_view: @entry.relation.full_view,
                   summary: @entry.footer.summary,
                   summing?: @entry.footer.summing?,
                   time_zone: @time_zone,
-                  nested?: @entry.nested?,
+                  nested?: @entry.nesting.nested?,
                   myself: @myself
                 }),
               editors:
@@ -496,8 +504,9 @@ defmodule AshDataTable.Live.Drawing do
                   model: @entry.model,
                   geometry: @entry.geometry
                 }),
-              texts: Projection.of({:grid, :texts}, %{label: @entry.label, model: @entry.model}),
-              messages: Projection.of({:grid, :messages}, %{label: @entry.label, model: @entry.model})
+              texts: Projection.of({:grid, :texts}, %{label: @entry.told.label, model: @entry.model}),
+              messages:
+                Projection.of({:grid, :messages}, %{label: @entry.told.label, model: @entry.model})
             }
           ]
         }
@@ -528,11 +537,11 @@ defmodule AshDataTable.Live.Drawing do
           message <-
             Projection.of(:message, %{
               id: @entry.id,
-              error: @entry.error,
+              error: @entry.reading.error,
               fill: @entry.arguments.fill,
-              loading?: @entry.loading?,
-              row_count: @entry.row_count,
-              nested?: @entry.nested?
+              loading?: @entry.reading.loading?,
+              row_count: @entry.reading.row_count,
+              nested?: @entry.nesting.nested?
             })
         }
         :key={message.kind}
@@ -546,14 +555,17 @@ defmodule AshDataTable.Live.Drawing do
         message={message.message}
       />
       <.pagination
-        :if={not @entry.nested? and Projection.Pagination.pages?(@entry.page, @entry.model)}
+        :if={
+          not @entry.nesting.nested? and
+            Projection.Pagination.pages?(@entry.reading.page, @entry.model)
+        }
         kit={@options.kit}
         id={@entry.id}
-        page={@entry.page}
+        page={@entry.reading.page}
         model={@entry.model}
         state={@entry.state}
-        row_count={@entry.row_count}
-        label={@entry.label}
+        row_count={@entry.reading.row_count}
+        label={@entry.told.label}
         target={@myself}
       />
       <:opened>
@@ -572,7 +584,7 @@ defmodule AshDataTable.Live.Drawing do
         it. --%>
         <.panel
           id={@entry.id}
-          held={@entry.panel}
+          held={@entry.opens.panel}
           drawn?={@options.draws.panel}
           uploads={@uploads}
           kit={@options.kit}
@@ -581,7 +593,7 @@ defmodule AshDataTable.Live.Drawing do
         />
         <.portal
           :if={
-            @entry.panel != nil and @options.draws.panel and
+            @entry.opens.panel != nil and @options.draws.panel and
               (in_panel?(@options) or asked_in?(@options, :panel))
           }
           id={"#{@entry.id}-panel-portal"}
@@ -612,7 +624,7 @@ defmodule AshDataTable.Live.Drawing do
         that a field of the panel has opened. While the panel is open over the
         page and the picker opens in it, the picker is drawn in the panel. --%>
         <.picker
-          :if={not (@entry.panel != nil and @options.draws.panel and in_panel?(@options))}
+          :if={not (@entry.opens.panel != nil and @options.draws.panel and in_panel?(@options))}
           entry={@entry}
           options={@options}
           chooser={@chooser}
@@ -751,23 +763,23 @@ defmodule AshDataTable.Live.Drawing do
     ~H"""
     <.picker_part
       id={@entry.id}
-      held={@entry.picker}
+      held={@entry.opens.picker}
       drawn?={@options.draws.picker}
       kit={@options.kit}
       presentation={presentation(@options, :picker)}
-      takes?={!!@chooser and !@chooser.gone? and Selection.in_view(@chooser) != []}
+      takes?={!!@chooser and !@chooser.reading.gone? and Selection.in_view(@chooser) != []}
       myself={@myself}
     />
     <%!-- its table, moved into its place --%>
     <.portal
-      :if={@entry.picker != nil and @options.draws.picker}
+      :if={@entry.opens.picker != nil and @options.draws.picker}
       id={"#{@entry.id}-picker-portal"}
       target={"[id='#{Ids.picker_place(@entry.id)}']"}
       class={@options.kit.class(:portal, %{})}
     >
       <div data-ash-data-table-portal={Ids.picker_place(@entry.id)}>
         <.body
-          :if={@chooser && !@chooser.gone?}
+          :if={@chooser && !@chooser.reading.gone?}
           entry={@chooser}
           options={%{@options | url: nil, heading: false, mounted?: false}}
           chooser={nil}
@@ -778,7 +790,7 @@ defmodule AshDataTable.Live.Drawing do
           uploads={@uploads}
           router={@router}
         />
-        <div :if={@chooser && @chooser.gone?} id={@chooser.id} hidden></div>
+        <div :if={@chooser && @chooser.reading.gone?} id={@chooser.id} hidden></div>
         <.asked_in
           :if={asked_in?(@options, :picker)}
           entry={@entry}

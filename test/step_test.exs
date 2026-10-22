@@ -131,7 +131,7 @@ defmodule AshDataTable.StepTest do
       {table, effects, nil} = step(table(), {:sort, "name"})
 
       assert table.entry.state.sort
-      assert table.entry.busy?
+      assert table.entry.reading.busy?
       assert read?(effects)
       # the summaries are asked for after the callback
       assert table.entry.footer.summary_due == :changed
@@ -154,8 +154,7 @@ defmodule AshDataTable.StepTest do
     test "clearing the filters of a table that has none reads nothing" do
       {table, effects, nil} = step(table(Resource, rejected: %{name: "x"}), :clear_filters)
 
-      assert table.entry.rejected == %{}
-      assert table.entry.pending == %{controls: %{}, among: []}
+      assert table.entry.filter == %{rejected: %{}, pending: %{controls: %{}, among: []}}
       assert effects == []
     end
 
@@ -164,7 +163,7 @@ defmodule AshDataTable.StepTest do
         step(table(), {:filter, %{"name" => %{"o" => "contains", "v" => "a"}}})
 
       assert table.entry.state.filters != %{}
-      assert table.entry.announce?
+      assert table.entry.status.announce?
       assert read?(effects)
     end
 
@@ -180,7 +179,11 @@ defmodule AshDataTable.StepTest do
       page = %Query.Page{records: [], total: 0}
       {table, effects, nil} = step(table, {:async, :read, {:ok, {:ok, page}}})
 
-      assert %{busy?: false, panel: nil, picker: nil, row_count: 0} = table.entry
+      assert %{
+               reading: %{busy?: false, row_count: 0},
+               opens: %{panel: nil, picker: nil}
+             } = table.entry
+
       assert {:stream, {:reset, "t:rows", []}} in effects
     end
 
@@ -231,7 +234,7 @@ defmodule AshDataTable.StepTest do
       {table, effects, reply} = step(table, {:expand, "1"})
 
       assert reply == %{open: true}
-      assert table.entry.open == %{"1" => []}
+      assert table.entry.nesting.open == %{"1" => []}
       assert [{:stream, {:insert, "t:rows", %{}, []}}] = effects
     end
 
@@ -274,7 +277,7 @@ defmodule AshDataTable.StepTest do
     test "Cancel closes the picker, the panel stays" do
       table = table(Resource, panel: %{kind: :row}, picker: %{name: :owner})
 
-      assert {%{entry: %{panel: %{kind: :row}, picker: nil}}, [], nil} =
+      assert {%{entry: %{opens: %{panel: %{kind: :row}, picker: nil}}}, [], nil} =
                step(table, :picker_cancel)
     end
   end
@@ -292,7 +295,9 @@ defmodule AshDataTable.StepTest do
 
     test "Cancel closes the panel and its picker" do
       table = table(Resource, panel: %{kind: :row}, picker: %{name: :owner})
-      assert {%{entry: %{panel: nil, picker: nil}}, [], nil} = step(table, :panel_cancel)
+
+      assert {%{entry: %{opens: %{panel: nil, picker: nil}}}, [], nil} =
+               step(table, :panel_cancel)
     end
 
     test "a panel's buttons and form where no panel is open do nothing" do
@@ -352,7 +357,7 @@ defmodule AshDataTable.StepTest do
       {table, effects, nil} = step(table, {:table_act, "ingest"})
       # the panel opens with an upload for its file field
       assert [{:uploads, {:allow, @upload, _opts}}] = effects
-      assert %{kind: :table} = table.entry.panel
+      assert %{kind: :table} = table.entry.opens.panel
       table
     end
 
@@ -364,8 +369,8 @@ defmodule AshDataTable.StepTest do
       assert [{:uploads, {:consume, "t", [{"file", %{ref: "0"}}], panel, write}}] = effects
       assert is_function(write, 1)
       # the panel is still open, nothing was said, the table reads nothing
-      assert %{kind: :table} = table.entry.panel
-      assert table.entry.announcements == 0
+      assert %{kind: :table} = table.entry.opens.panel
+      assert table.entry.status.announcements == 0
       assert panel.kind == :table
     end
 
@@ -375,8 +380,8 @@ defmodule AshDataTable.StepTest do
       {table, effects, nil} = step(table, {:panel_submit, %{}}, %{@context | uploads: uploads()})
 
       refute Enum.any?(effects, &match?({:uploads, {:consume, _, _, _, _}}, &1))
-      assert %{kind: :table} = table.entry.panel
-      assert table.entry.announcements == 1
+      assert %{kind: :table} = table.entry.opens.panel
+      assert table.entry.status.announcements == 1
     end
 
     test "the second intent runs the rest of the write with the files, and shows what came of it" do
@@ -394,7 +399,7 @@ defmodule AshDataTable.StepTest do
       {table, effects, nil} = step(table, {:consumed, panel, write, %{"file" => file}}, context)
 
       # done: the panel closes, the table says what the action returned and reads again
-      assert table.entry.panel == nil
+      assert table.entry.opens.panel == nil
 
       assert %{summary: {:text, :action_result, [action: _, result: "pages.csv: a,b"]}} =
                table.entry.selection.result
@@ -468,7 +473,7 @@ defmodule AshDataTable.StepTest do
     test "what it is told is put, and it reads for it beside the process" do
       {table, effects, nil} = step(table(), {:told, %{label: "Records", depth_limit: 1}})
 
-      assert %{label: "Records", depth_limit: 1} = table.entry
+      assert %{told: %{label: "Records"}, nesting: %{depth_limit: 1}} = table.entry
       assert read?(effects)
     end
   end

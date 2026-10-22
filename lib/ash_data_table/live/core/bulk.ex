@@ -217,7 +217,7 @@ defmodule AshDataTable.Live.Core.Bulk do
 
   # How many records a selection is: the rows that were named, or what the
   # last read counted, nil where the read action does not count.
-  defp selected(:all, %{page: page}), do: page.total
+  defp selected(:all, %{reading: %{page: page}}), do: page.total
 
   defp selected({:rows, rows}, _assigns), do: length(Enum.uniq(rows))
 

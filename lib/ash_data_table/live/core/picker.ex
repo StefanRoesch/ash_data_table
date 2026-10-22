@@ -28,8 +28,8 @@ defmodule AshDataTable.Live.Core.Picker do
   # the record's key as the field holds it. The panel is rendered again
   # without it, and the action is told as it is of anything typed. The
   # answer says where focus goes: to what stands where the record stood.
-  def step({:panel_unpick, name, key}, table) when is_map(table.entry.panel) do
-    %{id: id, model: model, panel: panel} = table.entry
+  def step({:panel_unpick, name, key}, table) when is_map(table.entry.opens.panel) do
+    %{id: id, model: model, opens: %{panel: panel}} = table.entry
 
     with %{editor: :references} = input <- Panel.reference(panel, name),
          held = Panel.keys(panel, name),
@@ -102,8 +102,8 @@ defmodule AshDataTable.Live.Core.Picker do
   # Sent by the button of a field of the action panel that holds the key of
   # a related record: the picker opens on top of the panel, on the record
   # the field holds now.
-  def step({:pick_input, name}, table) when is_map(table.entry.panel) do
-    panel = table.entry.panel
+  def step({:pick_input, name}, table) when is_map(table.entry.opens.panel) do
+    panel = table.entry.opens.panel
 
     case Panel.reference(panel, name) do
       nil ->
@@ -166,8 +166,8 @@ defmodule AshDataTable.Live.Core.Picker do
   # picker's table, as that table holds it (the hook tells it every change,
   # `select`), and where several are chosen every row selected; for one, a
   # row of the page only. Each is a claim still, read again as the person.
-  def step({:picked, picked}, table) when is_map(table.entry.picker) do
-    %{id: id, picker: picker} = table.entry
+  def step({:picked, picked}, table) when is_map(table.entry.opens.picker) do
+    %{id: id, opens: %{picker: picker}} = table.entry
     chooser = table.entries["#{id}-pick-#{picker.name}"]
 
     cond do
@@ -204,7 +204,7 @@ defmodule AshDataTable.Live.Core.Picker do
   # key of one field), a list of them where several are chosen, or nil for
   # none. Each is a claim, taken as a row the browser names.
   defp chosen(table, keys) do
-    case table.entry.picker do
+    case table.entry.opens.picker do
       %{reference: reference, several?: several?} ->
         named = &named_key(reference.destination, &1)
 
@@ -259,7 +259,7 @@ defmodule AshDataTable.Live.Core.Picker do
   defp named_key(_destination, value), do: value
 
   defp picked(table, picked, by) do
-    %{panel: panel, picker: picker} = table.entry
+    %{panel: panel, picker: picker} = table.entry.opens
     named = picked.row
     # what the picker's read action is given: what its argument line holds
     arguments = picked_with(table, picker.reference, picked.arguments)
@@ -448,7 +448,7 @@ defmodule AshDataTable.Live.Core.Picker do
   # through the picker's read action: nothing is chosen, and the picker
   # stays open and says so.
   def unavailable(%Table{} = table) do
-    %{picker: picker} = table.entry
+    %{picker: picker} = table.entry.opens
     message = {:text, :record_gone, []}
 
     table |> Table.put(picker: %{picker | error: message}) |> Core.say(message)
@@ -480,7 +480,7 @@ defmodule AshDataTable.Live.Core.Picker do
   # picker's table is told too (`AshDataTable.Pick.reader/2`).
   def chooser(%Table{} = table), do: picking(table) ++ Core.reader(table)
 
-  def picking(table), do: [authorize_given: table.entry.authorize_given]
+  def picking(table), do: [authorize_given: table.entry.told.authorize_given]
 
   # What the read action of a picker is given, from what the picker's hook
   # says its argument line holds: the line's form, as a form sends it. It
