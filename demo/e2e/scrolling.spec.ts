@@ -271,8 +271,11 @@ test.describe("the scrollbar at the bottom edge of the window", () => {
     expect((await box(labels.hookRoot)).bottom).toBeGreaterThan(300)
     await expect(labels.scrollbar).toBeHidden()
 
-    // in a narrow window it has: the bar comes
+    // in a narrow window it has: the bar comes, while the table is in view
+    // and cut off at the bottom edge (the page's header, which wraps in a
+    // narrow window, may push it below that edge)
     await page.setViewportSize({ width: 500, height: 300 })
+    await labels.hookRoot.evaluate((grid) => grid.scrollIntoView({ block: "start" }))
     await expect(labels.scrollbar).toBeVisible()
   })
 
@@ -516,7 +519,9 @@ test.describe("what floats over a table that is scrolled", () => {
     await tasks.scrollTo(300)
     await comments.scrollTo(150)
 
-    // the button is in view whatever is scrolled, and its list opens under it
+    // the button is in view whatever is scrolled, and its list opens under
+    // it where the window has room below it: the button near the top
+    await comments.columnsButton.evaluate((button) => window.scrollBy(0, button.getBoundingClientRect().top - 100))
     const button = await box(comments.columnsButton)
     expect(button.left).toBeGreaterThanOrEqual((await box(tasks.hookRoot)).left)
     await comments.openColumns()
