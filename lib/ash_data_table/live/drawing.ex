@@ -30,7 +30,7 @@ defmodule AshDataTable.Live.Drawing do
   # what a test reads the page by, as the markup LiveView makes of a portal
   # is LiveView's own) and make it as wide as that area
   # (`data-ash-data-table-view`): the kit styles both by these markers (the
-  # root's rules of `Kit.Default`), and gives the portal's wrapper its
+  # style sheet of `Kit.Default`, `priv/static/ash_data_table.css`), and gives the portal's wrapper its
   # class (`class(:portal, …)`, `display: contents` in `Kit.Default`).
   #
   # The root element of every table is the kit's `root/1`'s: of the table

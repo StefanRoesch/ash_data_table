@@ -126,6 +126,18 @@ The default kit draws:
 Every tint is mixed from the daisyUI theme's colours, so it follows the
 host's theme, light and dark; no option sets a colour.
 
+The look is a style sheet of the package, `priv/static/ash_data_table.css`,
+which the host imports once after Tailwind (see
+[Installation](installation.md)). It finds the root of the table on the page
+by the default kit's root class, `ash-data-table`, and every grid inside it
+by the markers (`role=table`, `role=row`, `data-lines`, `data-failed`, …),
+never by an id or a class of the markup. Its rules are in
+`@layer components`, with the root inside `:where()`: a utility class of
+yours on a part, or a rule of your own style sheet, wins over them. The
+default kit's `<table>` has no daisyUI `table` class, whose rules would be
+in Tailwind's later utilities layer: its base look is in the style sheet
+too.
+
 Four options make up **the look** of a table:
 
 | Option | What it does | Default kit |
@@ -173,7 +185,22 @@ One table in a LiveView of your own:
 A malformed look is refused where the table is placed: an unknown option or
 a value of the wrong kind. A kit of your own gets the resolved look, a map
 of all four, as `look` in its `root/1` and in `class(:root, …)`; what it
-draws of it is up to the kit.
+draws of it is up to the kit. The default `root/1` says it in data
+attributes of the root of the table on the page, which the style sheet
+reads: `data-density="compact|normal|roomy"`, and `data-stripes`,
+`data-column-lines`, `data-sticky-header` where the option is on.
+
+To change one rule, write your own after the import; to change the look of
+one table, give its element a class or a custom property in your style
+sheet:
+
+<!-- sketch -->
+```css
+/* every row of every table a little higher */
+.ash-data-table[data-density=normal] [role=table] > * > [role=row] > :not([colspan]) {
+  padding-block: 0.625rem;
+}
+```
 
 ## Drawing a part
 
@@ -440,9 +467,12 @@ the old number fails to compile with a message naming what changed.
 
 ## Edge cases
 
-- **A kit that keeps the default kit's root classes**
-  (`super(:root, state)`) keeps its look too: the rules find the grid's parts
-  by role, not tag, so a grid of `div`s looks the same.
+- **A kit that keeps the default kit's root class**
+  (`super(:root, state)`) keeps its look too: the style sheet finds the
+  grid's parts by role, not tag, so a grid of `div`s looks the same. A class
+  of the kit's own on a part wins over the sheet (a later layer): a cell's
+  padding class beats the density's, so a kit leaves such classes off the
+  parts the sheet styles, or means them.
 - **A column's component wins in a cell.** A value the person may see is
   drawn by the column's component if it has one, else by the kit's `cell`. A
   masked or hidden cell is always the kit's.
@@ -456,7 +486,7 @@ the old number fails to compile with a message naming what changed.
   moved into"). The wrapper LiveView puts around each takes the kit's
   `class(:portal, …)`; the elements inside it are styled by their markers
   (`data-ash-data-table-portal`, `data-ash-data-table-view`), as the default
-  kit's root rules do.
+  kit's style sheet does.
 - **`class/2` is called once per table**, never per row or cell: per-row
   browser state (selected, busy, invalid) is an attribute, for the root's
   style to reach.

@@ -161,6 +161,16 @@ defmodule Mix.Tasks.AshDataTable.InstallTest do
       """)
     end
 
+    test "imports the look of the table, right after Tailwind" do
+      project()
+      |> install()
+      |> assert_has_patch("assets/css/app.css", """
+        |@import "tailwindcss" source(none);
+      + |@import "../../deps/ash_data_table/priv/static/ash_data_table.css";
+        |@source "../css";
+      """)
+    end
+
     test "adds the DSL to the formatter" do
       project()
       |> install()
@@ -356,16 +366,34 @@ defmodule Mix.Tasks.AshDataTable.InstallTest do
   end
 
   describe "the Tailwind source, in an app.css that is not the default one" do
-    test "without sources of its own, goes after the import of Tailwind" do
+    test "without sources of its own, goes after the import of Tailwind, behind the table's look" do
       project(%{"assets/css/app.css" => "@import \"tailwindcss\";\n\n.btn { color: red; }\n"})
       |> install()
       |> assert_has_patch("assets/css/app.css", """
         |@import "tailwindcss";
+      + |@import "../../deps/ash_data_table/priv/static/ash_data_table.css";
       + |@source "../../deps/ash_data_table/lib";
       """)
     end
 
-    test "that already has a source for ash_data_table is left as it is" do
+    test "that already has a source and the look of ash_data_table is left as it is" do
+      app_css =
+        @app_css
+        |> String.replace(
+          ~s(@source "../js";),
+          ~s(@source "../js";\n@source "../../../ash_data_table/lib";)
+        )
+        |> String.replace(
+          ~s|@import "tailwindcss" source(none);|,
+          ~s|@import "tailwindcss" source(none);\n@import "../../../ash_data_table/priv/static/ash_data_table.css";|
+        )
+
+      project(%{"assets/css/app.css" => app_css})
+      |> install()
+      |> assert_unchanged("assets/css/app.css")
+    end
+
+    test "that already has a source for ash_data_table gets the look all the same" do
       app_css =
         String.replace(
           @app_css,
@@ -375,7 +403,9 @@ defmodule Mix.Tasks.AshDataTable.InstallTest do
 
       project(%{"assets/css/app.css" => app_css})
       |> install()
-      |> assert_unchanged("assets/css/app.css")
+      |> assert_has_patch("assets/css/app.css", """
+      + |@import "../../deps/ash_data_table/priv/static/ash_data_table.css";
+      """)
     end
 
     test "without Tailwind 4 is left as it is, and the step is explained" do
@@ -386,6 +416,11 @@ defmodule Mix.Tasks.AshDataTable.InstallTest do
 
       assert notice?(igniter, "assets/css/app.css")
       assert notice?(igniter, ~s(@source "../../deps/ash_data_table/lib";))
+
+      assert notice?(
+               igniter,
+               ~s(@import "../../deps/ash_data_table/priv/static/ash_data_table.css";)
+             )
     end
 
     test "that is not there is not created, and the step is explained" do

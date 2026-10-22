@@ -26,7 +26,11 @@ defmodule AshDataTable.Parts.Common do
   # opens over it or in the page, the question, the action panel and the
   # picker (`opened`).
   # `nested?` says whether the table is shown inside another (nested in a
-  # row, or a picker's); `look` is its look (`AshDataTable.Kit`).
+  # row, or a picker's); `look` is its look (`AshDataTable.Kit`), which the
+  # root of the table on the page says in data attributes (`data-density`,
+  # `data-stripes`, `data-column-lines`, `data-sticky-header`) for the
+  # look's style sheet (`priv/static/ash_data_table.css`): every table
+  # inside it looks the same.
   # Its projection (`AshDataTable.Kit.Projection`, `root`).
   attr :id, :string, required: true
   attr :element, :map, required: true
@@ -42,6 +46,10 @@ defmodule AshDataTable.Parts.Common do
     <div
       {@element}
       class={@kit.class(:root, %{nested?: @nested?, look: @look})}
+      data-density={!@nested? && @look.density}
+      data-stripes={!@nested? && @look.stripes}
+      data-column-lines={!@nested? && @look.column_lines}
+      data-sticky-header={!@nested? && @look.sticky_header}
     >
       {render_slot(@inner_block)}<span {@skip_target} class="outline-none"></span>{render_slot(
         @opened

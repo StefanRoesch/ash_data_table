@@ -16,7 +16,8 @@ by hand, and the one setting left to you: compressing LiveView's websocket.
 | Gettext | 0.26 or 1.x |
 
 The default kit uses the Tailwind 4 and daisyUI classes of a new Phoenix
-1.8 app; a [kit of your own](kits.md) can draw with anything else.
+1.8 app, and a style sheet of the package for the look of its tables; a
+[kit of your own](kits.md) can draw with anything else.
 
 An older Phoenix 1.8 installer writes `{:phoenix_live_view, "~> 1.1.0"}`.
 Change it to `"~> 1.2"` in `mix.exs` first, or the dependencies do not
@@ -41,7 +42,7 @@ taken, so it can run again.
 | `.formatter.exs` | Adds `:ash_data_table` to `import_deps`, so that `mix format` leaves the `table` block without parentheses. |
 | `config/config.exs` | Puts `table` and `tables` first in Spark's section order of a resource, and `table` of a domain, as other Ash extensions do. |
 | `assets/js/app.js` | Imports the table's hooks and spreads them into the `hooks` of your `LiveSocket`. |
-| `assets/css/app.css` | Adds an `@source` line, so that Tailwind sees the classes the table uses. |
+| `assets/css/app.css` | Imports the table's style sheet right after Tailwind, and adds an `@source` line, so that Tailwind sees the classes the table uses. |
 | `config/config.exs` | Sets `layout`, `gettext_backend` and `translate_error` under `config :ash_data_table`, each only when your app has what it names and the key is not set yet. |
 
 A file that does not look like a new Phoenix 1.8 app's is left alone, and
@@ -78,15 +79,24 @@ only you can do: list the extension on a resource, and add a router line.
    })
    ```
 
-3. Let Tailwind see the table's classes, in `assets/css/app.css`:
+3. Import the table's look and let Tailwind see the table's classes, in
+   `assets/css/app.css`:
 
    <!-- sketch -->
    ```css
+   @import "tailwindcss" source(none);
+   @import "../../deps/ash_data_table/priv/static/ash_data_table.css";
+   /* … */
    @source "../../deps/ash_data_table/lib";
    ```
 
-   The path is the dependency's `lib` directory, seen from `assets/css`. For
-   a path dependency that is the checkout, not `deps`: the demo's line is
+   The style sheet is plain CSS in `@layer components`: the look of the
+   default kit's grid, by its markers (see [Kits](kits.md#the-look-of-a-table)).
+   Import it after Tailwind, so that the layer is Tailwind's and your own
+   rules win over it. The `@source` path is the dependency's `lib`
+   directory, seen from `assets/css`. For a path dependency both paths are
+   the checkout's, not `deps`: the demo's lines are
+   `@import "../../../priv/static/ash_data_table.css";` and
    `@source "../../../lib";`.
 
 4. Add the DSL to the formatter in `.formatter.exs`:
@@ -167,8 +177,9 @@ guard at its default: raising it lets a tiny frame take a lot of memory.
   bare in the root layout, tables speak English, and your actions' messages
   show as the resource wrote them.
 - **A Tailwind 3 app.** The installer finds no `@import "tailwindcss"` and
-  prints the step. Add the dependency's `lib` directory to `content` in
-  `tailwind.config.js`.
+  prints both steps. Add the dependency's `lib` directory to `content` in
+  `tailwind.config.js`, and import `priv/static/ash_data_table.css` after
+  Tailwind's layers.
 - **Compression and long polling.** `compress: true` is a websocket option;
   a browser that falls back to long polling gets none.
 
@@ -180,7 +191,9 @@ guard at its default: raising it lets a tiny frame take a lot of memory.
   reloader neither recompiles `{:ash_data_table, path: "…"}` nor rebuilds
   the hooks. Stop the server, run `mix assets.build`, start it again.
 - **The table looks unstyled.** The `@source` line is missing or points at
-  the wrong directory, so Tailwind never saw the table's classes.
+  the wrong directory, so Tailwind never saw the table's classes. Or the
+  style sheet is not imported: the grid then has no lines, no padding of its
+  density and no marks of a failed or busy cell.
 - **Enter on a cell does nothing.** The hooks are imported but not spread into
   `hooks`, or the assets were built before the dependency compiled.
 - **An upload closes the socket.** Compression is on and the file is very

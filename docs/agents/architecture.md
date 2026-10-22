@@ -11,7 +11,7 @@ Each part may depend only on the parts below it. A file's directory says its par
 | 1 Declaration | The `table`/`tables` blocks of a resource, a domain's `table` block, the verifiers, the notifier | `resource.ex`, `resource/**`, `domain.ex`, `domain/**` |
 | 2a Data | Logic and state, every call to Ash; no LiveView, no socket, no words. Keeps the table safe | `model.ex`, `model/**` and the other files at the top of `lib/` |
 | 2b Live | The core: the step over a table, and the adapter that applies its effects to the socket | `live/**` but `page.ex`, `embedded.ex`, `drawing.ex` |
-| 3 UI | The kit, its parts, the bundles, the column components, the browser hooks | `kit.ex`, `kit/**`, `parts/**`, `attrs.ex`, `component*`, `components/**`, `assets/js/` |
+| 3 UI | The kit, its parts, the bundles, the column components, the browser hooks, the default look | `kit.ex`, `kit/**`, `parts/**`, `attrs.ex`, `component*`, `components/**`, `assets/js/`, `priv/static/ash_data_table.css` |
 | 3w Words | Values and message terms to text | `text.ex`, `format.ex`, `gettext.ex`, `messages.ex`, `item.ex` |
 | 4 Wiring | The public entry, router line, page, tag | `lib/ash_data_table.ex`, `router.ex`, `live/page.ex`, `live/embedded.ex`, `live/drawing.ex`, `not_found_error.ex` |
 
@@ -61,7 +61,7 @@ A table reaches a page in three ways, all on one core and one drawing: the route
 
 ### 3 UI and 3w words
 
-- `Kit` (`kit.ex`): the behaviour, one function component per part. `Kit.Default` (`kit/default.ex`): the daisyUI kit. `Parts.*` (`parts/`): its markup.
+- `Kit` (`kit.ex`): the behaviour, one function component per part. `Kit.Default` (`kit/default.ex`): the daisyUI kit. `Parts.*` (`parts/`): its markup. `priv/static/ash_data_table.css`: its look, one style sheet the host imports after Tailwind, in `@layer components`, keyed by the root class `ash-data-table`, the root's look attributes (`data-density`, `data-stripes`, `data-column-lines`, `data-sticky-header`, drawn by `Parts.Common.root/1`) and the markers; a rule of the look goes there, never into a class string.
 - `Kit.Projection` (`kit/projection.ex`, `kit/projection/*.ex`): what each part is given (ADR 0004).
 - `Attrs` (`attrs.ex`): the bundles and the events list; the markup contract.
 - `Component`, `Component.Column` (`component*`), `Components.*` (`components/`): the column component behaviour and the shipped ones.
@@ -93,7 +93,7 @@ Every change keeps these; part 2a is where they live.
 2. **Diagnostic**: the rule and its `message/1` in the topic module; raised by that topic's verifier; listed in `documentation/topics/mistakes-at-compile-time.md`.
 3. **Model**: into `Model` or a struct; what depends on the person in `for_actor/2`.
 4. **Core**: a field of `Live.Entry` (in its topic's group, if it has one; at most 31 top-level fields, Credo's `StructFieldAmount`); an event in `Intent` and `@events` of `attrs.ex`; a `step` clause in its topic; socket work as an effect.
-5. **Drawing**: what a part draws in its `Kit.Projection` key and moduledoc, given field by field (`@entry.reading.page`, never a whole group, so LiveView's change tracking marks it changed only with that field); markup in `Parts.*`; a new part is a `Kit` callback with its default in `Kit.Default`. Every kit (Default, the demo's DivKit and ReactKit) behaves the same; nested tables as top tables.
+5. **Drawing**: what a part draws in its `Kit.Projection` key and moduledoc, given field by field (`@entry.reading.page`, never a whole group, so LiveView's change tracking marks it changed only with that field); markup in `Parts.*`, its look in `priv/static/ash_data_table.css` (a utility class on a part the sheet styles wins over it); a new part is a `Kit` callback with its default in `Kit.Default`. Every kit (Default, the demo's DivKit and ReactKit) behaves the same; nested tables as top tables.
 6. **Texts**: the key in `messages.ex`; the data layer says `{:text, key, bindings}`; `mix gettext.extract`; German in `demo/priv/gettext/de/`.
 7. **Demo**: resources in `demo/lib/demo/`, routes in `demo/lib/demo_web/router.ex`, test-only tables in `demo/test/support/*_tables.ex`; a new page in `demo/README.md`.
 8. **Tests**: root `test/` (model, 2a, `step_test.exs` per topic, `KitCase`); `demo/test/demo_web/tables/` through `DemoWeb.TablePage`; markup snapshots (`MIX_SNAPSHOT_UPDATE=1`); browser specs in `demo/e2e/` with the `Table` helper (Tab only, never a sleep).
@@ -132,6 +132,7 @@ Known traps:
 - The dev and e2e servers share `demo/priv/static/assets/`.
 - A stale `_build/*/phoenix-colocated/ash_data_table/node_modules` link breaks esbuild: delete it or `mix clean`.
 - Tailwind scans `lib/`, not `assets/js/`: a class the hooks set must also appear in `lib/` markup.
+- daisyUI 5's components are in Tailwind 4's `utilities` layer, after the sheet's `components`: a daisyUI class on a part the sheet styles (`table`, a cell's padding) beats the sheet. The grid's `<table>` has none; a checkbox's radius goes through `--radius-selector`.
 - No `style` attribute in any markup the server renders, nor `setAttribute("style", …)` in JS: the demo's CSP is `style-src 'self'`. A value of one table goes into the grid hook's own style sheets (`adoptedStyleSheets`: the widths and hidden columns in `widths.js`, `--ash-data-table-view` and the cells that stay in `scrolling.js`, the menus' anchor names in `index.js`) or `element.style`; a value of the host's is a CSS custom property its style sheet sets (`--ash-data-table-height`, …).
 - shadcn's variables are renamed `--sh-*` (daisyUI's `--border` is a width).
 

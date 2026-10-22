@@ -20,9 +20,11 @@ if Code.ensure_loaded?(Igniter) do
       * `assets/js/app.js`: imports the table's hooks from
         `phoenix-colocated/ash_data_table` and spreads them into the hooks of
         the `LiveSocket`.
-      * `assets/css/app.css`: adds an `@source` line, so that Tailwind sees
-        the classes the table's markup uses. It points at the dependency
-        where it really is, which for a path dependency is that checkout.
+      * `assets/css/app.css`: imports the look of the default kit's tables
+        (`priv/static/ash_data_table.css`) after Tailwind, and adds an
+        `@source` line, so that Tailwind sees the classes the table's markup
+        uses. Both point at the dependency where it really is, which for a
+        path dependency is that checkout.
       * `.formatter.exs`: adds `:ash_data_table` to `import_deps`, for the DSL.
       * `config/config.exs`: puts the extension's sections first in Spark's
         section order (`config :spark, formatter:`), `table` and `tables` of
@@ -61,6 +63,7 @@ if Code.ensure_loaded?(Igniter) do
       |> Spark.Igniter.prepend_to_section_order(:"Ash.Domain", [:table])
       |> add_hook()
       |> add_tailwind_source()
+      |> add_stylesheet()
       |> configure()
       |> Igniter.add_notice(next_steps())
     end
@@ -242,15 +245,18 @@ if Code.ensure_loaded?(Igniter) do
       end)
     end
 
-    # Where the dependency's `lib` is, seen from `assets/css`: under `deps`
+    # Where the dependency's `lib` is, seen from `assets/css`.
+    defp source_path, do: dep_path("lib")
+
+    # Where a path of the dependency is, seen from `assets/css`: under `deps`
     # for a package, and wherever the checkout is for a path dependency.
-    defp source_path do
-      default = "../../deps/ash_data_table/lib"
+    defp dep_path(inside) do
+      default = "../../deps/ash_data_table/" <> inside
 
       with %{ash_data_table: path} <- Mix.Project.deps_paths(),
            true <- File.dir?(path) do
         relative =
-          Path.relative_to(Path.join(path, "lib"), Path.expand(Path.dirname(@app_css)),
+          Path.relative_to(Path.join(path, inside), Path.expand(Path.dirname(@app_css)),
             force: true
           )
 
@@ -270,6 +276,39 @@ if Code.ensure_loaded?(Igniter) do
           #{line}
 
       With Tailwind 3, add the same directory to `content` in `tailwind.config.js`.
+      """
+    end
+
+    # The look of the default kit's tables, a style sheet of the package:
+    # imported right after Tailwind, so that its layer (`components`) is
+    # Tailwind's and the app's own rules come after it.
+    defp add_stylesheet(igniter) do
+      line = ~s(@import "#{dep_path("priv/static/ash_data_table.css")}";)
+
+      update(igniter, @app_css, stylesheet_notice(line), fn content ->
+        lines = String.split(content, "\n")
+
+        cond do
+          Enum.any?(lines, &(&1 =~ ~r/^\s*@import\b.*ash_data_table\.css/)) ->
+            :unchanged
+
+          index = Enum.find_index(lines, &(&1 =~ ~r/^\s*@import\s+["']tailwindcss["'][^;]*;\s*$/)) ->
+            {:ok, lines |> List.insert_at(index + 1, line) |> Enum.join("\n")}
+
+          true ->
+            :error
+        end
+      end)
+    end
+
+    defp stylesheet_notice(line) do
+      """
+      ash_data_table could not import its style sheet in #{@app_css}: the file is not there, \
+      or it is not a Tailwind 4 stylesheet (`@import "tailwindcss"`).
+
+      The default kit's tables take their look from it. Import it after Tailwind:
+
+          #{line}
       """
     end
 

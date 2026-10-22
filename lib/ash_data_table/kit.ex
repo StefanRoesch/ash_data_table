@@ -81,11 +81,16 @@ defmodule AshDataTable.Kit do
   the table is placed (`look!/2`):
 
   #{Spark.Options.docs(@look)}
-  A kit draws what it is told: `Kit.Default` draws it with the classes of
-  its root, which reach every table inside it, nested tables and pickers'
-  tables too; the root part and `class(:root, …)` are given the options as
-  `look`, a map of all four. Every tint is mixed from the theme's colours:
-  there is no colour among the options.
+  A kit draws what it is told: the root part and `class(:root, …)` are
+  given the options as `look`, a map of all four. `Kit.Default` draws it
+  with a style sheet of the package, `priv/static/ash_data_table.css`,
+  which the host imports after Tailwind: its rules are in
+  `@layer components`, keyed by the root's class `ash-data-table`, the
+  options in data attributes of the root of the table on the page
+  (`data-density`, `data-stripes`, `data-column-lines`,
+  `data-sticky-header`) and the grid's markers, and reach every table
+  inside it, nested tables and pickers' tables too. Every tint is mixed
+  from the theme's colours: there is no colour among the options.
 
   ## What a part is given, and what it must write
 
@@ -527,7 +532,7 @@ defmodule AshDataTable.Kit do
   `data-ash-data-table-portal` keeps the nested table at the left edge of
   the scroll area around it, `data-ash-data-table-view` makes it as wide
   as that area (`--ash-data-table-view`, which the grid's hook sets);
-  `Kit.Default` does both in its root's rules. The heading line's portal
+  `Kit.Default`'s style sheet does both. The heading line's portal
   holds a `data-ash-data-table-portal` only. `state` is what the table
   knows as it draws the part: `nested?` (the root, the heading line, the
   argument line, the selection line, the grid, the pagination, a

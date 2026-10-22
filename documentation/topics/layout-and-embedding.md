@@ -430,7 +430,9 @@ Nothing of this is declared, and the server does not know where a table is
 scrolled to: after a reload every table starts at its left edge.
 
 A host can set three custom properties in CSS, on the table's element or
-anything around it:
+anything around it (the default kit's own look, the package's style sheet
+`priv/static/ash_data_table.css`, gives the first two their defaults; see
+[Kits](kits.md#the-look-of-a-table)):
 
 | Custom property | What it says | Default |
 | --- | --- | --- |
@@ -462,7 +464,9 @@ edge is theirs.
 gives a table a height of its own, as Airtable does: only the rows scroll,
 up and down and sideways, inside the table, and the header with the filter
 row stays at its top. It is plain CSS (`position: sticky` on the header
-group, in the table's own scroll area); no script places anything.
+group, in the table's own scroll area, in the package's style sheet, which
+reads the option from the root's `data-sticky-header`); no script places
+anything.
 
 - **How high.** The table on a page is at most `min(75dvh, 48rem)`, a
   nested table about ten rows (`28rem`). Your style sheet sets other CSS

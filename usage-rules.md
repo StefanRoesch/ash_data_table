@@ -11,7 +11,8 @@ package in `documentation/`; the index is
 
 1. Install with `mix igniter.install ash_data_table`. It adds the
    dependency, the formatter entry, the hooks in `assets/js/app.js`, the
-   Tailwind `@source` line and the configuration
+   import of the table's style sheet and the Tailwind `@source` line in
+   `assets/css/app.css`, and the configuration
    ([Installation](https://github.com/StefanRoesch/ash_data_table/blob/main/documentation/topics/installation.md)
    has the same steps by hand).
 2. List the extension on the resource:
@@ -160,7 +161,8 @@ behaviour the table lacks is a change to the resource:
   as nobody: with a filtering policy, an empty table.
 - **`mix format` puts parentheses into the block** until `:ash_data_table` is
   in `import_deps` of `.formatter.exs`.
-- **An unstyled table, or Enter that does nothing**: the `@source` line is
+- **An unstyled table, or Enter that does nothing**: the `@source` line or
+  the import of `priv/static/ash_data_table.css` (after Tailwind) is
   missing, the hooks are not spread into the `LiveSocket`'s `hooks`, or the
   assets were built before `mix compile`.
 - **A returned file that is said as text, or "done", and not saved**: the

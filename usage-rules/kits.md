@@ -29,6 +29,14 @@ end
 - Define the parts you draw and call `super` for the rest; `class/2`,
   `presentation/1` (`:modal` or `:inline`) and `look/1` (`density`,
   `stripes`, `column_lines`, `sticky_header`) work the same way. `AshDataTable.Kit.parts/0` lists the parts.
+- **The default look is a style sheet**, `priv/static/ash_data_table.css`,
+  imported in the host's `app.css` after Tailwind. It keys on the root class
+  `ash-data-table` (`super(:root, state)`), the root's look attributes
+  (`data-density`, `data-stripes`, `data-column-lines`,
+  `data-sticky-header`) and the markers, in `@layer components`: a
+  utility class on a part wins over it, so leave padding, borders and
+  alignment off the cells it styles. To change the look, write CSS after the
+  import, never a long `[&_…]` class on the root.
 - Name it for every table with `config :ash_data_table, kit: MyAppWeb.TableKit`,
   or for one table with `kit:` on the router line, the tag or `attach/4`.
   Nested tables and pickers' tables are drawn with the same kit.

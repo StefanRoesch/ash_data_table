@@ -474,7 +474,6 @@ defmodule AshDataTable.Parts.Grid do
       role="rowheader"
       aria-colindex={column.colindex}
       {Map.merge(column.attrs, cell.attrs)}
-      class="text-start font-normal"
     ><Common.dynamic_component
       :if={cell.component}
       module={column.component.module}
@@ -764,9 +763,11 @@ defmodule AshDataTable.Parts.Grid do
       {@grid}
       class={@kit.class(:grid, %{nested?: @nested?})}
     >
+      <%!-- Its look is the style sheet's (`priv/static/ash_data_table.css`),
+      daisyUI's `table` too: no class of daisyUI's is on it. --%>
       <table
         {@table}
-        class={["table", @nested? && "w-auto"]}
+        class={@nested? && "w-auto"}
       >
         <thead id={Ids.head(@id)}>
           <tr {@head.row}>
@@ -897,107 +898,4 @@ defmodule AshDataTable.Parts.Grid do
     </div>
     """
   end
-
-  # The look of the root of the table on the page, once per page: what the
-  # hooks draw with is given here in the theme's colours. The hooks take
-  # `--ash-data-table-ground` and `--ash-data-table-line` where a host sets
-  # them, else these (the ground behind the cells that stay in view, the
-  # edge beside them).
-  #
-  # And the look of every grid inside it, the nested tables' and the
-  # pickers' tables' too, which are drawn inside this root: written once
-  # here, on the grid's markers (`role=table`, `role=rowgroup`, `role=row`,
-  # `role=cell`, `role=rowheader`, `data-lines`, `data-failed`, …), not on every grid,
-  # so that an opened nested table or picker sends none of it. A rule
-  # about a grid's own cells reaches them
-  # through its row groups and rows (`>`), so that a nested table, which
-  # stands in a cell, is not one of them. Written out in full, as Tailwind
-  # finds a class only as it is written in the source.
-  @root Enum.join(
-          [
-            "ash-data-table",
-            "[--ash-data-table-default-ground:var(--color-base-100)] [--ash-data-table-default-line:var(--color-base-content)]",
-            # The focus rings the kit draws itself, as daisyUI draws its own: 2px in
-            # the text colour, the one colour a theme promises to be seen on its
-            # background, which its brand colour need not be (#46). A daisyUI
-            # control (a button, a box, a menu, an input) keeps its own.
-            #
-            # An editable cell, the one cell that is a Tab stop, inside its
-            # edge; it keeps it while its editor has the focus (not while a
-            # button in it has, a sensitive cell's "Show", which has its own).
-            # A cell that spans the table draws none.
-            "[&_:is([role=cell],[role=rowheader]):not([colspan]):focus]:outline-2 [&_:is([role=cell],[role=rowheader]):not([colspan]):focus]:-outline-offset-2 [&_:is([role=cell],[role=rowheader]):not([colspan]):focus]:outline-base-content",
-            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader]):not([data-selector],[data-expander],[data-actions],[data-filter],[colspan]):focus-within:not(:has(button:focus))]:outline-2 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader]):not([data-selector],[data-expander],[data-actions],[data-filter],[colspan]):focus-within:not(:has(button:focus))]:-outline-offset-2 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader]):not([data-selector],[data-expander],[data-actions],[data-filter],[colspan]):focus-within:not(:has(button:focus))]:outline-base-content",
-            # The buttons of the kit's own look: a column's sort button, the
-            # expander of a row and the button of a line, outside their edge.
-            "[&_:is([data-sort]>button,[data-expander]>button,[data-line]_button[aria-expanded]):focus-visible]:outline-2 [&_:is([data-sort]>button,[data-expander]>button,[data-line]_button[aria-expanded]):focus-visible]:outline-offset-2 [&_:is([data-sort]>button,[data-expander]>button,[data-line]_button[aria-expanded]):focus-visible]:outline-current",
-            # Which cells can be edited, where a table offers editing (its grid
-            # has an editor's template): at rest they look alike. With the
-            # pointer an editable cell (`tabindex="0"`) shows a thin edge inside
-            # it, a text cursor and a small pencil at its end (not on a failed
-            # cell, whose end holds its mark); a read-only cell does not change.
-            "[&_[data-ash-data-table]:has(>template[data-editor])>[role=table]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>:is([role=cell],[role=rowheader])[tabindex='0']]:relative [&_[data-ash-data-table]:has(>template[data-editor])>[role=table]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>:is([role=cell],[role=rowheader])[tabindex='0']]:cursor-text [&_[data-ash-data-table]:has(>template[data-editor])>[role=table]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>:is([role=cell],[role=rowheader])[tabindex='0']:hover]:shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-base-content)_30%,transparent)]",
-            "[&_[data-ash-data-table]:has(>template[data-editor])>[role=table]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>:is([role=cell],[role=rowheader])[tabindex='0']:not([data-failed]):is(:hover,:focus)]:after:absolute [&_[data-ash-data-table]:has(>template[data-editor])>[role=table]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>:is([role=cell],[role=rowheader])[tabindex='0']:not([data-failed]):is(:hover,:focus)]:after:end-1.5 [&_[data-ash-data-table]:has(>template[data-editor])>[role=table]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>:is([role=cell],[role=rowheader])[tabindex='0']:not([data-failed]):is(:hover,:focus)]:after:top-1/2 [&_[data-ash-data-table]:has(>template[data-editor])>[role=table]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>:is([role=cell],[role=rowheader])[tabindex='0']:not([data-failed]):is(:hover,:focus)]:after:-translate-y-1/2 [&_[data-ash-data-table]:has(>template[data-editor])>[role=table]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>:is([role=cell],[role=rowheader])[tabindex='0']:not([data-failed]):is(:hover,:focus)]:after:text-xs [&_[data-ash-data-table]:has(>template[data-editor])>[role=table]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>:is([role=cell],[role=rowheader])[tabindex='0']:not([data-failed]):is(:hover,:focus)]:after:leading-none [&_[data-ash-data-table]:has(>template[data-editor])>[role=table]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>:is([role=cell],[role=rowheader])[tabindex='0']:not([data-failed]):is(:hover,:focus)]:after:text-base-content/60 [&_[data-ash-data-table]:has(>template[data-editor])>[role=table]>[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))>[role=row]:not([data-summaries])>:is([role=cell],[role=rowheader])[tabindex='0']:not([data-failed]):is(:hover,:focus)]:after:content-['✎'_/_'']",
-            # A cell whose save is on its way, and the rows of a table that is
-            # reading: dimmed, and no further than text may be. The header and the
-            # filters are not dimmed, as they can be used meanwhile and are muted
-            # already; nor is a nested table, which is not what is reading.
-            "[&_:is([role=cell],[role=rowheader])[aria-busy]]:opacity-70 [&_[role=table][aria-busy]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader]):not([data-nested])]:opacity-70",
-            # A cell whose save or action failed (`data-failed`): a ring and a
-            # mark, both drawn by the cell's style, so that they add nothing to a
-            # row's markup. The ring is a border, which forced colours keep and a
-            # shadow they do not, in the error colour mixed with the text colour,
-            # so that it is seen on the background in a theme whose error colour
-            # alone is not. With focus it moves inside the focus ring, and both
-            # show.
-            "[&_:is([role=cell],[role=rowheader])[data-failed]]:relative [&_:is([role=cell],[role=rowheader])[data-failed]]:before:pointer-events-none [&_:is([role=cell],[role=rowheader])[data-failed]]:before:absolute [&_:is([role=cell],[role=rowheader])[data-failed]]:before:inset-0 [&_:is([role=cell],[role=rowheader])[data-failed]]:before:border-2 [&_:is([role=cell],[role=rowheader])[data-failed]]:before:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] [&_:is([role=cell],[role=rowheader])[data-failed]]:before:content-['']",
-            "[&_:is([role=cell],[role=rowheader])[data-failed]:is(:focus,:focus-within)]:before:inset-[3px]",
-            # The mark is what says "failed" without a colour: a "!" in the cell's
-            # padding at its end, in the text colour. It is for the eye only (the
-            # empty alternative text): the cell is described by its message.
-            "[&_:is([role=cell],[role=rowheader])[data-failed]]:after:absolute [&_:is([role=cell],[role=rowheader])[data-failed]]:after:end-2 [&_:is([role=cell],[role=rowheader])[data-failed]]:after:top-1/2 [&_:is([role=cell],[role=rowheader])[data-failed]]:after:-translate-y-1/2 [&_:is([role=cell],[role=rowheader])[data-failed]]:after:leading-none [&_:is([role=cell],[role=rowheader])[data-failed]]:after:font-bold [&_:is([role=cell],[role=rowheader])[data-failed]]:after:content-['!'_/_'']",
-            # one line per row: long text is cut off, not wrapped. Not in a cell
-            # that spans the table: a line, or the cell a nested table is in.
-            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader]):not([colspan],[data-actions])]:max-w-80 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader]):not([colspan],[data-actions])]:truncate [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-actions]]:whitespace-nowrap",
-            # But for the cells of a column that says `max_lines`: their text is
-            # in a paragraph that wraps, keeps the line breaks of the value and is
-            # cut off after that many lines (`data-lines` on the cell). The row is
-            # as high as its highest cell. A word longer than the column breaks.
-            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines]]:whitespace-normal [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines]>[data-paragraph]]:min-w-40 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines]>[data-paragraph]]:break-words [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines]>[data-paragraph]]:whitespace-pre-line",
-            # A cell that cuts some of its text off shows all of it while the
-            # button the hook puts into it says so (`data-whole`,
-            # `aria-expanded`): the text wraps, keeps its line breaks and
-            # is not cut off, and the row grows. The button says what its
-            # marker holds (`content: attr(data-whole)`): it has no text of
-            # its own. Cut off, it stands at the cell's end, over the end of
-            # the text; expanded, on a line of its own under the text.
-            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader]):has(>[data-whole])]:relative [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader]):has(>[data-whole][aria-expanded=true])]:whitespace-pre-line [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader]):has(>[data-whole][aria-expanded=true])]:[overflow-wrap:anywhere] [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader]):has(>[data-whole][aria-expanded=true])>[data-paragraph]]:line-clamp-none",
-            "[&_[data-whole]]:absolute [&_[data-whole]]:end-1 [&_[data-whole]]:top-1 [&_[data-whole]]:cursor-pointer [&_[data-whole]]:rounded [&_[data-whole]]:bg-base-100 [&_[data-whole]]:px-1 [&_[data-whole]]:text-xs [&_[data-whole]]:leading-tight [&_[data-whole]]:underline [&_[data-whole]]:before:content-[attr(data-whole)] [&_[data-whole][aria-expanded=true]]:static [&_[data-whole][aria-expanded=true]]:block [&_[data-whole][aria-expanded=true]]:px-0 [&_[data-whole][aria-expanded=true]]:whitespace-normal [&_[data-whole]]:[overflow-wrap:anywhere]",
-            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines='2']>[data-paragraph]]:line-clamp-2 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines='3']>[data-paragraph]]:line-clamp-3 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines='4']>[data-paragraph]]:line-clamp-4 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines='5']>[data-paragraph]]:line-clamp-5 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines='6']>[data-paragraph]]:line-clamp-6 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines='7']>[data-paragraph]]:line-clamp-7 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines='8']>[data-paragraph]]:line-clamp-8 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines='9']>[data-paragraph]]:line-clamp-9 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-lines='10']>[data-paragraph]]:line-clamp-10",
-            # the expander of a row and the button of a line (which is in the
-            # element of its cell that stays in view). Their mark is a
-            # triangle drawn in CSS, not a character: it turns about its own
-            # centre, so it sits in the same place open and closed.
-            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:cursor-pointer [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-expander]]:w-0 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-expander]>button]:px-1",
-            # the box that selects a row: its cell as narrow as the box, and
-            # the box in the middle of it
-            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-selector]]:w-0 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-selector]>input]:block",
-            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:inline-block [&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:size-0 [&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:content-['']",
-            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:border-y-[0.3em] [&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:border-y-transparent [&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:border-s-[0.45em] [&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:border-s-current",
-            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:transition-transform [&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded=true]]:before:rotate-90",
-            # forced colours would fill the two transparent sides of the triangle
-            # and make it a square, which looks the same open and closed
-            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:forced-color-adjust-none forced-colors:[&_[role=table]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:border-s-[CanvasText]",
-            # a line's mark stands under its row's
-            "[&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-line]_button[aria-expanded]]:ps-1 [&_[role=table]>[role=rowgroup]>[role=row]>:is([role=cell],[role=rowheader])[data-line]_button[aria-expanded]]:before:me-2",
-            # a nested table stays at the left edge of the scroll area around
-            # it, and is as wide as that area (`--ash-data-table-view`, which
-            # the grid's hook sets); its heading, the other portal, is on its
-            # line, which stays there itself
-            "[&_[data-ash-data-table-portal]:has(>[data-ash-data-table-view])]:sticky [&_[data-ash-data-table-portal]:has(>[data-ash-data-table-view])]:left-0 [&_[data-ash-data-table-portal]:has(>[data-ash-data-table-view])]:w-0 [&_[data-ash-data-table-view]]:relative [&_[data-ash-data-table-view]]:w-[var(--ash-data-table-view)]"
-          ],
-          " "
-        )
-
-  def root, do: @root
 end

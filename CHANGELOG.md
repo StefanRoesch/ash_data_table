@@ -93,7 +93,13 @@ declared in the resource and mounted with one line in the router.
 - The look of a table: the default kit's row lines, header group, open row
   and nested area in the theme's colours, and `density`, `stripes`,
   `column_lines` and a `sticky_header` in the table's own scroll area, as
-  the kit says (`look/1`) or `look:` for one table.
+  the kit says (`look/1`) or `look:` for one table. It is a style sheet of
+  the package, `priv/static/ash_data_table.css`, which the host imports
+  after Tailwind: plain CSS in `@layer components`, keyed by the root class
+  `ash-data-table`, the root's `data-density`, `data-stripes`,
+  `data-column-lines` and `data-sticky-header`, and the grid's markers, so
+  a host's class or rule wins over it. The grid's `<table>` carries no
+  daisyUI `table` class; its base look is in the sheet.
 - One heading line per table, the same for a table on the page and a
   nested one: the name (for a nested table its line, with its count),
   "Columns", the inputs of the argument line, and at the far end create and
@@ -1451,7 +1457,8 @@ declared in the resource and mounted with one line in the router.
 ### Tooling
 
 - `mix ash_data_table.install`, an Igniter installer (`mix igniter.install
-  ash_data_table`): the hooks in `app.js`, the Tailwind source in `app.css`,
+  ash_data_table`): the hooks in `app.js`, the import of the table's style
+  sheet and the Tailwind source in `app.css`,
   the formatter, Spark's section order and the configuration. It leaves the
   websocket's compression to the host.
 - `AshDataTable.Test`: `flush/1` and `listening/2` for live updates, and

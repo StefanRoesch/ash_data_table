@@ -62,25 +62,23 @@ defmodule DemoWeb.Tables.SidewaysScrollTest do
     comments = nested(task.id, "comments")
 
     cell = "[id='task-row-#{task.id}-n-comments-c']"
-    # the two elements around it are marked, and the root's rules of the
-    # kit pin the outer one and size the inner one
+    # the two elements around it are marked, and the library's style sheet
+    # pins the outer one and sizes the inner one, by those markers
     assert attribute(
              html,
              "#{cell} > [data-ash-data-table-portal] > [data-ash-data-table-view] > [id='#{comments}']",
              "id"
            ) == [comments]
 
-    assert [root] = attribute(html, "[id='task']", "class")
+    assert attribute(html, "[id='task']", "class") == ["ash-data-table"]
 
-    assert MapSet.subset?(
-             MapSet.new([
-               "[&_[data-ash-data-table-portal]:has(>[data-ash-data-table-view])]:sticky",
-               "[&_[data-ash-data-table-portal]:has(>[data-ash-data-table-view])]:left-0",
-               "[&_[data-ash-data-table-portal]:has(>[data-ash-data-table-view])]:w-0",
-               "[&_[data-ash-data-table-view]]:w-[var(--ash-data-table-view)]"
-             ]),
-             MapSet.new(String.split(root))
-           )
+    sheet = File.read!(Application.app_dir(:ash_data_table, "priv/static/ash_data_table.css"))
+
+    assert sheet =~
+             ":where(.ash-data-table) [data-ash-data-table-portal]:has(> [data-ash-data-table-view]) {\n    position: sticky;\n    left: 0;\n    width: 0;"
+
+    assert sheet =~
+             ":where(.ash-data-table) [data-ash-data-table-view] {\n    position: relative;\n    width: var(--ash-data-table-view);"
 
     assert [class] = attribute(html, "[id='#{comments}-grid']", "class")
     assert "overflow-x-auto" in String.split(class)

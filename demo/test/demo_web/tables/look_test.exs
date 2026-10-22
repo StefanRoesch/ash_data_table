@@ -20,38 +20,66 @@ defmodule DemoWeb.Tables.LookTest do
   defp classes(html, selector),
     do: html |> attribute(selector, "class") |> Enum.flat_map(&String.split/1)
 
-  @sticky "[&_[role=table]>:has(>[role=row]>[role=columnheader])]:sticky"
-  @stripes "[&_[role=table]>:where([role=rowgroup]:nth-child(even_of_[role=rowgroup]:not([data-detail],:has(>[role=row]>[role=columnheader]))))>[role=row]>:is([role=cell],[role=rowheader])]:[background-image:linear-gradient(var(--ash-data-table-stripe),var(--ash-data-table-stripe))]"
-  @column_lines "[&_[role=table]>*>[role=row]>:not(:first-child,[colspan])]:border-s"
-  @compact "[&_[role=table]>*>[role=row]>:not([colspan])]:py-1"
-  @normal "[&_[role=table]>*>[role=row]>:not([colspan])]:py-2"
+  # what the root of a table says of its look, for the style sheet
+  defp look(html, selector) do
+    for name <- ~w(data-density data-stripes data-column-lines data-sticky-header),
+        value <- attribute(html, selector, name),
+        into: %{},
+        do: {name, value}
+  end
+
+  # the library's style sheet, which the host imports
+  defp sheet,
+    do: File.read!(Application.app_dir(:ash_data_table, "priv/static/ash_data_table.css"))
 
   test "the default kit draws its default look: no option on", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/tasks")
-    root = classes(html, "#task")
 
-    assert @normal in root
-    refute @sticky in root
-    refute @stripes in root
-    refute @column_lines in root
+    assert classes(html, "#task") == ["ash-data-table"]
+    assert look(html, "#task") == %{"data-density" => "normal"}
     # nor any `style` in the page: how high a table is, is the host's CSS
     assert attribute(html, "[style]", "style") == []
   end
 
   test "the options a router line names are drawn, those it does not are not", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/projects/sticky")
-    root = classes(html, "#project-sticky")
-    assert @sticky in root
-    assert "[&_[data-scrollbar]]:hidden!" in root
-    refute @stripes in root
+
+    assert look(html, "#project-sticky") == %{
+             "data-density" => "normal",
+             "data-sticky-header" => ""
+           }
 
     {:ok, _view, html} = live(conn, "/tasks/striped")
-    root = classes(html, "#task-striped")
-    assert @compact in root
-    refute @normal in root
-    assert @stripes in root
-    assert @column_lines in root
-    refute @sticky in root
+
+    assert look(html, "#task-striped") == %{
+             "data-density" => "compact",
+             "data-stripes" => "",
+             "data-column-lines" => ""
+           }
+  end
+
+  test "the style sheet has a rule for every option, keyed by the root's class and data attributes" do
+    sheet = sheet()
+    assert sheet =~ "@layer components {"
+
+    for key <- [
+          ".ash-data-table[data-density=compact]",
+          ".ash-data-table[data-density=normal]",
+          ".ash-data-table[data-density=roomy]",
+          ".ash-data-table[data-stripes]",
+          ".ash-data-table[data-column-lines]",
+          ".ash-data-table[data-sticky-header]"
+        ] do
+      assert sheet =~ ":where(#{key})", key
+    end
+
+    # the scrollbar at the bottom edge of the window is not shown under a header that stays
+    assert sheet =~
+             ":where(.ash-data-table[data-sticky-header]) [data-scrollbar] {\n    display: none;"
+
+    # no id, and no `!important`
+    refute sheet =~ "#"
+    refute sheet =~ "!important"
   end
 
   test "a number is at the end of its cell: its cells and header say so, other columns' do not",
@@ -132,28 +160,17 @@ defmodule DemoWeb.Tables.LookTest do
       assert attribute(html, "#task-head-row svg[role=img]", "aria-label") == []
     end
 
-    test "the look of an editable and a read-only cell is in the root's rules, once per page", %{
-      conn: conn
-    } do
-      {:ok, _view, html} = live(conn, "/tasks")
-      root = classes(html, "#task")
+    test "the look of an editable and a read-only cell is in the style sheet, by the root's class" do
+      sheet = sheet()
 
-      assert Enum.any?(
-               root,
-               &(String.contains?(&1, "template[data-editor]") and
-                   String.ends_with?(&1, ":cursor-text"))
-             )
+      assert sheet =~
+               ~r/\[data-ash-data-table\]:has\(> template\[data-editor\]\)[^{]*\[tabindex='0'\] \{\n    position: relative;\n    cursor: text;/
 
       # every focus ring of the kit's own in the text colour (#46): none in
       # the primary colour, none dashed
-      refute Enum.any?(root, &String.contains?(&1, "outline-dashed"))
-
-      refute Enum.any?(
-               root,
-               &String.contains?(&1, "outline-[color-mix(in_oklab,var(--color-primary)")
-             )
-
-      assert Enum.any?(root, &String.ends_with?(&1, ":focus]:outline-base-content"))
+      refute sheet =~ "dashed"
+      refute sheet =~ ~r/outline-color: [^;]*--color-primary/
+      assert sheet =~ "outline-color: var(--color-base-content);"
     end
   end
 end

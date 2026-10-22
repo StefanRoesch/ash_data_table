@@ -110,12 +110,12 @@ defmodule AshDataTable.Kit.Default do
   # The classes of the parts drawn once per table. Written out in full, as
   # Tailwind finds a class only as it is written in the source.
   @impl true
-  # The table on the page holds the rules of every table inside it: the
-  # structure and its look (`Parts.Look`, only the options that are on).
-  def class(:root, %{nested?: false, look: look}),
-    do: Parts.Grid.root() <> " " <> Parts.Look.root(look)
-
-  def class(:root, %{nested?: true}), do: "ash-data-table"
+  # The root of every table: the look's style sheet
+  # (`priv/static/ash_data_table.css`, which the host imports) finds it by
+  # this class, and the options of the look by the root's data attributes
+  # (`Parts.Common.root/1`). The table on the page holds the rules of every
+  # table inside it.
+  def class(:root, _state), do: "ash-data-table"
   def class(:portal, _state), do: "contents"
   # The heading line: on the page under the name's own room; nested, on the
   # line that names the table, which has its padding.

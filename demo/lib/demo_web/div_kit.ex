@@ -8,7 +8,11 @@ defmodule DemoWeb.DivKit do
   the markers alone (`AshDataTable.KitCase`, `e2e/kit.spec.ts`).
 
   The `div`s are laid out as a table is (`display: table` and its kin), so
-  the columns line up; what is not a grid part is the default kit's. It
+  the columns line up; what is not a grid part is the default kit's. Its
+  root keeps the default kit's class, so the library's style sheet
+  (`priv/static/ash_data_table.css`) gives its cells their padding, lines
+  and states by the markers; a cell's own classes say only what that sheet
+  does not (a cell that spans the grid keeps its padding). It
   only draws: each part draws its projection (`AshDataTable.Kit.Projection`),
   the bundles, numbers and texts the table gives it, in the person's
   language.
@@ -32,12 +36,12 @@ defmodule DemoWeb.DivKit do
       content, as in the other kits --%>
       <div
         {@table}
-        class={["table border-collapse text-sm", if(@nested?, do: "w-auto", else: "w-full")]}
+        class={["table text-sm", if(@nested?, do: "w-auto", else: "w-full")]}
         data-kit="div"
       >
         <div id={Ids.head(@id)} role="rowgroup" class="table-header-group font-semibold">
           <div {@head.row} class="table-row">
-            <div :if={@head.select} {@head.select.element} class="table-cell w-0 px-2 py-1">
+            <div :if={@head.select} {@head.select.element} class="table-cell w-0">
               <input
                 :if={@head.select.page?}
                 type="checkbox"
@@ -46,11 +50,11 @@ defmodule DemoWeb.DivKit do
               />
               <span :if={!@head.select.page?} class="sr-only">{@head.texts.select_row}</span>
             </div>
-            <div :if={@head.expander} {@head.expander} class="table-cell w-0 px-2 py-1">
+            <div :if={@head.expander} {@head.expander} class="table-cell w-0">
               <span class="sr-only">{@texts.related_records}</span>
             </div>
             <Kit.part :for={cell <- @head.cells} part={:header_cell} kit={@kit} {cell} />
-            <div :if={@head.actions} {@head.actions} class="table-cell px-2 py-1">
+            <div :if={@head.actions} {@head.actions} class="table-cell">
               {@texts.actions}
             </div>
           </div>
@@ -102,7 +106,7 @@ defmodule DemoWeb.DivKit do
     <div
       {@element}
       role="columnheader"
-      class="relative table-cell px-2 py-1 text-start whitespace-nowrap"
+      class="relative table-cell whitespace-nowrap"
       phx-no-format
     ><button :if={@button} {@button} class="font-semibold">{@label}</button><%= if !@button do %>{@label}<% end %><Kit.part part={:resizer} kit={@kit} {@resizer} /></div>
     """
@@ -110,7 +114,7 @@ defmodule DemoWeb.DivKit do
 
   def filter_cell(assigns) do
     ~H"""
-    <div {@element} role="cell" class="table-cell px-2 py-1">
+    <div {@element} role="cell" class="table-cell">
       <Kit.part :if={@filter} part={:filter} kit={@kit} {@filter} />
     </div>
     """
@@ -130,21 +134,21 @@ defmodule DemoWeb.DivKit do
       role="cell"
       aria-colindex="1"
       data-selector
-      class="table-cell px-2 py-1"
+      class="table-cell"
     ><input :if={@selecting == :multi} type="checkbox" aria-label={@texts.select_row} class="checkbox checkbox-xs" /><input :if={@selecting == :single} type="radio" name={@radio} aria-label={@texts.select_row} class="radio radio-xs" /></div><div
       :if={@expandable?}
       id={Ids.expander(@row.dom_id)}
       role="cell"
       aria-colindex={@lead}
       data-expander
-      class="table-cell px-2 py-1"
+      class="table-cell"
     ><button type="button" aria-expanded={to_string(@row.open)} aria-label={@texts.related_records}></button></div><div
       :for={column <- @columns}
       id={Ids.cell(@row.dom_id, column.name)}
       role={if column.header?, do: "rowheader", else: "cell"}
       aria-colindex={column.colindex}
       {Map.merge(column.attrs, @row.cells[column.name].attrs)}
-      class="table-cell px-2 py-1"
+      class="table-cell"
     ><Kit.cell kit={@kit} id={Ids.cell(@row.dom_id, column.name)} column={column} cell={@row.cells[column.name]} /></div><Kit.part
       :if={@actions}
       part={:actions_cell}
@@ -165,7 +169,7 @@ defmodule DemoWeb.DivKit do
       data-actions
       data-failed={!!@row.failure}
       aria-describedby={@row.failure && Ids.error(@id)}
-      class="table-cell px-2 py-1 whitespace-nowrap"
+      class="table-cell whitespace-nowrap"
       phx-no-format
     ><button
       :if={@open}

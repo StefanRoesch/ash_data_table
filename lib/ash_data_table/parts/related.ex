@@ -62,8 +62,11 @@ defmodule AshDataTable.Parts.Related do
   # button and table actions, the kit's `heading/1` drawn by the nested
   # table, see `AshDataTable.Live.Drawing`). Its element that stays in
   # view, as wide as what is seen of the table (`--ash-data-table-view`),
-  # draws the line of the nested area down its left (see `Parts.Look`) and
-  # the one inset after it.
+  # draws the line of the nested area down its left (the look's style sheet,
+  # `priv/static/ash_data_table.css`) and the one inset after it. Its
+  # padding at the top is the style sheet's where it gives one
+  # (`--ash-data-table-line-top`, above the first line and after a nested
+  # table), else a little.
   attr :id, :string, required: true
   attr :relationship, :map, required: true
   attr :line, :map, required: true
@@ -88,7 +91,7 @@ defmodule AshDataTable.Parts.Related do
         the far end of the heading line is in view: the padding of the cell
         is this element's, so that it stands in the same place stuck and not.
         One line, which wraps only where it does not fit. --%>
-        <div class="sticky left-0 flex w-[var(--ash-data-table-view,100%)] flex-wrap items-center gap-x-3 gap-y-2 border-s-[3px] border-s-primary/45 py-1 ps-5">
+        <div class="sticky left-0 flex w-[var(--ash-data-table-view,100%)] flex-wrap items-center gap-x-3 gap-y-2 border-s-[3px] border-s-primary/45 pt-[var(--ash-data-table-line-top,calc(var(--spacing)*1))] pb-1 ps-5">
           <button
             type="button"
             id={Ids.line_button(@id, @relationship.name)}

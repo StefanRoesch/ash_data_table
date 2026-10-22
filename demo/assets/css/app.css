@@ -2,6 +2,11 @@
    https://tailwindcss.com/docs/configuration */
 
 @import "tailwindcss" source(none);
+/* The look of ash_data_table's default kit (and of DivKit, which keeps its
+   root class). In this repository the library is the parent directory; in
+   an app that has it as a Hex dependency this line is
+   @import "../../deps/ash_data_table/priv/static/ash_data_table.css"; */
+@import "../../../priv/static/ash_data_table.css";
 /* the look of the demo's React kit, by the table's markers (DemoWeb.ReactKit) */
 @import "./react_kit.css";
 /* the grid's look on the browser tests' page /e2e/markers, only there */
