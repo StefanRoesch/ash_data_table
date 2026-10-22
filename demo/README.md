@@ -13,10 +13,11 @@ library itself has no npm dependency.
 
 ## Start
 
-From the repository root, start Postgres 18.6 (loopback only, port **5477**):
+Needs Elixir 1.18+ and Node 20+, and Docker for Postgres. From the
+repository root, start Postgres 18.6 (loopback only, port **5477**):
 
 ```sh
-docker compose up -d postgres
+docker compose up -d
 ```
 
 Then, in `demo/`:
@@ -26,11 +27,16 @@ mix setup        # deps, create and migrate the database, npm packages, build as
 mix phx.server   # http://localhost:4478
 ```
 
+and open http://localhost:4478.
+
+**If it doesn't start:** port 4478 or 5477 is taken. Stop what uses it, or
+pick other ports: `POSTGRES_PORT=5500 docker compose up -d`, then
+`POSTGRES_PORT=5500 PORT=4500 mix phx.server` (see `.env.example`).
+
 - `mix setup` runs `mix assets.setup`, which runs `npm install` for
   `assets/package.json`. It needs Node 20 or later (`assets/.tool-versions`
-  pins 24 for asdf; the Dockerfile uses Debian's Node, 20). Run
-  `mix assets.setup` again after a change of `assets/package.json` or
-  `package-lock.json`.
+  pins 24 for asdf). Run `mix assets.setup` again after a change of
+  `assets/package.json` or `package-lock.json`.
 - `npm install`, not `npm ci`: both install what `package-lock.json` pins,
   but `npm install` touches `node_modules` only where it differs, while
   `npm ci` deletes it on every run and so breaks the esbuild watcher of a dev
@@ -61,33 +67,6 @@ The demo's LiveView socket compresses its frames (`compress: true` in
 `lib/demo_web/endpoint.ex`), which the library's installer leaves to the host:
 see [Installation](../documentation/topics/installation.md).
 
-### Without Elixir on the host
-
-```sh
-docker compose --profile demo up            # the ready image from ghcr.io
-docker compose --profile demo up --build    # or built from this checkout
-```
-
-runs the demo in dev mode, creates and seeds its own database
-(`demo_docker`) and serves it on http://localhost:4478. Plain
-`docker compose up -d` starts Postgres only.
-
-The ready image is `ghcr.io/stefanroesch/ash_data_table-demo` (`latest` and
-the commit SHA), a throwaway snapshot of `main`, not a release: it may be
-overwritten or deleted at any time. `up` pulls it only when it is missing;
-`docker compose --profile demo pull` fetches a newer one, and `--build`
-replaces it locally with your own build. `DEMO_IMAGE` names another image.
-The Dockerfile caches the Hex and npm dependencies in layers of their own,
-so a rebuild after a code change skips them.
-
-`scripts/publish-demo-image.sh` builds the image for linux/amd64 and
-linux/arm64 from the committed HEAD and checks that it answers on a port of
-4490-4493; only with `--push` does it publish it (after a
-`docker login ghcr.io` of your own; the script stores no token). Nothing
-secret is in the image: the database settings come from the environment at
-start, and the dev `secret_key_base` is the one committed in
-`config/dev.exs`.
-
 ### Settings
 
 `.env.example` at the repository root lists the variables. Compose reads them
@@ -98,7 +77,7 @@ from `.env`; the app reads the same names from the environment
 | What | Where |
 | --- | --- |
 | Demo | http://localhost:4478 |
-| Postgres | `localhost:5477`, user and password `ash_data_table`, databases `demo_dev` and `demo_test` |
+| Postgres | `localhost:5477`, user and password `ash_table`, databases `demo_dev` and `demo_test` |
 
 ## Who you are: the five actors
 

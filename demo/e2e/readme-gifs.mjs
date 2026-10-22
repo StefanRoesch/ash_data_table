@@ -2,6 +2,7 @@
 // against a demo of its own (GIFS_URL). Not a test, and not part of `npm
 // test` (which runs `*.spec.ts`): each clip is one browser context with a
 // video, written to VIDEOS_DIR as <name>.webm; the picture goes to SHOT.
+// CLIPS (names, separated by spaces) records only those clips.
 import { readFile, rename } from "node:fs/promises"
 import path from "node:path"
 import { chromium } from "@playwright/test"
@@ -9,6 +10,7 @@ import { chromium } from "@playwright/test"
 const BASE = process.env.GIFS_URL ?? "http://127.0.0.1:4490"
 const VIDEOS = process.env.VIDEOS_DIR ?? "test-results/videos"
 const SHOT = process.env.SHOT
+const ONLY = (process.env.CLIPS ?? "").split(/\s+/).filter(Boolean)
 const SIZE = { width: 1440, height: 810 }
 
 const browser = await chromium.launch()
@@ -30,6 +32,7 @@ const adminState = await (async () => {
 
 /** One clip: a fresh context, its video saved as `name`.webm. */
 async function clip(name, play) {
+  if (ONLY.length > 0 && !ONLY.includes(name)) return
   const context = await browser.newContext({
     baseURL: BASE,
     viewport: SIZE,
@@ -241,7 +244,7 @@ try {
   })
 
   // (f) the action panel: a row action with an input (Reassign, its reason).
-  // (New task needs a project, chosen in the picker, which fails at HEAD.)
+  // (New task would need a project chosen in the picker: the picker clip.)
   await clip("action-panel", async (page) => {
     await open(page, "/tasks")
     await pause(page, 600)

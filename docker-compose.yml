@@ -1,7 +1,5 @@
-# Local stack for ash_data_table's demo app: Postgres 18.6, plus the optional demo.
-#   docker compose up -d                  # Postgres only
-#   docker compose --profile demo up      # Postgres and the seeded demo on :4478
-#   docker compose --profile demo up --build   # the same, the demo built here
+# Postgres 18.6 for ash_data_table's demo app and tests:
+#   docker compose up -d
 # Bind only loopback. Defaults match .env.example; override via `.env`.
 #
 # Postgres: the official image's PGDATA is /var/lib/postgresql/18/docker, so
@@ -24,33 +22,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-
-  # Optional: the demo app in dev mode with the standard seed. It uses its own
-  # database (demo_docker) so it never disturbs the host's demo_dev.
-  # `up` pulls the ready image (a demo snapshot of main, published by
-  # scripts/publish-demo-image.sh) when it isn't there; `up --build` builds
-  # it from this checkout instead. `docker compose --profile demo pull`
-  # fetches a newer snapshot.
-  app:
-    profiles: ["demo"]
-    image: ${DEMO_IMAGE:-ghcr.io/stefanroesch/ash_data_table-demo:latest}
-    build:
-      context: .
-      dockerfile: demo/Dockerfile
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: "5432"
-      POSTGRES_USER: ${POSTGRES_USER:-ash_table}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ash_table}
-      POSTGRES_DB: ${DEMO_APP_DB:-demo_docker}
-      PHX_BIND: 0.0.0.0
-      PORT: "4478"
-      SEED: ${SEED:-standard}
-    ports:
-      - "127.0.0.1:${DEMO_PORT:-4478}:4478"
 
 volumes:
   postgres_data:

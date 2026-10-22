@@ -20,37 +20,23 @@ tables. Ash's policies decide who sees and changes what.
 
 ## Try it
 
-You need Git and Docker.
+You need Git, Docker (for Postgres), Elixir 1.18+ and Node 20+.
 
 ```sh
 git clone https://github.com/StefanRoesch/ash_data_table.git
 cd ash_data_table
-docker compose --profile demo up
-```
-
-This pulls a ready demo image (a snapshot of `main`). To build it from your
-checkout instead, for example after changing code, add `--build`; the first
-build takes a few minutes. Then open **http://localhost:4478** and pick a
-person under **"Acting as"** at the top right, for example **Ada Admin**.
-
-<details>
-<summary>With Elixir instead of Docker for the app</summary>
-
-Elixir 1.18 or later and Node 20 or later; Docker still runs Postgres.
-
-```sh
-docker compose up -d postgres   # Postgres on port 5477
+docker compose up -d   # Postgres on port 5477
 cd demo
-mix setup                       # deps, database, seed data, npm packages, assets
-mix phx.server                  # http://localhost:4478
+mix setup              # deps, database, seed data, npm packages, assets
+mix phx.server
 ```
-</details>
+
+Then open **http://localhost:4478** and pick a person under **"Acting as"**
+at the top right, for example **Ada Admin**.
 
 **If it doesn't start:** port 4478 or 5477 is taken. Stop what uses it, or
-pick other ports: `DEMO_PORT=4500 POSTGRES_PORT=5500 docker compose
---profile demo up` (with Elixir: `PORT` and `POSTGRES_PORT`, see
-`.env.example`). Or Docker isn't running. The pull and the first build need
-internet (the build: Hex and npm).
+pick other ports: `PORT` and `POSTGRES_PORT`, see `.env.example`. Or Docker
+isn't running. The first `mix setup` needs internet (Hex and npm).
 
 ### In your own app
 

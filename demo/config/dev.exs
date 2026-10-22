@@ -22,10 +22,7 @@ config :demo, Demo.Repo,
 # to bundle .js and .css sources.
 config :demo, DemoWeb.Endpoint,
   # Binding to loopback ipv4 address prevents access from other machines.
-  # PHX_BIND=0.0.0.0 (used by the compose `app` service) allows it.
-  http: [
-    ip: if(System.get_env("PHX_BIND") == "0.0.0.0", do: {0, 0, 0, 0}, else: {127, 0, 0, 1})
-  ],
+  http: [ip: {127, 0, 0, 1}],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
