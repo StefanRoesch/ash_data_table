@@ -46,7 +46,10 @@ defmodule AshDataTable.Live.Core.Selection do
 
   # The host asks what is selected (`AshDataTable.selected_records/2`): the
   # answer is the records (`records/1`).
-  def step(:selected_records, table), do: {table, records(table)}
+  def step(:selected_records, table) do
+    {records, table} = records(table)
+    {table, records}
+  end
 
   @doc """
   Makes `selection` (`:all`, or `{:rows, rows}`) what is selected in
@@ -123,17 +126,21 @@ defmodule AshDataTable.Live.Core.Selection do
   table's read action with its arguments and what the page gives
   (`AshDataTable.selected_records/2`): those of the keys held, or with
   `all?` everything that matches, read in batches; scrubbed of sensitive
-  values. `{:error, message}` where the read fails.
+  values. `{:error, message}` where the read fails. `{records, table}`,
+  the table with the page's values called (`Core.values/1`).
   """
   def records(%Table{} = table) do
+    {opts, table} = Reading.read_opts(table)
+    {read(table.entry, opts), table}
+  end
+
+  defp read(entry, opts) do
     %{
       model: model,
       selection: %{selected: rows, all?: all?},
       state: state,
       nesting: %{parent_key: parent}
-    } = table.entry
-
-    opts = Reading.read_opts(table)
+    } = entry
 
     keys =
       if all?,
@@ -152,7 +159,11 @@ defmodule AshDataTable.Live.Core.Selection do
       {:error, error} -> {:error, failed(error, model)}
     end
   rescue
-    error -> {:error, failed(error, table.entry.model)}
+    # what Ash raises underneath a streamed read; anything else is a bug
+    error ->
+      if Ash.Error.ash_error?(error),
+        do: {:error, failed(error, entry.model)},
+        else: reraise(error, __STACKTRACE__)
   end
 
   defp failed(error, model) do

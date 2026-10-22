@@ -72,8 +72,10 @@ defmodule AshDataTable.Table do
   # `context` and `effects` are a step's (`AshDataTable.Live.Core.step/3`,
   # stage 9g), and empty between steps: what the step was given of the
   # socket (`Live.Core.context/1`: the page's assigns, LiveView's uploads,
-  # whether the page is connected, its endpoint), and the effects it gives
-  # back, gathered newest first (`Live.Core.effect/2`), which the adapter
+  # whether the page is connected, its endpoint, and the page's values the
+  # callback has called so far, by the table that asked, which the step
+  # adds to as more tables ask, `Live.Core.values/1`), and the effects it
+  # gives back, gathered newest first (`Live.Core.effect/2`), which the adapter
   # applies to the socket (`Live.Core.effects/2`). A step reads the one and
   # adds to the other as LiveView's own socket gathers the events it
   # pushes; neither is ever drawn, nor kept past the step.

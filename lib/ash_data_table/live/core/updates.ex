@@ -177,8 +177,9 @@ defmodule AshDataTable.Live.Core.Updates do
 
   defp refresh(table, keys) do
     %{model: model, nesting: %{parent_key: parent}} = table.entry
+    {opts, table} = Reading.read_opts(table)
 
-    case Query.rows(model, parent, keys, Reading.read_opts(table)) do
+    case Query.rows(model, parent, keys, opts) do
       {:ok, records} ->
         found = Map.new(records, &{Reading.primary_key(model, &1), &1})
 
@@ -234,8 +235,9 @@ defmodule AshDataTable.Live.Core.Updates do
 
   defp notice(table, keys) do
     %{model: model, state: state, nesting: %{parent_key: parent}} = table.entry
+    {opts, table} = Reading.read_opts(table)
 
-    if Query.any?(model, state, parent, keys, Reading.read_opts(table)),
+    if Query.any?(model, state, parent, keys, opts),
       do: table |> Table.put(notice?: true) |> Core.say({:text, :changed_records, []}),
       else: table
   end

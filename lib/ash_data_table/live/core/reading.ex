@@ -72,7 +72,7 @@ defmodule AshDataTable.Live.Core.Reading do
       arguments: %{parent_arguments: arguments}
     } = table.entry
 
-    opts = Core.reader(table)
+    {opts, table} = Core.reader(table)
 
     # what the page gives is in the read, and not in what decides whether to
     # read again: `AshDataTable.refresh/2` is how a page reads with new values
@@ -166,7 +166,7 @@ defmodule AshDataTable.Live.Core.Reading do
     %{model: model, state: state, nesting: %{parent_key: parent}, footer: %{summary_due: due}} =
       table.entry
 
-    opts = read_opts(table)
+    {opts, table} = read_opts(table)
     of = {model, %{state | sort: nil}, Keyword.delete(opts, :page_values), parent}
     table = Table.put(table, summary_due: nil)
 
@@ -205,12 +205,15 @@ defmodule AshDataTable.Live.Core.Reading do
   defp expected?(_reason), do: false
 
   # What a read of the table is given besides who is asking: for a nested
-  # table, how the row it belongs to is read.
+  # table, how the row it belongs to is read. `{opts, table}`, the table
+  # with the page's values called (`Core.values/1`).
   def read_opts(%Table{entry: entry} = table) do
-    [
-      parent_authorize?: entry.nesting.parent_authorize?,
-      parent_arguments: entry.arguments.parent_arguments
-    ] ++ Core.reader(table)
+    {reader, table} = Core.reader(table)
+
+    {[
+       parent_authorize?: entry.nesting.parent_authorize?,
+       parent_arguments: entry.arguments.parent_arguments
+     ] ++ reader, table}
   end
 
   # A read that came back, or went down, while the table waits for an
@@ -337,7 +340,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # answered as they are when the read itself is refused.
   defp unfilled(table, first_or_later) do
     %{model: model, arguments: %{missing: missing}} = table.entry
-    reader = Core.reader(table)
+    {reader, table} = Core.reader(table)
 
     table = Table.put(table, busy?: false, loading?: false)
 
@@ -636,7 +639,9 @@ defmodule AshDataTable.Live.Core.Reading do
 
     case rows do
       %{^key => %{pk: pk}} ->
-        case Query.rows(model, parent, [pk], read_opts(table)) do
+        {opts, table} = read_opts(table)
+
+        case Query.rows(model, parent, [pk], opts) do
           {:ok, [record]} -> put_row(table, key, record)
           {:ok, []} -> remove_row(table, key)
           {:error, _error} -> reread(table)

@@ -14,12 +14,12 @@ defmodule AshDataTable.Resource.Listening do
           | {:not_announced, Ash.Resource.t()}
 
   @doc "Whether the resource announces its changes: its `table` block says `live? true`."
-  @spec announces?(Ash.Resource.t() | Spark.Dsl.t()) :: boolean
+  @spec announces?(module) :: boolean
   def announces?(resource) do
-    Info.table_live?(resource)
-  rescue
-    # a module that is no resource of ours
-    _error -> false
+    # a module that is no resource of ours does not
+    Spark.Dsl.is?(resource, Ash.Resource) and
+      AshDataTable.Resource in Spark.extensions(resource) and
+      Info.table_live?(resource)
   end
 
   @doc """

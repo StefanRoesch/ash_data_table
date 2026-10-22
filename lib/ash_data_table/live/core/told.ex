@@ -94,7 +94,7 @@ defmodule AshDataTable.Live.Core.Told do
     # never see, and with the columns they can never edit read-only. Ash is
     # asked again on every update, which for a table with its state in the
     # URL is every sort, filter and page change; it costs no query.
-    reader = Core.reader(table)
+    {reader, table} = Core.reader(table)
 
     model =
       built

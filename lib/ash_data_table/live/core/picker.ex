@@ -64,7 +64,9 @@ defmodule AshDataTable.Live.Core.Picker do
     with %{editable?: true, kind: :reference, reference: reference} = column <-
            Operation.column(model, name),
          %{} = row <- rows[key] do
-      case Record.fetch(model, row.pk, Query.reader_opts(Core.reader(table))) do
+      {reader, table} = Core.reader(table)
+
+      case Record.fetch(model, row.pk, Query.reader_opts(reader)) do
         {:ok, record} ->
           case Map.get(record, reference.source_attribute) do
             # not theirs to see on this record, and so not theirs to change
@@ -262,7 +264,7 @@ defmodule AshDataTable.Live.Core.Picker do
     %{panel: panel, picker: picker} = table.entry.opens
     named = picked.row
     # what the picker's read action is given: what its argument line holds
-    arguments = picked_with(table, picker.reference, picked.arguments)
+    {arguments, table} = picked_with(table, picker.reference, picked.arguments)
 
     case picker.for do
       {:cell, key, name} ->
@@ -294,8 +296,9 @@ defmodule AshDataTable.Live.Core.Picker do
     %{model: model, rows: rows} = table.entry
     column = Enum.find(model.columns, &(&1.name == name))
     intent = {:refer, key, name, named, confirmed?, arguments}
+    {input, table} = Core.operation(table, intent)
 
-    case Operation.refer(Core.operation(table, intent)) do
+    case Operation.refer(input) do
       :refused ->
         {Table.put(table, picker: nil), %{ok: false}}
 
@@ -331,13 +334,15 @@ defmodule AshDataTable.Live.Core.Picker do
   # goes into the panel's form, as if it had been typed there, with what the
   # record is called beside it. Nothing runs.
   defp choose_input(table, panel, input, named, arguments) do
+    {chooser, table} = chooser(table)
+
     chosen =
       with false <- is_nil(named),
            {:ok, record} <-
              Pick.chosen(
                input.reference,
                named,
-               [arguments: arguments] ++ chooser(table)
+               [arguments: arguments] ++ chooser
              ),
            {:ok, entry} <- entry(input, record, table.caller.time_zone) do
         entry
@@ -383,7 +388,8 @@ defmodule AshDataTable.Live.Core.Picker do
       end)
 
     held = for key <- held, %{row: {_, _} = row} <- [known[key]], do: named(row)
-    opts = [arguments: arguments] ++ chooser(table)
+    {chooser, table} = chooser(table)
+    opts = [arguments: arguments] ++ chooser
 
     added =
       Enum.reduce_while(Enum.uniq_by(rows, &named/1), [], fn row, added ->
@@ -477,8 +483,13 @@ defmodule AshDataTable.Live.Core.Picker do
 
   # Who is asking, for what is read of a destination to choose from: the
   # reader, and what this table was told about authorization, which its
-  # picker's table is told too (`AshDataTable.Pick.reader/2`).
-  def chooser(%Table{} = table), do: picking(table) ++ Core.reader(table)
+  # picker's table is told too (`AshDataTable.Pick.reader/2`):
+  # `{chooser, table}`, the table with the page's values called
+  # (`Core.values/1`).
+  def chooser(%Table{} = table) do
+    {reader, table} = Core.reader(table)
+    {picking(table) ++ reader, table}
+  end
 
   def picking(table), do: [authorize_given: table.entry.told.authorize_given]
 
@@ -486,8 +497,10 @@ defmodule AshDataTable.Live.Core.Picker do
   # says its argument line holds: the line's form, as a form sends it. It
   # comes from the browser, and is taken as the form's event is: by the
   # arguments the picker's table has for this person, and as Ash takes it.
+  # `{arguments, table}`.
   defp picked_with(table, reference, sent) when is_binary(sent) do
-    reader = Pick.reader(reference, chooser(table))
+    {chooser, table} = chooser(table)
+    reader = Pick.reader(reference, chooser)
 
     model =
       reference.destination
@@ -505,10 +518,10 @@ defmodule AshDataTable.Live.Core.Picker do
     {_state, model, _missing, _refused} =
       Reading.settle(model, State.argue(%State{}, model, form), reader)
 
-    model.read_arguments
+    {model.read_arguments, table}
   end
 
-  defp picked_with(_table, _reference, _sent), do: %{}
+  defp picked_with(table, _reference, _sent), do: {%{}, table}
 
   defp decoded(sent) do
     Plug.Conn.Query.decode(sent)

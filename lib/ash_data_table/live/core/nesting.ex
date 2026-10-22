@@ -40,14 +40,9 @@ defmodule AshDataTable.Live.Core.Nesting do
   def relate(%Table{options: %{url: url}, entry: %{id: id, resource: resource}} = table)
       when is_binary(url) do
     params = url |> Url.query_params() |> Map.get(id)
+    {reader, table} = Core.reader(table)
 
-    case Related.from_params(
-           resource,
-           table.entry.table,
-           params,
-           Core.reader(table),
-           table.context.endpoint
-         ) do
+    case Related.from_params(resource, table.entry.table, params, reader, table.context.endpoint) do
       nil ->
         Table.put(table, via: nil, parent_key: nil, related: nil, related_title: nil)
 

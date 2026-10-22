@@ -8,6 +8,8 @@ defmodule AshDataTable.Live.Hooks do
   #
   #   * `current`: the name of the table the callback works on, nil between
   #     callbacks (the assign `AshDataTable.Live.Core` steps over);
+  #   * `values`: during a callback only, the page's values its steps have
+  #     called, by the table that asked (`AshDataTable.Live.Core.values/1`);
   #   * `tables`: the attached tables, by the name of their assign, each
   #     with what it was told (`given`, as the tag's attributes are given)
   #     and whether its state is in the URL (`url?`);

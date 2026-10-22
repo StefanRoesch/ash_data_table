@@ -80,7 +80,9 @@ defmodule AshDataTable.Resource.Exposing do
       })
     end
   rescue
-    _needs_more -> nil
+    # what an expression raises that reads an argument it is not given;
+    # anything else is a bug of the calculation and goes on
+    _needs_more in [KeyError, MatchError, FunctionClauseError] -> nil
   end
 
   def expression(_calculation), do: nil

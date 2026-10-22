@@ -88,7 +88,7 @@ defmodule AshDataTable.Live.Core.Url do
   # one of the filters.
   defp reargue(table, chosen) do
     %{model: model, state: state} = table.entry
-    reader = Core.reader(table)
+    {reader, table} = Core.reader(table)
 
     {next, model, missing, refused} =
       case Reading.settle(model, chosen, reader) do

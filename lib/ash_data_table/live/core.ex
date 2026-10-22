@@ -16,8 +16,10 @@ defmodule AshDataTable.Live.Core do
   # reply}`: the table holds the step's context (`table.context`) and
   # gathers its effects (`effect/2`), as LiveView's socket gathers the
   # events it pushes. Besides: who is asking (`reader/1`), what a write is
-  # given (`operation/3`), the live region (`say/2`), what the host is told
-  # (`notify/3`).
+  # given (`operation/3`), each with the page's values (`values/1`), called
+  # once per callback and table and kept in the step's context, so each
+  # returns the table with them; the live region (`say/2`), what the host
+  # is told (`notify/3`).
   #
   # The adapter, on the socket: the callbacks of the tag's component and
   # the hooks of an attached table, each the step of what came (`mount/1`,
@@ -90,9 +92,6 @@ defmodule AshDataTable.Live.Core do
   alias AshDataTable.Query
   alias AshDataTable.Table
 
-  # the page's values of the callback that runs, by the table that asks (`callback/2`)
-  @values {__MODULE__, :page_values}
-
   # ---- the adapter: the socket ------------------------------------------
 
   def mount(socket) do
@@ -162,49 +161,49 @@ defmodule AshDataTable.Live.Core do
 
   # One callback of the LiveView: the step of what came, then `:tidy`, each
   # step's table put and its effects applied. The page's values are called
-  # once in it for each table that asks (`values/1`), and forgotten when it
-  # ends, also when it raises. A callback inside another (a command a hook
-  # of the page gives while the table's own runs) shares the outer one's.
+  # once in it for each table that asks (`values/1`): what the steps called
+  # is kept in the socket's private data (`values`) from one step to the
+  # next, the step of a panel's files consumed inside an effect too
+  # (`consume/6`), and dropped when the callback ends. A callback inside
+  # another shares the outer one's.
   defp callback(socket, intent, tidy? \\ true) do
-    once(fn ->
-      {socket, reply} = stepped(socket, intent)
-      socket = if tidy?, do: socket |> stepped(:tidy) |> elem(0), else: socket
-      {socket, reply}
-    end)
+    outer? = Map.has_key?(socket.private.ash_data_table, :values)
+    socket = if outer?, do: socket, else: remember(socket, %{})
+    {socket, reply} = stepped(socket, intent)
+    socket = if tidy?, do: socket |> stepped(:tidy) |> elem(0), else: socket
+    socket = if outer?, do: socket, else: forget(socket)
+    {socket, reply}
   end
 
-  defp once(fun) do
-    case Process.get(@values) do
-      nil ->
-        Process.put(@values, %{})
-
-        try do
-          fun.()
-        after
-          Process.delete(@values)
-        end
-
-      %{} ->
-        fun.()
-    end
-  end
-
-  # The step of `intent` over the socket's table, its table put back and
-  # its effects applied: `{socket, reply}`.
+  # The step of `intent` over the socket's table, its table put back, the
+  # page's values it called kept and its effects applied: `{socket, reply}`.
   defp stepped(socket, intent) do
-    {table, effects, reply} = step(table(socket), intent, context(socket))
-    {socket |> put(table) |> effects(effects), reply}
+    {table, effects, reply, values} = stepped(table(socket), intent, context(socket))
+    {socket |> put(table) |> remember(values) |> effects(effects), reply}
   end
+
+  defp remember(socket, values),
+    do:
+      put_private(
+        socket,
+        :ash_data_table,
+        Map.put(socket.private.ash_data_table, :values, values)
+      )
+
+  defp forget(socket),
+    do: put_private(socket, :ash_data_table, Map.delete(socket.private.ash_data_table, :values))
 
   # What a step is given of the socket: its assigns (the page's, for a
   # table attached to a LiveView, `page_assigns/1`), the uploads LiveView
-  # knows (`%{}` for none), whether the page is connected, and its endpoint.
+  # knows (`%{}` for none), whether the page is connected, its endpoint,
+  # and the page's values the callback has called so far (`values/1`).
   defp context(socket) do
     %{
       assigns: socket.assigns,
       uploads: socket.assigns[:uploads] || %{},
       connected?: connected?(socket),
-      endpoint: socket.endpoint
+      endpoint: socket.endpoint,
+      values: Map.get(socket.private.ash_data_table, :values, %{})
     }
   end
 
@@ -330,8 +329,18 @@ defmodule AshDataTable.Live.Core do
   the page's functions, nothing else.
   """
   def step(%Table{} = table, intent, context) do
+    {table, effects, reply, _values} = stepped(table, intent, context)
+    {table, effects, reply}
+  end
+
+  # `step/3`, and the page's values as the step leaves them (`values/1`),
+  # which the adapter gives the next step of the callback.
+  defp stepped(%Table{} = table, intent, context) do
+    context = Map.put_new(context, :values, %{})
     {table, reply} = run(intent, %{table | context: context, effects: []})
-    {%{table | context: nil, effects: []}, Enum.reverse(table.effects), reply}
+
+    {%{table | context: nil, effects: []}, Enum.reverse(table.effects), reply,
+     table.context.values}
   end
 
   @doc """
@@ -563,7 +572,8 @@ defmodule AshDataTable.Live.Core do
       )
 
   # Who is reading and saving, with what the page gives every call to Ash
-  # for the table (`values/1`).
+  # for the table (`values/1`): `{reader, table}`, the table with the
+  # values the step has called.
   #
   # A table that follows live updates also says which listener is its own
   # (`origin`): what it changes itself is not announced to it, as it shows
@@ -578,7 +588,8 @@ defmodule AshDataTable.Live.Core do
         _not_listening -> reader
       end
 
-    reader ++ [page_values: values(table)]
+    {values, table} = values(table)
+    {reader ++ [page_values: values], table}
   end
 
   # What a default of an asked argument and a function of the page are
@@ -598,22 +609,21 @@ defmodule AshDataTable.Live.Core do
   # LiveView's process, before any read or write starts; a change of what
   # they return reads nothing again by itself.
   #
-  # Each function is called once per callback and table (`callback/2`): the
-  # reads and the write of one event are given the same values.
-  def values(%Table{entry: entry} = table) do
+  # Each function is called once per callback and table that asks
+  # (`callback/3`), when it first asks: the reads and the write of one
+  # event are given the same values. What a step has called is in its
+  # context (`values`, by the table that asked): `{values, table}`, the
+  # table with them.
+  def values(%Table{entry: entry, context: %{values: known} = context} = table) do
     ref = %{table: entry.id, path: entry.path, resource: entry.resource}
 
-    case Process.get(@values) do
+    case known do
       %{^ref => values} ->
-        values
+        {values, table}
 
-      %{} = known ->
+      %{} ->
         values = values(table, page_assigns(table), ref)
-        Process.put(@values, Map.put(known, ref, values))
-        values
-
-      nil ->
-        values(table, page_assigns(table), ref)
+        {values, %{table | context: %{context | values: Map.put(known, ref, values)}}}
     end
   end
 
@@ -686,9 +696,11 @@ defmodule AshDataTable.Live.Core do
 
   # What a write is given (`AshDataTable.Operation.Input`): the intent, the
   # table as it is now, and the page's veto and values, made now of the
-  # step's context.
+  # step's context. `{input, table}`, the table with the values called.
   def operation(%Table{} = table, intent, more \\ []) do
     entry = table.entry
+    {reader, table} = reader(table)
+    {values, table} = values(table)
 
     parent =
       if entry.nesting.parent_key,
@@ -698,25 +710,28 @@ defmodule AshDataTable.Live.Core do
           arguments: entry.arguments.parent_arguments
         }
 
-    struct!(
-      %Operation.Input{
-        intent: intent,
-        model: entry.model,
-        state: entry.state,
-        parent: parent,
-        opts: reader(table),
-        veto: veto(table),
-        page_values: values(table),
-        picking: Picker.picking(table),
-        rows: entry.rows,
-        selection: if(entry.selection.all?, do: :all, else: {:rows, entry.selection.selected}),
-        read?: match?(%Query.Page{}, entry.reading.page),
-        offered: %{
-          table: entry.offered,
-          bulk: if(entry.selection.running, do: [], else: entry.selection.bulk)
-        }
-      },
-      more
-    )
+    input =
+      struct!(
+        %Operation.Input{
+          intent: intent,
+          model: entry.model,
+          state: entry.state,
+          parent: parent,
+          opts: reader,
+          veto: veto(table),
+          page_values: values,
+          picking: Picker.picking(table),
+          rows: entry.rows,
+          selection: if(entry.selection.all?, do: :all, else: {:rows, entry.selection.selected}),
+          read?: match?(%Query.Page{}, entry.reading.page),
+          offered: %{
+            table: entry.offered,
+            bulk: if(entry.selection.running, do: [], else: entry.selection.bulk)
+          }
+        },
+        more
+      )
+
+    {input, table}
   end
 end

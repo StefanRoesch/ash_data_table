@@ -144,8 +144,9 @@ defmodule AshDataTable.Live.Core.Panel do
   # comes (`table_run`). Any other runs now.
   def step({:table_act, name}, table) do
     %{id: id} = table.entry
+    {input, table} = Core.operation(table, {:table_act, name})
 
-    case Operation.table_action(Core.operation(table, {:table_act, name}), name) do
+    case Operation.table_action(input, name) do
       %Model.Action{panel?: true} = action ->
         {:ok, table} = open(table, :table, %{action: action})
         {table, nil}
@@ -175,7 +176,9 @@ defmodule AshDataTable.Live.Core.Panel do
   # action with Confirm: the action runs. Whether it has a panel is the
   # table's to say, not the event's.
   def step({:table_run, name}, table) do
-    case Operation.table_action(Core.operation(table, {:table_run, name}), name) do
+    {input, table} = Core.operation(table, {:table_run, name})
+
+    case Operation.table_action(input, name) do
       %Model.Action{panel?: false} = action -> {run_table(table, {:table_run, name}, action), nil}
       _none_or_with_inputs -> {table, nil}
     end
@@ -222,8 +225,9 @@ defmodule AshDataTable.Live.Core.Panel do
   # row it belongs to, which is read first, as the person.
   def step(:create, table) when is_map(table.entry.model.create) do
     action = table.entry.model.create
+    {input, table} = Core.operation(table, :create)
 
-    case Operation.link(Core.operation(table, :create), action) do
+    case Operation.link(input, action) do
       {:ok, given} ->
         {:ok, table} = open(table, :create, %{action: action}, given: given)
         {table, nil}
@@ -242,15 +246,19 @@ defmodule AshDataTable.Live.Core.Panel do
   person asking, and puts it into the entry, with an upload for each of its
   fields that take a file (`Files.allowed/2`). `more` are options of
   `Panel.open/4` besides those the table knows. `{:ok, table}`; else what
-  `Panel.open/4` says, the table as it was.
+  `Panel.open/4` says, with the table as it was: `{:refused, table}`,
+  `{:error, message, table}`.
   """
   def open(%Table{caller: caller, entry: entry} = table, kind, for, more \\ []) do
+    {reader, table} = Core.reader(table)
+    {chooser, table} = Picker.chooser(table)
+
     opts =
       [
         id: entry.id,
         time_zone: caller.time_zone,
-        reader: Core.reader(table),
-        chooser: Picker.chooser(table),
+        reader: reader,
+        chooser: chooser,
         named: &Reading.title_of(entry.model, &1),
         entry: &Picker.entry(&1, &2, caller.time_zone),
         once: &Text.once/1
@@ -258,7 +266,8 @@ defmodule AshDataTable.Live.Core.Panel do
 
     case Panel.open(kind, for, entry.model, opts) do
       {:ok, panel} -> {:ok, table |> Files.allowed(panel) |> put(panel)}
-      not_opened -> not_opened
+      :refused -> {:refused, table}
+      {:error, message} -> {:error, message, table}
     end
   end
 
@@ -305,8 +314,10 @@ defmodule AshDataTable.Live.Core.Panel do
     end
   end
 
-  defp run_act(table, key, name, action),
-    do: ran(Operation.run(Core.operation(table, {:act, key, name})), table, key, action)
+  defp run_act(table, key, name, action) do
+    {input, table} = Core.operation(table, {:act, key, name})
+    ran(Operation.run(input), table, key, action)
+  end
 
   # A row action with inputs opens the action panel: the record is read
   # again, as the person (`Panel.open/4`). Nothing runs yet. A row action
@@ -316,7 +327,7 @@ defmodule AshDataTable.Live.Core.Panel do
       {:ok, table} ->
         {table, %{ok: true, panel: true}}
 
-      {:error, message} ->
+      {:error, message, table} ->
         ran({:error, %Operation.Failure{message: message}}, table, key, action)
     end
   end
@@ -356,7 +367,8 @@ defmodule AshDataTable.Live.Core.Panel do
   # give, else inside LiveView's consume of them, as the second intent.
   # Refused or halted, nothing was given.
   defp submit(table, panel, typed) do
-    input = Core.operation(table, Panel.submission(panel, typed), with_files: &{:files, &1})
+    {input, table} =
+      Core.operation(table, Panel.submission(panel, typed), with_files: &{:files, &1})
 
     case Operation.submit(input) do
       {:files, write} ->
@@ -397,8 +409,8 @@ defmodule AshDataTable.Live.Core.Panel do
     do: table |> Reading.put_row(key, saved.record) |> Core.notify(saved.event)
 
   defp closed(table, {:done, action, done}) do
-    action =
-      Operation.table_action(Core.operation(table, nil), Atom.to_string(action.name)) || action
+    {input, table} = Core.operation(table, nil)
+    action = Operation.table_action(input, Atom.to_string(action.name)) || action
 
     table |> done(action, done) |> Core.notify(done.event)
   end
@@ -560,7 +572,9 @@ defmodule AshDataTable.Live.Core.Panel do
   # it is said above the grid, where the outcome of an action on the
   # selected rows is said: there is no row to say it on.
   defp run_table(table, intent, action) do
-    case Operation.run(Core.operation(table, intent)) do
+    {input, table} = Core.operation(table, intent)
+
+    case Operation.run(input) do
       {:ok, %Operation.Outcome{} = outcome} ->
         table |> done(action, outcome) |> Core.notify(outcome.event)
 

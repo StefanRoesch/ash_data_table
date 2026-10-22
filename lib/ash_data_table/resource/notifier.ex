@@ -90,9 +90,7 @@ defmodule AshDataTable.Resource.Notifier do
   end
 
   defp text(tenant) do
-    to_string(tenant)
-  rescue
-    Protocol.UndefinedError -> inspect(tenant)
+    if String.Chars.impl_for(tenant), do: to_string(tenant), else: inspect(tenant)
   end
 
   # The tenant a record belongs to. Under attribute multitenancy it is read

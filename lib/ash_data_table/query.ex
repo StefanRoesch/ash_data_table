@@ -36,6 +36,7 @@ defmodule AshDataTable.Query do
   # and filtering by a column stay in the statement.
 
   require Ash.Query
+  require Logger
 
   alias AshDataTable.Errors
   alias AshDataTable.Model
@@ -331,7 +332,7 @@ defmodule AshDataTable.Query do
       load(records, model, [action: model.read_action] ++ opts)
     end
   rescue
-    error -> {:error, error}
+    error -> raised(error, __STACKTRACE__)
   end
 
   @doc """
@@ -369,7 +370,19 @@ defmodule AshDataTable.Query do
         )
     end
   rescue
-    _error -> false
+    error ->
+      unless Ash.Error.ash_error?(error), do: reraise(error, __STACKTRACE__)
+
+      # a person who may not read says no without a word; anything else is
+      # for whoever runs the application
+      unless is_struct(error, Ash.Error.Forbidden) do
+        Logger.warning(
+          "ash_data_table: asking whether #{inspect(model.resource)} has new records failed: " <>
+            Exception.message(error)
+        )
+      end
+
+      false
   end
 
   @doc """
@@ -441,7 +454,13 @@ defmodule AshDataTable.Query do
       {:error, error} -> {:error, error}
     end
   rescue
-    error -> {:error, error}
+    error -> raised(error, __STACKTRACE__)
+  end
+
+  # What Ash raises underneath a streamed read (`Ash.stream!/2`) is the
+  # read's error, returned. Anything else is a bug and is raised again.
+  defp raised(error, stacktrace) do
+    if Ash.Error.ash_error?(error), do: {:error, error}, else: reraise(error, stacktrace)
   end
 
   # What a summary of no records is.

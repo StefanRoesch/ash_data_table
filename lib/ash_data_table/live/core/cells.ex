@@ -24,8 +24,9 @@ defmodule AshDataTable.Live.Core.Cells do
   # see the field may ask (`sensitive?` is no access rule).
   def step({:reveal, _key, name} = intent, table) do
     %{model: model} = table.entry
+    {input, table} = Core.operation(table, intent)
 
-    case Operation.reveal(Core.operation(table, intent)) do
+    case Operation.reveal(input) do
       {:ok, value} ->
         text = Format.format(Operation.column(model, name), value, model.time_zone)
         {table, %{ok: true, value: text}}
@@ -73,10 +74,10 @@ defmodule AshDataTable.Live.Core.Cells do
           {table, %{ok: true}}
 
         # not theirs to see on this record, and so not theirs to change
-        :refused ->
+        {:refused, table} ->
           {table, %{ok: false}}
 
-        {:error, message} ->
+        {:error, message, table} ->
           {Core.say(table, {:text, :not_saved, column: column.label, message: message}),
            %{ok: false, error: Text.say(message)}}
       end
@@ -140,7 +141,9 @@ defmodule AshDataTable.Live.Core.Cells do
   # The save of a cell, or "Clear", through `AshDataTable.Operation`: what
   # the hook sends, or Confirm runs after a question the host asked.
   defp write({:save, key, name, typed} = intent, table) do
-    case Operation.save(Core.operation(table, intent)) do
+    {input, table} = Core.operation(table, intent)
+
+    case Operation.save(input) do
       # not a cell this table lets anyone edit: nothing a person can send
       # through the table, so nothing is shown for it either
       :refused -> {table, %{ok: false}}
@@ -149,7 +152,9 @@ defmodule AshDataTable.Live.Core.Cells do
   end
 
   defp write({:clear, key, name} = intent, table) do
-    case Operation.clear(Core.operation(table, intent)) do
+    {input, table} = Core.operation(table, intent)
+
+    case Operation.clear(input) do
       :refused -> {table, %{ok: false}}
       result -> saved(result, table, key, Operation.column(table.entry.model, name), "")
     end

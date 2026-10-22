@@ -196,16 +196,27 @@ defmodule AshDataTable.Test do
     check? = Keyword.get(opts, :check, true)
 
     seen = fn view ->
-      element =
-        if check?,
-          do: Phoenix.LiveViewTest.form(view, selector, values),
-          else: Phoenix.LiveViewTest.element(view, selector)
+      case {kind, check?} do
+        {:change, true} ->
+          view
+          |> Phoenix.LiveViewTest.form(selector, values)
+          |> Phoenix.LiveViewTest.render_change()
 
-      args = if check?, do: [element], else: [element, values]
+        {:change, false} ->
+          view
+          |> Phoenix.LiveViewTest.element(selector)
+          |> Phoenix.LiveViewTest.render_change(values)
 
-      if kind == :change,
-        do: apply(Phoenix.LiveViewTest, :render_change, args),
-        else: apply(Phoenix.LiveViewTest, :render_submit, args)
+        {:submit, true} ->
+          view
+          |> Phoenix.LiveViewTest.form(selector, values)
+          |> Phoenix.LiveViewTest.render_submit()
+
+        {:submit, false} ->
+          view
+          |> Phoenix.LiveViewTest.element(selector)
+          |> Phoenix.LiveViewTest.render_submit(values)
+      end
     end
 
     reached(view, selector, seen, fn _cid ->
@@ -225,25 +236,27 @@ defmodule AshDataTable.Test do
   # Runs `seen` where LiveViewTest sees the element `selector` finds; where
   # only a person does, in a portal's content, `portal` with the component
   # it is for, nil for a table attached to the LiveView (no `phx-target`).
-  # Where neither does, what `element/2` says of it is raised.
+  # Where neither does, `seen` raises what `element/2` says of it.
   defp reached(view, selector, seen, portal) do
-    seen.(view)
-  rescue
-    error in ArgumentError ->
-      with true <- error.message =~ "but got none",
-           [element] <-
-             view
-             |> Phoenix.LiveViewTest.render()
-             |> page()
-             |> LazyHTML.query(selector)
-             |> Enum.take(1) do
+    portaled =
+      if not Phoenix.LiveViewTest.has_element?(view, selector) do
+        view
+        |> Phoenix.LiveViewTest.render()
+        |> page()
+        |> LazyHTML.query(selector)
+        |> Enum.take(1)
+      end
+
+    case portaled do
+      [element] ->
         case LazyHTML.attribute(element, "phx-target") do
           [cid] -> portal.(String.to_integer(cid))
           [] -> portal.(nil)
         end
-      else
-        _ -> reraise error, __STACKTRACE__
-      end
+
+      _seen_or_nowhere ->
+        seen.(view)
+    end
   end
 
   @doc """

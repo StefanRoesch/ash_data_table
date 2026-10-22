@@ -96,7 +96,9 @@ defmodule AshDataTable.Model.Access do
         try do
           Ash.can({resource, action}, actor, opts)
         rescue
-          _unanswerable -> :error
+          # Ash raises a plain `RuntimeError` for a filter or runtime check
+          # on a generic action (see above); everything else goes on.
+          RuntimeError -> :error
         end
 
       _action_on_records ->

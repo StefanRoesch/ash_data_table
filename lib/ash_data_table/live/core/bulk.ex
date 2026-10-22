@@ -149,7 +149,9 @@ defmodule AshDataTable.Live.Core.Bulk do
   # its own, as a table action does: without one, and without a panel, it
   # runs at once on what is selected now.
   def step({:bulk, name} = intent, table) do
-    case Operation.bulk_action(Core.operation(table, intent), name) do
+    {input, table} = Core.operation(table, intent)
+
+    case Operation.bulk_action(input, name) do
       {:ok, action, selection} ->
         question = question(action, selected(selection, table.entry))
         token = Selection.token(table.entry.selection)
@@ -184,7 +186,7 @@ defmodule AshDataTable.Live.Core.Bulk do
   # (as it may while a host asks it, in controlled mode). Then nothing runs,
   # and the person is told why.
   def step({:bulk_run, name, token}, table) do
-    input = Core.operation(table, {:bulk_run, name})
+    {input, table} = Core.operation(table, {:bulk_run, name})
 
     with {:ok, action, _selection} <- Operation.bulk_action(input, name),
          :named <- named(table, token),
