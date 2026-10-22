@@ -11,6 +11,8 @@ defmodule Demo.Tracker.Label do
 
   require Ash.Query
 
+  alias Demo.Tracker.Bulk
+
   postgres do
     table "labels"
     repo Demo.Repo
@@ -149,14 +151,10 @@ defmodule Demo.Tracker.Label do
       end
 
       run fn input, context ->
-        opts = Ash.Context.to_opts(context)
-
-        labels =
+        %Ash.BulkResult{records: labels} =
           __MODULE__
           |> Ash.Query.filter(colour == ^input.arguments.from)
-          |> Ash.read!(opts)
-
-        Enum.each(labels, &Ash.update!(&1, %{colour: input.arguments.to}, opts))
+          |> Ash.bulk_update!(:update, %{colour: input.arguments.to}, Bulk.changing(context))
 
         {:ok, length(labels)}
       end
@@ -168,12 +166,9 @@ defmodule Demo.Tracker.Label do
       transaction? true
 
       run fn _input, context ->
-        opts = Ash.Context.to_opts(context)
-
         __MODULE__
         |> Ash.Query.filter(task_count == 0)
-        |> Ash.read!(opts)
-        |> Enum.each(&Ash.destroy!(&1, opts))
+        |> Ash.bulk_destroy!(:destroy, %{}, Bulk.changing(context))
 
         :ok
       end
@@ -240,9 +235,10 @@ defmodule Demo.Tracker.Label do
           |> Enum.map(& &1.id)
           |> Enum.uniq()
           |> Enum.reject(&MapSet.member?(has, &1))
-          |> Enum.each(&Ash.create!(Demo.Tracker.TaskLabel, %{task_id: &1, label_id: into}, opts))
+          |> Enum.map(&%{task_id: &1, label_id: into})
+          |> Ash.bulk_create!(Demo.Tracker.TaskLabel, :create, Bulk.creating(context))
 
-          Enum.each(others, &Ash.destroy!(&1, opts))
+          Ash.bulk_destroy!(others, :destroy, %{}, Bulk.changing(context))
 
           {:ok, length(others)}
         end

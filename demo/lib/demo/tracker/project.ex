@@ -130,19 +130,20 @@ defmodule Demo.Tracker.Project do
       argument :assignee, :uuid, allow_nil?: false
 
       run fn input, context ->
-        opts = Ash.Context.to_opts(context)
         %{project_id: project_id, assignee: assignee} = input.arguments
 
-        tasks =
+        %Ash.BulkResult{records: tasks} =
           Demo.Tracker.Task
-          |> Ash.Query.for_read(:unpaginated, %{}, opts)
+          |> Ash.Query.for_read(:unpaginated, %{}, Ash.Context.to_opts(context))
           |> Ash.Query.filter(
             project_id == ^project_id and is_nil(assignee_id) and
               status in ^Demo.Tracker.TaskStatus.open()
           )
-          |> Ash.read!(opts)
-
-        Enum.each(tasks, &Ash.update!(&1, %{assignee_id: assignee}, opts))
+          |> Ash.bulk_update!(
+            :update,
+            %{assignee_id: assignee},
+            Demo.Tracker.Bulk.changing(context)
+          )
 
         {:ok, length(tasks)}
       end
