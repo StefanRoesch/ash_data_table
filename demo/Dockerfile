@@ -29,7 +29,9 @@ WORKDIR /workspace/demo
 RUN mix deps.get && mix deps.compile --skip-local-deps
 
 COPY demo/assets/package.json demo/assets/package-lock.json assets/
-RUN cd assets && npm install --no-audit --no-fund
+# --install-links=false: Debian's npm 9 would copy the library (only its
+# package.json is here yet); a symlink is filled by `COPY . .` below.
+RUN cd assets && npm install --no-audit --no-fund --install-links=false
 
 # The source. .dockerignore keeps _build, deps and node_modules out of the
 # context, so the layers above stay.
