@@ -821,6 +821,9 @@ test.describe("in a nested table: the tasks under a project", () => {
     await list.getByRole("button", { name: "Add value" }).focus()
     await page.keyboard.press("Enter")
     await page.keyboard.type("under-a-project")
+    // leaving the value sends it at once, without waiting for typing to pause
+    // (`phx-debounce`), so that all of it is answered before Save
+    await page.keyboard.press("Tab")
     await nested.panelSettled()
     await pushed.clear()
     await save(nested)

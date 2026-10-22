@@ -34,7 +34,7 @@ function box(within: Locator, name: string): Locator {
 
 /**
  * Holds back what the server sends while "Hafen AG" is typed into the
- * client's Name (`typeHafenAg`), and once focus is on Email lets through
+ * client's Name (`typeHafenAg`), with a pause after "Ha" that sends it, and once focus is on Email lets through
  * what it sent up to its answer to the change that sent "Ha", and waits
  * until the page has taken that answer in. `releaseAll` lets the rest
  * through and holds nothing more.
@@ -77,7 +77,11 @@ async function lateAnswerToHa(page: Page) {
       await expect(box(client, "Name")).toBeFocused()
       holding = true
       await page.keyboard.press("ControlOrMeta+a")
-      await page.keyboard.type("Hafen AG")
+      // The form sends a change once typing pauses (`phx-debounce`): "Ha",
+      // then the rest, which leaving the field sends at once.
+      await page.keyboard.type("Ha")
+      await expect.poll(() => ha).not.toBeNull()
+      await page.keyboard.type("fen AG")
       await page.keyboard.press("Tab")
       await expect(box(client, "Email")).toBeFocused()
 
