@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Records the three GIFs of the README (docs/images/*.gif) and its screenshot
+# Records the GIFs of the README (docs/images/*.gif) and its screenshot
 # (docs/images/tasks.png) against a demo of its own, then stops it.
 #
 #   scripts/record-gifs.sh
@@ -59,15 +59,23 @@ curl -fsS -o /dev/null "http://127.0.0.1:$PORT/tasks" || {
 }
 
 echo "Recording"
+# a clip that fails leaves the others: they are converted, and the run fails at the end
+status=0
 (cd "$ROOT/demo/e2e" && GIFS_URL="http://127.0.0.1:$PORT" VIDEOS_DIR="$WORK/videos" SHOT="$OUT/tasks.png" \
-  node readme-gifs.mjs)
+  node readme-gifs.mjs) || status=$?
+
+# GIFS_KEEP_VIDEOS=dir keeps the videos, to try other ffmpeg settings on them
+[ -n "${GIFS_KEEP_VIDEOS:-}" ] && mkdir -p "$GIFS_KEEP_VIDEOS" && cp "$WORK"/videos/*.webm "$GIFS_KEEP_VIDEOS"/
 
 echo "Converting"
 for video in "$WORK"/videos/*.webm; do
   name="$(basename "$video" .webm)"
-  # through stdin and stdout: Docker Desktop mounts no temporary directory
+  # through stdin and stdout: Docker Desktop mounts no temporary directory.
+  # hqdn3d smooths the video's flicker over time, so that what stands still
+  # stays the same in the GIF: about half the size.
   docker run --rm -i "$FFMPEG_IMAGE" -loglevel error -f webm -i pipe:0 \
-    -vf "fps=8,scale=800:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle" \
+    -vf "fps=6,scale=800:-1:flags=lanczos,hqdn3d=0:0:20:20,split[a][b];[a]palettegen=max_colors=48:stats_mode=diff[p];[b][p]paletteuse=dither=none:diff_mode=rectangle" \
     -f gif pipe:1 <"$video" >"$OUT/$name.gif"
   ls -l "$OUT/$name.gif"
 done
+exit "$status"

@@ -83,27 +83,51 @@ The demo is a small issue tracker: projects, tasks, comments, labels, people.
 
 3. Double-click a task's **Project** or **Assignee** cell: you choose another
    record from that resource's own table.
+
 4. Use a **row action** in the last column, or **New task**: actions with
    inputs ask for them in a side panel.
-5. **Switch persons** under "Acting as": Max Member, Vera Viewer, Olga
+
+   ![Reassign on a task: the side panel asks for a reason, then runs the action](docs/images/action-panel.gif)
+
+5. **Ash's validations show where you edit.** Set a task's **State** to Done
+   while its progress is under 100: the validation's message, "must be 100
+   when the task is done", shows at the cell. Escape takes the change back.
+
+   ![Setting a task to Done with a progress of 5: the error at the cell, then Escape](docs/images/validation.gif)
+
+6. **Switch persons** under "Acting as": Max Member, Vera Viewer, Olga
    Outsider (another organization) or Nobody. Columns, buttons and editable
    cells change with the resource's policies.
 
    ![On /tasks/board, switching from Ada Admin to Vera Viewer: the Assignee column and the Archive buttons go](docs/images/acting-as.gif)
 
-6. **`/named`:** two tables of the comments in one window, the default and
+7. **`/named`:** two tables of the comments in one window, the default and
    the compact one. Change a comment's text in the first: the row changes in
    the second (**live updates**). It works across windows and persons too.
-7. Switch the language to **Deutsch**.
-8. Put the mouse away and use only **Tab**, Enter, Space and Escape.
-9. **`/specimens`:** one attribute of every Ash type, with nothing declared
-   but the update action.
-10. **`/react/tasks`:** the same table drawn with React and shadcn, to show
+
+   ![On /named, a comment changed in the first table changes in the second](docs/images/live-updates.gif)
+
+8. On `/tasks`, tick some rows and choose **More → Export CSV**: the
+   selection is exported as CSV, through the `ash_csv_interchange`
+   extension, and the browser saves the file.
+
+   ![Three tasks selected and exported, and the CSV file that was saved](docs/images/export-csv.gif)
+
+9. Switch the language to **Deutsch**.
+10. Put the mouse away and use only **Tab**, Enter, Space and Escape.
+11. **`/specimens`:** one attribute of every Ash type, with nothing declared
+    but the update action.
+12. **`/react/tasks`:** the same table drawn with React and shadcn, to show
     the drawing can be swapped. A link above each table switches between
     the two.
-11. **`/tasks/planner`:** the sprint planner. Tick tasks in the table; the
+
+    ![On /react/tasks, a title edited and a row opened into its comments, then the link to the HEEx table](docs/images/react-kit.gif)
+
+13. **`/tasks/planner`:** the sprint planner. Tick tasks in the table; the
     cards above follow. The page and the table talk through events and
     commands.
+
+    ![On /tasks/planner, ticked tasks and a changed estimate fill the cards above the table](docs/images/planner.gif)
 
 More pages and what each shows:
 [demo/README.md](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/README.md).
