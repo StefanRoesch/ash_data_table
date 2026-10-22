@@ -561,9 +561,10 @@ defmodule AshDataTable.Kit.Projection do
       :required?,
       :described,
       :limits,
-      :values
+      :values,
+      :typing
     ],
-    list: [:element, :item, :limits, :name, :template, :rows, :texts, :messages],
+    list: [:element, :item, :limits, :typing, :name, :template, :rows, :texts, :messages],
     header_cell: [:element, :label, :button, :mark, :resizer, :texts, :messages],
     resizer: [:element],
     filter_cell: [:element, :filter],
