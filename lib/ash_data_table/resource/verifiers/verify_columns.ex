@@ -83,9 +83,8 @@ defmodule AshDataTable.Resource.Verifiers.VerifyColumns do
   # related record's label. The destination is looked at, which a verifier
   # may do (see `VerifyRelationships`).
   #
-  # A table neither sorts nor filters by it: a sort through a relationship
-  # is not authorized by Ash (internal ticket #31), and filtering by a
-  # related record is not built yet. It is edited as any column is, through
+  # A table neither sorts nor filters by it in this version. It is edited as
+  # any column is, through
   # an `update_action`: one that accepts the relationship's foreign key,
   # which a person sets by choosing a record of the destination's table.
   defp reference_errors(column, relationship, module, table) do

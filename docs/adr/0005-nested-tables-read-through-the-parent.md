@@ -11,7 +11,7 @@ A nested table shows the records of one relationship of one row. We decided that
 
 - `{:ok, nil}` means the parent is gone or not the person's: the nested table says so as it says a failed read.
 - The result is an ordinary `Ash.Page.Offset` or `Ash.Page.Keyset`, or a list, so the top table's page handling serves it. Cost: two queries per page.
-- Rules that follow from Ash's behaviour in a load: a page and a count only on a pageable relationship (many, not manual, not `no_attributes?`, a paginated action); no count while a filter is set on a field the person sees on some records only (the count of a paged load ignores field policies); a to-one nested table has no sort, filter or page from the person; the relationship's own sort is put before the action's default; the relationship's `read_action`, when it names one, runs; a reference cell is not sortable (a sort through a relationship is not authorized by Ash).
+- Rules that follow from Ash's behaviour in a load: a page and a count only on a pageable relationship (many, not manual, not `no_attributes?`, a paginated action); no count while a filter is set on a field the person sees on some records only (the count of a paged load ignores field policies); a to-one nested table has no sort, filter or page from the person; the relationship's own sort is put before the action's default; the relationship's `read_action`, when it names one, runs; a reference cell is not sortable.
 - Some of these are workarounds of Ash's behaviour; each goes when Ash changes it.
 - Reversing it means restating Ash's relationship semantics and its authorization of the parent in our code.
 

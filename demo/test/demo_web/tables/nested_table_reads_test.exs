@@ -136,7 +136,7 @@ defmodule DemoWeb.Tables.NestedTableReadsTest do
     assert Enum.sort(reads(view, :read)) == [:project, :task, :user, :user]
 
     # The page, its count, and the aggregate of the page's tasks, which is
-    # read in a statement of its own (the library's internal ticket #35);
+    # read in a statement of its own after the page, so it keeps its order;
     # and one statement per reference column.
     assert Enum.frequencies(reads(view, :sql)) == %{"tasks" => 3, "projects" => 1, "users" => 2}
   end

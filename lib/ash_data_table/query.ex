@@ -22,18 +22,10 @@ defmodule AshDataTable.Query do
   # ## In steps
   #
   # The aggregates the columns show are not read in the statement that reads
-  # the records (internal ticket #35). A statement that selects an aggregate
-  # beside a calculation which Ash adds itself (for a field that a field
-  # policy hides on some records) is wrapped in a subquery. Up to ash_sql
-  # 0.8.1 it failed there; in 0.8.2 it is read, but the statement around the
-  # subquery, which joins the aggregates, has no `ORDER BY`: the rows of a
-  # page come back in whatever order the database joins them. A page of
-  # related records always is such a subquery, a list of them through a join
-  # resource or of one of many is, and a page of a table of its own can be.
-  # So aggregates are loaded onto the records afterwards (`Ash.load/3`, as
-  # the person), which keeps the order of the records, and a list or page of
-  # related records is read bare, with everything loaded afterwards. Sorting
-  # and filtering by a column stay in the statement.
+  # the records: they are loaded onto the records afterwards (`Ash.load/3`,
+  # as the person), so that a page keeps the order it was read in. A list or
+  # page of related records is read bare, with everything loaded afterwards.
+  # Sorting and filtering by a column stay in the statement.
 
   require Ash.Query
   require Logger
@@ -116,8 +108,8 @@ defmodule AshDataTable.Query do
              query(model, state, Model.loads(model), opts),
              [page: page_opts(model, state)] ++ read_opts
            ),
-         # internal ticket #35: see "In steps" above; through the table's
-         # read action, which Ash would not take by itself
+         # see "In steps" above; through the table's read action, which Ash
+         # would not take by itself
          {:ok, result} <-
            loaded(
              result,
@@ -168,8 +160,8 @@ defmodule AshDataTable.Query do
     read_opts = reader_opts(opts)
 
     # Related records are read bare, and everything the table's columns show
-    # besides attributes is loaded onto them afterwards (internal ticket
-    # #35: see "In steps" above).
+    # besides attributes is loaded onto them afterwards (see "In steps"
+    # above).
     related =
       case page_opts(model, state) do
         false -> query(model, state, [], opts)
@@ -844,8 +836,8 @@ defmodule AshDataTable.Query do
       end)
 
   # The two functions below look like a repetition of what `AshDataTable.State`
-  # already does, and they are meant to be one: they are the last guard for
-  # internal ticket #31, and must stay. Whatever a state holds, and however
+  # already does, and they are meant to be one: they are the last guard, and
+  # must stay. Whatever a state holds, and however
   # it came to hold it, nothing but a filter and a sort by one of the
   # table's own columns for this person gets into a query.
 
@@ -860,11 +852,10 @@ defmodule AshDataTable.Query do
   end
 
   # Likewise the sort: by a column of the table that sorts, named by the
-  # model's own atom. `Ash.Query.sort_input/2` would take the path through a
-  # relationship ("assignee.name") from anybody and apply no policy of the
-  # related resource to it, so nothing but a column's field ever gets there
-  # (internal ticket #31; a reference column, which is named after a
-  # relationship, is never `sortable?` for the same reason).
+  # model's own atom: nothing but a sortable column's field ever gets to
+  # `Ash.Query.sort_input/2`, never a path through a relationship
+  # ("assignee.name"). A reference column, which is named after a
+  # relationship, is never `sortable?`.
   defp known_sort({name, direction}, model) do
     with %{} = column <- Enum.find(model.columns, &(&1.name == name and &1.sortable?)),
          do: {column, direction}

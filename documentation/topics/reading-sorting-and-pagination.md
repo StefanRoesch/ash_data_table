@@ -48,11 +48,9 @@ For every page, the table builds a query for the read action and runs it with:
 
 Aggregate columns are loaded onto the page's records in a separate statement
 after the read, as the same person (`Ash.load/3`). Sorting and filtering by an
-aggregate stay in the query. The extra statement works around a SQL-layer
-defect (#35): a statement that selects an aggregate beside a field a field
-policy hides on some records is wrapped in a subquery, and the outer statement
-returns the rows in no particular order. On the demo's `/tasks` (one
-aggregate column) it costs about 1.5 ms per read.
+aggregate stay in the query. The table loads them in a separate statement
+so that the page keeps its order. On the demo's `/tasks` (one aggregate
+column) it costs about 1.5 ms per read.
 
 `sort_input` and `filter_input` are Ash's functions for outside input, used by
 the API extensions; they accept public fields only. The action's own filter,

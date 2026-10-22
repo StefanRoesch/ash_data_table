@@ -556,9 +556,8 @@ declared in the resource and mounted with one line in the router.
 
 - `column :assignee`, naming a public belongs-to relationship, shows the
   related record's label: the public attribute that the destination's
-  `table` block names with `label_field`. Read-only; not sorted by (Ash
-  applies no policy of the related resource to a sort through a
-  relationship) and not filtered by.
+  `table` block names with `label_field`. Read-only; not sorted by and not
+  filtered by.
 - The label is read as Ash loads the relationship, with a select of the key
   and the label, as the person: one statement per reference column per
   page, and again for a row that is saved. A related record the person may
@@ -628,9 +627,8 @@ declared in the resource and mounted with one line in the router.
   aggregate; or `sortable? false` and `filterable? false` on the column).
 - Aggregate columns are loaded onto the records of a page after the page is
   read, and related records are read bare with everything loaded
-  afterwards: a statement with an aggregate beside a field that a field
-  policy hides on some records fails in the SQL layer where it is a
-  subquery. One more statement per read of a table with aggregate columns.
+  afterwards, so that a page keeps its order. One more statement per read
+  of a table with aggregate columns.
 - An aggregate column that a field policy hides from a person on some
   records is not sorted by for them, as Ash raises for it; nor is any
   aggregate column in a nested table read in pages, for a person who sees

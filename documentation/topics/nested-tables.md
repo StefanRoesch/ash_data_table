@@ -246,12 +246,9 @@ reads nothing.
 **Columns beyond attributes are read in further steps.** A nested table's
 records are read bare; its calculations, aggregates and reference cells
 are then loaded onto them as the person (`Ash.load/3`). (A table of its own
-reads calculations with the page and aggregates in a step after.) The
-reason is an SQL-layer defect (#35): a statement selecting an aggregate
-beside a field a field policy hides on some records is wrapped in a
-subquery, which a page of related records always is, and the outer
-statement returns rows in no particular order. The steps go once it is
-fixed.
+reads calculations with the page and aggregates in a step after.) Loaded
+in a separate statement onto records already read, they leave the page in
+its order.
 
 ## What a person may not see
 
@@ -601,9 +598,7 @@ shows the public attributes.
   own table. Otherwise it is read-only. See
   [Choosing a related record](choosing-a-related-record.md) and
   [Relationships an action manages](managing-relationships.md#a-reference-cell-that-is-edited-through-an-argument).
-- **It is not sorted by.** Ash accepts a sort through a relationship from
-  outside and applies no policy of the related resource to it (#31), so the
-  row order would follow names the person may not read.
+- **It is not sorted by** in this version.
 - **It is not filtered by** in this version.
 - **It is not in the default set.** A table without `column` shows the
   public attributes, the foreign key among them when public.

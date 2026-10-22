@@ -7,10 +7,8 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
   the count of a page of related records counts only what the person's rows
   show.
 
-  Ash does not guard one thing (ash 3.36.1): `Ash.Query.sort_input/2` takes
-  the path through a relationship ("assignee.name") and applies no policy of
-  the related resource. So a sort is only ever by one of the table's own
-  sortable columns.
+  A sort is only ever by one of the table's own sortable columns, never by
+  a path through a relationship ("assignee.name").
 
   Driven by the events the hook and the filter row's form send, with names
   and shapes the table never offers.

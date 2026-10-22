@@ -928,12 +928,8 @@ defmodule AshDataTable.Model do
   The aggregates of the table's columns, which are put onto the records of
   a page in a step of their own, after the page is read.
 
-  Internal ticket #35: a statement that selects an aggregate beside a
-  calculation Ash adds by itself, as it does for a field that a field policy
-  hides on some records, is wrapped in a subquery, which a page of a table
-  can be, and the statement around it returns the rows of the page in no
-  particular order (ash_sql 0.8.2). Loaded onto records that are already
-  read, by their keys, nothing is wrapped.
+  Loaded onto records that are already read, by their keys, they leave the
+  page in the order it was read in.
   """
   @spec aggregates(t) :: [atom]
   def aggregates(%__MODULE__{columns: columns}) do
@@ -1764,9 +1760,8 @@ defmodule AshDataTable.Model do
   end
 
   # A column that names a belongs-to relationship: a reference cell. It is
-  # shown as the label is. A sort through a relationship is not authorized
-  # by Ash (internal ticket #31), so nothing here ever makes it sortable,
-  # and filtering by a related record is not built. It is edited by choosing
+  # shown as the label is. It is never sortable, and filtering by a related
+  # record is not built. It is edited by choosing
   # another record, where an update action accepts the foreign key and there
   # is something to choose with.
   defp column(

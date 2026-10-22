@@ -15,10 +15,8 @@ defmodule DemoWeb.Tables.LedgerTableTest do
     * #32: such a `first` aggregate, read in one statement with that
       calculation, shows nothing of a person the reader may not read
       (fixed in ash_sql 0.8.2).
-    * #35: a statement with an aggregate beside a field that a field policy
-      hides on some records is wrapped in a subquery; in ash_sql 0.8.2 the
-      statement around it no longer fails, but returns the rows in no
-      particular order. The table reads aggregates in a step of their own.
+    * The table reads aggregates in a step of their own, after the page,
+      so the page keeps its order for such a reader.
     * #34: Ash cannot sort by an aggregate that a field policy hides on some
       records. The table does not offer that sort.
   """
@@ -222,7 +220,7 @@ defmodule DemoWeb.Tables.LedgerTableTest do
     end
   end
 
-  describe "aggregate columns, for a person from whom a field policy hides a field on some records (#35)" do
+  describe "aggregate columns, for a person from whom a field policy hides a field on some records" do
     test "are shown on a page of a table of its own, with a calculation over one of them", %{
       conn: conn,
       world: world
