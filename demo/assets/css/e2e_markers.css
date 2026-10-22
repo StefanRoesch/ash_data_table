@@ -4,14 +4,15 @@
    style element (`style-src 'self'`, DemoWeb.Router). Only on that page
    (`data-e2e-markers`, on its `#kit`), and of no weight (`:where`), so
    that the hook's own rules (widths, hidden columns) come first, as they
-   do over the classes of the table's own look. */
+   do over the classes of the table's own look. By the table's markers,
+   never its ids: a row group of column headers is the header. */
 :where([data-e2e-markers] [role=table]) { display: table; border-collapse: collapse }
 :where([data-e2e-markers] [role=rowgroup]) { display: table-row-group }
-:where([data-e2e-markers] :is(#kit-head, #kit-row-a-t-parts-head)) { display: table-header-group }
+:where([data-e2e-markers] [role=rowgroup]:has(> [role=row] > [role=columnheader])) { display: table-header-group }
 :where([data-e2e-markers] [role=row]) { display: table-row }
 :where([data-e2e-markers] :is([role=cell], [role=columnheader])) { display: table-cell; padding: 2px 8px; border: 1px solid; position: relative }
 :where([data-e2e-markers] [data-lines] > [data-paragraph]) { margin: 0; max-width: 16rem; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden }
 :where([data-e2e-markers] [role=cell]:has(> [data-whole][aria-expanded=true]) > [data-paragraph]) { display: block; -webkit-line-clamp: unset }
 :where([data-e2e-markers] [data-whole])::before { content: attr(data-whole) }
 :where([data-e2e-markers] [data-resize]) { position: absolute; top: 0; bottom: 0; right: 0; width: 8px; cursor: col-resize }
-:where([data-e2e-markers] #kit-grid) { overflow-x: auto }
+:where([data-e2e-markers] > [data-ash-data-table]) { overflow-x: auto }
