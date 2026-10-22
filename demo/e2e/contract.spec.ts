@@ -125,6 +125,12 @@ test("geometry.js counts the columns and rows as AshDataTable.Geometry does, and
   await comments.open()
   expect((await compare(comments, "/comments")).lead).toBe(2)
 
+  // /comments/compact: a named table with no action and rows that never
+  // expand, so nothing before the data columns
+  const compact = new Table(page, "comment_compact", "/comments/compact")
+  await compact.open()
+  expect((await compare(compact, "/comments/compact")).lead).toBe(0)
+
   // a nested table: the tasks of a project
   const projects = new Table(page, "project", "/projects")
   await projects.open()
