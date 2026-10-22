@@ -307,16 +307,40 @@ defmodule AshDataTable.OpenerTest do
   end
 
   defp check("a picker's table", adapter, table) do
-    # a picker the host draws has no table of the table's: none is read
+    # an open picker of a cell: the table draws the table to choose from
+    # in it; a picker the host draws has no table of the table's, and none
+    # is read
     options = table.options
+
+    table =
+      Table.put(table,
+        picker: %{
+          for: {:cell, "1", :owner},
+          name: :owner,
+          title: "Owner",
+          question: nil,
+          error: nil,
+          current: nil,
+          reference: %{
+            destination: AshDataTable.Test.Resource,
+            choose_action: :read,
+            destination_attribute: :id
+          },
+          several?: false,
+          allow_none?: true,
+          chosen: []
+        }
+      )
 
     case adapter do
       :table ->
         assert Opener.draws?(options, :picker) and Opener.draws?(options, :confirm)
 
+        assert [{"t-pick-owner", %{resource: AshDataTable.Test.Resource, select: :single}, nil}] =
+                 Nesting.children(table, "t")
+
       :host ->
         refute Opener.draws?(options, :picker) or Opener.draws?(options, :confirm)
-        table = Table.put(table, picker: %{for: {:cell, "1", :owner}})
         assert Nesting.children(table, "t") == []
     end
   end

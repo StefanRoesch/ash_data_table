@@ -37,6 +37,14 @@ defmodule DemoWeb.SameTableLinkTest do
     assert %{"task[sort]" => "-title", "task[f][title]" => "Task"} = URI.decode_query(query)
   end
 
+  test "the link back keeps the sort and filters after a patch", %{conn: conn, world: world} do
+    {:ok, react, _html} =
+      conn |> log_in(world.member) |> live("/react/tasks?task[sort]=-title&task[f][title]=Task")
+
+    render_patch(react, "/react/tasks?task[sort]=title")
+    assert linked(react, "/tasks") == %{"task[sort]" => "title"}
+  end
+
   test "the link to React keeps the sort and filters, also after a patch", %{
     conn: conn,
     world: world

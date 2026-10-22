@@ -199,7 +199,7 @@ defmodule AshDataTable.Live.Core do
   # What a step is given of the socket: its assigns (the page's, for a
   # table attached to a LiveView, `page_assigns/1`), the uploads LiveView
   # knows (`%{}` for none), whether the page is connected, and its endpoint.
-  def context(socket) do
+  defp context(socket) do
     %{
       assigns: socket.assigns,
       uploads: socket.assigns[:uploads] || %{},
@@ -216,7 +216,7 @@ defmodule AshDataTable.Live.Core do
     do: assign(socket, socket.private.ash_data_table.current, table)
 
   # Applies the effects of a step to the socket, in their order (see the top).
-  def effects(socket, effects), do: Enum.reduce(effects, socket, &applied/2)
+  defp effects(socket, effects), do: Enum.reduce(effects, socket, &applied/2)
 
   defp applied({:push, event, payload}, socket), do: push_event(socket, event, payload)
 

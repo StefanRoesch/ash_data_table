@@ -7146,6 +7146,40 @@ defmodule AshDataTable.TableBlockTest do
              ]
     end
 
+    test "`selection_argument` is an error where the primary key is several attributes" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :action, :export]} do
+          defmodule Elixir.AshDataTable.TableBlockTest.SelectionArgumentTwoKeys do
+            use Ash.Resource,
+              domain: AshDataTable.Test.Domain,
+              extensions: [AshDataTable.Resource]
+
+            attributes do
+              attribute :shelf, :integer, primary_key?: true, allow_nil?: false, public?: true
+              attribute :place, :integer, primary_key?: true, allow_nil?: false, public?: true
+            end
+
+            actions do
+              defaults [:read]
+
+              action :export do
+                argument :shelves, {:array, :integer}
+                run fn _input, _context -> :ok end
+              end
+            end
+
+            table do
+              action :export do
+                selection_argument :shelves
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "The action `export` says `selection_argument :shelves`, and the primary key of the resource is `shelf`, `place`: several attributes. One argument takes the primary keys of the selected rows only where that is one attribute."
+    end
+
     test "`sort_argument` names a public, optional text argument of an action on the selection, which neither the page nor a picker gives" do
       [{AshDataTable.TableBlockTest.SortArguments, errors}] =
         dsl_errors do

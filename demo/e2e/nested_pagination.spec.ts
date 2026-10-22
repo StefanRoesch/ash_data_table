@@ -103,9 +103,11 @@ function kits(name: string, header: Record<string, string> | null) {
       expect(nested.box.left).toBeGreaterThanOrEqual(nested.area.left)
       expect(nested.box.right).toBeLessThanOrEqual(nested.area.left + nested.area.seen)
 
-      // scrolled to its end, the nested table's pages stand where they stood
+      // scrolled to its end, the nested table's pages stand where they stood:
+      // the tasks' columns are far wider than a phone, so there is always
+      // something to scroll
       const { all, seen } = await tasks.area()
-      test.skip(all <= seen, "the nested table has nothing to scroll at this width")
+      expect(all, "the nested table scrolls sideways at this width").toBeGreaterThan(seen)
       await tasks.scrollTo(all)
       const scrolled = await place(tasks)
       expect(scrolled.box).toEqual(nested.box)

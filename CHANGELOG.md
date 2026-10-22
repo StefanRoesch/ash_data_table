@@ -33,7 +33,9 @@ declared in the resource and mounted with one line in the router.
   `authorize?` and the socket assigns that hold scope, actor and tenant.
 - `config :ash_data_table, layout: {MyAppWeb.Layouts, :app}` for the layout of
   mounted tables. The layout is given the flash and who is asking, under the
-  conventional assign names and under those the domain names.
+  conventional assign names and under those the domain names, and
+  `current_path`, the page's path with its URL's query as it is now, so a
+  link of the layout can keep sort, filters and page.
 
 
 ### Placing a table, and what the page can do with it

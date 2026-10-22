@@ -381,10 +381,10 @@ defmodule AshDataTable.Kit do
   new `button`, `Attrs.sort/3`) in place of the header's `phx-click`
   (`Attrs.column_header/3` in place of `/5`); the `grid` part draws the
   skip link (`Attrs.skip/1`, `texts.skip_table`), and the `root` part the
-  skip link's target (`Attrs.skip_target/1`) after its
-  `inner_block`. Stage 8a's K2, in the same contract: the `resizer` has
-  no texts and no role (pointer only, `aria-hidden`; `resize_column` and
-  `role="separator"` gone); the `columns` part draws a width field per
+  skip link's target (`Attrs.skip_target/1`) after its `inner_block`. The
+  `resizer` has no texts and no role (pointer only, `aria-hidden`;
+  `resize_column` and `role="separator"` gone); the `columns` part draws a
+  width field per
   column (`Attrs.width_field/3`, `texts.width_of`), "Reset widths"
   (`Attrs.reset_widths/1`, `texts.reset_widths`) and, first, the label
   column's entry (`label_column`, `texts.label_width`), a width field and
@@ -406,28 +406,27 @@ defmodule AshDataTable.Kit do
   `table`, `limits`, `counted`, `members`, `items`, `kind` and `single`
   in place of `inside`.
 
-  Contract 6 (from contract 5), by stage (9b, …): the `field` part is
-  given `hidden`, the hidden entries of a value made of fields as
-  bundles, of a union `kind_id`, `kind_name` and `kind_path`, and of a
-  value made of fields `add_id` and `remove_id` (an item `remove_id`);
-  its `members` hold `hidden` in place of `keys`; `Attrs.add_group/4` and
+  Contract 6 (from contract 5): the `field` part is given `hidden`, the
+  hidden entries of a value made of fields as bundles, of a union
+  `kind_id`, `kind_name` and `kind_path`, and of a value made of fields
+  `add_id` and `remove_id` (an item `remove_id`); its `members` hold
+  `hidden` in place of `keys`; `Attrs.add_group/4` and
   `Attrs.remove_group/4` take the button's id and put it into the
   bundle. A kit no longer writes the names or the ids a value made of
-  fields has inside the panel. Stage 9c: the parts `grid`, `row`,
-  `footer` and `full_view` are given `geometry` (an
-  `AshDataTable.Geometry`, where the columns and rows stand) in place of
-  `lead` and `acting?` (its `trail`); `grid` and `heading` are no longer
-  given `label_column`, nor `grid` and `row` `editing?`: both are
-  `model`'s; nor `grid` and `footer` `summarised?`, which is the
-  geometry's `summary?`;
+  fields has inside the panel. The parts `grid`, `row`, `footer` and
+  `full_view` are given `geometry` (an `AshDataTable.Geometry`, where the
+  columns and rows stand) in place of `lead` and `acting?` (its `trail`);
+  `grid` and `heading` are no longer given `label_column`, nor `grid` and
+  `row` `editing?`: both are `model`'s; nor `grid` and `footer`
+  `summarised?`, which is the geometry's `summary?`;
   `Attrs.grid/6`, `Attrs.table/6` (in place of `Attrs.table/8`),
   `Attrs.spanning/3` and `Attrs.summaries/3` take the geometry, as the
   new `Attrs.head_row/2` and `Attrs.filter_row/2` (the header rows) do, and
   `Attrs.colcount/3` and `Attrs.filter_row?/1` are gone (its `colcount`,
-  its `header_rows`). Stage 9d: `AshDataTable.Present.Panel` has `ask`
-  (`"changed"` or nil, the panel's `data-ask`) in place of `kind`. Stage
-  9f (ADR 0004): every part is given its projection
-  (`AshDataTable.Kit.Projection`), an assign per key, and beside it only
+  its `header_rows`). `AshDataTable.Present.Panel` has `ask`
+  (`"changed"` or nil, the panel's `data-ask`) in place of `kind`. Every
+  part is given its projection (`AshDataTable.Kit.Projection`, ADR 0004),
+  an assign per key, and beside it only
   `kit`, `id`, a row's item or a cell's, the stream, the panel's uploads,
   the root's slots and a `class`; no part is given `model`, `state`,
   `page`, `geometry`, `panel`, `picker`, `fields`, `arguments`, `editors`,
@@ -841,8 +840,7 @@ defmodule AshDataTable.Kit do
         "kind_path, and the ids of its buttons (add_id, remove_id, an item's remove_id), which " <>
         "Attrs.add_group/4 and Attrs.remove_group/4 put into their bundles: a kit no longer " <>
         "writes the names or the ids a value made of fields has inside the panel; and it gives " <>
-        "grid, row, footer and full_view geometry (an AshDataTable.Geometry) in place of lead " <>
-        "and acting?, label_column and editing? as fields of model, summarised? as the " <>
+        "label_column and editing? as fields of model, summarised? as the " <>
         "geometry's summary?, Attrs.head_row/2 and Attrs.filter_row/2, Attrs.table/6 " <>
         "in place of Attrs.table/8, and Attrs.grid/6, Attrs.spanning/3 and Attrs.summaries/3 " <>
         "the geometry; Attrs.colcount/3 and Attrs.filter_row?/1 are gone (colcount, header_rows); " <>

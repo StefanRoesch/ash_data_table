@@ -41,7 +41,7 @@ A table reaches a page in three ways, all on one core and one drawing: the route
 - `Related` (`related.ex`), `Routes` (`routes.ex`): the full view's `of` parameter; where a router mounts a table.
 - `Query` (`query.ex`): every read through the table's read action, nested reads (ADR 0005), summaries, announced rows.
 - `Record` (`record.ex`), `Pick` (`pick.ex`): a row's record and a picked record, read again as the person.
-- `Operation` (`operation.ex`): the one way a table writes: checks, veto, re-read, action.
+- `Operation` (`operation.ex`): the one way a table writes: checks, veto, the panel's files, re-read, action.
 - `Edit` (`edit.ex`), `Act` (`act.ex`), `Bulk` (`bulk.ex`): a cell's save; row/table actions and create through `AshPhoenix.Form`; actions on a selection.
 - `Panel` (`panel.ex`): the action panel as one value. `GroupValue` (`group_value.ex`): a value made of fields in the panel's form.
 - `Download` (`download.ex`): a file a generic action returned.
@@ -56,7 +56,7 @@ A table reaches a page in three ways, all on one core and one drawing: the route
 - `Live.Core` (`live/core.ex`): the adapter on the socket and `step/3`, `(table, intent, context) -> {table, effects, reply}`.
 - `live/core/*.ex`, one topic each, over the table, no socket: `Told`, `Reading`, `Url`, `Nesting`, `Updates`, `Cells`, `Picker`, `Panel`, `Bulk`, `Selection`, `Files`, `Notify`.
 - `Core.Opener` (`live/core/opener.ex`) with `Opener.Table` and `Opener.Host`: who draws a question, panel or picker (the table, or the page in controlled mode).
-- `AshDataTable.Table` (`live/table.ex`): the one value a table is held in; opaque. `Live.Entry` (`live/entry.ex`): one table's fields. `Live.Registry` (`live/registry.ex`): the tables of one `Table`.
+- `AshDataTable.Table` (`live/table.ex`): the one value a table is held in; opaque. `Live.Entry` (`live/entry.ex`): one table's fields, grouped by topic (`arguments`, `selection`, `updates`, `footer`). `Live.Registry` (`live/registry.ex`): the tables of one `Table`.
 - `Live.Hooks` (`live/hooks.ex`): a table attached to a LiveView. `Listener` (`live/listener.ex`): hears live updates, in batches.
 
 ### 3 UI and 3w words
@@ -85,14 +85,14 @@ Every change keeps these; part 2a is where they live.
 - **Values from the browser are claims**: keys, names, page sizes and selections are looked up or read again; sort and filter go through `sort_input`/`filter_input`; no text becomes an atom.
 - **An announcement is a claim**: a live update names a key only; the table reads it as the person (`Query.rows/4`, `Query.any?/5`).
 - **A summary says no more than the rows** (`Query.summaries/4`).
-- **No check can be skipped** by anything from the browser or any documented option. Order of a write: question → the table's checks → veto → re-read → action.
+- **No check can be skipped** by anything from the browser or any documented option. Order of a write: question → the table's checks → veto → the panel's files → re-read → action.
 
 ## Adding a feature
 
 1. **DSL option**: in `resource/table.ex` (`@options`), `domain.ex`, or the entity in `resource.ex` and its struct. Then `mix spark.formatter` and `mix spark.cheat_sheets`.
 2. **Diagnostic**: the rule and its `message/1` in the topic module; raised by that topic's verifier; listed in `documentation/topics/mistakes-at-compile-time.md`.
 3. **Model**: into `Model` or a struct; what depends on the person in `for_actor/2`.
-4. **Core**: a field of `Live.Entry`; an event in `Intent` and `@events` of `attrs.ex`; a `step` clause in its topic; socket work as an effect.
+4. **Core**: a field of `Live.Entry` (in its topic's group, if it has one); an event in `Intent` and `@events` of `attrs.ex`; a `step` clause in its topic; socket work as an effect.
 5. **Drawing**: what a part draws in its `Kit.Projection` key and moduledoc; markup in `Parts.*`; a new part is a `Kit` callback with its default in `Kit.Default`. Every kit (Default, the demo's DivKit and ReactKit) behaves the same; nested tables as top tables.
 6. **Texts**: the key in `messages.ex`; the data layer says `{:text, key, bindings}`; `mix gettext.extract`; German in `demo/priv/gettext/de/`.
 7. **Demo**: resources in `demo/lib/demo/`, routes in `demo/lib/demo_web/router.ex`, test-only tables in `demo/test/support/*_tables.ex`; a new page in `demo/README.md`.

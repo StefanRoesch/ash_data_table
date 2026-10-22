@@ -44,8 +44,10 @@ defmodule AshDataTable.DownloadTest do
 
       assert log =~ "the action `export` returns a file, and it returned 42, which is no file"
     end
+  end
 
-    test "tells the page its name and type, and pushes its content in Base64" do
+  describe "told/1 and pushed/2" do
+    test "tell the page its name and type, and push its content in Base64" do
       download = %Download{name: "tasks.csv", type: "text/csv", data: "id\r\n"}
 
       assert Download.told(download) == %{filename: "tasks.csv", content_type: "text/csv"}

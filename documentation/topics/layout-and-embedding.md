@@ -18,7 +18,7 @@ and one setting so the page gets your app's layout
 
 <!-- source: demo/lib/demo_web/router.ex -->
 ```elixir
-ash_data_table "/tasks", Demo.Tracker.Task
+ash_data_table "/projects", Demo.Tracker.Project
 ```
 
 <!-- source: demo/config/config.exs -->

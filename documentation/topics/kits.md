@@ -257,9 +257,10 @@ pages (`skip_target`). The `Kit` moduledoc, "Tab stops", has the rule;
 **Texts.** A part shows the texts it is given, in the person's language:
 `texts` by name (`@texts.kind`), or `text` for a part of one text. Beside
 them it gets `messages`, what each text is made of (a map
-`%{key: key, values: values}` of a key of `AshDataTable.Messages`), and
-`locale`, for a kit that translates or formats for itself. LiveView resends a
-text only when what it is made of changed. See
+`%{key: key, values: values}` of a key of `AshDataTable.Messages`), and,
+where it shows a value (a cell, a summary cell, …), `locale`, for a kit that
+formats for itself. LiveView resends a text only when what it is made of
+changed. See
 [Messages and translations](messages-and-translations.md).
 
 ### The rows: items of the stream

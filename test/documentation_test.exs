@@ -44,9 +44,10 @@ defmodule AshDataTable.DocumentationTest do
           |> Enum.map(&Path.relative_to(&1, @root))
           |> Enum.sort()
 
-  @rules [@root, "{usage-rules.md,usage-rules/*.md}"]
-         |> Path.join()
-         |> Path.wildcard()
+  # two patterns: a `{…}` alternative that holds a `/` is no pattern to
+  # `Path.wildcard/1`
+  @rules ["usage-rules.md", "usage-rules/*.md"]
+         |> Enum.flat_map(&Path.wildcard(Path.join(@root, &1)))
          |> Enum.map(&Path.relative_to(&1, @root))
          |> Enum.sort()
 

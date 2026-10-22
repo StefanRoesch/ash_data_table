@@ -116,7 +116,7 @@ underscored. The demo's router
 
 <!-- source: demo/lib/demo_web/router.ex -->
 ```elixir
-ash_data_table "/tasks", Demo.Tracker.Task
+ash_data_table "/tasks", Demo.Tracker.Task, layout: {DemoWeb.Layouts, :tasks}
 ash_data_table "/projects", Demo.Tracker.Project
 ash_data_table "/comments", Demo.Tracker.Comment
 ash_data_table "/labels", Demo.Tracker.Label

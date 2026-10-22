@@ -1166,6 +1166,13 @@ defmodule DemoWeb.TablePage do
   by text: a secret to look for is a text no escaping changes (letters,
   digits, `-`, `.`), found nowhere else on the page, and the test asserts
   that the wire holds what `fun` did, so that an empty one is no pass.
+
+  It relies on what Phoenix documents nowhere: the test client
+  (`Phoenix.LiveViewTest`'s ClientProxy) joins as its own serializer, whose
+  `encode!/1` leaves the channel's messages as they are, so the view sends it
+  `Phoenix.Socket.Message` and `Phoenix.Socket.Reply` structs, not
+  encoded frames. A LiveView that changed that would make the wire empty,
+  which the positive assertion of each test catches.
   """
   def wire(view, fun) do
     :erlang.trace(view.pid, true, [:send])

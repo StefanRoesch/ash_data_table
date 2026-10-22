@@ -8,7 +8,7 @@ defmodule DemoWeb.Tables.TaskExportTest do
   (`Demo.Tracker.Task.ExportCsv`, `csv_exports`).
 
   Each selection kind (rows, the whole page, all that match), the table's
-  sort, and what a person may not read. The download in a browser is in
+  sort, and the records the person may not read. The download in a browser is in
   `e2e/export.spec.ts`.
   """
   use DemoWeb.ModeCase, async: true
@@ -29,7 +29,7 @@ defmodule DemoWeb.Tables.TaskExportTest do
   # asks nothing and has no panel, so it runs at once. The page once it
   # has run, and the file the table pushed.
   defp export(view) do
-    send_event(view, "task", "bulk", %{"action" => "export_csv"})
+    AshDataTable.Test.send_event(view, "task", "bulk", %{"action" => "export_csv"})
     assert_reply(view, %{ok: true})
     html = ran(view)
 
@@ -163,7 +163,7 @@ defmodule DemoWeb.Tables.TaskExportTest do
 
       # nothing of it there: the action does not run, and says so
       select(view, "task", [outside.id])
-      send_event(view, "task", "bulk", %{"action" => "export_csv"})
+      AshDataTable.Test.send_event(view, "task", "bulk", %{"action" => "export_csv"})
       html = ran(view)
       refute_push_event(view, "ash_data_table:download", %{})
 
@@ -173,7 +173,7 @@ defmodule DemoWeb.Tables.TaskExportTest do
              }
     end
 
-    test "leaves out the columns a field policy hides from some people",
+    test "the export's columns are the declared ones, none a field policy guards",
          %{conn: conn, world: world, tasks: [one | _rest]} do
       {:ok, view, _html} = conn |> log_in(world.admin) |> live("/tasks")
 

@@ -5,18 +5,17 @@ defmodule AshDataTable.Live.Entry do
   # in it and those of its pickers are its `entries`
   # (`AshDataTable.Live.Registry`).
   #
-  # The fields were the assigns of the live component, set in its `mount/1`
-  # and derived in its `update/2`; the comments are theirs. A nested table
-  # and a picker's table are told theirs by the table they are in
+  # The fields are what the table holds of itself (ADR 0006). A nested
+  # table and a picker's table are told theirs by the table they are in
   # (`AshDataTable.Live.Core.Nesting.reconcile/1`).
   #
-  # Grouped by topic (#56, question 31 b, stage 9g): the fields of the
-  # argument line, of what is selected, of live updates and of the footer
-  # row are each one value (`arguments`, `selection`, `updates`, `footer`),
-  # the rest flat. A field is put by its own name wherever it lives
-  # (`put/3`, `AshDataTable.Table.put/2`), and read where it lives
-  # (`entry.selection.selected`); LiveView's change tracking compares what
-  # a part reads of it key by key, as it does a field.
+  # Grouped by topic (#56, stage 9g): the fields of the argument line, of
+  # what is selected, of live updates and of the footer row are each one
+  # value (`arguments`, `selection`, `updates`, `footer`), the rest flat.
+  # A field is put by its own name wherever it lives (`put/3`,
+  # `AshDataTable.Table.put/2`), and read where it lives
+  # (`entry.selection.selected`); LiveView's change tracking compares what a
+  # part reads of it key by key, as it does a field.
 
   alias AshDataTable.State
 
@@ -210,7 +209,7 @@ defmodule AshDataTable.Live.Entry do
   ]
 
   # The topics an entry's fields are grouped by, and the fields of each
-  # (#56, question 31 b, stage 9g).
+  # (#56, stage 9g).
   @groups %{
     arguments: [:missing, :fill, :refused, :lines, :parent_arguments],
     selection: [:selecting, :selected, :all?, :selected_under, :bulk, :running, :result],
