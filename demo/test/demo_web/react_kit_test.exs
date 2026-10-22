@@ -26,13 +26,13 @@ defmodule DemoWeb.ReactKitTest do
 
   # the islands of a table and their props, by the suffix of their ids
   @props %{
-    "heading" => {"AshHeading", {:heading, ~w(table_id)}},
+    "heading" => {"AshHeading", :heading},
     # the grid's projection but the sender and the filter row's form, drawn
     # as markup of the LiveView's beside the island
     "grid" =>
       {"AshGrid",
        ~w(table_id nested? skip scrollbar grid table head filters row footer editors failure texts messages)},
-    "selection" => {"AshSelectionLine", {:selection_line, ~w(table_id)}},
+    "selection" => {"AshSelectionLine", :selection_line},
     "status" => {"AshStatus", :status},
     "pagination" => {"AshPagination", :pagination}
   }

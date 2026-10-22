@@ -22,13 +22,13 @@ defmodule AshDataTable.Parts.Selection do
   #
   # Of more than three actions the first two are buttons of the line and
   # the others are in a menu (`More`, the browser's popover, placed as the
-  # list of "Columns" is). An action that destroys has the error colour's
-  # outline. "Clear selection" is a quiet button, as "Clear filters" is.
+  # list of "Columns" is: the names of its anchor are rules of the grid's
+  # hook). An action that destroys has the error colour's outline. "Clear
+  # selection" is a quiet button, as "Clear filters" is.
   #
   # The number is said in a live region that is always there, empty while
   # nothing is selected: a region that comes into the page with its text
   # is not read out.
-  attr :id, :string, required: true
   # the projection's `selection`
   attr :selection, :map, required: true
   attr :texts, :map, required: true
@@ -58,7 +58,6 @@ defmodule AshDataTable.Parts.Selection do
           :if={@selection.more}
           type="button"
           {@selection.more.button}
-          style={"anchor-name: --ash-data-table-more-#{@id}"}
           class="btn btn-sm"
         >
           {@texts.more_actions} <span aria-hidden="true">▾</span>
@@ -66,7 +65,6 @@ defmodule AshDataTable.Parts.Selection do
         <ul
           :if={@selection.more}
           {@selection.more.menu}
-          style={"position-anchor: --ash-data-table-more-#{@id}"}
           class="dropdown menu rounded-box bg-base-100 p-2 text-base-content shadow-sm forced-colors:border [position-area:bottom_span-right] [position-try-fallbacks:flip-inline,flip-block] supports-[position-area:bottom]:inset-auto supports-[position-area:bottom]:m-0 supports-[position-area:bottom]:mt-0.5"
         >
           <li :for={action <- @selection.more.actions}>
@@ -132,7 +130,7 @@ defmodule AshDataTable.Parts.Selection do
     selected, a filter is set or a notice shows does it take room: no room
     is kept for it, in a table on the page as in a nested one. --%>
     <div class={@kit.class(:selection_line, %{nested?: @nested?, shown?: @shown?})}>
-      <.selection :if={@selection} id={@id} selection={@selection} texts={@texts} />
+      <.selection :if={@selection} selection={@selection} texts={@texts} />
       <.notice :if={@notice} notice={@notice} texts={@texts} />
       <%!-- the button goes away with the filters, so focus is sent on to the
       first control of the filter row (in its bundle) --%>

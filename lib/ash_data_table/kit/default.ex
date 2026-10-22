@@ -32,8 +32,9 @@ defmodule AshDataTable.Kit.Default do
     * `stripes: false` (faint, the records only);
     * `column_lines: false`;
     * `sticky_header: false`; on, a table is at most `min(75dvh, 48rem)`
-      high, a nested table about ten rows (`28rem`), unless `height` and
-      `nested_height` say otherwise.
+      high, a nested table about ten rows (`28rem`), unless the host's
+      style sheet says otherwise (`--ash-data-table-height`,
+      `--ash-data-table-nested-height`).
 
       <AshDataTable.table resource={MyApp.Tracker.Task} look={[sticky_header: true, density: :compact]} />
   """
@@ -196,5 +197,4 @@ defmodule AshDataTable.Kit.Default do
   @impl true
   def look(:density), do: :normal
   def look(option) when option in [:stripes, :column_lines, :sticky_header], do: false
-  def look(option) when option in [:height, :nested_height], do: nil
 end

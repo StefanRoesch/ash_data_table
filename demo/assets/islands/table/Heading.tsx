@@ -55,8 +55,6 @@ export type ArgumentProps = {
 export type ArgumentLineProps = {form: Bundle; "nested?": boolean; arguments: ArgumentProps[]}
 
 export type HeadingProps = Acts & {
-  // the table's id
-  table_id: string
   "shown?": boolean
   "nested?": boolean
   element: Bundle
@@ -90,7 +88,7 @@ export function Heading({heading}: {heading: HeadingProps}) {
           {title.text}
         </Title>
       )}
-      {heading.columns && <Columns table={heading.table_id} columns={heading.columns} />}
+      {heading.columns && <Columns columns={heading.columns} />}
       {heading.argument_line && <ArgumentLine line={heading.argument_line} />}
       {heading["acts?"] && (
         <div className="ms-auto flex flex-wrap items-center justify-end gap-2">

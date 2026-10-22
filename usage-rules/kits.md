@@ -28,8 +28,7 @@ end
 
 - Define the parts you draw and call `super` for the rest; `class/2`,
   `presentation/1` (`:modal` or `:inline`) and `look/1` (`density`,
-  `stripes`, `column_lines`, `sticky_header`, `height`, `nested_height`)
-  work the same way. `AshDataTable.Kit.parts/0` lists the parts.
+  `stripes`, `column_lines`, `sticky_header`) work the same way. `AshDataTable.Kit.parts/0` lists the parts.
 - Name it for every table with `config :ash_data_table, kit: MyAppWeb.TableKit`,
   or for one table with `kit:` on the router line, the tag or `attach/4`.
   Nested tables and pickers' tables are drawn with the same kit.

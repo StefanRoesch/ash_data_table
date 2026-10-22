@@ -126,15 +126,14 @@ The default kit draws:
 Every tint is mixed from the daisyUI theme's colours, so it follows the
 host's theme, light and dark; no option sets a colour.
 
-Six options, in five rows, make up **the look** of a table:
+Four options make up **the look** of a table:
 
 | Option | What it does | Default kit |
 | --- | --- | --- |
 | `density` | How high the rows are, with the same text size: `:compact`, `:normal`, `:roomy`. | `:normal` |
 | `stripes` | Every other record faintly tinted, counted over the records only: the lines and nested tables under an open row are no stripe. | `false` |
 | `column_lines` | A line between the columns, besides the line under each row. | `false` |
-| `sticky_header` | The table gets a height of its own and only its rows scroll in it; its header and filter row stay in view. See [Layout and embedding](layout-and-embedding.md#a-header-that-stays-in-view). | `false` |
-| `height`, `nested_height` | With `sticky_header`: how high a table, and a table nested in a row, is at most, as a CSS length. | `min(75dvh, 48rem)`, `28rem` (about ten rows) |
+| `sticky_header` | The table gets a height of its own and only its rows scroll in it; its header and filter row stay in view. How high is your style sheet's (`--ash-data-table-height`, `--ash-data-table-nested-height`): see [Layout and embedding](layout-and-embedding.md#a-header-that-stays-in-view). | `false` |
 
 As with the presentation, a kit sets its own with `look/1`, and one table
 overrides it with `look` on the router line, the tag or `attach/4`. The look
@@ -168,13 +167,13 @@ One table in a LiveView of your own:
 
 <!-- sketch -->
 ```heex
-<AshDataTable.table resource={MyApp.Tracker.Task} look={[density: :compact, sticky_header: true, height: "60vh"]} />
+<AshDataTable.table resource={MyApp.Tracker.Task} look={[density: :compact, sticky_header: true]} />
 ```
 
-A malformed look is refused where the table is placed: an unknown option, a
-value of the wrong kind, a height that is no CSS length. A kit of your own
-gets the resolved look, a map of all six, as `look` in its `root/1` and in
-`class(:root, …)`; what it draws of it is up to the kit.
+A malformed look is refused where the table is placed: an unknown option or
+a value of the wrong kind. A kit of your own gets the resolved look, a map
+of all four, as `look` in its `root/1` and in `class(:root, …)`; what it
+draws of it is up to the kit.
 
 ## Drawing a part
 

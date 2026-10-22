@@ -18,8 +18,6 @@ import {button} from "./look"
 type Action = {name: string; label: string; "destroys?": boolean; button: Bundle}
 
 export type LineProps = {
-  // the table's id
-  table_id: string
   "shown?": boolean
   "nested?": boolean
   selection: null | {
@@ -49,8 +47,7 @@ export function AshSelectionLine(props: LineProps) {
 
 // The part `SelectionLine`.
 export function SelectionLine({line}: {line: LineProps}) {
-  const {table_id: table, selection, notice, texts} = line
-  const anchor = `--ash-data-table-more-${table}`
+  const {selection, notice, texts} = line
   const running = !!selection && selection["running?"]
 
   return (
@@ -73,10 +70,10 @@ export function SelectionLine({line}: {line: LineProps}) {
             ))}
             {selection.more && (
               <>
-                <button type="button" {...attrs(selection.more.button)} style={{anchorName: anchor} as React.CSSProperties} className={button("outline", "sm")}>
+                <button type="button" {...attrs(selection.more.button)} className={button("outline", "sm")}>
                   {texts.more_actions} <span aria-hidden="true">▾</span>
                 </button>
-                <ul {...attrs(selection.more.menu)} style={{positionAnchor: anchor} as React.CSSProperties} className="ash-react-menu">
+                <ul {...attrs(selection.more.menu)} className="ash-react-menu">
                   {selection.more.actions.map(action => (
                     <li key={action.name}>
                       <button type="button" {...attrs(action.button)} className={["whitespace-nowrap", action["destroys?"] && "text-destructive", running && "opacity-50"].filter(Boolean).join(" ")}>

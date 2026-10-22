@@ -63,12 +63,10 @@ defmodule DemoWeb.Tables.ColumnHidingTest do
       # the browser opens and closes it, and says whether it is open
       assert attribute(html, "#task-columns-button", "popovertarget") == ["task-columns"]
       assert attribute(html, "#task-columns-button", "aria-expanded") == []
-      # the list is placed under the button by its anchor
-      assert attribute(html, "#task-columns-button", "style") ==
-               ["anchor-name: --ash-data-table-columns-task"]
-
-      assert attribute(html, "#task-columns", "style") ==
-               ["position-anchor: --ash-data-table-columns-task"]
+      # the list is placed under the button by its anchor, whose names are
+      # the grid's hook's rules: the markup carries no `style`
+      assert attribute(html, "#task-columns-button", "style") == []
+      assert attribute(html, "#task-columns", "style") == []
 
       # a quiet button
       assert attribute(html, "#task-columns-button", "class") == [

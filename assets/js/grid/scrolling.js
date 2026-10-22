@@ -232,8 +232,12 @@ export default {
       if (!bar.hidden) bar.hidden = true
       return
     }
-    const style = `left:${want.left}px;top:${want.top}px;width:${want.width}px;height:${want.height}px`
-    if (bar.getAttribute("style") !== style) bar.setAttribute("style", style)
+    // through the element's style, never its `style` attribute, which a
+    // strict Content-Security-Policy refuses; each only when it changes
+    for (const side of ["left", "top", "width", "height"]) {
+      const value = `${want[side]}px`
+      if (bar.style[side] !== value) bar.style[side] = value
+    }
     const inner = bar.firstElementChild
     if (inner && inner.style.width !== `${want.scroll}px`) inner.style.width = `${want.scroll}px`
     if (bar.hidden) bar.hidden = false

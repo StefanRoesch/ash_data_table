@@ -26,8 +26,7 @@ defmodule AshDataTable.Parts.Common do
   # opens over it or in the page, the question, the action panel and the
   # picker (`opened`).
   # `nested?` says whether the table is shown inside another (nested in a
-  # row, or a picker's); `look` is its look (`AshDataTable.Kit`), whose
-  # heights the table on the page holds as custom properties.
+  # row, or a picker's); `look` is its look (`AshDataTable.Kit`).
   # Its projection (`AshDataTable.Kit.Projection`, `root`).
   attr :id, :string, required: true
   attr :element, :map, required: true
@@ -43,7 +42,6 @@ defmodule AshDataTable.Parts.Common do
     <div
       {@element}
       class={@kit.class(:root, %{nested?: @nested?, look: @look})}
-      {!@nested? && AshDataTable.Parts.Look.style(@look) || %{}}
     >
       {render_slot(@inner_block)}<span {@skip_target} class="outline-none"></span>{render_slot(
         @opened

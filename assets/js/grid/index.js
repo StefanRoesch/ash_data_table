@@ -96,6 +96,18 @@ import sensitive from "./sensitive.js"
 import dialog from "./dialog.js"
 import wholeText from "./whole_text.js"
 
+// The rules that place the table's two menus, "Columns" (`ID-columns`)
+// and the selection's "More" (`ID-bulk-more`), at the buttons that open
+// them: each button an anchor (`anchor-name`) by a name of this table's,
+// as a page has a menu per table, and its menu placed at it
+// (`position-anchor`; the markup says where, `position-area`).
+const anchored = id => [["columns-button", "columns"], ["bulk-more-button", "bulk-more"]]
+  .map(([button, menu]) => {
+    const name = CSS.escape(`--ash-data-table-${menu}-${id}`)
+    return `#${CSS.escape(`${id}-${button}`)}{anchor-name:${name}}#${CSS.escape(`${id}-${menu}`)}{position-anchor:${name}}`
+  })
+  .join("")
+
 const core = {
   mounted() {
     // the table's id, which every id in it starts with
@@ -107,6 +119,14 @@ const core = {
     const until = {signal: this.ending.signal}
     // for the hooks of the grids around this one and in it
     this.el._ashDataTable = this
+    // The names of the anchors of the menus (`anchored`) are rules of a
+    // style sheet of this hook's, by the elements' ids, not `style`
+    // attributes of the markup (a strict Content-Security-Policy refuses
+    // those): no patch takes them away, and the "More" menu, which comes
+    // with a selection, has them as it comes. They go with the hook.
+    this.anchors = new CSSStyleSheet()
+    this.anchors.replaceSync(anchored(this.id))
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, this.anchors]
     // where focus is in the table, for when a patch takes it away (`noteFocus`)
     this.focused = null
     // the edit in progress: {cell, root, input, type, saved, old,
@@ -318,6 +338,7 @@ const core = {
     this.quitWhole()
     this.unstyle()
     this.unpin()
+    document.adoptedStyleSheets = document.adoptedStyleSheets.filter(sheet => sheet !== this.anchors)
     this.observer && this.observer.disconnect()
     this.counted && this.counted.disconnect()
     this.listed && this.listed.disconnect()

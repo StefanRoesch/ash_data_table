@@ -132,6 +132,7 @@ Known traps:
 - The dev and e2e servers share `demo/priv/static/assets/`.
 - A stale `_build/*/phoenix-colocated/ash_data_table/node_modules` link breaks esbuild: delete it or `mix clean`.
 - Tailwind scans `lib/`, not `assets/js/`: a class the hooks set must also appear in `lib/` markup.
+- No `style` attribute in any markup the server renders, nor `setAttribute("style", …)` in JS: the demo's CSP is `style-src 'self'`. A value of one table goes into the grid hook's own style sheets (`adoptedStyleSheets`: the widths and hidden columns in `widths.js`, `--ash-data-table-view` and the cells that stay in `scrolling.js`, the menus' anchor names in `index.js`) or `element.style`; a value of the host's is a CSS custom property its style sheet sets (`--ash-data-table-height`, …).
 - shadcn's variables are renamed `--sh-*` (daisyUI's `--border` is a width).
 
 ## Where decisions live

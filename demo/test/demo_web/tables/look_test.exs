@@ -34,7 +34,8 @@ defmodule DemoWeb.Tables.LookTest do
     refute @sticky in root
     refute @stripes in root
     refute @column_lines in root
-    assert attribute(html, "#task", "style") == []
+    # nor any `style` in the page: how high a table is, is the host's CSS
+    assert attribute(html, "[style]", "style") == []
   end
 
   test "the options a router line names are drawn, those it does not are not", %{conn: conn} do
@@ -77,8 +78,6 @@ defmodule DemoWeb.Tables.LookTest do
     # the route's options over the kit's own (`column_lines: true`)
     said = "look-compact-false-true-true"
     assert said in classes(html, "#looked")
-    # the heights a table was given, on the table on the page
-    assert attribute(html, "#looked", "style") == ["--ash-data-table-nested-height:12rem"]
 
     expand(view, "looked", task.id)
     html = toggle(view, "looked", task.id, "comments")
@@ -92,8 +91,8 @@ defmodule DemoWeb.Tables.LookTest do
 
     assert text(html, "[id='looked-row-#{task.id}-l-comments-b']") == "Comments"
 
-    # no style of its own: the table on the page holds the heights
-    assert attribute(html, "[id='#{nested}']", "style") == []
+    # no `style` in the page, nested tables' none either
+    assert attribute(html, "[style]", "style") == []
 
     [comment | _] = Enum.filter(world.comments, &(&1.task_id == task.id))
     expand(view, nested, comment.id)

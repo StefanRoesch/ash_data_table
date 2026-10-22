@@ -246,7 +246,7 @@ defmodule AshDataTable do
     default: [],
     doc:
       "How the table looks, over what its kit says: `[sticky_header: true, density: :compact, " <>
-        ~s|stripes: true, column_lines: true, height: "60vh", nested_height: "20rem"]`, | <>
+        "stripes: true, column_lines: true]`, " <>
         "any of them. See \"The look of a table\" in `AshDataTable.Kit`."
 
   def table(assigns) do
@@ -398,9 +398,9 @@ defmodule AshDataTable do
 
   ## How it looks
 
-  `look: [sticky_header: true]` (and `density`, `stripes`, `column_lines`,
-  `height`, `nested_height`) says how the table looks, over what its kit
-  says (`c:AshDataTable.Kit.look/1`): see "The look of a table" in
+  `look: [sticky_header: true]` (and `density`, `stripes`, `column_lines`)
+  says how the table looks, over what its kit says
+  (`c:AshDataTable.Kit.look/1`): see "The look of a table" in
   `AshDataTable.Kit`. Every table it shows looks the same.
 
   ## What the page draws itself

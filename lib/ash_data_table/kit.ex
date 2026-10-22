@@ -19,17 +19,7 @@ defmodule AshDataTable.Kit do
     sticky_header: [
       type: :boolean,
       doc:
-        "The table gets a height of its own, and only its rows scroll inside it, both ways; its header and filter row stay in view at its top. So do a nested table's and a picker's table's. The scrollbar at the bottom edge of the window is not shown then: the table's own is in view. `false` in `Kit.Default`."
-    ],
-    height: [
-      type: {:or, [nil, {:custom, __MODULE__, :css_length, []}]},
-      doc:
-        "How high a table is at most with `sticky_header`, a CSS length (`\"60vh\"`, `\"min(80dvh, 50rem)\"`); nil for the kit's own (`min(75dvh, 48rem)` in `Kit.Default`)."
-    ],
-    nested_height: [
-      type: {:or, [nil, {:custom, __MODULE__, :css_length, []}]},
-      doc:
-        "The same for a table nested in a row; nil for the kit's own (about ten rows in `Kit.Default`)."
+        "The table gets a height of its own, and only its rows scroll inside it, both ways; its header and filter row stay in view at its top. So do a nested table's and a picker's table's. The scrollbar at the bottom edge of the window is not shown then: the table's own is in view. How high: at most `min(75dvh, 48rem)` in `Kit.Default`, a nested table about ten rows (`28rem`); the host's style sheet sets other CSS lengths with the custom properties `--ash-data-table-height` and `--ash-data-table-nested-height`. `false` in `Kit.Default`."
     ]
   ]
 
@@ -94,7 +84,7 @@ defmodule AshDataTable.Kit do
   A kit draws what it is told: `Kit.Default` draws it with the classes of
   its root, which reach every table inside it, nested tables and pickers'
   tables too; the root part and `class(:root, …)` are given the options as
-  `look`, a map of all six. Every tint is mixed from the theme's colours:
+  `look`, a map of all four. Every tint is mixed from the theme's colours:
   there is no colour among the options.
 
   ## What a part is given, and what it must write
@@ -190,8 +180,9 @@ defmodule AshDataTable.Kit do
       opens: the question, the action panel and the picker, where they are
       drawn in the page), and between the two the element the skip link
       jumps to (`skip_target`, after the pagination). In
-      `AshDataTable.table/1` it is inside a plain element of the tag's own
-      (`display: contents`): a live component's root must be static.
+      `AshDataTable.table/1` it is inside a plain element of the tag's own,
+      with the class `class(:portal, …)` (`display: contents`): a live
+      component's root must be static.
     * `heading` - the heading line: the table's name, the `columns` part,
       the `argument_line` part, its create and table actions. A nested
       table's is drawn in a portal of its own onto its line
@@ -528,7 +519,10 @@ defmodule AshDataTable.Kit do
   `:message`), and of the element LiveView moves a nested table in
   (`:portal`, the `class` of `Phoenix.Component.portal/1`'s wrapper;
   `display: contents` in `Kit.Default`; the wrapper of a nested table's
-  heading line takes it too), or nil. The two elements inside the
+  heading line takes it too, and so does the element the tag
+  `AshDataTable.table/1` draws around the table, as a live component's
+  root must be a static tag: an element that takes no part in the
+  layout), or nil. The two elements inside the
   wrapper of a nested table are the table's, styled by their markers:
   `data-ash-data-table-portal` keeps the nested table at the left edge of
   the scroll area around it, `data-ash-data-table-view` makes it as wide
@@ -590,21 +584,6 @@ defmodule AshDataTable.Kit do
       {option, Keyword.get_lazy(given, option, fn -> kit.look(option) end)}
     end)
   end
-
-  # A height of a table: a CSS length, written into a custom property of
-  # the root's `style`, so no more than a length is let in.
-  @doc false
-  def css_length(value) when is_binary(value) do
-    if value =~
-         ~r/\A(?:\s|[-+*\/,()]|(?:min|max|calc|clamp)\(|\d*\.?\d+(?:px|rem|em|ch|lh|vh|dvh|svh|lvh|vw|%)?)+\z/,
-       do: {:ok, value},
-       else:
-         {:error,
-          "a CSS length such as \"60vh\" or \"min(80dvh, 50rem)\", got: #{inspect(value)}"}
-  end
-
-  def css_length(value),
-    do: {:error, "a CSS length such as \"60vh\", got: #{inspect(value)}"}
 
   @doc "The parts of this version's contract."
   @spec parts() :: [atom]

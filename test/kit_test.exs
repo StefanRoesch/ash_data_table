@@ -253,15 +253,13 @@ defmodule AshDataTable.KitTest do
              density: :normal,
              stripes: false,
              column_lines: false,
-             sticky_header: false,
-             height: nil,
-             nested_height: nil
+             sticky_header: false
            }
 
     assert %{stripes: true, density: :normal} = Kit.look(kit, [])
 
-    assert %{stripes: false, density: :roomy, height: "50vh"} =
-             Kit.look(kit, Kit.look!([stripes: false, density: :roomy, height: "50vh"], "a test"))
+    assert %{stripes: false, density: :roomy} =
+             Kit.look(kit, Kit.look!([stripes: false, density: :roomy], "a test"))
   end
 
   test "a look that is no keyword list, names no option, or holds a value of another kind is refused" do
@@ -270,18 +268,16 @@ defmodule AshDataTable.KitTest do
           {[stripe: true], ~r/the `look` of a test: unknown options \[:stripe\]/},
           {[density: :tiny], ~r/the `look` of a test: .*density.*:tiny/s},
           {[sticky_header: "yes"], ~r/the `look` of a test: .*sticky_header/s},
-          # a height is written into the root's style: a CSS length and no more
-          {[height: "10rem; background: red"], ~r/a CSS length/},
-          {[nested_height: "url(x)"], ~r/a CSS length/},
-          {[height: "var(--x)"], ~r/a CSS length/},
-          {[height: 400], ~r/a CSS length/}
+          # how high a table is, is the host's CSS: no option of the look
+          {[height: "60vh"], ~r/the `look` of a test: unknown options \[:height\]/},
+          {[nested_height: "20rem"], ~r/the `look` of a test: unknown options \[:nested_height\]/}
         ] do
       assert_raise ArgumentError, said, fn -> Kit.look!(look, "a test") end
     end
 
-    assert Kit.look!([height: "min(80dvh, 50rem)", nested_height: "20rem"], "a test") == [
-             height: "min(80dvh, 50rem)",
-             nested_height: "20rem"
+    assert Kit.look!([density: :compact, sticky_header: true], "a test") == [
+             density: :compact,
+             sticky_header: true
            ]
   end
 

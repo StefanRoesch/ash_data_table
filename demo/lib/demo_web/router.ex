@@ -5,19 +5,18 @@ defmodule DemoWeb.Router do
 
   # The pages' Content-Security-Policy (demo/README.md, "Content-Security-
   # Policy"): scripts, styles, images, fonts and connections from the
-  # demo's own origin only, so no inline script, no inline event handler
-  # and no inline style element. `connect-src 'self'` covers LiveView's
-  # websocket (`ws:`/`wss:` of the same host and port, CSP Level 3) and
-  # its long-poll fallback. Two allowances: `img-src data:` for the icons
-  # (heroicons and daisyUI draw them as `data:` SVG in the style sheet),
-  # and `style-src-attr 'unsafe-inline'` for the `style` attributes the
-  # table's markup carries and its hooks write (the anchors of the
-  # columns list and the selection's menu, the heights a table is given,
-  # the scrollbar's place); no `<style>` element and no script is allowed
-  # by it. One literal string, as Sobelow reads it (`Config.CSP`).
+  # demo's own origin only, so no inline script, no inline event handler,
+  # no inline style element and no `style` attribute: the table's markup
+  # carries none, and its hooks set styles through the DOM (`element.style`)
+  # and style sheets of their own (`adoptedStyleSheets`), which the policy
+  # does not govern. `connect-src 'self'` covers LiveView's websocket
+  # (`ws:`/`wss:` of the same host and port, CSP Level 3) and its
+  # long-poll fallback. One allowance: `img-src data:` for the icons
+  # (heroicons and daisyUI draw them as `data:` SVG in the style sheet).
+  # One literal string, as Sobelow reads it (`Config.CSP`).
   @secure_browser_headers %{
     "content-security-policy" =>
-      "default-src 'self'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
   }
 
   pipeline :browser do
@@ -130,7 +129,7 @@ defmodule DemoWeb.Router do
         ash_data_table "/look/tasks", Demo.Tracker.Task,
           id: "looked",
           kit: DemoWeb.LookKit,
-          look: [density: :compact, sticky_header: true, nested_height: "12rem"]
+          look: [density: :compact, sticky_header: true]
 
         # the same, its stream's items as JSON after the grid
         # (`DemoWeb.Support.ItemsKit`, `item_bytes_test.exs`)

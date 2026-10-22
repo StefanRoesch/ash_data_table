@@ -108,7 +108,6 @@ defmodule DemoWeb.ReactKit do
       id={"#{@id}-heading-island"}
       name="AshHeading"
       class="contents"
-      table_id={@id}
       shown?={@shown?}
       nested?={@nested?}
       element={props(@element)}
@@ -128,7 +127,6 @@ defmodule DemoWeb.ReactKit do
       id={"#{@id}-selection-island"}
       name="AshSelectionLine"
       class="contents"
-      table_id={@id}
       shown?={@shown?}
       nested?={@nested?}
       selection={props(@selection)}

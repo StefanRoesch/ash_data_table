@@ -105,6 +105,10 @@ defmodule DemoWeb.MarkupSnapshotTest do
     path = Path.join(@dir, name <> ".html")
     markup = normalise(html)
 
+    # no `style` attribute: the demo's Content-Security-Policy refuses them
+    # (`style-src 'self'`, DemoWeb.Router)
+    refute markup =~ ~r/<[^>]*\sstyle=/, "#{name}: a `style` attribute in the markup"
+
     if System.get_env("MIX_SNAPSHOT_UPDATE") == "1" do
       File.mkdir_p!(@dir)
       File.write!(path, markup)
@@ -175,11 +179,17 @@ defmodule DemoWeb.MarkupSnapshotTest do
   end
 
   # The tag's live component draws a plain element around the table's root
-  # (a live component's root must be static: `display: contents`); the
-  # table is drawn the same in every mode inside it, and that element is
-  # no part of the table's markup (one per tag: a page may have two).
+  # (a live component's root must be static: the kit's class of an element
+  # that takes no part in the layout, `class(:portal, …)`); the table is
+  # drawn the same in every mode inside it, and that element is no part of
+  # the table's markup (one per tag: a page may have two). It is the root
+  # of a live component, which LiveView marks (`data-phx-component`).
   defp without_tag_wrapper(html) do
-    case Regex.run(~r/<div[^>]*style="display: contents"[^>]*>/, html, return: :index) do
+    case Regex.run(
+           ~r/<div(?=[^>]*\sdata-phx-component=)(?=[^>]*\sclass="contents")[^>]*>/,
+           html,
+           return: :index
+         ) do
       nil ->
         html
 

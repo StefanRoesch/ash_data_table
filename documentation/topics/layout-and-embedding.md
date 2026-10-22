@@ -465,8 +465,16 @@ row stays at its top. It is plain CSS (`position: sticky` on the header
 group, in the table's own scroll area); no script places anything.
 
 - **How high.** The table on a page is at most `min(75dvh, 48rem)`, a
-  nested table about ten rows (`28rem`); `height` and `nested_height` set
-  other CSS lengths. A table with fewer rows is as high as its rows.
+  nested table about ten rows (`28rem`). Your style sheet sets other CSS
+  lengths with two custom properties, on the table's element or anything
+  around it: `--ash-data-table-height` and `--ash-data-table-nested-height`.
+  A table with fewer rows is as high as its rows.
+
+<!-- sketch -->
+```css
+/* the projects at most 60% of the window, a nested table 20rem */
+#projects { --ash-data-table-height: 60vh; --ash-data-table-nested-height: 20rem; }
+```
 - **Nested tables and pickers' tables** have their own height and staying
   header, each in its own scroll area. Each nested scroll area is a layer
   of its own, so its header never rises over the header of the table it is
@@ -489,29 +497,27 @@ move.
 
 ## Content-Security-Policy
 
-A table needs no inline script: its JavaScript is the hooks your
-`app.js` bundles, and it puts no `<script>` or `<style>` element and no
-inline event handler (`onclick=`) into the page. A file an action returns
-is saved through a `blob:` link that is clicked and never put into the
-page: a download, which the policy does not govern. So a strict policy
-works, with one allowance for styles:
+A table needs no inline script and no inline style: its JavaScript is the
+hooks your `app.js` bundles, and it puts no `<script>` or `<style>`
+element, no inline event handler (`onclick=`) and no `style` attribute
+into the page. A file an action returns is saved through a `blob:` link
+that is clicked and never put into the page: a download, which the policy
+does not govern. So a strict policy works, with no allowance for the
+table:
 
 <!-- sketch -->
 ```text
 default-src 'self'; script-src 'self'; style-src 'self';
-style-src-attr 'unsafe-inline'; img-src 'self' data:; connect-src 'self'
+img-src 'self' data:; connect-src 'self'
 ```
 
-- **`style-src-attr 'unsafe-inline'`**: the markup carries a few `style`
-  attributes, and LiveView patches them in: the anchors of the "Columns"
-  list and of the selection's "More" menu (`anchor-name`,
-  `position-anchor`), the `height` and `nested_height` a table is given
-  (as custom properties), and `display: contents` around an embedded
-  table. The grid's hook writes the second scrollbar's place as one. It
-  allows `style` attributes only, no `<style>` element. What the hooks set
-  through `element.style`, and their own style sheets (the column widths,
-  the hidden columns, `--ash-data-table-view`, through
-  `document.adoptedStyleSheets`), need nothing.
+- **Styles the hooks set** need no keyword: what they set through the
+  DOM (`element.style`: the second scrollbar's place, an editor's height)
+  and the rules of their own style sheets (`document.adoptedStyleSheets`:
+  the column widths, the hidden columns, `--ash-data-table-view`, the
+  anchors that place the "Columns" list and the selection's "More" menu
+  at their buttons). A policy governs `style` attributes in the markup
+  and `<style>` elements, neither of these.
 - **`connect-src 'self'`** covers LiveView's websocket (`ws:`/`wss:` of
   the same host and port, CSP Level 3); name the host with `ws:`/`wss:` if
   the socket is elsewhere.

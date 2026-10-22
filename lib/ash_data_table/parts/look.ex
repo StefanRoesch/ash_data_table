@@ -128,8 +128,12 @@ defmodule AshDataTable.Parts.Look do
   @column_lines "[&_[role=table]>*>[role=row]>:not(:first-child,[colspan])]:border-s [&_[role=table]>*>[role=row]>:not(:first-child,[colspan])]:border-s-base-content/10"
 
   # The header that stays in view, the Airtable way: each grid is its own
-  # scroll area, both ways, as high as `height` (a nested table's as
-  # `nested_height`, about ten rows), and its header group sticks to its
+  # scroll area, both ways, at most `min(75dvh, 48rem)` high (a nested
+  # table's about ten rows), or what the host's style sheet says
+  # (`--ash-data-table-height`, `--ash-data-table-nested-height`: a CSS
+  # length can be anything, so it is no class here, and no `style`
+  # attribute either, which a strict policy refuses), and its header
+  # group sticks to its
   # top with plain CSS. The header of the table on the page is drawn over
   # everything nested (each nested scroll area is a stacking context of
   # its own, above); the corner, the label column's header where it stays
@@ -170,22 +174,5 @@ defmodule AshDataTable.Parts.Look do
         ),
       " "
     )
-  end
-
-  @doc false
-  # The root's `style` of the look, as attributes to spread: the heights a
-  # table was given, as custom properties (checked as CSS lengths,
-  # `AshDataTable.Kit.look!/2`); nil where none was.
-  def style(look) do
-    case Enum.reject(
-           [
-             look.height && "--ash-data-table-height:#{look.height}",
-             look.nested_height && "--ash-data-table-nested-height:#{look.nested_height}"
-           ],
-           &is_nil/1
-         ) do
-      [] -> nil
-      heights -> %{"style" => Enum.join(heights, ";")}
-    end
   end
 end

@@ -62,8 +62,10 @@ defmodule AshDataTable.Parts.Grid do
   # so that nothing around the table cuts it off (not the grid that
   # scrolls sideways around a nested table, not a dialog), a click
   # elsewhere and Escape close it, and the button says whether it is open.
-  # It is placed under the button by CSS anchor positioning (the button's
-  # `anchor-name`, the list's `position-anchor` and `position-area`);
+  # It is placed under the button by CSS anchor positioning (the list's
+  # `position-area`; the button's `anchor-name` and the list's
+  # `position-anchor`, a name of the table's own, are rules of the grid's
+  # hook's style sheet, by their ids, as a page has a list per table);
   # where a browser has none, it opens in the middle of the window. It looks
   # as daisyUI 5's dropdown that is a popover does (`dropdown menu` on the
   # popover itself, `rounded-box bg-base-100 shadow-sm`); `flex-nowrap`
@@ -124,7 +126,6 @@ defmodule AshDataTable.Parts.Grid do
       <button
         type="button"
         {@button}
-        style={"anchor-name: #{anchor(@id)}"}
         class="btn btn-ghost btn-sm gap-1 px-2"
       >
         <svg
@@ -152,7 +153,6 @@ defmodule AshDataTable.Parts.Grid do
       </button>
       <div
         {@list}
-        style={"position-anchor: #{anchor(@id)}"}
         class="dropdown menu max-h-[60vh] flex-nowrap overflow-y-auto rounded-box bg-base-100 p-2 text-base-content shadow-sm forced-colors:border [position-area:bottom_span-right] [position-try-fallbacks:flip-inline,flip-block] supports-[position-area:bottom]:inset-auto supports-[position-area:bottom]:m-0 supports-[position-area:bottom]:mt-0.5"
       >
         <div :if={@label} class="flex items-center gap-2">
@@ -1000,8 +1000,4 @@ defmodule AshDataTable.Parts.Grid do
         )
 
   def root, do: @root
-
-  # The name the "Columns" button is anchored by (`anchor-name`), the
-  # table's own: a page has a list per table.
-  defp anchor(id), do: "--ash-data-table-columns-" <> String.replace(id, ~r/[^A-Za-z0-9_-]/, "_")
 end

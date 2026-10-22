@@ -37,12 +37,13 @@ defmodule AshDataTable.Live.Embedded do
   def handle_async(name, result, socket), do: Core.handle_async(name, result, socket)
 
   # The root of a live component must be a static tag: a plain element
-  # around the table, which takes no part in the layout. The table's own
-  # root element is the kit's (`root/1`).
+  # around the table, which takes no part in the layout, by the kit's class
+  # of such an element (`class(:portal, …)`, `display: contents` in
+  # `Kit.Default`). The table's own root element is the kit's (`root/1`).
   @impl true
   def render(assigns) do
     ~H"""
-    <div style="display: contents">
+    <div class={@table.options.kit.class(:portal, %{})}>
       <AshDataTable.attached table={@table} streams={@streams} uploads={assigns[:uploads]} />
     </div>
     """

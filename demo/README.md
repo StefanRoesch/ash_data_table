@@ -74,9 +74,9 @@ environments, the browser tests' and the performance pages' too) is sent
 this policy:
 
 ```text
-default-src 'self'; script-src 'self'; style-src 'self';
-style-src-attr 'unsafe-inline'; img-src 'self' data:; connect-src 'self';
-object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'
+default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:;
+connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';
+frame-ancestors 'self'
 ```
 
 - **No inline script**: the page's JavaScript is `assets/js/app.js` alone.
@@ -87,13 +87,14 @@ object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'
   other than the system's may show the system's for a moment as it loads.
 - **No inline style element**: the look of the browser tests' page
   `/e2e/markers` is in `assets/css/e2e_markers.css`.
-- **`style-src-attr 'unsafe-inline'`**, and only for `style` attributes:
-  the table's markup carries a few (the anchor of the "Columns" list and
-  of the selection's "More" menu, the heights a table is given as custom
-  properties), and the grid's hook writes the second scrollbar's place as
-  one. What the hooks and the React islands set through `element.style`
-  and the hooks' own style sheets (`adoptedStyleSheets`, the column widths,
-  `--ash-data-table-view`) need no allowance.
+- **No `style` attribute** either: no markup the server renders has one,
+  the table's, the kits' (`Kit.Default`, `DivKit`, `ReactKit`) and the
+  demo's templates alike (`test/demo_web/markup_snapshot_test.exs` checks
+  its pages). What the hooks and the React islands set through
+  `element.style` (the second scrollbar's place) and the hooks' own style
+  sheets (`adoptedStyleSheets`: the column widths, the hidden columns,
+  `--ash-data-table-view`, the anchors of the "Columns" list and the
+  selection's "More" menu) need no allowance: the policy governs neither.
 - **`img-src data:`** for the icons: heroicons and daisyUI draw them as
   `data:` SVG in the style sheet.
 - **`connect-src 'self'`** covers LiveView's websocket (`ws:`/`wss:` of the
