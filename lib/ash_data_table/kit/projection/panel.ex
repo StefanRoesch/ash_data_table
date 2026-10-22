@@ -286,6 +286,7 @@ defmodule AshDataTable.Kit.Projection.Panel do
           ),
         item: Heading.item(input.cell_type),
         limits: Limits.of(input),
+        typing: Attrs.typing(),
         name: name <> "[]",
         template: row.("", nil),
         rows: for({held, position} <- Enum.with_index(values, 1), do: row.(held, position))
@@ -359,7 +360,8 @@ defmodule AshDataTable.Kit.Projection.Panel do
       required?: Map.get(input, :required?, false),
       described: described,
       limits: Limits.of(input),
-      values: choices(input.values, value)
+      values: choices(input.values, value),
+      typing: if(input.editor == :enum and not secret?, do: %{}, else: Attrs.typing())
     }
   end
 

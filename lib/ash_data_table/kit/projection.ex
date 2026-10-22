@@ -403,12 +403,17 @@ defmodule AshDataTable.Kit.Projection do
     * `id`, `name`, `value`, `editor` - as its field's
     * `secret?`, `invalid?`, `required?`, `described`, `limits`, `values` -
       as its field's
+    * `typing` - the bundle of a control that is typed into
+      (`phx-debounce`): the panel's form validates once typing pauses, not
+      on every key; empty for a menu
 
   ### `list`
 
     * `element` - its bundle (`data-list`, which a patch leaves alone)
     * `item`, `limits`, `name` - what its values are, their limits, what
       each is sent under
+    * `typing` - the bundle of each value's control that is typed into, as
+      a `control`'s
     * `template`, `rows` - the template's row and a row per value, each its
       `value`, `position` and `count`
     * `texts`, `messages` - `add_value`, `value_label`, `remove_label`,

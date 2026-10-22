@@ -1738,6 +1738,13 @@ defmodule AshDataTable.Attrs do
   end
 
   @doc """
+  On a control of the action panel that is typed into: its form validates
+  (`panel_validate`) once typing pauses, not on every key. Sending the form
+  sends what was typed at once.
+  """
+  def typing, do: %{"phx-debounce" => "300"}
+
+  @doc """
   The button of a field given by choosing records that opens the picker
   (`pick_input`, with the field's name).
   """

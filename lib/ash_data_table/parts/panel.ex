@@ -381,6 +381,7 @@ defmodule AshDataTable.Parts.Panel do
   attr :described, :any, required: true
   attr :limits, :map, required: true
   attr :values, :list, required: true
+  attr :typing, :map, required: true
 
   def control(%{secret?: true} = assigns) do
     ~H"""
@@ -394,6 +395,7 @@ defmodule AshDataTable.Parts.Panel do
       aria-invalid={@invalid? && "true"}
       aria-describedby={@described}
       class={["input w-full", Parts.Editors.control_edge()]}
+      {@typing}
     />
     """
   end
@@ -408,6 +410,7 @@ defmodule AshDataTable.Parts.Panel do
       aria-invalid={@invalid? && "true"}
       aria-describedby={@described}
       class={["textarea w-full", Parts.Editors.control_edge()]}
+      {@typing}
     >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
     """
   end
@@ -448,6 +451,7 @@ defmodule AshDataTable.Parts.Panel do
       aria-invalid={@invalid? && "true"}
       aria-describedby={@described}
       class={["input w-full", Parts.Editors.control_edge()]}
+      {@typing}
     />
     """
   end

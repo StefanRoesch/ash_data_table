@@ -83,6 +83,7 @@ defmodule AshDataTable.Parts.Editors do
   attr :element, :map, required: true
   attr :item, :atom, required: true
   attr :limits, :map, required: true
+  attr :typing, :map, required: true
   attr :name, :string, required: true
   attr :template, :map, required: true
   attr :rows, :list, required: true
@@ -100,6 +101,7 @@ defmodule AshDataTable.Parts.Editors do
         kit={@kit}
         item={@item}
         limits={@limits}
+        typing={@typing}
         name={@name}
         row={@template}
         value_label={nil}
@@ -110,6 +112,7 @@ defmodule AshDataTable.Parts.Editors do
         kit={@kit}
         item={@item}
         limits={@limits}
+        typing={@typing}
         name={@name}
         row={row}
         value_label={Enum.at(@texts.value_position, row.position - 1)}
@@ -154,6 +157,7 @@ defmodule AshDataTable.Parts.Editors do
         aria-label={@value_label}
         aria-describedby={@row.count && @row.count.element["id"]}
         class={["textarea min-h-0 flex-1", control_edge()]}
+        {@typing}
       >{Phoenix.HTML.Form.normalize_value("textarea", @row.value)}</textarea>
       <Kit.part :if={@row.count} part={:count} kit={@kit} class={nil} {@row.count} />
       <input
@@ -166,6 +170,7 @@ defmodule AshDataTable.Parts.Editors do
         value={@row.value}
         aria-label={@value_label}
         class={["input flex-1", control_edge()]}
+        {@typing}
       />
       <button
         type="button"

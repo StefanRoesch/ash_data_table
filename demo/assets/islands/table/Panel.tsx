@@ -69,6 +69,7 @@ export type ListProps = {
   element: Bundle
   item: string | null
   limits: Limits
+  typing: Bundle
   name: string
   template: ListRow
   rows: ListRow[]
@@ -86,6 +87,7 @@ export type ControlProps = {
   described: string | null
   limits: Limits
   values: null | Choice[]
+  typing: Bundle
 }
 
 export type FieldProps = {
@@ -395,6 +397,7 @@ export function Control({control}: {control: ControlProps}) {
     "aria-required": control["required?"] ? ("true" as const) : undefined,
     "aria-invalid": control["invalid?"] ? ("true" as const) : undefined,
     "aria-describedby": control.described ?? undefined,
+    ...attrs(control.typing),
   }
 
   if (control["secret?"]) return <input type="password" autoComplete="off" {...common} className={input("h-8 w-full text-sm")} />
@@ -458,7 +461,7 @@ export function ListItem({list, row, valueLabel, removeLabel}: {list: ListProps;
     <div data-item="" className="flex items-center gap-1">
       {kind === "boolean" && <input type="hidden" name={name} value={String(row.value === "true")} />}
       {kind === "boolean" && <input type="checkbox" defaultChecked={row.value === "true"} aria-label={label} className={box()} />}
-      {kind === "text" && <textarea rows={1} name={name} defaultValue={row.value} aria-label={label} aria-describedby={(row.count?.element.id as string | undefined) ?? undefined} className={input("h-auto min-h-0 flex-1 py-1 text-sm")} />}
+      {kind === "text" && <textarea rows={1} name={name} defaultValue={row.value} aria-label={label} aria-describedby={(row.count?.element.id as string | undefined) ?? undefined} {...attrs(list.typing)} className={input("h-auto min-h-0 flex-1 py-1 text-sm")} />}
       {kind === "text" && row.count && <Count count={row.count} />}
       {(kind === "number" || kind === "date" || kind === "datetime") && (
         <input
@@ -469,6 +472,7 @@ export function ListItem({list, row, valueLabel, removeLabel}: {list: ListProps;
           name={name}
           defaultValue={row.value}
           aria-label={label}
+          {...attrs(list.typing)}
           className={input("h-8 flex-1 text-sm")}
         />
       )}
