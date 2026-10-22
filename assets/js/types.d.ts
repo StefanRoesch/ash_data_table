@@ -7,9 +7,9 @@
 
 interface Element {
   // the hook of a grid, on its element (grid/index.js, `mounted`)
-  _ashDataTable?: any
+  _ashDataTable?: AshDataTable.Grid
   // the hook of a grid's sender, on its element (sender.js, `mounted`)
-  _ashDataTableSender?: any
+  _ashDataTableSender?: AshDataTable.HookFunctions
   focus(options?: FocusOptions): void
 }
 
@@ -20,7 +20,7 @@ interface Window {
 
 interface Node {
   // what is cloned is an element of a template
-  cloneNode(deep?: boolean): any
+  cloneNode(deep?: boolean): HTMLElement
 }
 
 interface HTMLElement {
@@ -33,9 +33,45 @@ interface HTMLElement {
 
 // The public entries for a kit that draws in the browser (mount.js).
 declare namespace AshDataTable {
+  // What the server pushes with an event and replies to one: a map from
+  // JSON, which each handler reads the fields of that it knows.
+  type Json = string | number | boolean | null | Json[] | {[key: string]: Json}
+  type Payload = {[key: string]: Json}
+  type Reply = {[key: string]: Json} | undefined
+
+  // What the other hooks use of a grid's hook, on its element
+  // (grid/index.js).
+  interface Grid {
+    el: HTMLElement
+    table(): HTMLElement | null
+    records(): HTMLElement[]
+    selectedRows(): HTMLElement[]
+    stopsIn(root: Element | null): HTMLElement[]
+    toFirstStop(): void
+    busy(cell: HTMLElement, busy: boolean): void
+    repair(): void
+    recountIn(scope: Element): void
+    ask(question: string, destructive: boolean, from: Element): Promise<boolean | string>
+    goneWith(el: Element): void
+    waitFor(ref: string, cell: HTMLElement, held: {restore: () => void; value?: string; old?: string}): void
+    fail(cell: HTMLElement, message: string, restore: () => void): void
+    barWanted(): Bar | null
+    placeBar(want: Bar | null): void
+  }
+
+  // Where a grid's scrollbar at the bottom edge of the window goes
+  // (grid/scrolling.js).
+  interface Bar {
+    left: number
+    top: number
+    width: number
+    height: number
+    scroll: number
+  }
+
   interface Transport {
-    push(event: string, payload: object): Promise<any>
-    on(event: string, handler: (payload: any) => void): any
+    push(event: string, payload: object): Promise<Reply>
+    on(event: string, handler: (payload: Payload) => void): unknown
     off(event: string): void
     debug(): boolean
   }
@@ -50,13 +86,14 @@ declare namespace AshDataTable {
 
   interface Options {
     onEdit?: (cellId: string | null) => void
+    onBusy?: (cellId: string, busy: boolean) => void
   }
 
   interface HookFunctions {
     el: HTMLElement
-    pushEventTo(selectorOrTarget: string | HTMLElement, event: string, payload: object): Promise<any>
-    handleEvent(event: string, handler: (payload: any) => void): any
-    removeHandleEvent(ref: any): void
+    pushEventTo(selectorOrTarget: string | HTMLElement, event: string, payload: object): Promise<Reply>
+    handleEvent(event: string, handler: (payload: Payload) => void): unknown
+    removeHandleEvent(ref: unknown): void
     liveSocket?: {isDebugEnabled(): boolean}
   }
 

@@ -10,7 +10,7 @@
 //     import {mountGrid, liveViewTransport} from "ash_data_table"
 //
 //     const transport = liveViewTransport({el, pushEventTo, handleEvent, removeHandleEvent, liveSocket})
-//     const grid = mountGrid(el, transport, {onEdit: cellId => setEdited(cellId)})
+//     const grid = mountGrid(el, transport, {onEdit: cellId => setEdited(cellId), onBusy: (cellId, busy) => setBusy(cellId, busy)})
 //     // before each commit of the framework: grid.beforeUpdate()
 //     // after it: grid.updated()
 //     // when the element goes: grid.destroy()
@@ -22,7 +22,10 @@
 //   the hook holds its content (the editor); the kit keeps the cell's
 //   children as they are meanwhile, and draws them from the fresh item
 //   once the edit has ended (a HEEx kit has LiveView's `beforeUpdate` for
-//   it). `beforeUpdate()` before each commit that may change the
+//   it). `options.onBusy(cellId, busy)`: told that a cell's save or
+//   action is on its way (`aria-busy`, true), and that it is no more
+//   (false); the kit keeps the cell as it is meanwhile, as for an edit.
+//   `beforeUpdate()` before each commit that may change the
 //   element, while the DOM is still as it was (React: in the render that
 //   leads to it, or `getSnapshotBeforeUpdate`), and `updated()` after it
 //   (React: a layout effect), as LiveView calls a hook's `beforeUpdate`

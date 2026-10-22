@@ -31,8 +31,9 @@ export default {
     }, until)
     // after the table's hook has told the server of the row it selected
     dialog.addEventListener("ash_data_table:choose", () => this.choose(false), until)
-    // once the table's own hook is there
-    setTimeout(() => this.enter())
+    // once the table's own hook is there: now, or as it says it is
+    if (this.table()) this.enter()
+    else dialog.addEventListener("ash_data_table:mounted", e => { if (!this.entered && e.target === this.el.querySelector(GRID)) this.enter() }, until)
   },
 
   // The table in the picker, as its hook.
@@ -48,6 +49,7 @@ export default {
   enter() {
     const table = this.table()
     if (!table || !this.el.isConnected) return
+    this.entered = true
     const row = table.selectedRows()[0] || table.records()[0]
     const stop = row ? table.stopsIn(row)[0] : table.stopsIn(table.table())[0]
     if (stop) stop.focus()
@@ -63,7 +65,7 @@ export default {
     if (this.busy) return
     this.busy = true
     const cell = this.cell()
-    if (cell) cell.setAttribute("aria-busy", "true")
+    if (cell && this.grid) this.grid.busy(cell, true)
     // What the argument line of the picker's table holds: the
     // record is read through the same action, given the same.
     const line = this.el.querySelector(`form${ARGUMENTS}`)
@@ -77,7 +79,7 @@ export default {
         if (cell && cell.isConnected && this.grid) this.grid.waitFor(reply.ref, cell, {restore: () => {}})
         return
       }
-      if (cell) cell.removeAttribute("aria-busy")
+      if (cell && this.grid) this.grid.busy(cell, false)
       if (reply && reply.ask && this.grid) {
         // Cancel, and Escape: the browser puts focus back in the picker
         this.grid.ask(reply.ask, false, this.el).then(yes => { if (yes === true && this.el.isConnected) this.choose(none, true) })

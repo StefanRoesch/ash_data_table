@@ -47,7 +47,8 @@
 // (`pick`). That table is one to choose from (`data-choose`): a
 // click anywhere on a row selects the row, Enter on a row and a
 // double click choose it (`ash_data_table:choose`, for the picker's
-// hook), and it starts with the row selected that the server marks
+// hook, which hears from `ash_data_table:mounted` that the table's
+// hook is there), and it starts with the row selected that the server marks
 // as the record chosen now (`data-current`), until the person
 // selects another.
 //
@@ -171,6 +172,15 @@ const core = {
       if (line && line.contains(e.target)) this.lineFocus = e.target
     }
     this.scope.addEventListener("focusin", this.onLineFocus, until)
+    // Whether focus is moving with Tab: a cell that Tab comes to is
+    // brought out from under what stays in view (`onFocusin`), one the
+    // pointer comes to is not. The key is heard at the document before
+    // focus moves, wherever it was, and forgotten as it is let go or
+    // the pointer is pressed.
+    this.tabbing = false
+    window.addEventListener("keydown", e => { if (e.key === "Tab") this.tabbing = true }, {capture: true, signal: this.ending.signal})
+    window.addEventListener("keyup", e => { if (e.key === "Tab") this.tabbing = false }, {capture: true, signal: this.ending.signal})
+    window.addEventListener("pointerdown", () => { this.tabbing = false }, {capture: true, signal: this.ending.signal})
     // so is the argument line: Enter in one of its inputs applies
     // what the line holds now, as it does in a filter. A form of
     // several inputs without a button is not sent by Enter itself.
@@ -295,6 +305,8 @@ const core = {
       attributeFilter: ["checked"]
     })
     this.sync()
+    // for the hooks around it that wait for it (the picker's)
+    this.el.dispatchEvent(new CustomEvent("ash_data_table:mounted", {bubbles: true}))
   },
 
   // After every patch: the header goes before the rows again, the rows
@@ -354,6 +366,17 @@ const core = {
   edited(cellId) {
     const onEdit = this.options && this.options.onEdit
     if (onEdit) onEdit(cellId)
+  },
+
+  // Marks a cell busy while its save or action is on its way
+  // (`aria-busy`), or busy no more, and says so to whoever mounted the
+  // hook and asked (`mountGrid`'s `onBusy`): a kit that draws in the
+  // browser keeps the cell as it is meanwhile.
+  busy(cell, busy) {
+    if (busy) cell.setAttribute("aria-busy", "true")
+    else cell.removeAttribute("aria-busy")
+    const onBusy = this.options && this.options.onBusy
+    if (onBusy && cell.id) onBusy(cell.id, busy)
   },
 }
 

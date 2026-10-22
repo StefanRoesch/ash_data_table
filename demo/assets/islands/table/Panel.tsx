@@ -27,10 +27,9 @@
 // live_react gives the island), and says how far each has come.
 import * as React from "react"
 import {mountPanel} from "ash_data_table"
-import {useLiveReact} from "live_react"
 
 import {attrs, type Bundle, type Message} from "./props"
-import {Commits, ServerBox, Strict, useMountedWhile, useServerValue, type Live, type ServerBoxProps} from "./mounting"
+import {Commits, ServerBox, Strict, useLive, useMountedWhile, useServerValue, type ServerBoxProps} from "./mounting"
 import {usePart} from "./parts"
 import {Template, type CountProps, type EditorProps, type Limits} from "./Editors"
 import {closeDialog} from "./Picker"
@@ -181,7 +180,7 @@ export function AshPanel(props: PanelProps["panel"]) {
 // The part `Panel`.
 export function Panel({panel}: PanelProps) {
   const Field = usePart("Field")
-  const live = useLiveReact() as unknown as Live
+  const live = useLive()
   const ref = React.useRef<HTMLElement>(null)
   const open = panel["open?"]
   const mounted = useMountedWhile(ref, open, mountPanel, live, closeDialog)
@@ -644,7 +643,7 @@ export function Union({field}: {field: FieldProps}) {
 // LiveView's input of the field (`uploadTo`, with the panel's form, which
 // that input names), and a bar per file while it is sent.
 export function FileField({field}: {field: FieldProps}) {
-  const live = useLiveReact() as unknown as Live & {uploadTo: (target: Element, name: string, files: FileList) => void}
+  const live = useLive()
   const upload = field.file!
   const ref = React.useRef<HTMLInputElement>(null)
   // a file is given once: where the server holds none of it any more (it
@@ -702,13 +701,13 @@ export function ComponentEditor({field}: {field: FieldProps}) {
     if (process.env.NODE_ENV !== "production") console.warn(`ash_data_table: the React kit has no editor for ${component.module}; the field is typed as text`)
     return <input type="text" {...attrs(component.control)} defaultValue={value} className={input("h-8 w-full text-sm")} />
   }
-  const editor = {
+  const editor: EditorProps = {
     name: field.name,
     label: field.label,
     required: field["required?"],
     limits: field.limits,
     control: {...component.control, defaultValue: value},
     value,
-  } as unknown as EditorProps
+  }
   return <Component editor={editor} />
 }

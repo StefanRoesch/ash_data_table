@@ -28,7 +28,7 @@
 //     destroyed already.
 import * as React from "react"
 import {flushSync} from "react-dom"
-import {getHooks} from "live_react"
+import {getHooks, useLiveReact} from "live_react"
 import {liveViewTransport} from "ash_data_table"
 import {box} from "./look"
 
@@ -36,8 +36,27 @@ import {box} from "./look"
 // island's hook.
 export type Live = {
   pushEventTo: (target: string | HTMLElement, event: string, payload: object) => Promise<unknown>
-  handleEvent: (event: string, handler: (payload: Record<string, unknown>) => void) => unknown
-  removeHandleEvent: (ref: unknown) => void
+  handleEvent: (event: string, handler: (payload: Record<string, unknown>) => void) => string
+  removeHandleEvent: (ref: string) => void
+  uploadTo: (form: HTMLFormElement, name: string, files: FileList) => void
+}
+
+// `Live` of live_react's `useLiveReact`, once per island. live_react
+// declares a push as `Promise | void`: void only with a reply callback,
+// which the table's hooks never pass, and LiveView's hook returns the
+// promise. And it declares an upload's target as a selector: the form's
+// id (LiveView takes the element too, as `uploadTo/3` of its hook says).
+export function useLive(): Live {
+  const live = useLiveReact()
+  return React.useMemo(
+    () => ({
+      pushEventTo: (target, event, payload) => live.pushEventTo(target, event, payload) || Promise.resolve(undefined),
+      handleEvent: (event, handler) => live.handleEvent(event, handler),
+      removeHandleEvent: ref => live.removeHandleEvent(ref),
+      uploadTo: (form, name, files) => live.uploadTo(`#${CSS.escape(form.id)}`, name, files),
+    }),
+    [live],
+  )
 }
 
 type Mounted = {beforeUpdate(): void; updated(): void; destroy(): void}

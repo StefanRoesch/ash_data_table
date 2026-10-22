@@ -38,8 +38,8 @@ import type {FilterProps} from "./Filter"
 import type {PaginationProps} from "./Pagination"
 
 // The cells the hook holds, by id: the one it edits (`onEdit`) and those
-// whose save or action is on its way (`aria-busy`), for them to be drawn
-// as they are. A store each cell hears by its own id
+// whose save or action is on its way (`onBusy`, as it marks them
+// `aria-busy`), for them to be drawn as they are. A store each cell hears by its own id
 // (`useSyncExternalStore`): when the hook takes or gives back a cell, that
 // cell is drawn again, not every cell of the table (nor of the table a
 // nested one is in).
@@ -47,12 +47,12 @@ type HeldStore = {
   has(id: string): boolean
   subscribe(listener: () => void): () => void
   edit(id: string | null): void
-  busy(ids: ReadonlySet<string>): void
+  busy(id: string, busy: boolean): void
 }
 
 function heldStore(): HeldStore {
   let edited: string | null = null
-  let busy: ReadonlySet<string> = new Set()
+  const busy = new Set<string>()
   const listeners = new Set<() => void>()
   const changed = () => flushSync(() => listeners.forEach(listener => listener()))
   return {
@@ -66,9 +66,10 @@ function heldStore(): HeldStore {
       edited = id
       changed()
     },
-    busy(ids) {
-      if (same(busy, ids)) return
-      busy = ids
+    busy(id, now) {
+      if (busy.has(id) === now) return
+      if (now) busy.add(id)
+      else busy.delete(id)
       changed()
     },
   }
@@ -186,32 +187,21 @@ export function Grid(props: GridProps) {
   const {table_id: id, rows, texts, skip, scrollbar, grid, table, head, filters, row, footer, editors, failure} = props
   const [held] = React.useState(heldStore)
   const ref = React.useRef<HTMLDivElement>(null)
-  // The hook says which cell it edits as it opens the editor: the cell is
+  // The hook says which cell it edits as it opens the editor, and which
+  // cell's save or action is on its way as it marks it busy: the cell is
   // drawn as it is at once, before anything else comes. It says that the
-  // edit ended before it gives the cell back (what the cell held, or what
-  // was typed while its save is on its way, `aria-busy`): that is heard
-  // once it has, at the end of what the hook does now (a microtask).
+  // edit ended, or that the cell is busy no more, before it gives the cell
+  // back (what the cell held, or what was typed while its save is on its
+  // way): that is heard once it has, at the end of what the hook does now
+  // (a microtask).
   const options = React.useMemo(
     () => ({
       onEdit: (cellId: string | null) => (cellId === null ? queueMicrotask(() => held.edit(null)) : held.edit(cellId)),
+      onBusy: (cellId: string, busy: boolean) => (busy ? held.busy(cellId, true) : queueMicrotask(() => held.busy(cellId, false))),
     }),
     [held],
   )
   const mounted = useMounted(ref, mountGrid, props, options)
-  // the cells whose save or action is on its way: the hook marks them
-  // `aria-busy` (none of the island's), and gives them back as they were
-  // before it takes it away; the island holds them meanwhile, from the
-  // moment the hook marked them (a microtask later, before anything else)
-  React.useLayoutEffect(() => {
-    const el = ref.current!
-    const observer = new MutationObserver(() => {
-      const now = new Set<string>()
-      for (const cell of el.querySelectorAll<HTMLElement>("td[aria-busy][id], th[aria-busy][id]")) now.add(cell.id)
-      held.busy(now)
-    })
-    observer.observe(el, {subtree: true, attributes: true, attributeFilter: ["aria-busy"]})
-    return () => observer.disconnect()
-  }, [held])
   const HeaderCell = usePart("HeaderCell")
   const FilterCell = usePart("FilterCell")
   // a row is drawn again only where its item, or what all rows are drawn
@@ -380,12 +370,7 @@ export function Row({item, open, row}: {item: RowItem; open: boolean; row: RowPr
 // it was drawn last before.
 function useHeld<T>(id: string, item: T): T {
   const store = React.useContext(Held)
-  // busy as it is drawn: the hook may have marked it a moment ago (the
-  // page's element, read as a store is)
-  const holding = React.useSyncExternalStore(
-    store.subscribe,
-    () => store.has(id) || !!document.getElementById(id)?.hasAttribute("aria-busy"),
-  )
+  const holding = React.useSyncExternalStore(store.subscribe, () => store.has(id))
   const [kept, keep] = React.useState(item)
   if (!holding && kept !== item) keep(item)
   return holding ? kept : item
@@ -595,5 +580,3 @@ export function SummaryCell({cell}: {cell: SummaryCell}) {
     </td>
   )
 }
-
-const same = (a: ReadonlySet<string>, b: ReadonlySet<string>) => a.size === b.size && [...a].every(id => b.has(id))

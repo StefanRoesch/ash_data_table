@@ -16,11 +16,11 @@ export default {
     const cell = this.cellOf(button)
     if (!cell || cell.hasAttribute("aria-busy")) return
     const run = () => {
-      cell.setAttribute("aria-busy", "true")
+      this.busy(cell, true)
       const payload = {row: this.rowKey(cell), action: button.dataset.action}
       this.transport.push("act", payload).then(reply => {
         if ((reply && reply.removed) || !cell.isConnected) return
-        cell.removeAttribute("aria-busy")
+        this.busy(cell, false)
         // the record is gone: there is no row to send, so the cell is marked here
         if (reply && reply.error) this.fail(cell, reply.error, () => {})
       })

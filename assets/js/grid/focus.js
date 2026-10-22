@@ -7,7 +7,7 @@ import * as geometry from "../geometry.js"
 import {filterRow as filterRowId, head as headId, row as rowId} from "../ids.js"
 import {FOCUSABLE} from "../panel.js"
 import {ACTION, ACTIONS, DIALOG, EXPANDER, GRID, HANDLE, LINE, NESTED, OPEN, OPENED, REVEAL, ROWGROUP, SELECTOR, SELECT_PAGE, TABLE, WHOLE} from "../markers.js"
-import {ANYCELL, SPANNING, firstRow, is, page, rowsOf} from "./shared.js"
+import {ANYCELL, SPANNING, firstRow, is, rowsOf} from "./shared.js"
 
 export default {
   // Whether a node is in this grid, and not in a table nested in it:
@@ -197,7 +197,7 @@ export default {
     const cell = this.cellOf(e.target)
     if (!cell) return
     // a cell that Tab comes to is brought out from under what stays in view
-    if (page.tabbing) this.intoView(cell)
+    if (this.tabbing) this.intoView(cell)
   },
 
   onFocusout(e) {

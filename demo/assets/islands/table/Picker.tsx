@@ -10,10 +10,9 @@
 // "No record", "Choose"; as it closes it destroys it and closes the dialog.
 import * as React from "react"
 import {mountPicker} from "ash_data_table"
-import {useLiveReact} from "live_react"
 
 import {attrs, type Bundle, type Message} from "./props"
-import {Strict, useMountedWhile, type Live} from "./mounting"
+import {Strict, useLive, useMountedWhile} from "./mounting"
 import {usePart} from "./parts"
 import {button} from "./look"
 export type PickerProps = {
@@ -48,7 +47,7 @@ export const closeDialog = (el: HTMLElement) => {
 
 // The part `Picker`.
 export function Picker({picker}: PickerProps) {
-  const live = useLiveReact() as unknown as Live
+  const live = useLive()
   const ref = React.useRef<HTMLElement>(null)
   const open = picker["open?"]
   useMountedWhile(ref, open, mountPicker, live, closeDialog)

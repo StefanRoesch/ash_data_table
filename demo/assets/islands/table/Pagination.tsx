@@ -7,10 +7,9 @@
 // projection (`AshDataTable.Kit.Projection`), each key a prop of the island.
 import * as React from "react"
 import {mountPagination} from "ash_data_table"
-import {useLiveReact} from "live_react"
 
 import {attrs, type Bundle, type Message} from "./props"
-import {Commits, Strict, useMounted, useServerValue, type Live} from "./mounting"
+import {Commits, Strict, useLive, useMounted, useServerValue, type Live} from "./mounting"
 import {usePart} from "./parts"
 import {button, select} from "./look"
 
@@ -39,7 +38,7 @@ export function AshPagination(props: PaginationProps["pagination"] & Live) {
 
 // The part `Pagination`.
 export function Pagination({pagination}: PaginationProps) {
-  const live = useLiveReact() as unknown as Live
+  const live = useLive()
   const ref = React.useRef<HTMLElement>(null)
   const mounted = useMounted(ref, mountPagination, live)
   const nested = pagination["nested?"]

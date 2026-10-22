@@ -121,6 +121,7 @@ export const PLACE = () => {
   PLACING = requestAnimationFrame(() => {
     PLACING = 0
     const hooks = Array.from(document.querySelectorAll(GRID)).map(grid => grid._ashDataTable).filter(Boolean)
+    /** @type {Map<Element, AshDataTable.Bar | null>} */
     const wanted = new Map(hooks.map(hook => [hook.el, hook.barWanted()]))
     for (const hook of hooks) {
       const inner = Array.from(hook.el.querySelectorAll(GRID)).some(grid => wanted.get(grid))
@@ -128,17 +129,6 @@ export const PLACE = () => {
     }
   })
 }
-
-// Whether focus is moving with Tab just now: a cell that Tab comes
-// to is brought out from under what stays in view (see `intoView`),
-// one the pointer comes to is not. The key is heard before focus
-// moves, and forgotten right after.
-export const page = {tabbing: false}
-window.addEventListener("keydown", e => {
-  if (e.key !== "Tab") return
-  page.tabbing = true
-  setTimeout(() => { page.tabbing = false }, 0)
-}, true)
 
 // how high the scrollbar at the bottom edge is where the browser's
 // scrollbars take no room (they lie over the content), in pixels,

@@ -154,7 +154,7 @@ export default {
   // of it, as any cell whose save failed.
   committed(ed, value, old, reply) {
     const {cell} = ed
-    cell.removeAttribute("aria-busy")
+    this.busy(cell, false)
     ed.pending = false
     if (reply && reply.ok) return
     ed.old = old
@@ -194,13 +194,13 @@ export default {
       this.released(cell, true)
       restore()
       cell.focus()
-      cell.setAttribute("aria-busy", "true")
+      this.busy(cell, true)
       const payload = {row: this.rowKey(cell), column: this.columnOf(cell)}
       this.transport.push("clear", payload).then(reply => {
         if (!cell.isConnected) return
         if (reply && reply.held) return this.waitFor(reply.ref, cell, {restore, value: "", old: ""})
         if (!cell.hasAttribute("aria-busy")) return
-        cell.removeAttribute("aria-busy")
+        this.busy(cell, false)
         // the record is gone: there is no row to send, so the cell is marked here
         if (reply && reply.error) this.mark(cell, "", "", reply.error, restore)
       })
@@ -330,7 +330,7 @@ export default {
   // `ed` is the editor the value was saved from, when that editor
   // stays open: see `committed`.
   save(cell, value, old, restore, ed) {
-    cell.setAttribute("aria-busy", "true")
+    this.busy(cell, true)
     const payload = {row: this.rowKey(cell), column: this.columnOf(cell), value}
     this.transport.push("save", payload).then(reply => {
       if (!cell.isConnected) return
@@ -343,7 +343,7 @@ export default {
       }
       if (ed && this.editing === ed) return this.committed(ed, value, old, reply)
       if (!cell.hasAttribute("aria-busy")) return
-      cell.removeAttribute("aria-busy")
+      this.busy(cell, false)
       if (reply && reply.error) this.mark(cell, value, old, reply.error, restore)
       else restore()
     })
@@ -373,7 +373,7 @@ export default {
   // is gone (none for a choice, which marks nothing). A reply may come
   // after a patch took `aria-busy` away: it is set again.
   waitFor(ref, cell, {restore, value, old}) {
-    cell.setAttribute("aria-busy", "true")
+    this.busy(cell, true)
     const shown = Array.from(cell.childNodes).map(node => node.cloneNode(true))
     this.holds.set(ref, {cell: cell.id, restore, shown, value, old})
   },
@@ -390,7 +390,7 @@ export default {
       const patched = Array.from(cell.childNodes)
       held.restore = () => cell.replaceChildren(...patched)
       cell.replaceChildren(...held.shown.map(node => node.cloneNode(true)))
-      cell.setAttribute("aria-busy", "true")
+      this.busy(cell, true)
     }
   },
 
@@ -412,7 +412,7 @@ export default {
     // it was busy, and draws it from the row it was sent once it is not
     // (a HEEx kit's patch of the row has come first: `rehold`).
     if (saved) held.restore()
-    cell.removeAttribute("aria-busy")
+    this.busy(cell, false)
     if (saved) return
     if (error && held.value !== undefined) this.mark(cell, held.value, held.old, error, held.restore)
     else held.restore()
