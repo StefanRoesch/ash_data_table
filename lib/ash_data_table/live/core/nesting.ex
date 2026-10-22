@@ -86,8 +86,12 @@ defmodule AshDataTable.Live.Core.Nesting do
   # A table to choose from is built for the read action it is told.
   def built(%Table{} = table) do
     %{resource: resource, table: named, via: via, choose: choose, live_given: live} = table.entry
-    key = {resource, named, via, choose && choose.read_action, live}
-    build = fn -> Model.build(resource, table: named, via: via, choose: choose, live?: live) end
+    read_action = choose && choose.read_action
+    key = {resource, named, via, read_action, live}
+
+    build = fn ->
+      Model.build(resource, table: named, via: via, choose: read_action, live?: live)
+    end
 
     cond do
       reloading?(table.context) ->
