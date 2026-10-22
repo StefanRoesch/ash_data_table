@@ -246,6 +246,52 @@ defmodule DemoWeb.Layouts do
   end
 
   @doc """
+  The daisyUI themes the theme select offers beside the demo's own light
+  and dark (`theme_select/1`), enabled in `assets/css/app.css`. Those whose
+  colours are dark count as dark there too (the `dark:` variant, shadcn's
+  dark colours in the React islands).
+  """
+  def themes do
+    [
+      {"corporate", gettext("Corporate")},
+      {"nord", gettext("Nord")},
+      {"cupcake", gettext("Cupcake")},
+      {"dracula", gettext("Dracula")},
+      {"night", gettext("Night")},
+      {"business", gettext("Business")}
+    ]
+  end
+
+  @doc """
+  A choice of every theme of the demo: the system's, its own light and
+  dark, and the daisyUI themes of `themes/0`. It is stored and put on the
+  page as the toggle's choice is (`assets/js/page.js`: `data-theme` on the
+  document, `localStorage`), which keeps the select at the theme in use. A
+  theme changes daisyUI's colours, so the tables of the HEEx kits; the
+  React kit keeps shadcn's light or dark look.
+  """
+  def theme_select(assigns) do
+    assigns =
+      assign(assigns,
+        themes:
+          [
+            {"system", gettext("System")},
+            {"light", gettext("Light")},
+            {"dark", gettext("Dark")}
+          ] ++ themes()
+      )
+
+    ~H"""
+    <div class="flex items-center gap-2">
+      <label for="theme-select" class="text-sm">{gettext("Theme")}</label>
+      <select id="theme-select" class="select select-sm w-auto" data-theme-select>
+        <option :for={{theme, name} <- @themes} value={theme}>{name}</option>
+      </select>
+    </div>
+    """
+  end
+
+  @doc """
   Provides dark vs light theme toggle based on themes defined in app.css.
 
   See <head> in root.html.heex which applies the theme before page load.

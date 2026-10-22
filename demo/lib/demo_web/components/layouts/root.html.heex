@@ -47,6 +47,7 @@
         return_to={assigns[:conn] && @conn.request_path}
       />
       <Layouts.locale_switcher return_to={assigns[:conn] && @conn.request_path} />
+      <Layouts.theme_select />
       <Layouts.theme_toggle />
     </header>
     <main id="main">

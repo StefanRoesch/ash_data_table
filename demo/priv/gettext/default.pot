@@ -63,8 +63,8 @@ msgstr ""
 msgid "Actions"
 msgstr ""
 
-#: lib/demo_web/components/layouts.ex:205
-#: lib/demo_web/components/layouts.ex:217
+#: lib/demo_web/components/layouts.ex:229
+#: lib/demo_web/components/layouts.ex:241
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr ""
@@ -104,7 +104,7 @@ msgstr ""
 msgid "Selected for the sprint"
 msgstr ""
 
-#: lib/demo_web/components/layouts.ex:212
+#: lib/demo_web/components/layouts.ex:236
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr ""
@@ -125,7 +125,7 @@ msgstr ""
 msgid "Tasks"
 msgstr ""
 
-#: lib/demo_web/components/layouts.ex:200
+#: lib/demo_web/components/layouts.ex:224
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr ""
@@ -140,12 +140,62 @@ msgstr ""
 msgid "This page shows how the rest of a page can follow a table. Tick tasks below: the card adds up their hours. Edit or create a task: the feed lists it. “Clear selection” goes the other way: the page tells the table what to do."
 msgstr ""
 
-#: lib/demo_web/live/react_tasks_live.ex:49
+#: lib/demo_web/live/react_tasks_live.ex:43
 #, elixir-autogen, elixir-format
 msgid "The same table in HEEx"
 msgstr ""
 
-#: lib/demo_web/components/layouts.ex:80
+#: lib/demo_web/components/layouts.ex:88
 #, elixir-autogen, elixir-format
 msgid "The same table in React"
+msgstr ""
+
+#: lib/demo_web/components/layouts.ex:261
+#, elixir-autogen, elixir-format
+msgid "Business"
+msgstr ""
+
+#: lib/demo_web/components/layouts.ex:256
+#, elixir-autogen, elixir-format
+msgid "Corporate"
+msgstr ""
+
+#: lib/demo_web/components/layouts.ex:258
+#, elixir-autogen, elixir-format
+msgid "Cupcake"
+msgstr ""
+
+#: lib/demo_web/components/layouts.ex:280
+#, elixir-autogen, elixir-format
+msgid "Dark"
+msgstr ""
+
+#: lib/demo_web/components/layouts.ex:259
+#, elixir-autogen, elixir-format
+msgid "Dracula"
+msgstr ""
+
+#: lib/demo_web/components/layouts.ex:279
+#, elixir-autogen, elixir-format
+msgid "Light"
+msgstr ""
+
+#: lib/demo_web/components/layouts.ex:260
+#, elixir-autogen, elixir-format
+msgid "Night"
+msgstr ""
+
+#: lib/demo_web/components/layouts.ex:257
+#, elixir-autogen, elixir-format
+msgid "Nord"
+msgstr ""
+
+#: lib/demo_web/components/layouts.ex:278
+#, elixir-autogen, elixir-format
+msgid "System"
+msgstr ""
+
+#: lib/demo_web/components/layouts.ex:286
+#, elixir-autogen, elixir-format
+msgid "Theme"
 msgstr ""

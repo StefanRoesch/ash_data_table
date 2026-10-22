@@ -1,6 +1,7 @@
 ## The German texts of the demo's own pages: the sprint planner
 ## (`DemoWeb.PlannerLive`) and the links between /tasks and /react/tasks
-## (`DemoWeb.Layouts.tasks/1`, `DemoWeb.ReactTasksLive`). The tables' texts are in `ash_data_table.po`.
+## (`DemoWeb.Layouts.tasks/1`, `DemoWeb.ReactTasksLive`), and the theme select of the header
+## (`DemoWeb.Layouts.theme_select/1`; daisyUI's themes keep their names). The tables' texts are in `ash_data_table.po`.
 msgid ""
 msgstr ""
 "Language: de\n"
@@ -73,3 +74,33 @@ msgstr "Dieselbe Tabelle in HEEx"
 
 msgid "The same table in React"
 msgstr "Dieselbe Tabelle in React"
+
+msgid "Theme"
+msgstr "Farbschema"
+
+msgid "System"
+msgstr "System"
+
+msgid "Light"
+msgstr "Hell"
+
+msgid "Dark"
+msgstr "Dunkel"
+
+msgid "Corporate"
+msgstr "Corporate"
+
+msgid "Nord"
+msgstr "Nord"
+
+msgid "Cupcake"
+msgstr "Cupcake"
+
+msgid "Dracula"
+msgstr "Dracula"
+
+msgid "Night"
+msgstr "Nacht"
+
+msgid "Business"
+msgstr "Business"

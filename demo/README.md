@@ -80,7 +80,7 @@ frame-ancestors 'self'
 ```
 
 - **No inline script**: the page's JavaScript is `assets/js/app.js` alone.
-  The theme toggle and the header's two switchers are in
+  The theme toggle, the theme select and the header's two switchers are in
   `assets/js/page.js`, by data attributes (`data-return-to-current`,
   `data-submit-on-change`), with no `onsubmit` or `onchange`. The stored
   theme is put on the page once `app.js` runs (`defer`): a page in a theme
@@ -116,6 +116,20 @@ from `.env`; the app reads the same names from the environment
 | --- | --- |
 | Demo | http://localhost:4478 |
 | Postgres | `localhost:5477`, user and password `ash_table`, databases `demo_dev` and `demo_test` |
+
+### Themes
+
+Beside the System/Light/Dark toggle, the header has a theme select: the
+system's theme, the demo's own light and dark, and six of daisyUI's
+(Corporate, Nord, Cupcake, Dracula, Night, Business), enabled in
+`assets/css/app.css`. A choice is stored and put on the page as the
+toggle's is (`data-theme` on the document, `localStorage`, in
+`assets/js/page.js`), and the two show the same choice. A theme changes
+daisyUI's colours, so the tables of the HEEx kits (the default kit and
+DivKit, whose look mixes every colour from the theme's); Dracula, Night and
+Business count as dark (the `dark:` variant). The React islands keep
+shadcn's look, light or dark: they show that a kit can be drawn with React,
+not daisyUI's themes.
 
 ## Who you are: the five actors
 
@@ -482,8 +496,9 @@ How it is put together:
   class `shadcn`; outside it nothing of daisyUI changes. `primary`,
   `secondary` and `accent`, names of both, are shadcn's inside `.shadcn`
   only. The rename is needed: daisyUI's `--border` is a width, shadcn's a
-  colour. Dark mode follows daisyUI's (`data-theme="dark"`, or the system's
-  while no theme is chosen). A Radix primitive that portals its content to
+  colour. Dark mode follows daisyUI's (`data-theme="dark"` or one of the
+  dark themes of the theme select, or the system's while no theme is
+  chosen); every other theme keeps shadcn's light colours. A Radix primitive that portals its content to
   `document.body` (Dialog, Popover, Select, Tooltip) leaves the scope: its
   portalled element carries `shadcn` itself.
 - **The library's JS** by its package name: the demo's test hook
