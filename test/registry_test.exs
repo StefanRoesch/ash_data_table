@@ -4,7 +4,8 @@ defmodule AshDataTable.RegistryTest do
   stage 5): which nested tables a table renders and which are closed
   (`Live.Core.Nesting.reconcile/1`), by their place and never by a prefix
   of their ids; the entry the live core works on (`within/3`); the stream
-  names of the pool, and their effects; the order of the portals.
+  names of the pool, and their effects; the order of the portals; and the
+  files a run on the selection is handed (`owned/1`).
 
   Over the table, with no socket (stage 9g), with entries made by hand: what
   a table renders is decided by its `open` lines and its `rows`, and an
@@ -172,5 +173,93 @@ defmodule AshDataTable.RegistryTest do
     # a opened before b, the table it is in; c opened after both and comes
     # last, so that no portal before it moves
     assert table |> Registry.portals() |> Enum.map(& &1.id) == ["a", "b", "c"]
+  end
+
+  describe "a run's files (owned/1, #66)" do
+    # a temporary file of the calling process, as `Files.copies/1` makes it
+    defp file(text) do
+      path = Plug.Upload.random_file!("ash_data_table")
+      File.write!(path, text)
+      path
+    end
+
+    # Plug.Upload deletes a process's files once it saw the process go
+    defp gone?(path, tries \\ 50) do
+      cond do
+        not File.exists?(path) -> true
+        tries == 0 -> false
+        true -> Process.sleep(10) && gone?(path, tries - 1)
+      end
+    end
+
+    test "are the run's once handed over: the page may go, and the work still reads them" do
+      test = self()
+
+      # a page that starts a run owning one of its two files, hands that one
+      # over and goes; the run's work reads only once the test says so
+      view =
+        spawn(fn ->
+          [given, kept] = Enum.map(~w(given kept), &file/1)
+
+          {task, hand_over} =
+            Registry.owned(fn ->
+              receive do
+                :read -> send(test, {:worked, File.read(given)})
+              end
+            end)
+
+          {:ok, run} = Task.start(task)
+          hand_over.([given])
+          send(test, {:started, self(), run, kept})
+
+          receive do
+            :go -> :ok
+          end
+        end)
+
+      assert_receive {:started, ^view, run, kept}
+      watch = Process.monitor(view)
+      send(view, :go)
+      assert_receive {:DOWN, ^watch, :process, ^view, :normal}
+
+      # the file the page kept went with it; the one it handed over did not
+      assert gone?(kept)
+      send(run, :read)
+      assert_receive {:worked, {:ok, "given"}}
+    end
+
+    test "go with a page that goes before the hand-over, and the work never runs" do
+      test = self()
+
+      view =
+        spawn(fn ->
+          path = file("given")
+          {task, _hand_over} = Registry.owned(fn -> send(test, :worked) end)
+          {:ok, run} = Task.start(task)
+          send(test, {:started, self(), run, path})
+
+          receive do
+            :go -> :ok
+          end
+        end)
+
+      assert_receive {:started, ^view, run, path}
+      watch = Process.monitor(run)
+      send(view, :go)
+
+      assert_receive {:DOWN, ^watch, :process, ^run, {:shutdown, {:page_gone, :normal}}}
+      refute_received :worked
+      assert gone?(path)
+    end
+
+    # the hand-over waits five seconds for the run to say who it is
+    @tag timeout: 10_000
+    test "a hand-over to a run that never started raises" do
+      {_task, hand_over} = Registry.owned(fn -> :ok end)
+
+      assert_raise RuntimeError, "ash_data_table: the run on the selection did not start", fn ->
+        hand_over.([])
+      end
+    end
   end
 end

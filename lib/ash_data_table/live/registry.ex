@@ -101,6 +101,8 @@ defmodule AshDataTable.Live.Registry do
   callback that starts it is over, and the page can go any time after
   without taking them along. A page that goes before the hand-over takes
   them with it, and the work never starts: the task sees it go and ends.
+  A task that has not said who it is within 5 s raises in the page: its
+  files go with it and the run never starts.
   """
   def owned(work) when is_function(work, 0) do
     view = self()

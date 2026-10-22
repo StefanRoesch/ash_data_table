@@ -29,7 +29,7 @@ defmodule AshDataTable.Event do
   | `:row_created` | a create | `action`, `key`, `arguments`, `record` |
   | `:row_destroyed` | a destroy action on a row | `action`, `key`, `arguments` |
   | `:action_ran` | an update or a generic action on a row, a table action, an action on the selection (`selection_argument`) | `action`, `key` (nil for a table action and an action on the selection), `arguments`, `record` or `result`; of an action on the selection also `selected` (the keys it was given) and `all?` |
-  | `:bulk_ran` | an action on a selection is done | `action`, `arguments`, `all?`, `succeeded` and `failed` (keys) |
+  | `:bulk_ran` | a bulk action (a row action run on the selected rows) is done | `action`, `arguments`, `all?`, `succeeded` and `failed` (keys) |
   | `:selection_changed` | what is selected changed: by the person, or as the table ends or narrows it | `selected` (keys, as the browser named them: claims, not read again), `all?` (every record that matches) |
   | `:row_opened` | "Open" on a row, which the page offers with `open` (sent whatever `notify` says) | `key` |
   | `:requested` | controlled mode: the table holds a request for the page to draw (`AshDataTable.requests/1`) | `ref`, `kind` (`:confirm`, `:panel` or `:picker`) |

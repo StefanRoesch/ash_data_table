@@ -35,7 +35,7 @@ package in `documentation/`; the index is
    ```elixir
    live_session :default, on_mount: [DemoWeb.Actor, DemoWeb.Locale, DemoWeb.Zone] do
      # ...
-     ash_data_table "/tasks", Demo.Tracker.Task
+     ash_data_table "/tasks", Demo.Tracker.Task, layout: {DemoWeb.Layouts, :tasks}
      ash_data_table "/projects", Demo.Tracker.Project
      # ...
    end

@@ -39,10 +39,10 @@ defmodule AshDataTable.ArchitectureTest do
       (`cells.ex`, `bulk.ex`, `opener.ex`, `opener/table.ex`,
       `opener/host.ex`) call each other in no circle (stages 9d, 9e): a
       host's answer is the intent it stands for, which `Live.Core` runs
-      through the module of its topic (`Live.Core.answer/4`), and what a
-      panel's run hands on goes the same way (`Live.Core.run/2`). Every
-      topic is called through `Live.Core`, which they all ask for the
-      table; the check is of the edges among them. The opener has no edge
+      through the module of its topic (`Live.Core.run/2` of
+      `{:answer, …}`), and what a panel's run hands on goes the same way
+      (`Live.Core.run/2`). Every topic is called through `Live.Core`, which
+      they all ask for the table; the check is of the edges among them. The opener has no edge
       to any topic module: the topics ask it;
     * no module but the opener and its adapters names what the host draws
       itself (`controlled`, stages 9e, 9g): the opener owns `attach/4`'s

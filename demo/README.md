@@ -397,8 +397,9 @@ attributes.
 
 ### React islands
 
-http://localhost:4478/react/tasks (linked from the front page) is the table
-of `/tasks` drawn with the demo's React kit (`DemoWeb.ReactKit`; the guide
+http://localhost:4478/react/tasks (linked from the front page, and from
+`/tasks` above its table; it links back) is the table of `/tasks` drawn
+with the demo's React kit (`DemoWeb.ReactKit`; the guide
 `documentation/topics/react-kit.md`), attached to a LiveView of the demo's
 own (`DemoWeb.ReactTasksLive`).
 

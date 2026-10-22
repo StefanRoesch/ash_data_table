@@ -489,6 +489,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
 
       assert titles(html) == []
       assert notice(html) == ""
+      assert sent != "[]"
       refute sent =~ "Of the first organization"
       refute sent =~ "new or changed"
     end

@@ -77,6 +77,7 @@ defmodule DemoWeb.Tables.LiveUpdatesElsewhereTest do
       assert titles(html) == ["Plain"]
       assert notice(html) == ""
       assert text(html, "#bulletin-range") == "1–1 of 1"
+      assert sent != "[]"
       refute sent =~ "Kept back"
       refute sent =~ "Another secret"
       refute sent =~ "new or changed"
@@ -153,6 +154,7 @@ defmodule DemoWeb.Tables.LiveUpdatesElsewhereTest do
 
       assert "Plain, renamed" in titles(html)
       assert masked(html, "bulletin", plain.id, "code").mask
+      assert sent =~ "Plain, renamed"
 
       for text <- [html, sent, kept(admin)], secret <- [@code, "code-new-5d6e"] do
         refute text =~ secret

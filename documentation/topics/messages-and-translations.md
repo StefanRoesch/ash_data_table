@@ -401,7 +401,9 @@ English and the resource's own wording.
   its entry.
 - **Dates and numbers are not localized** by the default kit: they are shown
   as the native inputs write them, whatever the locale. A kit of your own is
-  given the raw value and the locale, and may format it.
+  given each cell's finished text and, where a value is shown, the `locale`;
+  the raw value only for a column whose `component` draws its cells, and for
+  a yes or no (`AshDataTable.Item`).
 - **Plural forms** follow the locale's `Plural-Forms` rule in your `.po`
   file. One entry serves every place with the same English text: "1
   selected" is the selection line's and a filter's.

@@ -404,10 +404,11 @@ end
   out. With none left it does not run: "Export CSV failed: None of the
   selected records is available any more."
 - **`sort_argument`** names a `:string` argument that is given the table's
-  sort in the syntax of `Ash.Query.sort_input/2` (`"title"`, `"-due_on"`),
-  or nil where the person chose none. A read the action runs over the keys
-  can keep the table's order with it. A sort by a column whose calculation
-  is given arguments cannot be written so, and is nil too.
+  sort in the syntax of `Ash.Query.sort_input/2` (`"title"`, `"-due_on"`).
+  A read the action runs over the keys can keep the table's order with it.
+  It is nil where the person chose no sort, or sorted by a column whose
+  calculation takes arguments, which `sort_input` cannot say; the action's
+  own sort applies then.
 - **It asks first only with a `confirm` of its own**, as a table action
   does; its other arguments are asked for in the action panel, once.
 - **Afterwards the table says what it returned and reads again**, as after

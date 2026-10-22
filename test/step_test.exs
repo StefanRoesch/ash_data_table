@@ -20,7 +20,6 @@ defmodule AshDataTable.StepTest do
 
   alias AshDataTable.Ids
   alias AshDataTable.Live.Core
-  alias AshDataTable.Live.Registry
   alias AshDataTable.Model
   alias AshDataTable.Query
   alias AshDataTable.State
@@ -28,6 +27,35 @@ defmodule AshDataTable.StepTest do
   alias AshDataTable.Test.Arguing.Price
   alias AshDataTable.Test.Files
   alias AshDataTable.Test.Resource
+
+  # A resource with an action on the selection: run once, given the keys
+  # of every selected row.
+  defmodule Exports do
+    @moduledoc false
+    use Ash.Resource,
+      domain: AshDataTable.Test.Domain,
+      extensions: [AshDataTable.Resource]
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string, public?: true
+    end
+
+    actions do
+      defaults [:read]
+
+      action :export, :integer do
+        argument :ids, {:array, :uuid}, allow_nil?: false
+        run fn input, _context -> {:ok, length(input.arguments.ids)} end
+      end
+    end
+
+    table do
+      action :export do
+        selection_argument :ids
+      end
+    end
+  end
 
   @context %{assigns: %{}, uploads: %{}, connected?: false, endpoint: nil}
 
@@ -396,18 +424,24 @@ defmodule AshDataTable.StepTest do
       assert {^before, [], %{ok: false}} = step(before, {:bulk, "nope"})
     end
 
-    test "a run's files are the run's before its work starts (Registry.owned/1)" do
-      path = Plug.Upload.random_file!("ash_data_table")
-      File.write!(path, "shared")
-      test = self()
+    test "an action on the selection without a question or a panel runs at once, beside the process" do
+      before = table(Exports)
+      key = Ash.UUID.generate()
 
-      {task, hand_over} = Registry.owned(fn -> send(test, {:worked, File.read!(path)}) end)
-      run = Task.async(task)
+      before =
+        Table.put(before, bulk: Model.bulk_actions(before.entry.model), selected: [key])
 
-      refute_receive {:worked, _}, 50
-      hand_over.([path])
-      assert_receive {:worked, "shared"}
-      Task.await(run)
+      {table, effects, %{ok: true}} = step(before, {:bulk, "export"})
+
+      # the run is a task of the table, with no files; the keys are read
+      # again as the person in it, not here
+      assert Enum.any?(
+               effects,
+               &match?({:async, {:ash_data_table, "t", {:bulk, _token}}, _run, []}, &1)
+             )
+
+      assert %{action: %{name: :export, selection_argument: :ids}} =
+               table.entry.selection.running
     end
   end
 
@@ -427,6 +461,15 @@ defmodule AshDataTable.StepTest do
     test "a row the hook says can go, that is not on its way out, stays" do
       before = table(Resource, rows: %{"1" => %{pk: %{id: 1}, rowindex: 2}})
       assert {^before, [], nil} = step(before, {:left, "1"})
+    end
+  end
+
+  describe "what a table is told (Told)" do
+    test "what it is told is put, and it reads for it beside the process" do
+      {table, effects, nil} = step(table(), {:told, %{label: "Records", depth_limit: 1}})
+
+      assert %{label: "Records", depth_limit: 1} = table.entry
+      assert read?(effects)
     end
   end
 

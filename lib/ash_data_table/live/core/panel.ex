@@ -202,11 +202,19 @@ defmodule AshDataTable.Live.Core.Panel do
   # write runs inside the consume of the last (see the top). A run that
   # outlasts the event (on a selection) is given copies of them, which
   # its own process is given (`Core.Bulk`), and which go with it
-  # (`Files.copies/1`). The entries the write was given are the panel's to
-  # keep, and LiveView's to take away (`Files.given/2`).
+  # (`Files.copies/1`). A run that does not start (the form failed, or
+  # nothing was chosen) leaves the panel open: its copies are deleted at
+  # once, so a retry does not pile them up in this process. The entries the
+  # write was given are the panel's to keep, and LiveView's to take away
+  # (`Files.given/2`).
   def step({:consumed, panel, write, files}, table) do
     files = if Panel.outlasts?(panel), do: Files.copies(files), else: files
-    {written(table, panel, write.(files), Files.given(table, panel)), nil}
+    result = write.(files)
+
+    if Panel.outlasts?(panel) and not match?({:start, _, _}, result),
+      do: Enum.each(files, fn {_name, %{path: path}} -> File.rm(path) end)
+
+    {written(table, panel, result, Files.given(table, panel)), nil}
   end
 
   # Sent by the table's create button. The panel opens with the form of the

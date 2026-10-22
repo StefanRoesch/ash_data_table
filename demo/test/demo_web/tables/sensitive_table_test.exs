@@ -192,6 +192,7 @@ defmodule DemoWeb.Tables.SensitiveTableTest do
           end)
         end)
 
+      assert wire =~ "must be lower case"
       refute wire =~ "UPPER-9Z8Y7X"
       refute log =~ "UPPER-9Z8Y7X"
       refute_secrets(wire)

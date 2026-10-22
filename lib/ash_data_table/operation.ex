@@ -26,8 +26,9 @@ defmodule AshDataTable.Operation do
   # never drawn as it is: the live layer puts it into the stream through
   # `AshDataTable.Present`. A file a generic action returned is read here,
   # where the action ran (`AshDataTable.Download`), and is the outcome's
-  # `download`, which the live layer sends to the page and keeps nowhere. `reveal/1` is the one way to a sensitive value:
-  # one cell, read again as the person.
+  # `download`, which the live layer sends to the page and keeps nowhere.
+  # `reveal/1` is the one way to a sensitive value: one cell, read again as
+  # the person.
   #
   # It runs in the LiveView's process, but for a run on a selection, which
   # it hands back to be started beside it (`{:start, run, files}`). A raise

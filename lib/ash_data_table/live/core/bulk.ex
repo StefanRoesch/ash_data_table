@@ -265,7 +265,7 @@ defmodule AshDataTable.Live.Core.Bulk do
   # statement. `files` are the copies of the panel's files it runs with
   # (`Core.Files.copies/1`): the run's process is given them before its
   # work starts and before the callback that starts it is over
-  # (`{:async, key, fun, files}`, `Registry.owned/2`), and they go when it
+  # (`{:async, key, fun, files}`, `Registry.owned/1`), and they go when it
   # ends, whether the page is there then or not.
   defp start_bulk(table, action, run, files) do
     copies = for {_name, %{path: path}} <- files, do: path
