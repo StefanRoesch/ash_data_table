@@ -82,7 +82,7 @@ defmodule AshDataTable.Model.Argument do
   def rest(%__MODULE__{default: nil}), do: ""
 
   def rest(%__MODULE__{default: default} = argument),
-    do: Typed.of(argument, default, argument.time_zone) || ""
+    do: Typed.of(argument, default, argument.time_zone)
 
   @doc """
   What Ash is given for the argument: what the person chose (`chosen`, by

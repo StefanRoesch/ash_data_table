@@ -421,9 +421,9 @@ How it is put together:
   live_react's `getHooks`, which commits each update at once and destroys the
   table's hooks in an island as the island goes.
 - **npm** in `assets/` only: `react`, `react-dom` and the packages the shadcn
-  sources import (`@radix-ui/react-slot`, `class-variance-authority`, `clsx`,
-  `tailwind-merge`). live_react's own JS is no npm package here: esbuild
-  finds it in `deps/`, as it finds `phoenix_live_view`.
+  sources import (`class-variance-authority`, `clsx`, `tailwind-merge`).
+  live_react's own JS is no npm package here: esbuild finds it in `deps/`,
+  as it finds `phoenix_live_view`.
 - **esbuild** (the Hex package, `config/config.exs`): `--jsx=automatic`, and
   `NODE_PATH` holds `deps/`, the build's colocated hooks and
   `assets/node_modules`, where live_react's files in `deps/` find `react`.
@@ -433,9 +433,10 @@ How it is put together:
   `import … from "react"` finds.
 - **Tailwind** (the Hex package) scans the TSX: `@source "../islands"` in
   `assets/css/app.css`.
-- **shadcn/ui** components are copied in as source (`islands/ui/`, from
-  shadcn's new-york style for Tailwind 4), not with its CLI, which rewrites
-  the CSS entry. A new component brings its Radix package into
+- **shadcn/ui** sources are copied in (`islands/ui/`, from shadcn's
+  new-york style for Tailwind 4: the variants of its Button and Badge, the
+  classes the React kit draws with), not with its CLI, which rewrites the
+  CSS entry. A new component brings its Radix package into
   `assets/package.json`.
 - **shadcn beside daisyUI**, in `assets/css/app.css`: shadcn's colour names
   (`background`, `foreground`, `muted`, `border`, `input`, `ring`, …) are

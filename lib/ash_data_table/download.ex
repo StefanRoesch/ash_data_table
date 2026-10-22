@@ -48,19 +48,21 @@ defmodule AshDataTable.Download do
   end
 
   defp read(action, file) do
-    with {:ok, device} <- Ash.Type.File.open(file, [:read, :binary]) do
-      data = IO.binread(device, :eof)
-      # the table opened it: it closes it. A device that is no file (a
-      # `StringIO`) says it cannot be closed so, and ends with its owner.
-      _closed = File.close(device)
+    case Ash.Type.File.open(file, [:read, :binary]) do
+      {:ok, device} ->
+        data = IO.binread(device, :eof)
+        # the table opened it: it closes it. A device that is no file (a
+        # `StringIO`) says it cannot be closed so, and ends with its owner.
+        _closed = File.close(device)
 
-      case data do
-        :eof -> {:ok, download(action, file, "")}
-        data when is_binary(data) -> {:ok, download(action, file, data)}
-        {:error, reason} -> failed(action, "its file could not be read: #{inspect(reason)}")
-      end
-    else
-      {:error, reason} -> failed(action, "its file could not be opened: #{inspect(reason)}")
+        case data do
+          :eof -> {:ok, download(action, file, "")}
+          data when is_binary(data) -> {:ok, download(action, file, data)}
+          {:error, reason} -> failed(action, "its file could not be read: #{inspect(reason)}")
+        end
+
+      {:error, reason} ->
+        failed(action, "its file could not be opened: #{inspect(reason)}")
     end
   rescue
     error -> failed(action, "its file could not be read: " <> Exception.message(error))

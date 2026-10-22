@@ -14,8 +14,8 @@ defmodule AshDataTable.UnionsTest do
   alias AshDataTable.Operation.{Failure, Outcome}
   alias AshDataTable.Panel
   alias AshDataTable.Resource.Embedding
-  alias AshDataTable.Test.Unions
   alias AshDataTable.Test.Submitting
+  alias AshDataTable.Test.Unions
   alias AshDataTable.Test.Unions.{Card, Holder, Odd, Once, Place, Transfer}
 
   defp model, do: Model.build(Unions)

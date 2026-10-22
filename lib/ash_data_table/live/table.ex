@@ -100,21 +100,24 @@ defmodule AshDataTable.Table do
   @caller [:scope, :actor, :tenant, :time_zone] ++
             [:context, :private_arguments, :page_arguments, :before_action, :notify]
 
-  @typedoc "A table attached to a LiveView."
-  @opaque t :: %__MODULE__{
-            options: map,
-            caller: Caller.t(),
-            entry: Entry.t(),
-            entries: %{String.t() => Entry.t()},
-            pool: %{
-              required(:free) => [String.t()],
-              required(:next) => non_neg_integer,
-              optional(:prefix) => String.t() | nil
-            },
-            models: %{optional(tuple) => AshDataTable.Model.t()},
-            context: map | nil,
-            effects: [tuple | atom]
-          }
+  # A `@type`, not an `@opaque`: Dialyzer keeps an opaque type to its own
+  # module, and the steps of `AshDataTable.Live.Core` read and change these
+  # fields in modules of their own. To a host it is opaque all the same.
+  @typedoc "A table attached to a LiveView. Its fields are the table's own."
+  @type t :: %__MODULE__{
+          options: map,
+          caller: Caller.t(),
+          entry: Entry.t(),
+          entries: %{String.t() => Entry.t()},
+          pool: %{
+            required(:free) => [String.t()],
+            required(:next) => non_neg_integer,
+            optional(:prefix) => String.t() | nil
+          },
+          models: %{optional(tuple) => AshDataTable.Model.t()},
+          context: map | nil,
+          effects: [tuple | atom]
+        }
 
   defstruct options: @options,
             caller: nil,

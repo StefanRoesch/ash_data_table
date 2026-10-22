@@ -3,7 +3,6 @@
   "private": true,
   "description": "The demo's npm packages, for its React islands (assets/islands) only: bundled by the Hex esbuild, no Vite, no Node at runtime. The library itself has no npm dependency. devDependencies: the code-quality gate's JS tools (`mix check` in demo).",
   "dependencies": {
-    "@radix-ui/react-slot": "1.5.0",
     "ash_data_table": "file:../..",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
