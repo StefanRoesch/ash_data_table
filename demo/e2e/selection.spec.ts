@@ -21,6 +21,7 @@ import { Table } from "./support/table"
 const FIRST = SEED.task.first
 const SECOND = SEED.task.second
 const THIRD = SEED.task.third
+const MOBILE_APP = SEED.project.mobileApp
 
 const REFUSED = "You are not allowed to do this."
 
@@ -95,44 +96,52 @@ test.describe("the boxes", () => {
     await expect(tasks.bulkButtons.first()).toBeHidden()
   })
 
-  test("make a row no higher, and take nothing from the grid's width that a row needs", async ({
-    browser,
-    page,
-    tasks,
-  }) => {
-    const height = (await tasks.rowLine(FIRST).boundingBox())!.height
-    const box = (await tasks.box(FIRST).boundingBox())!
-    const cell = (await tasks.boxCell(FIRST).boundingBox())!
+  test("make a row no higher, and take nothing from the grid's width that a row needs", async ({ browser, page }) => {
+    // The projects: an admin may change several at once and has the boxes, a
+    // viewer may run no action on a project and has none. (Every reader of
+    // the tasks may export a selection of them, and has the boxes there.)
+    const projects = new Table(page, "project", "/projects")
+    await projects.open()
+    const height = (await projects.rowLine(MOBILE_APP).boundingBox())!.height
+    const box = (await projects.box(MOBILE_APP).boundingBox())!
+    const cell = (await projects.boxCell(MOBILE_APP).boundingBox())!
     // the box stands in the middle of its cell
     expect(Math.abs(box.y + box.height / 2 - (cell.y + cell.height / 2))).toBeLessThanOrEqual(1)
 
-    // a viewer can run no action, and has no boxes
     const context = await browser.newContext({
       storageState: storageStateOf("viewer"),
       baseURL: new URL(page.url()).origin,
       viewport: page.viewportSize(),
     })
     try {
-      const other = new Table(await context.newPage(), "task", "/tasks")
+      const other = new Table(await context.newPage(), "project", "/projects")
       await other.open()
       await expect(other.boxes).toHaveCount(0)
-      expect((await other.rowLine(FIRST).boundingBox())!.height).toBeCloseTo(height, 0)
+      expect((await other.rowLine(MOBILE_APP).boundingBox())!.height).toBeCloseTo(height, 0)
     } finally {
       await context.close()
     }
   })
 
-  for (const actor of ["viewer", "nobody"] as const) {
-    test.describe(() => {
-      test.use({ actor })
+  test.describe(() => {
+    test.use({ actor: "viewer" })
 
-      test(`are not there for the ${actor}, who can run no action`, async ({ tasks }) => {
-        await expect(tasks.pageBoxCell).toHaveCount(0)
-        await expect(tasks.grid.locator("[data-selector]")).toHaveCount(0)
-        await expect(tasks.selectionLine).toHaveCount(0)
-      })
+    test("are there for the viewer, who may export the selection and run no other action", async ({ tasks }) => {
+      await expect(tasks.pageBoxCell).toHaveCount(1)
+      await tasks.boxes.first().click()
+      await expect(tasks.bulkButtons).toHaveText(["Export CSV"])
     })
-  }
+  })
+
+  test.describe(() => {
+    test.use({ actor: "nobody" })
+
+    // nobody reads no task: the column of the boxes, and no row to select
+    test("are a column for the nobody too, who may export what they read", async ({ tasks }) => {
+      await expect(tasks.pageBoxCell).toHaveCount(1)
+      await expect(tasks.rows).toHaveCount(0)
+    })
+  })
 })
 
 test.describe("selecting with the pointer", () => {

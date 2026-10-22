@@ -228,14 +228,19 @@ test.describe("the Tab order of /tasks", () => {
 test.describe("for the viewer, who may change nothing", () => {
   test.use({ actor: "viewer" })
 
-  test("a row's only stops are its expander and the buttons of the texts it cuts off", async ({ tasks }) => {
+  test("a row's only stops are its box, its expander and the buttons of the texts it cuts off", async ({ tasks }) => {
     await tasks.open()
     await expect(tasks.whole(tasks.cell(FIRST, "description"))).toBeAttached()
-    await expect(tasks.box(FIRST)).toHaveCount(0)
+    // the box: a viewer may export the selection
+    await expect(tasks.box(FIRST)).toHaveCount(1)
     // no cell is a stop: the viewer edits none
     await expect(tasks.row(FIRST).locator("[tabindex]")).toHaveCount(0)
-    await tasks.expander(FIRST).focus()
-    expect(await tasks.walk(2)).toEqual([`task-row-${FIRST}-c-description>button`, `task-row-${SECOND}-e>button`])
+    await tasks.box(FIRST).focus()
+    expect(await tasks.walk(3)).toEqual([
+      `task-row-${FIRST}-e>button`,
+      `task-row-${FIRST}-c-description>button`,
+      `task-row-${SECOND}-s>input`,
+    ])
   })
 })
 

@@ -29,7 +29,8 @@ const EDITABLE = [
 // "Project" and "Assignee", and "Repeats", "Tags" and "Checks", which are
 // edited in the side panel, with the nine columns edited in the cell.
 // `actions` says whether the grid has the column of the row actions: the
-// person can run one of them on some record (actions.spec.ts).
+// person can run one of them on some record (actions.spec.ts). Every reader
+// may export a selection of the tasks, so every grid has the boxes.
 const TASKS: Record<Actor, { columns: number; editors: number; actions: boolean; range: string | null }> = {
   admin: { columns: 22, editors: 14, actions: true, range: "1–25 of 320" },
   member: { columns: 21, editors: 14, actions: true, range: "1–25 of 320" },
@@ -50,10 +51,10 @@ for (const actor of ACTOR_KEYS) {
       const columns = await tasks.columns()
 
       expect(columns).toHaveLength(expected.columns)
-      // The columns, before them the one of the expanders, and for a person
-      // who can run any action two more: the boxes that select a row in
-      // front of everything, and the actions after everything.
-      const all = expected.columns + 1 + (expected.actions ? 2 : 0)
+      // The columns, before them the boxes that select a row (Export CSV is
+      // everyone's) and the expanders, and for a person who can run a row
+      // action the actions after everything.
+      const all = expected.columns + 2 + (expected.actions ? 1 : 0)
       await expect(tasks.grid).toHaveAttribute("aria-colcount", String(all))
       await expect(tasks.headerCells).toHaveCount(all)
       await expect(tasks.actionsHeader).toHaveCount(expected.actions ? 1 : 0)
@@ -271,7 +272,10 @@ test.describe("the viewer, who may change nothing", () => {
 
     await expect(tasks.grid.locator(":is([role=cell],[role=rowheader])[tabindex]")).toHaveCount(0)
     await expect(tasks.root.locator("template")).toHaveCount(0)
-    await expect(tasks.root.locator("[role=dialog]")).toHaveCount(0)
+    // the one dialog is the question of an action on the selection, which a
+    // viewer may run (Export CSV): no editor's
+    await expect(tasks.root.locator("[role=dialog]")).toHaveCount(1)
+    await expect(tasks.root.locator("[role=dialog]")).toHaveId("task-dialog")
     await expect(tasks.grid.locator("[data-value]")).toHaveCount(0)
   })
 
@@ -294,10 +298,10 @@ test.describe("the viewer, who may change nothing", () => {
     await tasks.open()
     const first = await tasks.rowKey(1)
 
-    // a row's stops are its controls (the expander, a cut-off text's "Show
-    // all"): no cell is one, nothing in it is editable
+    // a row's stops are its controls (the box, for Export CSV; the expander;
+    // a cut-off text's "Show all"): no cell is one, nothing in it is editable
     const stops = await tasks.rowStops(first)
-    expect(stops[0]).toBe(`task-row-${first}-e>button`)
+    expect(stops.slice(0, 2)).toEqual([`task-row-${first}-s>input`, `task-row-${first}-e>button`])
     expect(stops.filter((stop) => !stop.includes(">")), "no cell is a stop").toEqual([])
 
     await tasks.sortBy("title")
