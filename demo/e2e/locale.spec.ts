@@ -32,7 +32,9 @@ test.describe("the switcher", () => {
       .locator("header > *")
       .evaluateAll((parts) => parts.map((part) => part.id || part.tagName))
     expect(header.slice(1, 3)).toEqual(["actor-switcher", "locale-switcher"])
-    expect(header).toHaveLength(4)
+    // then the theme: its select, and the System/Light/Dark toggle
+    expect(header).toHaveLength(5)
+    await expect(page.locator("header > *").nth(3).getByRole("combobox", { name: "Theme" })).toHaveCount(1)
     await expect(page.locator("header > *").last().getByRole("button")).toHaveCount(3)
   })
 
