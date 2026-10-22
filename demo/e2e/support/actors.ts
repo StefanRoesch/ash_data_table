@@ -30,6 +30,12 @@ export function storageStateOf(actor: Actor): string {
  * be one in the demo's app layout, which shows what the switch answered.
  */
 export async function switchActor(page: Page, actor: Actor): Promise<void> {
+  // The page's LiveView has joined first: until it has, LiveView may still
+  // load the page again itself (a join that fails or times out falls back
+  // to a page request), which would take the place of the switcher's post
+  // and leave the person as they were. LiveView marks its element
+  // `phx-connected` (a documented class) once it has joined.
+  await expect(page.locator(".phx-connected").first()).toBeAttached()
   const switcher = page.getByLabel("Acting as")
   const current = (await switcher.locator("option:checked").innerText()).replace(/\s+/g, " ").trim()
 
