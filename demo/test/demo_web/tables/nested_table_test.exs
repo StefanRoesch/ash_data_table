@@ -40,19 +40,29 @@ defmodule DemoWeb.Tables.NestedTableTest do
       world = world(tasks: 0)
       task = task(world, "Write the report")
 
-      # a viewer has nothing to select a row for
-      {:ok, _view, html} = conn |> log_in(world.viewer) |> live("/tasks")
+      # a viewer has nothing to select a project for: no project action is
+      # theirs to run (the tasks are: a viewer may export them)
+      [project | _] = world.projects
+      {:ok, _view, html} = conn |> log_in(world.viewer) |> live("/projects")
 
       assert attribute(
                html,
-               "[id='task-row-#{task.id}-r'] > :is([role=cell],[role=rowheader]):first-child",
+               "[id='project-row-#{project.id}-r'] > :is([role=cell],[role=rowheader]):first-child",
                "id"
              ) ==
-               ["task-row-#{task.id}-e"]
+               ["project-row-#{project.id}-e"]
 
-      assert text(html, "#task-head-row > [role=columnheader]:first-child") == "Related records"
-      assert attribute(html, "#task-expander-head", "aria-colindex") == ["1"]
-      assert attribute(html, "#task-head-title", "aria-colindex") == ["2"]
+      assert text(html, "#project-head-row > [role=columnheader]:first-child") ==
+               "Related records"
+
+      assert attribute(html, "#project-expander-head", "aria-colindex") == ["1"]
+
+      assert attribute(
+               html,
+               "#project-head-row > [role=columnheader]:nth-child(2)",
+               "aria-colindex"
+             ) ==
+               ["2"]
 
       {:ok, _view, html} = conn |> log_in(world.admin) |> live("/tasks")
 

@@ -115,19 +115,17 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
            %{conn: conn, world: world} do
         {:ok, _view, html} = conn |> log_in(world[unquote(actor)]) |> live("/tasks")
 
-        # The expanders, the columns that are left (21, and 19 for the viewer),
-        # and the actions, which a viewer can never run: and so nothing on
-        # several rows either, which is what the boxes before the expanders
-        # are for.
+        # The boxes (everyone here may export the selection), the expanders,
+        # the columns that are left (21, and 19 for the viewer), and the
+        # actions, which a viewer can never run.
         acting = if unquote(actor) == :viewer, do: 0, else: 1
 
         count =
-          acting + 1 + length(@headers -- ["External ref" | @unreadable[unquote(actor)]]) +
-            acting
+          1 + 1 + length(@headers -- ["External ref" | @unreadable[unquote(actor)]]) + acting
 
         numbers = Enum.map(1..count, &Integer.to_string/1)
 
-        assert count == if(unquote(actor) == :viewer, do: 20, else: 24)
+        assert count == if(unquote(actor) == :viewer, do: 21, else: 24)
         assert attribute(html, "#task-table", "aria-colcount") == ["#{count}"]
         assert attribute(html, "#task-head-row [role=columnheader]", "aria-colindex") == numbers
 
@@ -137,8 +135,7 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
                  "aria-colindex"
                ) == numbers
 
-        assert attribute(html, "#task-head-description", "aria-colindex") ==
-                 ["#{15 + acting}"]
+        assert attribute(html, "#task-head-description", "aria-colindex") == ["16"]
       end
     end
 
@@ -150,11 +147,12 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
       assert headers(html, "task") ==
                @headers -- ["External ref", "Estimate hours" | @unreadable.nobody]
 
-      # the expanders, and the 19 columns that are left
-      assert attribute(html, "#task-table", "aria-colcount") == ["20"]
+      # the boxes (whoever reads tasks may export them), the expanders, and
+      # the 19 columns that are left
+      assert attribute(html, "#task-table", "aria-colcount") == ["21"]
 
       assert attribute(html, "#task-head-row [role=columnheader]", "aria-colindex") ==
-               Enum.map(1..20, &Integer.to_string/1)
+               Enum.map(1..21, &Integer.to_string/1)
 
       refute html =~ "estimate_hours"
       refute html =~ "Estimate hours"
@@ -390,7 +388,9 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
       assert attribute(html, "#task-table :is([role=cell],[role=rowheader])", "tabindex") == []
       assert editors(html, "task") == []
       assert attribute(html, "#task template", "id") == []
-      assert attribute(html, "#task dialog", "id") == []
+      # the one dialog is the question of an action on the selection, which a
+      # viewer may run (Export CSV): no editor's
+      assert attribute(html, "#task dialog", "id") == ["task-dialog"]
       refute html =~ "Change the state of this task?"
     end
 

@@ -106,22 +106,24 @@ defmodule DemoWeb.Tables.TaskBulkTest do
       assert attribute(html, "[id='task-row-#{task.id}']", "data-key") == []
     end
 
-    test "are there for whoever can run an action on several rows, and for nobody else",
+    test "are there for whoever can run an action on several rows, with the actions they can run",
          %{conn: conn, world: world, task: task} do
       # a member may run the actions on their own tasks
       {:ok, _view, html} = conn |> log_in(world.member) |> live("/tasks")
       assert attribute(html, box(task.id), "aria-label") == ["Select row"]
 
-      # a viewer can run none: no boxes, no line, and the grid says nothing of selecting
+      # a viewer may run none of the actions on each selected row, and may
+      # export the selection (whoever reads tasks may): the boxes, and a
+      # line with Export CSV alone
       {:ok, _view, html} = conn |> log_in(world.viewer) |> live("/tasks")
       assert titles(html) == ["Task 01"]
-      assert attribute(html, "#task-select-head", "id") == []
-      assert attribute(html, "[id='task-row-#{task.id}-s']", "id") == []
-      assert attribute(html, "#task-grid", "data-select") == []
-      assert selection(html) == nil
-      # the expanders and the sixteen columns a viewer has, as before
-      assert attribute(html, "#task-table", "aria-colcount") == ["20"]
-      assert attribute(html, "[id='task-row-#{task.id}-e']", "aria-colindex") == ["1"]
+      assert attribute(html, "#task-select-head", "aria-colindex") == ["1"]
+      assert attribute(html, box(task.id), "aria-label") == ["Select row"]
+      assert attribute(html, "#task-grid", "data-select") == ["multi"]
+      assert selection(html).buttons == ["Export CSV"]
+      # the boxes, the expanders and the sixteen columns a viewer has; no actions
+      assert attribute(html, "#task-table", "aria-colcount") == ["21"]
+      assert attribute(html, "[id='task-row-#{task.id}-e']", "aria-colindex") == ["2"]
     end
   end
 

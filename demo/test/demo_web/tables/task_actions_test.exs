@@ -122,8 +122,9 @@ defmodule DemoWeb.Tables.TaskActionsTest do
       assert titles(html) == ["Task 1"]
       assert attribute(html, "#task-actions-head", "id") == []
       assert attribute(html, actions_cell(task.id), "id") == []
-      # the expanders (a viewer is offered some lines) and the sixteen columns a viewer has
-      assert attribute(html, "#task-table", "aria-colcount") == ["20"]
+      # the boxes (a viewer may export the selection), the expanders (a viewer
+      # is offered some lines) and the sixteen columns a viewer has
+      assert attribute(html, "#task-table", "aria-colcount") == ["21"]
     end
 
     test "is there for a person of another organization, on their own records only",
