@@ -63,16 +63,12 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
   defp stored!(stock), do: Ash.get!(Stock, stock.id, authorize?: false)
 
   describe "a read that is on its way when the argument it requires is emptied" do
-    setup do
-      on_exit(&Demo.Support.Hold.release/0)
-    end
-
     test "is not waited for, and what it brings is not shown: the table asks for the argument, and reports no failure",
          %{conn: conn} do
       {:ok, view, _html} = live(conn, "/support/stocks")
       assert column(argue(view, "stock", a: %{"at_least" => "1"}), "stock", "name") != []
 
-      Demo.Support.Hold.hold()
+      Demo.Support.Gate.shut(:stock_reads)
 
       # a read starts, and is held back
       html =
@@ -93,7 +89,7 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
 
       {html, log} =
         ExUnit.CaptureLog.with_log(fn ->
-          Demo.Support.Hold.release()
+          Demo.Support.Gate.open(:stock_reads)
           render_async(view)
         end)
 

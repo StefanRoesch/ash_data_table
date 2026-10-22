@@ -338,9 +338,11 @@ defmodule DemoWeb.Tables.AttachTest do
 
       select(view, "crate", [first.id])
 
+      Demo.Support.Gate.shut(:weigh)
       confirm_bulk(view, "crate", "weigh")
       switch(view, %{current_user: %{someone | role: :member}})
 
+      Demo.Support.Gate.open(:weigh)
       html = ran(view)
       assert bulk_result(html, "crate") == %{summary: "Weigh: 1 done.", failures: []}
       assert announcement(html, "crate") == "Weigh: 1 done."
@@ -354,9 +356,11 @@ defmodule DemoWeb.Tables.AttachTest do
 
       select(view, "crate", [first.id])
 
+      Demo.Support.Gate.shut(:weigh)
       confirm_bulk(view, "crate", "weigh")
       switch(view, %{current_user: other})
 
+      Demo.Support.Gate.open(:weigh)
       html = ran(view)
       assert bulk_result(html, "crate") == nil
       refute html =~ "Weigh: 1 done."
@@ -370,11 +374,13 @@ defmodule DemoWeb.Tables.AttachTest do
          %{conn: conn, crates: [first | _]} do
       {:ok, view, _html} = live(conn, "/support/switched/crates")
       select(view, "crate", [first.id])
+      Demo.Support.Gate.shut(:weigh)
       confirm_bulk(view, "crate", "weigh")
 
       # the run is cancelled as its table is detached; its answer, that it
       # was, comes all the same, to a table of the same id
       render_patch(view, "/support/switched/crates/still")
+      Demo.Support.Gate.open(:weigh)
       html = ran(view)
 
       assert Process.alive?(view.pid)

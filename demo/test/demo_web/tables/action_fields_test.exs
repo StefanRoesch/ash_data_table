@@ -48,6 +48,22 @@ defmodule DemoWeb.Tables.ActionFieldsTest do
   defp fields(html), do: Enum.map(panel(html, "order").fields, &{&1.name, &1.value})
 
   describe "the panel of a row action" do
+    test "validates once typing pauses: every control typed into waits 300 ms, a menu does not",
+         %{conn: conn} do
+      order = order(%{owner: "ada"})
+      {:ok, view, _html} = open(conn, @admin)
+      html = act(view, "order", order.id, "revise")
+
+      typed =
+        "[id='order-panel-form'] :is(textarea, input[name]:not([type=hidden], [type=checkbox], [type=radio], [type=file]))"
+
+      waits = attribute(html, typed, "phx-debounce")
+      assert waits != []
+      assert Enum.uniq(waits) == ["300"]
+      assert length(waits) == length(attribute(html, typed, "name"))
+      assert attribute(html, "[id='order-panel-form'] select", "phx-debounce") == []
+    end
+
     test "has every field of the action for a person who sees them all", %{conn: conn} do
       order = order(%{owner: "ada"})
       {:ok, view, _html} = open(conn, @admin)

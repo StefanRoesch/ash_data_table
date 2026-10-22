@@ -130,15 +130,15 @@ defmodule Demo.Support.Bulk.Crate do
       end
     end
 
-    # takes its time over every crate, so that a test can look at the table
-    # while it runs
+    # waits over every crate while a test holds it back (`Demo.Support.Gate`),
+    # so that the test can look at the table while it runs
     update :weigh do
       accept []
       require_atomic? false
 
       change fn changeset, _context ->
         Ash.Changeset.before_action(changeset, fn changeset ->
-          Process.sleep(300)
+          :ok = Demo.Support.Gate.pass(:weigh)
           changeset
         end)
       end

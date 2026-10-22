@@ -61,8 +61,15 @@ config :demo, e2e_routes: true
 # The sandbox's manual mode where the endpoint serves, and every LiveView
 # allowed into its test's transaction (`DemoWeb.E2E.Sandbox`),
 # and what the page of a browser test sent its LiveViews, heard on the server
-# (`e2e/server/recorder.ex`, read by `Sent` in `e2e/support/fixtures.ts`).
-config :demo, e2e_children: [DemoWeb.E2E.Sandbox, DemoWeb.E2E.Recorder, DemoWeb.E2E.KitChoice]
+# (`e2e/server/recorder.ex`, read by `Sent` in `e2e/support/fixtures.ts`),
+# and where a held write of /e2e/held meets its release (`e2e/server/held_live.ex`).
+config :demo,
+  e2e_children: [
+    DemoWeb.E2E.Sandbox,
+    DemoWeb.E2E.Recorder,
+    DemoWeb.E2E.KitChoice,
+    DemoWeb.E2E.HeldLatch
+  ]
 
 # A warning or an error in the server's output is worth seeing; the rest is noise.
 config :logger, level: :warning

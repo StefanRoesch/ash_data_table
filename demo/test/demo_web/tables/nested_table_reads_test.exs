@@ -68,9 +68,13 @@ defmodule DemoWeb.Tables.NestedTableReadsTest do
     %{view: view, conn: conn, world: world, project: project, task: task, other: other}
   end
 
-  # Everything that was read since the last call, by kind.
-  defp reads(kind) do
-    Process.sleep(20)
+  # Everything that was read since the last call, by kind. The reads are
+  # in the LiveView's process and in its async tasks, which tell this
+  # process as they read: once the LiveView has answered a render, after
+  # its tasks have answered it, what they read has been told.
+  defp reads(view, kind) do
+    render_async(view)
+    render(view)
     collect(kind, [])
   end
 
@@ -82,22 +86,23 @@ defmodule DemoWeb.Tables.NestedTableReadsTest do
     end
   end
 
-  defp forget do
-    reads(:read)
-    reads(:sql)
+  defp forget(view) do
+    reads(view, :read)
+    reads(view, :sql)
   end
 
   # Twice, as every LiveView is rendered twice; and each time the session's
   # actor. With the tasks go the records their reference columns show: the
   # project, the assignee and the reporter of the page's tasks, each read
   # once for the whole page.
-  test "opening the page reads the tasks, the labels of their reference columns, and nothing else related" do
+  test "opening the page reads the tasks, the labels of their reference columns, and nothing else related",
+       %{view: view} do
     once = [:user, :project, :user, :user, :task]
 
-    assert reads(:read) |> Enum.chunk_every(5) |> Enum.map(&Enum.sort/1) ==
+    assert reads(view, :read) |> Enum.chunk_every(5) |> Enum.map(&Enum.sort/1) ==
              [Enum.sort(once), Enum.sort(once)]
 
-    assert Enum.uniq(reads(:sql)) -- ["tasks", "users", "projects", "(subquery)"] == []
+    assert Enum.uniq(reads(view, :sql)) -- ["tasks", "users", "projects", "(subquery)"] == []
   end
 
   test "a page reads the related records of each reference column in one statement, however many rows it has",
@@ -119,7 +124,7 @@ defmodule DemoWeb.Tables.NestedTableReadsTest do
       )
     end
 
-    forget()
+    forget(view)
 
     # a new read of the page: eleven tasks, of four reporters and three assignees
     html = view |> element("#task-sort-title") |> render_click()
@@ -128,33 +133,33 @@ defmodule DemoWeb.Tables.NestedTableReadsTest do
     assert length(column(html, "task", "title")) == 2
     assert length(column(render(view), "task", "title")) == 11
 
-    assert Enum.sort(reads(:read)) == [:project, :task, :user, :user]
+    assert Enum.sort(reads(view, :read)) == [:project, :task, :user, :user]
 
     # The page, its count, and the aggregate of the page's tasks, which is
     # read in a statement of its own (the library's internal ticket #35);
     # and one statement per reference column.
-    assert Enum.frequencies(reads(:sql)) == %{"tasks" => 3, "projects" => 1, "users" => 2}
+    assert Enum.frequencies(reads(view, :sql)) == %{"tasks" => 3, "projects" => 1, "users" => 2}
   end
 
   test "expanding a row reads nothing", %{view: view, task: task} do
-    forget()
+    forget(view)
     expand(view, task.id)
 
-    assert reads(:read) == []
-    assert reads(:sql) == []
+    assert reads(view, :read) == []
+    assert reads(view, :sql) == []
   end
 
   test "opening a line reads the parent with its related records, once: two statements",
        %{view: view, task: task} do
     expand(view, task.id)
-    forget()
+    forget(view)
 
     toggle(view, task.id, "comments")
 
     # the task by its key, as the person, and the comments as its load
-    assert Enum.sort(reads(:read)) == [:comment, :task]
+    assert Enum.sort(reads(view, :read)) == [:comment, :task]
     # one for the task with the count, one for the page of its comments
-    assert Enum.sort(reads(:sql)) == ["(subquery)", "tasks"]
+    assert Enum.sort(reads(view, :sql)) == ["(subquery)", "tasks"]
   end
 
   test "opening a second line, and a line of another row, reads those alone",
@@ -162,18 +167,18 @@ defmodule DemoWeb.Tables.NestedTableReadsTest do
     expand(view, task.id)
     expand(view, other.id)
     toggle(view, task.id, "comments")
-    forget()
+    forget(view)
 
     toggle(view, task.id, "project")
-    assert Enum.sort(reads(:read)) == [:project, :task]
+    assert Enum.sort(reads(view, :read)) == [:project, :task]
 
     toggle(view, other.id, "comments")
-    assert Enum.sort(reads(:read)) == [:comment, :task]
+    assert Enum.sort(reads(view, :read)) == [:comment, :task]
 
     # closing reads nothing
     toggle(view, task.id, "project")
     expand(view, other.id)
-    assert reads(:read) == []
+    assert reads(view, :read) == []
   end
 
   test "sorting a nested table reads it again, and nothing of the table around it or beside it",
@@ -181,13 +186,13 @@ defmodule DemoWeb.Tables.NestedTableReadsTest do
     expand(view, task.id)
     toggle(view, task.id, "comments")
     toggle(view, task.id, "labels")
-    forget()
+    forget(view)
 
     click(view, "[id='#{nested(task.id, "comments")}-sort-body']")
     render_async(view)
 
-    assert Enum.sort(reads(:read)) == [:comment, :task]
-    assert length(reads(:sql)) == 2
+    assert Enum.sort(reads(view, :read)) == [:comment, :task]
+    assert length(reads(view, :sql)) == 2
   end
 
   test "a save in a nested table reads and writes that record with what its row shows, and not the table around it",
@@ -203,7 +208,7 @@ defmodule DemoWeb.Tables.NestedTableReadsTest do
     id = nested("project", project.id, "tasks")
     # the nested tasks have footer summaries, which are there by now
     render_async(view, 10_000)
-    forget()
+    forget(view)
 
     html = save(view, id, task.id, "title", "Write the summary")
     # the summaries of the nested tasks are asked for again after the save
@@ -216,9 +221,9 @@ defmodule DemoWeb.Tables.NestedTableReadsTest do
     # project is read once more by its key, with the keys of its tasks as
     # its load. The projects' own table, around it, is not read again: that
     # would be a page, and its count.
-    assert Enum.sort(reads(:read)) == [:project, :project, :task, :task, :user, :user]
+    assert Enum.sort(reads(view, :read)) == [:project, :project, :task, :task, :user, :user]
     # with the summaries: the project by its key, the keys of its tasks,
     # and the statement that computes them
-    assert Enum.frequencies(reads(:sql)) == %{"tasks" => 5, "users" => 2, "projects" => 2}
+    assert Enum.frequencies(reads(view, :sql)) == %{"tasks" => 5, "users" => 2, "projects" => 2}
   end
 end
