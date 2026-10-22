@@ -70,6 +70,8 @@ The demo is a small issue tracker: projects, tasks, comments, labels, people.
 3. Double-click a task's **Project** or **Assignee** cell: you choose another
    record from that resource's own table.
 
+   ![On /tasks, a task's Project cell opens the projects' own table: another project is chosen and confirmed](docs/images/picker.gif)
+
 4. Use a **row action** in the last column, or **New task**: actions with
    inputs ask for them in a side panel.
 
